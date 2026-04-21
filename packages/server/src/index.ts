@@ -1,0 +1,43 @@
+import "dotenv/config";
+import { createApp } from "./app.js";
+import { createWSServer } from "./ws.js";
+import { AgentSwarm } from "@agent-swarm/core";
+
+const PORT = parseInt(process.env.PORT ?? "3000", 10);
+
+async function main() {
+  // TODO: load config from agent-swarm.config.ts
+  const swarm = new AgentSwarm({
+    config: {
+      llm: {
+        defaultProvider: "anthropic",
+        defaultModel: "claude-sonnet-4-20250514",
+        apiKeys: {
+          anthropic: process.env.ANTHROPIC_API_KEY ?? "",
+          openai: process.env.OPENAI_API_KEY ?? "",
+          google: process.env.GOOGLE_API_KEY ?? "",
+        },
+      },
+      storage: {
+        type: "sqlite",
+        path: process.env.DB_PATH ?? "./data/agent-swarm.db",
+      },
+      swarms: [],
+    },
+  });
+
+  await swarm.init();
+
+  const app = createApp(swarm);
+  const server = createWSServer(app, swarm);
+
+  server.listen(PORT, () => {
+    console.log(`Agent Swarm server running on http://localhost:${PORT}`);
+    console.log(`WebSocket available on ws://localhost:${PORT}`);
+  });
+}
+
+main().catch((err) => {
+  console.error("Failed to start server:", err);
+  process.exit(1);
+});

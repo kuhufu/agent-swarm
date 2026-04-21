@@ -1,0 +1,262 @@
+import type { AgentTool } from "@mariozechner/pi-agent-core";
+
+// ============================================================================
+// Collaboration Mode
+// ============================================================================
+
+export type CollaborationMode = "router" | "sequential" | "parallel" | "swarm" | "debate";
+
+export type AggregationStrategy =
+  | { type: "merge" }
+  | { type: "vote"; quorum: number }
+  | { type: "best"; judgeAgent: string }
+  | { type: "custom"; handler: string };
+
+export interface DebateConfig {
+  rounds: number;
+  judgeAgent: string;
+  proAgent: string;
+  conAgent: string;
+}
+
+export interface PipelineStep {
+  agentId: string;
+  condition?: (output: any) => boolean;
+  transform?: (output: any) => any;
+  onSkip?: string;
+}
+
+// ============================================================================
+// Thinking
+// ============================================================================
+
+export type ThinkingLevel = "off" | "low" | "medium" | "high";
+
+export interface ThinkingBudgets {
+  maxTokens?: number;
+  maxThinkingTokens?: number;
+}
+
+// ============================================================================
+// Model Config
+// ============================================================================
+
+export interface ModelConfig {
+  provider: string;
+  modelId: string;
+  apiKey?: string;
+  baseUrl?: string;
+  options?: Record<string, any>;
+}
+
+// ============================================================================
+// Agent Config
+// ============================================================================
+
+export interface SwarmAgentConfig {
+  id: string;
+  name: string;
+  description: string;
+  systemPrompt: string;
+  model: ModelConfig;
+  tools?: AgentTool<any>[];
+  thinkingLevel?: ThinkingLevel;
+  interventions?: Partial<Record<InterventionPoint, InterventionStrategy>>;
+  maxTurns?: number;
+  thinkingBudgets?: ThinkingBudgets;
+}
+
+// Re-export intervention types locally
+export type InterventionPoint =
+  | "before_agent_start"
+  | "after_agent_end"
+  | "before_tool_call"
+  | "after_tool_call"
+  | "on_handoff"
+  | "on_error"
+  | "on_approval_required";
+
+export type InterventionStrategy = "auto" | "confirm" | "review" | "edit" | "reject";
+
+// ============================================================================
+// Swarm Config
+// ============================================================================
+
+export interface SwarmConfig {
+  id: string;
+  name: string;
+  mode: CollaborationMode;
+  agents: SwarmAgentConfig[];
+  orchestrator?: SwarmAgentConfig;
+  aggregator?: AggregationStrategy;
+  debateConfig?: DebateConfig;
+  pipeline?: PipelineStep[];
+  interventions?: Partial<Record<InterventionPoint, InterventionStrategy>>;
+  maxTotalTurns?: number;
+  maxConcurrency?: number;
+}
+
+// ============================================================================
+// Context Config
+// ============================================================================
+
+export interface ContextConfig {
+  maxMessages?: number;
+  maxTokens?: number;
+  strategy: "sliding" | "summarize";
+  summarizeAgent?: {
+    model: ModelConfig;
+  };
+}
+
+// ============================================================================
+// Storage Config
+// ============================================================================
+
+export interface StorageConfig {
+  type: "sqlite";
+  path: string;
+}
+
+// ============================================================================
+// Root Config (for defineConfig)
+// ============================================================================
+
+export interface AgentSwarmRootConfig {
+  llm: LLMBackendConfig;
+  storage: StorageConfig;
+  swarms: SwarmConfig[];
+  contextConfig?: ContextConfig;
+}
+
+// LLM config re-export
+export interface LLMBackendConfig {
+  defaultProvider: string;
+  defaultModel: string;
+  apiKeys: Record<string, string>;
+  endpoints?: Record<string, {
+    baseUrl: string;
+    headers?: Record<string, string>;
+  }>;
+  defaultThinkingLevel?: ThinkingLevel;
+  defaultThinkingBudgets?: ThinkingBudgets;
+}
+
+// ============================================================================
+// Swarm Events
+// ============================================================================
+
+export interface SwarmStartEvent {
+  type: "swarm_start";
+  swarmId: string;
+  conversationId: string;
+}
+
+export interface SwarmEndEvent {
+  type: "swarm_end";
+  swarmId: string;
+  conversationId: string;
+  finalMessage: string;
+}
+
+export interface AgentStartEvent {
+  type: "agent_start";
+  agentId: string;
+  agentName: string;
+}
+
+export interface AgentEndEvent {
+  type: "agent_end";
+  agentId: string;
+  agentName: string;
+}
+
+export interface TurnStartEvent {
+  type: "turn_start";
+  agentId: string;
+  turn: number;
+}
+
+export interface TurnEndEvent {
+  type: "turn_end";
+  agentId: string;
+  turn: number;
+}
+
+export interface MessageStartEvent {
+  type: "message_start";
+  agentId: string;
+  role: string;
+}
+
+export interface MessageUpdateEvent {
+  type: "message_update";
+  agentId: string;
+  delta?: string;
+}
+
+export interface MessageEndEvent {
+  type: "message_end";
+  agentId: string;
+  role: string;
+}
+
+export interface ToolExecutionStartEvent {
+  type: "tool_execution_start";
+  agentId: string;
+  toolName: string;
+  toolCallId: string;
+}
+
+export interface ToolExecutionUpdateEvent {
+  type: "tool_execution_update";
+  agentId: string;
+  toolCallId: string;
+  progress?: any;
+}
+
+export interface ToolExecutionEndEvent {
+  type: "tool_execution_end";
+  agentId: string;
+  toolName: string;
+  toolCallId: string;
+  isError: boolean;
+}
+
+export interface HandoffEvent {
+  type: "handoff";
+  fromAgentId: string;
+  toAgentId: string;
+  reason?: string;
+}
+
+export interface InterventionRequiredEvent {
+  type: "intervention_required";
+  point: InterventionPoint;
+  context: any;
+  requestId: string;
+  respond: (decision: any) => void;
+}
+
+export interface ErrorEvent {
+  type: "error";
+  agentId?: string;
+  error: Error;
+}
+
+export type SwarmEvent =
+  | SwarmStartEvent
+  | SwarmEndEvent
+  | AgentStartEvent
+  | AgentEndEvent
+  | TurnStartEvent
+  | TurnEndEvent
+  | MessageStartEvent
+  | MessageUpdateEvent
+  | MessageEndEvent
+  | ToolExecutionStartEvent
+  | ToolExecutionUpdateEvent
+  | ToolExecutionEndEvent
+  | HandoffEvent
+  | InterventionRequiredEvent
+  | ErrorEvent;

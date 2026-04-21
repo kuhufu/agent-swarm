@@ -1,0 +1,21 @@
+{
+  "name": "agent-swarm-monorepo",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @agent-swarm/server dev & pnpm --filter @agent-swarm/web dev",
+    "dev:core": "pnpm --filter @agent-swarm/core dev",
+    "dev:server": "pnpm --filter @agent-swarm/server dev",
+    "dev:web": "pnpm --filter @agent-swarm/web dev",
+    "build": "pnpm --filter @agent-swarm/core build && pnpm --filter @agent-swarm/server build && pnpm --filter @agent-swarm/web build",
+    "build:core": "pnpm --filter @agent-swarm/core build",
+    "build:server": "pnpm --filter @agent-swarm/server build",
+    "build:web": "pnpm --filter @agent-swarm/web build",
+    "test": "pnpm --filter @agent-swarm/core test",
+    "lint": "pnpm -r run lint",
+    "clean": "pnpm -r run clean && rm -rf node_modules"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}
