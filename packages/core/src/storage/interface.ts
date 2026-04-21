@@ -47,6 +47,7 @@ export interface IStorage {
   createConversation(swarmId: string, title?: string): Promise<Conversation>;
   getConversation(id: string): Promise<Conversation | null>;
   listConversations(swarmId: string): Promise<Conversation[]>;
+  updateConversationTitle(id: string, title: string): Promise<void>;
   deleteConversation(id: string): Promise<void>;
 
   // Message management

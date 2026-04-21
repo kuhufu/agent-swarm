@@ -49,8 +49,6 @@ export { SqliteStorage } from "./storage/sqlite.js";
 // Tools
 export { createRouteToAgentTool, routeToAgentTool } from "./tools/route-to-agent.js";
 export { createHandoffTool, handoffTool } from "./tools/handoff.js";
-export { respondToUserTool } from "./tools/respond-to-user.js";
-
 // Modes
 export { RouterMode } from "./modes/router.js";
 export { SequentialMode } from "./modes/sequential.js";

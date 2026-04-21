@@ -15,6 +15,7 @@ export class DebateMode implements ModeExecutor {
     if (!debateConfig) throw new Error("Debate mode requires debateConfig");
 
     const { proAgent, conAgent, judgeAgent, rounds } = debateConfig;
+    const transcript: Array<{ round: number; pro: string; con: string }> = [];
 
     // Ensure all agents are created
     for (const agentConfig of swarmConfig.agents) {
@@ -26,8 +27,12 @@ export class DebateMode implements ModeExecutor {
     let currentTopic = message;
 
     for (let round = 0; round < rounds && !isAborted(); round++) {
+      const roundNumber = round + 1;
+      let proArgument = "";
+      let conArgument = "";
+
       // Pro agent argues
-      yield* this.runAgent(proAgent, `Round ${round + 1} - Argue IN FAVOR of: ${currentTopic}`, ctx);
+      yield* this.runAgent(proAgent, `Round ${roundNumber} - Argue IN FAVOR of: ${currentTopic}`, ctx);
 
       // Capture pro's argument
       const proActive = agents.get(proAgent);
@@ -35,12 +40,13 @@ export class DebateMode implements ModeExecutor {
         const msgs = proActive.agent.state.messages;
         const lastAssistant = [...msgs].reverse().find((m: any) => m.role === "assistant");
         if (lastAssistant) {
-          currentTopic = this.extractText(lastAssistant.content);
+          proArgument = this.extractText(lastAssistant.content);
+          currentTopic = proArgument;
         }
       }
 
       // Con agent argues
-      yield* this.runAgent(conAgent, `Round ${round + 1} - Argue AGAINST: ${currentTopic}`, ctx);
+      yield* this.runAgent(conAgent, `Round ${roundNumber} - Argue AGAINST: ${currentTopic}`, ctx);
 
       // Capture con's argument for next round
       const conActive = agents.get(conAgent);
@@ -48,13 +54,21 @@ export class DebateMode implements ModeExecutor {
         const msgs = conActive.agent.state.messages;
         const lastAssistant = [...msgs].reverse().find((m: any) => m.role === "assistant");
         if (lastAssistant) {
-          currentTopic = this.extractText(lastAssistant.content);
+          conArgument = this.extractText(lastAssistant.content);
+          currentTopic = conArgument;
         }
       }
+
+      transcript.push({
+        round: roundNumber,
+        pro: proArgument,
+        con: conArgument,
+      });
     }
 
     // Judge agent summarizes
-    yield* this.runAgent(judgeAgent, `Based on the debate above, provide your judgment and summary on: ${message}`, ctx);
+    const judgeInput = this.buildJudgeInput(message, transcript);
+    yield* this.runAgent(judgeAgent, judgeInput, ctx);
   }
 
   private async *runAgent(
@@ -142,6 +156,34 @@ export class DebateMode implements ModeExecutor {
     return "";
   }
 
+  private buildJudgeInput(
+    originalTopic: string,
+    transcript: Array<{ round: number; pro: string; con: string }>,
+  ): string {
+    if (transcript.length === 0) {
+      return `Topic: ${originalTopic}\n\nNo debate transcript was produced. Provide your judgment based on available context.`;
+    }
+
+    const roundsText = transcript
+      .map((round) => [
+        `Round ${round.round}:`,
+        `Pro: ${round.pro || "(no response)"}`,
+        `Con: ${round.con || "(no response)"}`,
+      ].join("\n"))
+      .join("\n\n");
+
+    return [
+      `You are the judge for this debate topic: ${originalTopic}`,
+      "",
+      "Debate transcript:",
+      roundsText,
+      "",
+      "Please provide:",
+      "1. A concise summary of both sides.",
+      "2. Your final judgment and reasoning.",
+    ].join("\n");
+  }
+
   private mapAgentEvent(e: PiAgentEvent, agentId: string, agentName: string): SwarmEvent | null {
     switch (e.type) {
       case "agent_start": return { type: "agent_start", agentId, agentName };
@@ -149,7 +191,9 @@ export class DebateMode implements ModeExecutor {
       case "turn_start": return { type: "turn_start", agentId, turn: 0 };
       case "turn_end": return { type: "turn_end", agentId, turn: 0 };
       case "message_start": return { type: "message_start", agentId, agentName, role: e.message.role };
-      case "message_update": return { type: "message_update", agentId, delta: e.assistantMessageEvent.type === "text_delta" ? e.assistantMessageEvent.delta : undefined };
+      case "message_update":
+        if (e.assistantMessageEvent.type !== "text_delta") return null;
+        return { type: "message_update", agentId, delta: e.assistantMessageEvent.delta };
       case "message_end": return { type: "message_end", agentId, agentName, role: e.message.role };
       case "tool_execution_start": return { type: "tool_execution_start", agentId, toolName: e.toolName, toolCallId: e.toolCallId };
       case "tool_execution_end": return { type: "tool_execution_end", agentId, toolName: e.toolName, toolCallId: e.toolCallId, isError: e.isError };

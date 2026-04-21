@@ -236,6 +236,13 @@ export class SqliteStorage implements IStorage {
     }));
   }
 
+  async updateConversationTitle(id: string, title: string): Promise<void> {
+    this.getDb().update(conversationsTable)
+      .set({ title, updatedAt: Date.now() })
+      .where(eq(conversationsTable.id, id))
+      .run();
+  }
+
   async deleteConversation(id: string): Promise<void> {
     this.getDb().delete(messagesTable).where(eq(messagesTable.conversationId, id)).run();
     this.getDb().delete(eventsTable).where(eq(eventsTable.conversationId, id)).run();

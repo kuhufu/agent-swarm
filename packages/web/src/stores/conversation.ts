@@ -17,11 +17,15 @@ export const useConversationStore = defineStore("conversation", () => {
   }
 
   function startStreamingMessage(msg: ChatMessage) {
+    // Close previous stream first to avoid losing partial text
+    if (streamingMessage.value) {
+      messages.value.push({ ...streamingMessage.value });
+    }
     streamingMessage.value = { ...msg, content: "" };
   }
 
-  function appendStreamDelta(delta: string) {
-    if (streamingMessage.value) {
+  function appendStreamDelta(agentId: string, delta: string) {
+    if (streamingMessage.value && streamingMessage.value.agentId === agentId) {
       streamingMessage.value = {
         ...streamingMessage.value,
         content: streamingMessage.value.content + delta,
@@ -29,8 +33,8 @@ export const useConversationStore = defineStore("conversation", () => {
     }
   }
 
-  function finalizeStream() {
-    if (streamingMessage.value) {
+  function finalizeStream(agentId?: string) {
+    if (streamingMessage.value && (!agentId || streamingMessage.value.agentId === agentId)) {
       messages.value.push({ ...streamingMessage.value });
       streamingMessage.value = null;
     }

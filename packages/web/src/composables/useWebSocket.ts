@@ -114,13 +114,15 @@ export function useWebSocket() {
         break;
 
       case "message_update":
-        if (msg.payload.delta) {
-          conversationStore.appendStreamDelta(msg.payload.delta);
+        if (typeof msg.payload?.agentId === "string" && typeof msg.payload?.delta === "string") {
+          conversationStore.appendStreamDelta(msg.payload.agentId, msg.payload.delta);
         }
         break;
 
       case "message_end":
-        conversationStore.finalizeStream();
+        if (msg.payload?.role === "assistant" && typeof msg.payload?.agentId === "string") {
+          conversationStore.finalizeStream(msg.payload.agentId);
+        }
         break;
 
       // ── Tool execution events ──

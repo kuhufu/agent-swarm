@@ -14,7 +14,6 @@ import { SwarmMode } from "../modes/swarm-mode.js";
 import { DebateMode } from "../modes/debate.js";
 import { createRouteToAgentTool } from "../tools/route-to-agent.js";
 import { createHandoffTool } from "../tools/handoff.js";
-import { respondToUserTool } from "../tools/respond-to-user.js";
 import { storedToMessage } from "../storage/message-mapper.js";
 import type { ModeExecutor, ModeExecutionContext } from "../modes/types.js";
 
@@ -71,6 +70,13 @@ export class Conversation {
       content: message,
       timestamp: Date.now(),
     });
+
+    // Use first message as conversation title
+    const history = await this.storage.getMessages(this.id);
+    if (history.length === 1) {
+      const title = message.length > 50 ? message.slice(0, 50) + "…" : message;
+      await this.storage.updateConversationTitle(this.id, title);
+    }
 
     const startEvent: SwarmEvent = { type: "swarm_start", swarmId: this.swarmConfig.id, conversationId: this.id };
     this.emit(startEvent);
@@ -267,7 +273,7 @@ export class Conversation {
   }
 
   private getAutoTools(config: SwarmAgentConfig): AgentTool<any>[] {
-    const tools: AgentTool<any>[] = [respondToUserTool];
+    const tools: AgentTool<any>[] = [];
 
     const availableAgents = this.swarmConfig.agents.map((agent) => ({
       id: agent.id,

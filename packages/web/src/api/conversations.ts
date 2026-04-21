@@ -1,5 +1,5 @@
 import { apiClient } from "./client.js";
-import type { ConversationInfo } from "../types/index.js";
+import type { ConversationInfo, ChatMessage } from "../types/index.js";
 
 interface ConversationListResponse {
   data: ConversationInfo[];
@@ -7,6 +7,10 @@ interface ConversationListResponse {
 
 interface ConversationDetailResponse {
   data: ConversationInfo;
+}
+
+interface MessageListResponse {
+  data: ChatMessage[];
 }
 
 export function listConversations(swarmId: string) {
@@ -18,4 +22,8 @@ export function createConversation(swarmId: string) {
     method: "POST",
     body: JSON.stringify({ swarmId }),
   });
+}
+
+export function getMessages(conversationId: string) {
+  return apiClient<MessageListResponse>(`/conversations/${conversationId}/messages`);
 }
