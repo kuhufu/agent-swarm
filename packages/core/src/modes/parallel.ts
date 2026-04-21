@@ -181,18 +181,18 @@ export class ParallelMode implements ModeExecutor {
             return `## ${cfg?.name ?? id}\n\n${text}`;
           })
           .join("\n\n---\n\n");
-        ctx.emit({ type: "message_start", agentId: "__aggregator", role: "assistant" });
+        ctx.emit({ type: "message_start", agentId: "__aggregator", agentName: "Aggregator", role: "assistant" });
         yield { type: "message_update", agentId: "__aggregator", delta: merged };
-        yield { type: "message_end", agentId: "__aggregator", role: "assistant" };
+        yield { type: "message_end", agentId: "__aggregator", agentName: "Aggregator", role: "assistant" };
         break;
       }
       case "vote": {
         // Simple voting: count non-empty results
         const validResults = Array.from(results.values()).filter(Boolean);
         if (validResults.length >= aggregator.quorum) {
-          ctx.emit({ type: "message_start", agentId: "__aggregator", role: "assistant" });
+          ctx.emit({ type: "message_start", agentId: "__aggregator", agentName: "Aggregator", role: "assistant" });
           yield { type: "message_update", agentId: "__aggregator", delta: `共识达成（${validResults.length}/${results.size} 同意）` };
-          yield { type: "message_end", agentId: "__aggregator", role: "assistant" };
+          yield { type: "message_end", agentId: "__aggregator", agentName: "Aggregator", role: "assistant" };
         } else {
           yield { type: "error", error: new Error(`Quorum not reached: ${validResults.length}/${aggregator.quorum}`) };
         }
@@ -228,9 +228,9 @@ export class ParallelMode implements ModeExecutor {
       case "agent_end": return { type: "agent_end", agentId, agentName };
       case "turn_start": return { type: "turn_start", agentId, turn: 0 };
       case "turn_end": return { type: "turn_end", agentId, turn: 0 };
-      case "message_start": return { type: "message_start", agentId, role: e.message.role };
+      case "message_start": return { type: "message_start", agentId, agentName, role: e.message.role };
       case "message_update": return { type: "message_update", agentId, delta: e.assistantMessageEvent.type === "text_delta" ? e.assistantMessageEvent.delta : undefined };
-      case "message_end": return { type: "message_end", agentId, role: e.message.role };
+      case "message_end": return { type: "message_end", agentId, agentName, role: e.message.role };
       case "tool_execution_start": return { type: "tool_execution_start", agentId, toolName: e.toolName, toolCallId: e.toolCallId };
       case "tool_execution_end": return { type: "tool_execution_end", agentId, toolName: e.toolName, toolCallId: e.toolCallId, isError: e.isError };
       default: return null;

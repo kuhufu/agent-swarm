@@ -15,6 +15,10 @@ const API_PROTOCOLS: { value: ApiProtocol; label: string }[] = [
   { value: "azure-openai-responses", label: "Azure OpenAI Responses" },
 ];
 
+const DEFAULT_PROVIDERS: Record<string, ProviderEntry> = {
+  deepseek: { apiKey: "", baseUrl: "https://api.deepseek.com", apiProtocol: "openai-completions" },
+};
+
 interface ProviderEntry {
   apiKey: string;
   baseUrl: string;
@@ -54,8 +58,8 @@ function getEffectiveProtocol(id: string): ApiProtocol {
   return "openai-completions";
 }
 
-const defaultProvider = ref("anthropic");
-const defaultModel = ref("claude-sonnet-4-20250514");
+const defaultProvider = ref("deepseek");
+const defaultModel = ref("");
 
 // ── Models ──
 const models = reactive<SavedModel[]>([]);
@@ -109,37 +113,59 @@ const interventions = reactive<Partial<Record<InterventionPoint, InterventionStr
 
 const saving = ref(false);
 const saved = ref(false);
+const saveError = ref("");
+const loadError = ref("");
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return "未知错误";
+}
 
 onMounted(async () => {
-  await settingsStore.fetchConfig();
-  const config = settingsStore.config;
-  if (config) {
-    defaultProvider.value = config.defaultProvider;
-    defaultModel.value = config.defaultModel;
-    for (const [provider, key] of Object.entries(config.apiKeys)) {
-      if (!providers[provider]) {
-        providers[provider] = { apiKey: "", baseUrl: "", apiProtocol: "openai-completions" };
-      }
-      if (key) providers[provider].apiKey = key;
-    }
-    if (config.providers) {
-      for (const [id, pc] of Object.entries(config.providers)) {
+  try {
+    await settingsStore.fetchConfig();
+    loadError.value = "";
+    const config = settingsStore.config;
+    if (config) {
+      defaultProvider.value = config.defaultProvider;
+      defaultModel.value = config.defaultModel;
+      // Initialize default providers first
+      for (const [id, entry] of Object.entries(DEFAULT_PROVIDERS)) {
         if (!providers[id]) {
-          providers[id] = { apiKey: "", baseUrl: "", apiProtocol: "openai-completions" };
+          providers[id] = { ...entry };
         }
-        providers[id].baseUrl = pc.baseUrl ?? "";
-        providers[id].apiProtocol = pc.apiProtocol ?? "";
+      }
+      // Then merge server config
+      for (const [provider, key] of Object.entries(config.apiKeys)) {
+        if (!providers[provider]) {
+          providers[provider] = { apiKey: "", baseUrl: "", apiProtocol: "openai-completions" };
+        }
+        if (key) providers[provider].apiKey = key;
+      }
+      if (config.providers) {
+        for (const [id, pc] of Object.entries(config.providers)) {
+          if (!providers[id]) {
+            providers[id] = { apiKey: "", baseUrl: "", apiProtocol: "openai-completions" };
+          }
+          providers[id].baseUrl = pc.baseUrl ?? "";
+          providers[id].apiProtocol = pc.apiProtocol ?? "";
+        }
+      }
+      if (config.models) {
+        models.push(...config.models);
       }
     }
-    if (config.models) {
-      models.push(...config.models);
-    }
+  } catch (error) {
+    loadError.value = getErrorMessage(error);
   }
 });
 
 async function saveSettings() {
   saving.value = true;
   saved.value = false;
+  saveError.value = "";
   try {
     const apiKeys: Record<string, string> = {};
     const providerConfigs: Record<string, ProviderConfig> = {};
@@ -161,6 +187,9 @@ async function saveSettings() {
     } as any);
     saved.value = true;
     setTimeout(() => { saved.value = false; }, 2000);
+  } catch (error) {
+    saveError.value = getErrorMessage(error);
+    alert(`保存失败：${saveError.value}`);
   } finally {
     saving.value = false;
   }
@@ -175,6 +204,8 @@ async function saveSettings() {
         <div class="sidebar-header">
           <h2>设置</h2>
           <p>配置 LLM 和全局策略</p>
+          <p v-if="loadError" style="margin-top: 8px; color: #f87171; font-size: 12px;">加载失败：{{ loadError }}</p>
+          <p v-if="saveError" style="margin-top: 8px; color: #f87171; font-size: 12px;">保存失败：{{ saveError }}</p>
         </div>
         <nav class="settings-nav">
           <button

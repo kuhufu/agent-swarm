@@ -62,11 +62,26 @@ export class AgentSwarm {
     }
 
     const persistedSwarms = await this.storage.listSwarms();
-    this.swarmConfigs.clear();
+    const invalidSwarmIds: string[] = [];
     for (const swarm of persistedSwarms) {
+      try {
+        this.validateSwarmConfig(swarm);
+      } catch {
+        invalidSwarmIds.push(swarm.id);
+      }
+    }
+    for (const invalidSwarmId of invalidSwarmIds) {
+      await this.storage.deleteSwarm(invalidSwarmId);
+    }
+
+    const validPersistedSwarms = invalidSwarmIds.length > 0
+      ? await this.storage.listSwarms()
+      : persistedSwarms;
+    this.swarmConfigs.clear();
+    for (const swarm of validPersistedSwarms) {
       this.swarmConfigs.set(swarm.id, swarm);
     }
-    this.config.swarms = [...persistedSwarms];
+    this.config.swarms = [...validPersistedSwarms];
 
     this._initialized = true;
   }
@@ -158,6 +173,7 @@ export class AgentSwarm {
    */
   async addSwarmConfig(config: SwarmConfig): Promise<SwarmConfig> {
     this.ensureInitialized();
+    this.validateSwarmConfig(config);
     if (this.swarmConfigs.has(config.id)) {
       throw new Error(`Swarm already exists: ${config.id}`);
     }
@@ -176,6 +192,7 @@ export class AgentSwarm {
     if (!this.swarmConfigs.has(id)) {
       throw new Error(`Swarm not found: ${id}`);
     }
+    this.validateSwarmConfig(config);
 
     await this.storage.saveSwarm(config);
     this.swarmConfigs.set(id, config);
@@ -239,5 +256,24 @@ export class AgentSwarm {
     const raw = readFileSync(absPath, "utf-8");
     const parsed = JSON.parse(raw) as AgentSwarmRootConfig;
     return parsed;
+  }
+
+  private validateSwarmConfig(config: SwarmConfig): void {
+    if (!config.agents.length) {
+      throw new Error(`Invalid swarm "${config.id}": at least one agent is required`);
+    }
+    if (config.mode === "router" && !config.orchestrator) {
+      throw new Error(`Invalid router swarm "${config.id}": orchestrator is required`);
+    }
+    if (config.mode === "debate" && !config.debateConfig) {
+      // Auto-fill debateConfig with sensible defaults
+      const agents = config.agents;
+      config.debateConfig = {
+        rounds: 3,
+        proAgent: agents[0]?.id ?? "",
+        conAgent: agents[1]?.id ?? agents[0]?.id ?? "",
+        judgeAgent: agents[0]?.id ?? "",
+      };
+    }
   }
 }

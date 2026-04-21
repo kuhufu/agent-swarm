@@ -18,10 +18,11 @@ function maskApiKeys(apiKeys: Record<string, string>): Record<string, string> {
 }
 
 function toResponse(config: LLMBackendConfig) {
+  const apiKeys = config.apiKeys && typeof config.apiKeys === "object" ? config.apiKeys : {};
   return {
     defaultProvider: config.defaultProvider,
     defaultModel: config.defaultModel,
-    apiKeys: maskApiKeys(config.apiKeys),
+    apiKeys: maskApiKeys(apiKeys),
     providers: config.providers,
     endpoints: config.endpoints,
     defaultThinkingLevel: config.defaultThinkingLevel,
@@ -40,6 +41,10 @@ export function configRoutes(swarm: AgentSwarm): Router {
 
   router.put("/", async (req, res) => {
     try {
+      if (!req.body || typeof req.body !== "object") {
+        return res.status(400).json({ error: "Invalid request body" });
+      }
+
       const {
         defaultProvider,
         defaultModel,
@@ -52,12 +57,22 @@ export function configRoutes(swarm: AgentSwarm): Router {
       } = req.body;
 
       const currentConfig = swarm.getLLMConfig();
+      const currentApiKeys = currentConfig.apiKeys && typeof currentConfig.apiKeys === "object"
+        ? currentConfig.apiKeys
+        : {};
+      const currentProviders = currentConfig.providers && typeof currentConfig.providers === "object"
+        ? currentConfig.providers
+        : undefined;
+      const currentEndpoints = currentConfig.endpoints && typeof currentConfig.endpoints === "object"
+        ? currentConfig.endpoints
+        : undefined;
+      const currentModels = Array.isArray(currentConfig.models) ? currentConfig.models : undefined;
 
-      const mergedApiKeys: Record<string, string> = { ...currentConfig.apiKeys };
+      const mergedApiKeys: Record<string, string> = { ...currentApiKeys };
       if (apiKeys && typeof apiKeys === "object") {
         for (const [provider, key] of Object.entries(apiKeys as Record<string, unknown>)) {
           if (typeof key !== "string") continue;
-          if (key.includes("...") && currentConfig.apiKeys[provider]) continue;
+          if (key.includes("...") && currentApiKeys[provider]) continue;
           mergedApiKeys[provider] = key;
         }
       }
@@ -67,11 +82,11 @@ export function configRoutes(swarm: AgentSwarm): Router {
         defaultProvider: defaultProvider ?? currentConfig.defaultProvider,
         defaultModel: defaultModel ?? currentConfig.defaultModel,
         apiKeys: mergedApiKeys,
-        providers: providers ?? currentConfig.providers,
-        endpoints: endpoints ?? currentConfig.endpoints,
+        providers: providers ?? currentProviders,
+        endpoints: endpoints ?? currentEndpoints,
         defaultThinkingLevel: defaultThinkingLevel ?? currentConfig.defaultThinkingLevel,
         defaultThinkingBudgets: defaultThinkingBudgets ?? currentConfig.defaultThinkingBudgets,
-        models: models ?? currentConfig.models,
+        models: models ?? currentModels,
       };
 
       const updatedConfig = await swarm.updateLLMConfig(nextConfig);

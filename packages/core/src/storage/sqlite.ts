@@ -171,7 +171,31 @@ export class SqliteStorage implements IStorage {
   }
 
   async deleteSwarm(id: string): Promise<void> {
-    this.getDb().delete(swarmsTable).where(eq(swarmsTable.id, id)).run();
+    if (!this.rawDb) {
+      throw new Error("Storage not initialized");
+    }
+
+    const deleteTx = this.rawDb.transaction((swarmId: string) => {
+      this.rawDb!.prepare(`
+        DELETE FROM messages
+        WHERE conversation_id IN (
+          SELECT id FROM conversations WHERE swarm_id = ?
+        )
+      `).run(swarmId);
+
+      this.rawDb!.prepare(`
+        DELETE FROM events
+        WHERE conversation_id IN (
+          SELECT id FROM conversations WHERE swarm_id = ?
+        )
+      `).run(swarmId);
+
+      this.rawDb!.prepare("DELETE FROM conversations WHERE swarm_id = ?").run(swarmId);
+      this.rawDb!.prepare("DELETE FROM agents WHERE swarm_id = ?").run(swarmId);
+      this.rawDb!.prepare("DELETE FROM swarms WHERE id = ?").run(swarmId);
+    });
+
+    deleteTx(id);
   }
 
   // ── Conversation management ──

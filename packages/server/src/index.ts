@@ -9,12 +9,10 @@ async function main() {
   const swarm = new AgentSwarm({
     config: {
       llm: {
-        defaultProvider: "anthropic",
-        defaultModel: "claude-sonnet-4-20250514",
+        defaultProvider: "deepseek",
+        defaultModel: "",
         apiKeys: {
-          anthropic: process.env.ANTHROPIC_API_KEY ?? "",
-          openai: process.env.OPENAI_API_KEY ?? "",
-          google: process.env.GOOGLE_API_KEY ?? "",
+          deepseek: process.env.DEEPSEEK_API_KEY ?? "",
         },
       },
       storage: {

@@ -72,7 +72,13 @@ function roleIcon(role: string): string {
 
     <div class="msg-body">
       <div class="msg-header">
-        <span v-if="message.agentName" class="agent-name">{{ message.agentName }}</span>
+        <span
+          v-if="message.role === 'assistant'"
+          class="agent-name"
+        >
+          {{ message.agentName || message.agentId || "Assistant" }}
+        </span>
+        <span v-else-if="message.agentName" class="agent-name">{{ message.agentName }}</span>
         <span v-else class="msg-role">{{ roleLabel(message.role) }}</span>
         <span v-if="streaming" class="streaming-indicator">
           <span class="dot" />

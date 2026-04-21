@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
-import type { AgentSwarm, LLMBackendConfig } from "@agent-swarm/core";
+import type { AgentSwarm, LLMBackendConfig, SwarmConfig } from "@agent-swarm/core";
 import { createApp } from "./app.js";
 
 function createMockSwarm(): AgentSwarm {
@@ -14,10 +14,56 @@ function createMockSwarm(): AgentSwarm {
     },
   };
 
+  const swarms = new Map<string, SwarmConfig>();
+  const routerSwarm: SwarmConfig = {
+    id: "router_swarm",
+    name: "Router Swarm",
+    mode: "router",
+    agents: [
+      {
+        id: "router_agent_1",
+        name: "Router Agent 1",
+        description: "Agent for router mode",
+        systemPrompt: "You are router agent 1",
+        model: {
+          provider: "openai",
+          modelId: "gpt-4o-mini",
+        },
+      },
+    ],
+    orchestrator: {
+      id: "router_agent_1",
+      name: "Router Agent 1",
+      description: "Agent for router mode",
+      systemPrompt: "You are router agent 1",
+      model: {
+        provider: "openai",
+        modelId: "gpt-4o-mini",
+      },
+    },
+  };
+  swarms.set(routerSwarm.id, routerSwarm);
+
   const mock = {
-    listSwarms: () => [],
-    getSwarmConfig: () => undefined,
-    addSwarmConfig: async (config: any) => config,
+    listSwarms: () => Array.from(swarms.values()),
+    getSwarmConfig: (id: string) => swarms.get(id),
+    addSwarmConfig: async (config: SwarmConfig) => {
+      swarms.set(config.id, config);
+      return config;
+    },
+    updateSwarmConfig: async (id: string, config: SwarmConfig) => {
+      if (!swarms.has(id)) {
+        throw new Error("Swarm not found");
+      }
+      swarms.set(id, config);
+      return config;
+    },
+    deleteSwarmConfig: async (id: string) => {
+      if (!swarms.has(id)) {
+        throw new Error("Swarm not found");
+      }
+      swarms.delete(id);
+    },
     listConversations: async () => [],
     createConversation: async () => ({ getId: () => "conv_test" }),
     getMessages: async () => [],
@@ -98,6 +144,57 @@ test("PUT /api/config persists config via updateLLMConfig and returns masked api
     assert.equal(data.data.defaultProvider, "openai");
     assert.equal(data.data.defaultModel, "gpt-4o-mini");
     assert.equal(data.data.apiKeys.openai, "sk-test-...3456");
+  } finally {
+    await server.close();
+  }
+});
+
+test("PUT /api/swarms/:id merges existing config and auto-fills router orchestrator", async () => {
+  const server = await startTestServer();
+  try {
+    const response = await fetch(`${server.baseUrl}/api/swarms/router_swarm`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name: "Router Swarm Updated",
+        mode: "router",
+        agents: [
+          {
+            id: "router_agent_1",
+            name: "Router Agent 1",
+            description: "Agent for router mode",
+            systemPrompt: "You are router agent 1",
+            model: {
+              provider: "openai",
+              modelId: "gpt-4o-mini",
+            },
+          },
+        ],
+      }),
+    });
+
+    const data = await response.json() as { data: SwarmConfig };
+
+    assert.equal(response.status, 200);
+    assert.equal(data.data.name, "Router Swarm Updated");
+    assert.equal(data.data.mode, "router");
+    assert.equal(data.data.orchestrator?.id, "router_agent_1");
+  } finally {
+    await server.close();
+  }
+});
+
+test("DELETE /api/swarms/:id removes swarm", async () => {
+  const server = await startTestServer();
+  try {
+    const response = await fetch(`${server.baseUrl}/api/swarms/router_swarm`, {
+      method: "DELETE",
+    });
+
+    const data = await response.json() as { success: boolean };
+
+    assert.equal(response.status, 200);
+    assert.equal(data.success, true);
   } finally {
     await server.close();
   }

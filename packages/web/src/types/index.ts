@@ -8,8 +8,16 @@ export interface SwarmConfig {
   mode: CollaborationMode;
   agents: SwarmAgentConfig[];
   orchestrator?: SwarmAgentConfig;
+  debateConfig?: DebateConfig;
   maxTotalTurns?: number;
   maxConcurrency?: number;
+}
+
+export interface DebateConfig {
+  rounds: number;
+  proAgent: string;
+  conAgent: string;
+  judgeAgent: string;
 }
 
 export type CollaborationMode = "router" | "sequential" | "parallel" | "swarm" | "debate";

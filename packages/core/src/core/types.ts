@@ -219,6 +219,7 @@ export interface TurnEndEvent {
 export interface MessageStartEvent {
   type: "message_start";
   agentId: string;
+  agentName?: string;
   role: string;
 }
 
@@ -231,6 +232,7 @@ export interface MessageUpdateEvent {
 export interface MessageEndEvent {
   type: "message_end";
   agentId: string;
+  agentName?: string;
   role: string;
 }
 

@@ -1,4 +1,4 @@
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import { useConversationStore } from "../stores/conversation.js";
 import { useWebSocket } from "./useWebSocket.js";
 
@@ -7,6 +7,15 @@ export function useChat() {
   const { send, connected, connect } = useWebSocket();
   const inputText = ref("");
   const sending = ref(false);
+
+  // Sync sending state with isActive from the store.
+  // When the WS handler sets isActive=false (swarm_end/prompt_completed/error),
+  // sending should also be reset so the input is re-enabled.
+  watch(() => conversationStore.isActive, (active) => {
+    if (!active) {
+      sending.value = false;
+    }
+  });
 
   function sendMessage(swarmId: string) {
     const text = inputText.value.trim();

@@ -5,15 +5,8 @@ import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel } fro
 
 const emit = defineEmits<{
   (e: "create", swarm: SwarmConfig): void;
-  (e: "update", swarm: SwarmConfig): void;
   (e: "close"): void;
 }>();
-
-const props = defineProps<{
-  editSwarm?: SwarmConfig | null;
-}>();
-
-const isEdit = computed(() => !!props.editSwarm);
 
 const modes: { value: CollaborationMode; label: string; desc: string; icon: string }[] = [
   { value: "router", label: "Router 路由", desc: "智能路由到最合适的 Agent", icon: "🔀" },
@@ -23,9 +16,9 @@ const modes: { value: CollaborationMode; label: string; desc: string; icon: stri
   { value: "debate", label: "Debate 辩论", desc: "多 Agent 辩论模式", icon: "⚖️" },
 ];
 
-const name = ref(props.editSwarm?.name ?? "");
-const mode = ref<CollaborationMode>(props.editSwarm?.mode ?? "router");
-const agents = reactive<SwarmAgentConfig[]>(props.editSwarm ? [...props.editSwarm.agents] : []);
+const name = ref("");
+const mode = ref<CollaborationMode>("router");
+const agents = reactive<SwarmAgentConfig[]>([]);
 
 const showAgentForm = ref(false);
 const agentForm = reactive<SwarmAgentConfig>({
@@ -70,20 +63,28 @@ function removeAgent(index: number) {
 
 function submit() {
   if (!name.value || !agents.length) return;
-  const swarmId = isEdit.value && props.editSwarm
-    ? props.editSwarm.id
-    : name.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  const swarmId = name.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  const orchestrator = mode.value === "router"
+    ? agents[0]
+    : undefined;
   const swarm: SwarmConfig = {
     id: swarmId,
     name: name.value,
     mode: mode.value,
     agents: [...agents],
   };
-  if (isEdit.value) {
-    emit("update", swarm);
-  } else {
-    emit("create", swarm);
+  if (orchestrator) {
+    swarm.orchestrator = { ...orchestrator };
   }
+  if (mode.value === "debate") {
+    swarm.debateConfig = {
+      rounds: 3,
+      proAgent: agents[0]?.id ?? "",
+      conAgent: agents[1]?.id ?? agents[0]?.id ?? "",
+      judgeAgent: agents[0]?.id ?? "",
+    };
+  }
+  emit("create", swarm);
 }
 </script>
 
@@ -92,8 +93,8 @@ function submit() {
     <div class="dialog">
       <div class="dialog-header">
         <div>
-          <h3>{{ isEdit ? '编辑 Swarm' : '创建 Swarm' }}</h3>
-          <p class="dialog-subtitle">{{ isEdit ? '修改 Swarm 配置' : '配置多 Agent 协作集群' }}</p>
+          <h3>创建 Swarm</h3>
+          <p class="dialog-subtitle">配置多 Agent 协作集群</p>
         </div>
         <button class="close-btn" @click="emit('close')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -230,7 +231,7 @@ function submit() {
       <div class="dialog-footer">
         <button class="btn-secondary" @click="emit('close')">取消</button>
         <button class="btn-primary" :disabled="!name || !agents.length" @click="submit">
-          {{ isEdit ? '保存' : '创建' }}
+          创建
         </button>
       </div>
     </div>

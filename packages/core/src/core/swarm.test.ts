@@ -115,4 +115,54 @@ describe("AgentSwarm persistence", () => {
     await second.close();
     cleanupDb(dbPath);
   });
+
+  it("cleans invalid persisted swarms during init", async () => {
+    const dbPath = createTestDbPath("router-normalize");
+    cleanupDb(dbPath);
+
+    const routerSwarmWithoutOrchestrator: SwarmConfig = {
+      id: "router_swarm",
+      name: "Router Swarm",
+      mode: "router",
+      agents: [
+        {
+          id: "router_agent_1",
+          name: "Router Agent 1",
+          description: "Fallback orchestrator",
+          systemPrompt: "You are a router agent",
+          model: {
+            provider: "openai",
+            modelId: "gpt-4o-mini",
+          },
+        },
+      ],
+    };
+
+    const swarm = new AgentSwarm({
+      config: createRootConfig(dbPath, [routerSwarmWithoutOrchestrator]),
+    });
+
+    await swarm.init();
+    expect(swarm.listSwarms()).toHaveLength(0);
+    await swarm.close();
+    cleanupDb(dbPath);
+  });
+
+  it("deletes swarm with dependent conversations", async () => {
+    const dbPath = createTestDbPath("delete-swarm");
+    cleanupDb(dbPath);
+
+    const swarm = new AgentSwarm({
+      config: createRootConfig(dbPath, [createSwarmConfig("delete_target")]),
+    });
+
+    await swarm.init();
+    await swarm.createConversation("delete_target", "to be deleted");
+
+    await expect(swarm.deleteSwarmConfig("delete_target")).resolves.toBeUndefined();
+    expect(swarm.listSwarms()).toHaveLength(0);
+
+    await swarm.close();
+    cleanupDb(dbPath);
+  });
 });

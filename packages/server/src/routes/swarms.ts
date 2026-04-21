@@ -1,5 +1,42 @@
 import { Router } from "express";
-import type { AgentSwarm } from "@agent-swarm/core";
+import type { AgentSwarm, SwarmConfig } from "@agent-swarm/core";
+
+function buildSwarmConfig(input: any, idOverride?: string): SwarmConfig {
+  const config: SwarmConfig = {
+    id: idOverride ?? input.id,
+    name: input.name,
+    mode: input.mode,
+    agents: input.agents,
+    orchestrator: input.orchestrator,
+    aggregator: input.aggregator,
+    debateConfig: input.debateConfig,
+    pipeline: input.pipeline,
+    interventions: input.interventions,
+    maxTotalTurns: input.maxTotalTurns,
+    maxConcurrency: input.maxConcurrency,
+  };
+
+  if (config.mode === "router" && !config.orchestrator && Array.isArray(config.agents) && config.agents.length > 0) {
+    config.orchestrator = config.agents[0];
+  }
+
+  if (!config.id || !config.name || !config.mode || !Array.isArray(config.agents) || config.agents.length === 0) {
+    throw new Error("id, name, mode, and at least one agent are required");
+  }
+  if (config.mode === "router" && !config.orchestrator) {
+    throw new Error("orchestrator is required for router mode");
+  }
+  if (config.mode === "debate" && !config.debateConfig) {
+    config.debateConfig = {
+      rounds: 3,
+      proAgent: config.agents[0]?.id ?? "",
+      conAgent: config.agents[1]?.id ?? config.agents[0]?.id ?? "",
+      judgeAgent: config.agents[0]?.id ?? "",
+    };
+  }
+
+  return config;
+}
 
 export function swarmRoutes(swarm: AgentSwarm): Router {
   const router = Router();
@@ -19,11 +56,7 @@ export function swarmRoutes(swarm: AgentSwarm): Router {
 
   router.post("/", async (req, res) => {
     try {
-      const { id, name, mode, agents } = req.body;
-      if (!id || !name || !mode || !agents?.length) {
-        return res.status(400).json({ error: "id, name, mode, and at least one agent are required" });
-      }
-      const config = await swarm.addSwarmConfig({ id, name, mode, agents });
+      const config = await swarm.addSwarmConfig(buildSwarmConfig(req.body));
       res.status(201).json({ data: config });
     } catch (err: any) {
       const message = err?.message ?? "Failed to create swarm";
@@ -34,12 +67,28 @@ export function swarmRoutes(swarm: AgentSwarm): Router {
 
   router.put("/:id", async (req, res) => {
     try {
-      const { name, mode, agents } = req.body;
       const id = req.params.id;
-      if (!name || !mode || !agents?.length) {
-        return res.status(400).json({ error: "name, mode, and at least one agent are required" });
+      const existing = swarm.getSwarmConfig(id);
+      if (!existing) {
+        return res.status(404).json({ error: "Swarm not found" });
       }
-      const config = await swarm.updateSwarmConfig(id, { id, name, mode, agents });
+
+      const body = req.body ?? {};
+      const mergedInput = {
+        ...existing,
+        ...body,
+        id,
+        agents: body.agents ?? existing.agents,
+        orchestrator: body.orchestrator ?? existing.orchestrator,
+        aggregator: body.aggregator ?? existing.aggregator,
+        debateConfig: body.debateConfig ?? existing.debateConfig,
+        pipeline: body.pipeline ?? existing.pipeline,
+        interventions: body.interventions ?? existing.interventions,
+        maxTotalTurns: body.maxTotalTurns ?? existing.maxTotalTurns,
+        maxConcurrency: body.maxConcurrency ?? existing.maxConcurrency,
+      };
+
+      const config = await swarm.updateSwarmConfig(id, buildSwarmConfig(mergedInput, id));
       res.json({ data: config });
     } catch (err: any) {
       const message = err?.message ?? "Failed to update swarm";
