@@ -5,6 +5,7 @@ import { useConversationStore } from "../stores/conversation.js";
 import { useSwarmStore } from "../stores/swarm.js";
 import * as conversationsApi from "../api/conversations.js";
 import type { ConversationInfo, SwarmConfig, ChatMessage } from "../types/index.js";
+import { confirmDialog, showError } from "../utils/ui-feedback.js";
 
 const router = useRouter();
 const conversationStore = useConversationStore();
@@ -53,22 +54,36 @@ async function selectConv(conv: ConversationInfo) {
   }
 }
 
-function resumeConversation(conv: ConversationInfo) {
+async function resumeConversation(conv: ConversationInfo) {
   const swarm = swarmStore.swarms.find((s: SwarmConfig) => s.id === conv.swarmId);
   if (swarm) {
     swarmStore.selectSwarm(swarm);
   }
-  conversationStore.setCurrentConversation(conv.id);
-  router.push("/chat");
+  await conversationStore.openConversation(conv.id);
+  await router.push("/chat");
 }
 
-function deleteConversation(conv: ConversationInfo) {
-  // TODO: implement delete API
-  if (confirm(`确定要删除对话 "${conv.title ?? '新对话'}" 吗？`)) {
+async function deleteConversation(conv: ConversationInfo) {
+  const confirmed = await confirmDialog({
+    header: "删除会话",
+    body: `确定要删除对话 "${conv.title ?? "新对话"}" 吗？`,
+    confirmText: "删除",
+    cancelText: "取消",
+    theme: "danger",
+  });
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    await conversationStore.deleteConversation(conv.id);
     expandedMessages.delete(conv.id);
     if (selectedConvId.value === conv.id) {
       selectedConvId.value = null;
     }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "删除失败";
+    showError(message);
   }
 }
 
@@ -85,6 +100,10 @@ function formatTime(ts: number): string {
 
 function getSwarmName(swarmId: string): string {
   return swarmStore.swarms.find((s: SwarmConfig) => s.id === swarmId)?.name ?? swarmId;
+}
+
+function getSwarmMode(swarmId: string): string {
+  return swarmStore.swarms.find((s: SwarmConfig) => s.id === swarmId)?.mode ?? "router";
 }
 
 function getModeConfig(mode: string) {
@@ -195,7 +214,7 @@ function getRoleColor(role: string): string {
               <div class="detail-title-info">
                 <h3 class="detail-title">{{ selectedConv.title ?? "新对话" }}</h3>
                 <div class="detail-meta">
-                  <span class="swarm-badge" :style="{ background: getModeConfig(selectedConv.mode ?? 'router').color + '20', color: getModeConfig(selectedConv.mode ?? 'router').color }">
+                  <span class="swarm-badge" :style="{ background: getModeConfig(getSwarmMode(selectedConv.swarmId)).color + '20', color: getModeConfig(getSwarmMode(selectedConv.swarmId)).color }">
                     {{ getSwarmName(selectedConv.swarmId) }}
                   </span>
                   <span class="meta-text">{{ formatTime(selectedConv.updatedAt) }}</span>

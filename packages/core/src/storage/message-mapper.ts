@@ -87,10 +87,33 @@ export function storedToMessage(stored: StoredMessage): Message {
     if (stored.thinking) {
       content.push({ type: "thinking", thinking: stored.thinking });
     }
-    if (stored.toolCalls) {
+    // For restored history context, avoid replaying raw tool calls into the model context.
+    // Keep text/thinking only; if the assistant turn only contained tool calls,
+    // best-effort extract a human-readable response from known call arguments.
+    if (content.length === 0 && stored.toolCalls) {
       try {
-        const calls: ToolCall[] = JSON.parse(stored.toolCalls);
-        content.push(...calls);
+        const calls = JSON.parse(stored.toolCalls) as Array<{ arguments?: Record<string, unknown> }>;
+        const recoveredTexts = calls
+          .map((call) => {
+            const args = call.arguments;
+            if (!args || typeof args !== "object") {
+              return "";
+            }
+            if (typeof args.response === "string") {
+              return args.response;
+            }
+            if (typeof args.message === "string") {
+              return args.message;
+            }
+            if (typeof args.content === "string") {
+              return args.content;
+            }
+            return "";
+          })
+          .filter((text) => text.trim().length > 0);
+        if (recoveredTexts.length > 0) {
+          content.push({ type: "text", text: recoveredTexts.join("\n") });
+        }
       } catch { /* ignore */ }
     }
 
@@ -112,20 +135,18 @@ export function storedToMessage(stored: StoredMessage): Message {
   }
 
   if (stored.role === "toolResult") {
-    let meta: any = {};
-    if (stored.metadata) {
-      try { meta = JSON.parse(stored.metadata); } catch { /* ignore */ }
-    }
-
+    // Persisted tool results are user-visible content in this project.
+    // Restore them as assistant text for robust cross-provider context continuity.
     return {
-      role: "toolResult",
-      toolCallId: stored.toolCallId ?? "",
-      toolName: meta.toolName ?? "unknown",
+      role: "assistant",
       content: stored.content ? [{ type: "text" as const, text: stored.content }] : [],
-      isError: meta.isError ?? false,
-      details: meta.details,
+      api: "anthropic-messages",
+      provider: "restored",
+      model: "restored",
+      usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+      stopReason: "stop",
       timestamp: stored.timestamp,
-    } as ToolResultMessage;
+    } as AssistantMessage;
   }
 
   // Fallback: treat as user message

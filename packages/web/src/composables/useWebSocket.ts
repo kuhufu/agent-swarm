@@ -1,17 +1,24 @@
-import { ref, onUnmounted } from "vue";
+import { ref } from "vue";
 import { useConversationStore } from "../stores/conversation.js";
 import { useInterventionStore } from "../stores/intervention.js";
+import { useSwarmStore } from "../stores/swarm.js";
 import type { WSMessage, ChatMessage, InterventionRequest } from "../types/index.js";
 
+const ws = ref<WebSocket | null>(null);
+const connected = ref(false);
+const reconnectAttempts = ref(0);
+const maxReconnectAttempts = 10;
+
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let manualClose = false;
+
 export function useWebSocket() {
-  const ws = ref<WebSocket | null>(null);
-  const connected = ref(false);
-  const reconnectAttempts = ref(0);
-  const maxReconnectAttempts = 10;
-
-  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-
   function connect() {
+    if (ws.value && (ws.value.readyState === WebSocket.OPEN || ws.value.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
+    manualClose = false;
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const url = `${protocol}//${window.location.host}/ws`;
 
@@ -24,7 +31,10 @@ export function useWebSocket() {
 
     ws.value.onclose = () => {
       connected.value = false;
-      scheduleReconnect();
+      ws.value = null;
+      if (!manualClose) {
+        scheduleReconnect();
+      }
     };
 
     ws.value.onerror = () => {
@@ -43,11 +53,13 @@ export function useWebSocket() {
 
   function scheduleReconnect() {
     if (reconnectAttempts.value >= maxReconnectAttempts) return;
+    if (reconnectTimer) return;
 
     const delay = Math.min(1000 * 2 ** reconnectAttempts.value, 30000);
     reconnectAttempts.value++;
 
     reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
       connect();
     }, delay);
   }
@@ -59,11 +71,16 @@ export function useWebSocket() {
   }
 
   function disconnect() {
+    manualClose = true;
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
     }
-    ws.value?.close();
+    if (ws.value && (ws.value.readyState === WebSocket.OPEN || ws.value.readyState === WebSocket.CONNECTING)) {
+      ws.value.close();
+    }
+    ws.value = null;
+    connected.value = false;
   }
 
   /**
@@ -72,6 +89,7 @@ export function useWebSocket() {
   function handleMessage(msg: WSMessage) {
     const conversationStore = useConversationStore();
     const interventionStore = useInterventionStore();
+    const swarmStore = useSwarmStore();
 
     switch (msg.type) {
       case "connected":
@@ -79,6 +97,9 @@ export function useWebSocket() {
 
       case "conversation_created":
         conversationStore.setCurrentConversation(msg.payload.conversationId);
+        if (swarmStore.currentSwarm?.id) {
+          void conversationStore.fetchConversations(swarmStore.currentSwarm.id);
+        }
         break;
 
       // ── Agent lifecycle events ──
@@ -128,26 +149,29 @@ export function useWebSocket() {
       // ── Tool execution events ──
       case "tool_execution_start":
         conversationStore.setAgentStatus(msg.payload.agentId, "executing_tool");
-        // Add tool call notification to messages
-        conversationStore.addMessage({
-          id: crypto.randomUUID(),
-          role: "notification",
-          content: `🔧 执行工具: ${msg.payload.toolName}`,
-          timestamp: Date.now(),
-        });
+        if (typeof msg.payload?.toolName === "string" && msg.payload.toolName.trim().length > 0) {
+          conversationStore.addMessage({
+            id: crypto.randomUUID(),
+            role: "notification",
+            content: `🔧 执行工具: ${msg.payload.toolName}`,
+            timestamp: Date.now(),
+          });
+        }
         break;
 
       case "tool_execution_end": {
         const isError = msg.payload.isError;
         conversationStore.setAgentStatus(msg.payload.agentId, "thinking");
-        conversationStore.addMessage({
-          id: crypto.randomUUID(),
-          role: "notification",
-          content: isError
-            ? `❌ 工具执行失败: ${msg.payload.toolName}`
-            : `✅ 工具执行完成: ${msg.payload.toolName}`,
-          timestamp: Date.now(),
-        });
+        if (typeof msg.payload?.toolName === "string" && msg.payload.toolName.trim().length > 0) {
+          conversationStore.addMessage({
+            id: crypto.randomUUID(),
+            role: "notification",
+            content: isError
+              ? `❌ 工具执行失败: ${msg.payload.toolName}`
+              : `✅ 工具执行完成: ${msg.payload.toolName}`,
+            timestamp: Date.now(),
+          });
+        }
         break;
       }
 
@@ -206,10 +230,6 @@ export function useWebSocket() {
         break;
     }
   }
-
-  onUnmounted(() => {
-    disconnect();
-  });
 
   return { ws, connected, connect, disconnect, send };
 }

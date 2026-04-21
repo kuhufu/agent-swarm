@@ -13,6 +13,12 @@ interface MessageListResponse {
   data: ChatMessage[];
 }
 
+interface DeleteConversationResponse {
+  data: {
+    deleted: boolean;
+  };
+}
+
 export function listConversations(swarmId: string) {
   return apiClient<ConversationListResponse>(`/conversations?swarmId=${swarmId}`);
 }
@@ -26,4 +32,10 @@ export function createConversation(swarmId: string) {
 
 export function getMessages(conversationId: string) {
   return apiClient<MessageListResponse>(`/conversations/${conversationId}/messages`);
+}
+
+export function deleteConversation(conversationId: string) {
+  return apiClient<DeleteConversationResponse>(`/conversations/${conversationId}`, {
+    method: "DELETE",
+  });
 }

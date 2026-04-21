@@ -4,6 +4,7 @@ import { useSwarmStore } from "../stores/swarm.js";
 import { useSettingsStore } from "../stores/settings.js";
 import CreateSwarmDialog from "../components/swarm/CreateSwarmDialog.vue";
 import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, DebateConfig } from "../types/index.js";
+import { confirmDialog, showError } from "../utils/ui-feedback.js";
 
 const swarmStore = useSwarmStore();
 const settingsStore = useSettingsStore();
@@ -102,16 +103,25 @@ function handleSelect(swarm: SwarmConfig) {
 }
 
 async function handleDelete(swarm: SwarmConfig) {
-  if (confirm(`确定要删除 Swarm "${swarm.name}" 吗？`)) {
-    try {
-      await swarmStore.removeSwarm(swarm.id);
-      if (selectedSwarmId.value === swarm.id) {
-        selectedSwarmId.value = null;
-      }
-      hasUnsavedChanges.value = false;
-    } catch (error) {
-      alert(`删除失败：${getErrorMessage(error)}`);
+  const confirmed = await confirmDialog({
+    header: "删除 Swarm",
+    body: `确定要删除 Swarm "${swarm.name}" 吗？`,
+    confirmText: "删除",
+    cancelText: "取消",
+    theme: "danger",
+  });
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    await swarmStore.removeSwarm(swarm.id);
+    if (selectedSwarmId.value === swarm.id) {
+      selectedSwarmId.value = null;
     }
+    hasUnsavedChanges.value = false;
+  } catch (error) {
+    showError(`删除失败：${getErrorMessage(error)}`);
   }
 }
 

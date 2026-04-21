@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { onMounted, computed } from "vue";
-import { useRouter } from "vue-router";
 import { useSwarmStore } from "../stores/swarm.js";
 import { useConversationStore } from "../stores/conversation.js";
 import { useWebSocket } from "../composables/useWebSocket.js";
@@ -8,9 +7,7 @@ import MessageList from "../components/chat/MessageList.vue";
 import ChatInput from "../components/chat/ChatInput.vue";
 import AgentStatus from "../components/chat/AgentStatus.vue";
 import InterventionPanel from "../components/intervention/InterventionPanel.vue";
-import type { ConversationInfo } from "../types/index.js";
 
-const router = useRouter();
 const swarmStore = useSwarmStore();
 const conversationStore = useConversationStore();
 const { connect, connected } = useWebSocket();
@@ -26,15 +23,6 @@ onMounted(() => {
 
 function handleNewConversation() {
   conversationStore.setCurrentConversation(null);
-}
-
-function handleSelectConversation(conv: ConversationInfo) {
-  conversationStore.setCurrentConversation(conv.id);
-}
-
-function handleResumeConversation(conv: ConversationInfo) {
-  conversationStore.setCurrentConversation(conv.id);
-  router.push("/chat");
 }
 </script>
 

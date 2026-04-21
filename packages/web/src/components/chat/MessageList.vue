@@ -1,16 +1,29 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { ChatMessage } from "../../types/index.js";
 import MessageItem from "./MessageItem.vue";
 
-defineProps<{
+const props = defineProps<{
   messages: ChatMessage[];
   streamingMessage: ChatMessage | null;
 }>();
+
+const visibleMessages = computed(() =>
+  props.messages.filter((msg) => {
+    if (msg.role !== "assistant") {
+      return true;
+    }
+    const hasText = msg.content.trim().length > 0;
+    const hasThinking = typeof msg.thinking === "string" && msg.thinking.trim().length > 0;
+    const hasToolCalls = Array.isArray(msg.toolCalls) && msg.toolCalls.length > 0;
+    return hasText || hasThinking || hasToolCalls;
+  }),
+);
 </script>
 
 <template>
   <div class="message-list">
-    <div v-if="messages.length === 0 && !streamingMessage" class="empty-state">
+    <div v-if="visibleMessages.length === 0 && !streamingMessage" class="empty-state">
       <div class="empty-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -21,7 +34,7 @@ defineProps<{
     </div>
     <div v-else class="messages-container">
       <MessageItem
-        v-for="msg in messages"
+        v-for="msg in visibleMessages"
         :key="msg.id"
         :message="msg"
       />
