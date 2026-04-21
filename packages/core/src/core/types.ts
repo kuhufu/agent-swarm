@@ -146,6 +146,13 @@ export interface AgentSwarmRootConfig {
 }
 
 // LLM config re-export
+export interface SavedModel {
+  id: string;
+  name: string;
+  provider: string;
+  modelId: string;
+}
+
 export interface LLMBackendConfig {
   defaultProvider: string;
   defaultModel: string;
@@ -158,6 +165,8 @@ export interface LLMBackendConfig {
   }>;
   defaultThinkingLevel?: ThinkingLevel;
   defaultThinkingBudgets?: ThinkingBudgets;
+  /** User-defined model presets */
+  models?: SavedModel[];
 }
 
 export interface ProviderConfig {

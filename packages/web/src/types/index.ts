@@ -62,6 +62,9 @@ export interface LLMConfig {
   defaultModel: string;
   apiKeys: Record<string, string>;
   providers?: Record<string, ProviderConfig>;
+  endpoints?: Record<string, { baseUrl: string; headers?: Record<string, string> }>;
+  defaultThinkingLevel?: string;
+  defaultThinkingBudgets?: { maxTokens?: number; maxThinkingTokens?: number };
   models?: SavedModel[];
 }
 

@@ -26,6 +26,7 @@ function toResponse(config: LLMBackendConfig) {
     endpoints: config.endpoints,
     defaultThinkingLevel: config.defaultThinkingLevel,
     defaultThinkingBudgets: config.defaultThinkingBudgets,
+    models: config.models,
   };
 }
 
@@ -47,6 +48,7 @@ export function configRoutes(swarm: AgentSwarm): Router {
         endpoints,
         defaultThinkingLevel,
         defaultThinkingBudgets,
+        models,
       } = req.body;
 
       const currentConfig = swarm.getLLMConfig();
@@ -69,6 +71,7 @@ export function configRoutes(swarm: AgentSwarm): Router {
         endpoints: endpoints ?? currentConfig.endpoints,
         defaultThinkingLevel: defaultThinkingLevel ?? currentConfig.defaultThinkingLevel,
         defaultThinkingBudgets: defaultThinkingBudgets ?? currentConfig.defaultThinkingBudgets,
+        models: models ?? currentConfig.models,
       };
 
       const updatedConfig = await swarm.updateLLMConfig(nextConfig);
