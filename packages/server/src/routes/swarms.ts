@@ -32,5 +32,32 @@ export function swarmRoutes(swarm: AgentSwarm): Router {
     }
   });
 
+  router.put("/:id", async (req, res) => {
+    try {
+      const { name, mode, agents } = req.body;
+      const id = req.params.id;
+      if (!name || !mode || !agents?.length) {
+        return res.status(400).json({ error: "name, mode, and at least one agent are required" });
+      }
+      const config = await swarm.updateSwarmConfig(id, { id, name, mode, agents });
+      res.json({ data: config });
+    } catch (err: any) {
+      const message = err?.message ?? "Failed to update swarm";
+      const status = message.includes("not found") ? 404 : 400;
+      res.status(status).json({ error: message });
+    }
+  });
+
+  router.delete("/:id", async (req, res) => {
+    try {
+      await swarm.deleteSwarmConfig(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      const message = err?.message ?? "Failed to delete swarm";
+      const status = message.includes("not found") ? 404 : 400;
+      res.status(status).json({ error: message });
+    }
+  });
+
   return router;
 }

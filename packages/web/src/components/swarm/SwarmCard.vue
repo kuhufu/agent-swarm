@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import type { SwarmConfig } from "../../types/index.js";
 
-defineProps<{
+const props = defineProps<{
   swarm: SwarmConfig;
+}>();
+
+const emit = defineEmits<{
+  (e: "click", swarm: SwarmConfig): void;
+  (e: "edit", swarm: SwarmConfig): void;
+  (e: "delete", swarm: SwarmConfig): void;
 }>();
 
 const modeConfig: Record<string, { icon: string; label: string; color: string; bg: string }> = {
@@ -16,14 +22,42 @@ const modeConfig: Record<string, { icon: string; label: string; color: string; b
 function getModeConfig(mode: string) {
   return modeConfig[mode] ?? { icon: "📦", label: mode, color: "#9ca3af", bg: "rgba(255, 255, 255, 0.05)" };
 }
+
+function handleClick() {
+  emit("click", props.swarm);
+}
+
+function handleEdit(e: Event) {
+  e.stopPropagation();
+  emit("edit", props.swarm);
+}
+
+function handleDelete(e: Event) {
+  e.stopPropagation();
+  emit("delete", props.swarm);
+}
 </script>
 
 <template>
-  <div class="swarm-card card">
+  <div class="swarm-card card" @click="handleClick">
     <div class="card-header">
       <div class="mode-badge" :style="{ background: getModeConfig(swarm.mode).bg, color: getModeConfig(swarm.mode).color }">
         <span class="mode-icon">{{ getModeConfig(swarm.mode).icon }}</span>
         <span class="mode-label">{{ getModeConfig(swarm.mode).label }}</span>
+      </div>
+      <div class="card-actions">
+        <button class="action-btn" @click="handleEdit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+        </button>
+        <button class="action-btn danger" @click="handleDelete">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -49,11 +83,9 @@ function getModeConfig(mode: string) {
 
     <div class="card-footer">
       <span class="swarm-id">{{ swarm.id }}</span>
-      <button class="action-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
-      </button>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; color: var(--color-text-muted);">
+        <polyline points="9 18 15 12 9 6" />
+      </svg>
     </div>
   </div>
 </template>
@@ -85,6 +117,43 @@ function getModeConfig(mode: string) {
 
 .mode-icon {
   font-size: 14px;
+}
+
+.card-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.swarm-card:hover .card-actions {
+  opacity: 1;
+}
+
+.action-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+}
+
+.action-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--color-danger);
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 .swarm-name {
@@ -136,25 +205,5 @@ function getModeConfig(mode: string) {
   font-size: 12px;
   color: var(--color-text-muted);
   font-family: var(--font-mono);
-}
-
-.action-btn {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.action-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--color-text-primary);
-  border-color: var(--color-border-hover);
 }
 </style>

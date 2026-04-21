@@ -23,3 +23,16 @@ export function createSwarm(swarm: Omit<SwarmConfig, "agents"> & { agents: Swarm
     body: JSON.stringify(swarm),
   });
 }
+
+export function updateSwarm(id: string, swarm: Omit<SwarmConfig, "agents"> & { agents: SwarmConfig["agents"] }) {
+  return apiClient<SwarmDetailResponse>(`/swarms/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(swarm),
+  });
+}
+
+export function deleteSwarm(id: string) {
+  return apiClient<{ success: boolean }>(`/swarms/${id}`, {
+    method: "DELETE",
+  });
+}

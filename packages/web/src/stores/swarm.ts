@@ -24,9 +24,29 @@ export const useSwarmStore = defineStore("swarm", () => {
     return res.data;
   }
 
+  async function updateSwarm(id: string, swarm: SwarmConfig) {
+    const res = await swarmApi.updateSwarm(id, swarm);
+    const index = swarms.value.findIndex((s) => s.id === id);
+    if (index >= 0) {
+      swarms.value[index] = res.data;
+    }
+    if (currentSwarm.value?.id === id) {
+      currentSwarm.value = res.data;
+    }
+    return res.data;
+  }
+
+  async function removeSwarm(id: string) {
+    await swarmApi.deleteSwarm(id);
+    swarms.value = swarms.value.filter((s) => s.id !== id);
+    if (currentSwarm.value?.id === id) {
+      currentSwarm.value = null;
+    }
+  }
+
   function selectSwarm(swarm: SwarmConfig) {
     currentSwarm.value = swarm;
   }
 
-  return { swarms, currentSwarm, loading, fetchSwarms, createSwarm, selectSwarm };
+  return { swarms, currentSwarm, loading, fetchSwarms, createSwarm, updateSwarm, removeSwarm, selectSwarm };
 });

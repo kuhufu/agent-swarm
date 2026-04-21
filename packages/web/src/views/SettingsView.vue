@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref, reactive, computed } from "vue";
 import { useSettingsStore } from "../stores/settings.js";
-import type { InterventionPoint, InterventionStrategy, ApiProtocol, ProviderConfig } from "../types/index.js";
+import type { InterventionPoint, InterventionStrategy, ApiProtocol, ProviderConfig, SavedModel } from "../types/index.js";
 
 const settingsStore = useSettingsStore();
+const activeTab = ref<"providers" | "models" | "intervention">("providers");
 
 const API_PROTOCOLS: { value: ApiProtocol; label: string }[] = [
   { value: "openai-completions", label: "OpenAI Completions" },
@@ -56,6 +57,28 @@ function getEffectiveProtocol(id: string): ApiProtocol {
 const defaultProvider = ref("anthropic");
 const defaultModel = ref("claude-sonnet-4-20250514");
 
+// ── Models ──
+const models = reactive<SavedModel[]>([]);
+const showModelForm = ref(false);
+const modelForm = reactive<SavedModel>({ id: "", name: "", provider: "", modelId: "" });
+
+const modelProviderOptions = computed(() => providerList.value.map(p => p.id));
+
+function addModel() {
+  if (!modelForm.id || !modelForm.name || !modelForm.provider || !modelForm.modelId) return;
+  models.push({ ...modelForm });
+  modelForm.id = "";
+  modelForm.name = "";
+  modelForm.provider = "";
+  modelForm.modelId = "";
+  showModelForm.value = false;
+}
+
+function removeModel(index: number) {
+  models.splice(index, 1);
+}
+
+// ── Intervention ──
 const interventionPoints: { key: InterventionPoint; label: string }[] = [
   { key: "before_agent_start", label: "Agent 启动前" },
   { key: "after_agent_end", label: "Agent 结束后" },
@@ -108,6 +131,9 @@ onMounted(async () => {
         providers[id].apiProtocol = pc.apiProtocol ?? "";
       }
     }
+    if (config.models) {
+      models.push(...config.models);
+    }
   }
 });
 
@@ -131,6 +157,7 @@ async function saveSettings() {
       defaultModel: defaultModel.value,
       apiKeys,
       providers: providerConfigs,
+      models: [...models],
     } as any);
     saved.value = true;
     setTimeout(() => { saved.value = false; }, 2000);
@@ -141,140 +168,271 @@ async function saveSettings() {
 </script>
 
 <template>
-  <div class="settings-view page-container">
-    <div class="settings-header">
-      <div>
-        <h2 class="section-title">设置</h2>
-        <p class="section-desc">配置 LLM 提供商和全局介入策略</p>
-      </div>
-      <button
-        class="btn-primary"
-        :disabled="saving"
-        @click="saveSettings"
-      >
-        <svg v-if="!saved" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-          <polyline points="17 21 17 13 7 13 7 21" />
-          <polyline points="7 3 7 8 15 8" />
-        </svg>
-        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
-        {{ saved ? "已保存" : "保存设置" }}
-      </button>
-    </div>
-
-    <!-- Provider Configuration -->
-    <div class="settings-section">
-      <div class="section-header">
-        <div>
-          <h3>LLM 提供商配置</h3>
-          <p class="section-hint">为每个提供商配置 API Key、自定义 Base URL 和 API 协议</p>
+  <div class="settings-view">
+    <div class="settings-layout">
+      <!-- Left Sidebar -->
+      <aside class="settings-sidebar">
+        <div class="sidebar-header">
+          <h2>设置</h2>
+          <p>配置 LLM 和全局策略</p>
         </div>
-      </div>
-
-      <div class="provider-list">
-        <div v-for="p in providerList" :key="p.id" class="provider-card card">
-          <div class="provider-header">
-            <div class="provider-title">
-              <div class="provider-avatar">{{ p.id.charAt(0).toUpperCase() }}</div>
-              <span class="provider-name">{{ p.id }}</span>
+        <nav class="settings-nav">
+          <button
+            class="nav-item"
+            :class="{ active: activeTab === 'providers' }"
+            @click="activeTab = 'providers'"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+              <line x1="8" y1="21" x2="16" y2="21" />
+              <line x1="12" y1="17" x2="12" y2="21" />
+            </svg>
+            <div>
+              <span class="nav-label">提供商配置</span>
+              <span class="nav-desc">API Key 和端点</span>
             </div>
-            <button class="remove-btn" @click="removeProvider(p.id)">
+          </button>
+          <button
+            class="nav-item"
+            :class="{ active: activeTab === 'models' }"
+            @click="activeTab = 'models'"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
+            </svg>
+            <div>
+              <span class="nav-label">模型管理</span>
+              <span class="nav-desc">自定义模型列表</span>
+            </div>
+          </button>
+          <button
+            class="nav-item"
+            :class="{ active: activeTab === 'intervention' }"
+            @click="activeTab = 'intervention'"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            <div>
+              <span class="nav-label">介入策略</span>
+              <span class="nav-desc">全局审批规则</span>
+            </div>
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button
+            class="btn-primary save-btn"
+            :disabled="saving"
+            @click="saveSettings"
+          >
+            <svg v-if="!saved" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" />
+              <polyline points="7 3 7 8 15 8" />
+            </svg>
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            {{ saved ? "已保存" : "保存设置" }}
+          </button>
+        </div>
+      </aside>
+
+      <!-- Right Content -->
+      <main class="settings-content">
+        <!-- Providers Tab -->
+        <div v-if="activeTab === 'providers'" class="tab-panel">
+          <div class="content-header">
+            <h3>LLM 提供商</h3>
+            <p>配置 API Key、Base URL 和协议</p>
+          </div>
+
+          <div class="default-model-section card">
+            <h4>默认模型</h4>
+            <div class="field-row">
+              <label>提供商</label>
+              <select v-model="defaultProvider" class="input-field">
+                <option v-for="p in providerList" :key="p.id" :value="p.id">{{ p.id }}</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <label>模型 ID</label>
+              <input v-model="defaultModel" class="input-field" placeholder="模型名称" />
+            </div>
+          </div>
+
+          <div class="provider-list">
+            <div v-for="p in providerList" :key="p.id" class="provider-card card">
+              <div class="provider-header">
+                <div class="provider-title">
+                  <div class="provider-avatar">{{ p.id.charAt(0).toUpperCase() }}</div>
+                  <span class="provider-name">{{ p.id }}</span>
+                </div>
+                <button class="remove-btn" @click="removeProvider(p.id)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+
+              <div class="provider-fields">
+                <div class="field-row">
+                  <label>API Key</label>
+                  <input
+                    v-model="providers[p.id].apiKey"
+                    class="input-field"
+                    placeholder="sk-..."
+                    type="password"
+                  />
+                </div>
+                <div class="field-row">
+                  <label>Base URL</label>
+                  <input
+                    v-model="providers[p.id].baseUrl"
+                    class="input-field"
+                    placeholder="https://api.example.com/v1"
+                  />
+                </div>
+                <div class="field-row">
+                  <label>API 协议</label>
+                  <select v-model="providers[p.id].apiProtocol" class="input-field">
+                    <option value="">默认 ({{ getEffectiveProtocol(p.id) }})</option>
+                    <option v-for="proto in API_PROTOCOLS" :key="proto.value" :value="proto.value">
+                      {{ proto.label }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="add-provider">
+            <input
+              v-model="newProviderId"
+              class="input-field"
+              placeholder="自定义提供商 ID"
+              style="width: 200px;"
+              @keyup.enter="addCustomProvider"
+            />
+            <button class="btn-secondary" @click="addCustomProvider">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              添加
+            </button>
+          </div>
+        </div>
+
+        <!-- Models Tab -->
+        <div v-if="activeTab === 'models'" class="tab-panel">
+          <div class="content-header">
+            <h3>模型管理</h3>
+            <p>添加自定义模型，方便在配置 Swarm 时快速选择</p>
+          </div>
+
+          <div class="models-toolbar">
+            <button class="btn-primary" @click="showModelForm = !showModelForm">
+              <svg v-if="!showModelForm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
+              {{ showModelForm ? '取消' : '添加模型' }}
             </button>
           </div>
 
-          <div class="provider-fields">
-            <div class="field-row">
-              <label>API Key</label>
-              <input
-                v-model="providers[p.id].apiKey"
-                class="input-field"
-                placeholder="sk-..."
-                type="password"
-              />
+          <div v-if="showModelForm" class="model-form card">
+            <div class="form-row">
+              <label>ID</label>
+              <input v-model="modelForm.id" class="input-field" placeholder="my-model" />
             </div>
-            <div class="field-row">
-              <label>Base URL</label>
-              <input
-                v-model="providers[p.id].baseUrl"
-                class="input-field"
-                placeholder="https://api.example.com/v1"
-              />
+            <div class="form-row">
+              <label>显示名称</label>
+              <input v-model="modelForm.name" class="input-field" placeholder="My Model" />
             </div>
-            <div class="field-row">
-              <label>API 协议</label>
-              <select v-model="providers[p.id].apiProtocol" class="input-field">
-                <option value="">默认 ({{ getEffectiveProtocol(p.id) }})</option>
-                <option v-for="proto in API_PROTOCOLS" :key="proto.value" :value="proto.value">
-                  {{ proto.label }}
-                </option>
+            <div class="form-row">
+              <label>提供商</label>
+              <select v-model="modelForm.provider" class="input-field">
+                <option value="">选择提供商</option>
+                <option v-for="p in modelProviderOptions" :key="p" :value="p">{{ p }}</option>
               </select>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="add-provider">
-        <input
-          v-model="newProviderId"
-          class="input-field"
-          placeholder="自定义提供商 ID"
-          style="width: 200px;"
-          @keyup.enter="addCustomProvider"
-        />
-        <button class="btn-secondary" @click="addCustomProvider">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          添加
-        </button>
-      </div>
-    </div>
-
-    <!-- Default Model -->
-    <div class="settings-section">
-      <h3>默认模型</h3>
-      <div class="model-config">
-        <div class="field-row">
-          <label>提供商</label>
-          <select v-model="defaultProvider" class="input-field">
-            <option v-for="p in providerList" :key="p.id" :value="p.id">{{ p.id }}</option>
-          </select>
-        </div>
-        <div class="field-row">
-          <label>模型 ID</label>
-          <input v-model="defaultModel" class="input-field" placeholder="模型名称" />
-        </div>
-      </div>
-    </div>
-
-    <!-- Intervention Strategy -->
-    <div class="settings-section">
-      <h3>全局介入策略</h3>
-      <p class="section-hint">配置各介入点的默认策略</p>
-      <div class="intervention-list">
-        <div v-for="point in interventionPoints" :key="point.key" class="intervention-row">
-          <span class="intervention-label">{{ point.label }}</span>
-          <div class="strategy-options">
-            <button
-              v-for="opt in strategyOptions"
-              :key="opt.value"
-              class="strategy-btn"
-              :class="{ active: interventions[point.key] === opt.value }"
-              :style="interventions[point.key] === opt.value ? { background: opt.color + '20', color: opt.color, borderColor: opt.color + '40' } : {}"
-              @click="interventions[point.key] = opt.value"
-            >
-              {{ opt.label }}
+            <div class="form-row">
+              <label>模型 ID</label>
+              <input v-model="modelForm.modelId" class="input-field" placeholder="claude-sonnet-4-20250514" />
+            </div>
+            <button class="btn-primary" :disabled="!modelForm.id || !modelForm.name || !modelForm.provider || !modelForm.modelId" @click="addModel">
+              确认添加
             </button>
           </div>
+
+          <div v-if="models.length" class="models-list">
+            <div v-for="(model, i) in models" :key="model.id" class="model-item card">
+              <div class="model-main">
+                <div class="model-avatar">{{ model.name.charAt(0).toUpperCase() }}</div>
+                <div class="model-info">
+                  <span class="model-name">{{ model.name }}</span>
+                  <span class="model-meta">{{ model.provider }} / {{ model.modelId }}</span>
+                </div>
+              </div>
+              <button class="remove-btn" @click="removeModel(i)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div v-else class="empty-state">
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                <path d="M2 17l10 5 10-5" />
+                <path d="M2 12l10 5 10-5" />
+              </svg>
+            </div>
+            <p class="empty-title">暂无自定义模型</p>
+            <p class="empty-desc">添加模型后在配置 Swarm 时可快速选择</p>
+          </div>
         </div>
-      </div>
+
+        <!-- Intervention Tab -->
+        <div v-if="activeTab === 'intervention'" class="tab-panel">
+          <div class="content-header">
+            <h3>全局介入策略</h3>
+            <p>配置各介入点的默认策略</p>
+          </div>
+
+          <div class="intervention-list">
+            <div v-for="point in interventionPoints" :key="point.key" class="intervention-row card">
+              <span class="intervention-label">{{ point.label }}</span>
+              <div class="strategy-options">
+                <button
+                  v-for="opt in strategyOptions"
+                  :key="opt.value"
+                  class="strategy-btn"
+                  :class="{ active: interventions[point.key] === opt.value }"
+                  :style="interventions[point.key] === opt.value ? { background: opt.color + '20', color: opt.color, borderColor: opt.color + '40' } : {}"
+                  @click="interventions[point.key] = opt.value"
+                >
+                  {{ opt.label }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   </div>
 </template>
@@ -282,45 +440,150 @@ async function saveSettings() {
 <style scoped>
 .settings-view {
   height: 100%;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
-.settings-header {
+.settings-layout {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 28px;
+  height: 100%;
 }
 
-.section-desc {
-  color: var(--color-text-muted);
-  font-size: 14px;
-  margin: 4px 0 0;
-}
-
-.settings-section {
-  margin-bottom: 28px;
-  padding: 24px;
+.settings-sidebar {
+  width: 280px;
   background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 16px;
+  backdrop-filter: blur(16px);
+  border-right: 1px solid var(--color-border-subtle);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding: 24px 16px;
 }
 
-.settings-section h3 {
-  color: var(--color-text-primary);
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 4px 0;
-}
-
-.section-hint {
-  color: var(--color-text-muted);
-  font-size: 13px;
-  margin: 0 0 20px;
-}
-
-.section-header {
+.sidebar-header {
   margin-bottom: 20px;
+  padding: 0 8px;
+}
+
+.sidebar-header h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 4px;
+}
+
+.sidebar-header p {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.settings-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  background: transparent;
+  text-align: left;
+  width: 100%;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-primary);
+}
+
+.nav-item.active {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--color-accent-light);
+}
+
+.nav-item svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.nav-item div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.nav-desc {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.nav-item.active .nav-desc {
+  color: rgba(129, 140, 248, 0.7);
+}
+
+.sidebar-footer {
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.save-btn {
+  width: 100%;
+}
+
+.settings-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 32px;
+}
+
+.content-header {
+  margin-bottom: 24px;
+}
+
+.content-header h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 4px;
+}
+
+.content-header p {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.tab-panel {
+  max-width: 720px;
+}
+
+.default-model-section {
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.default-model-section h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin: 0 0 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .provider-list {
@@ -416,27 +679,91 @@ async function saveSettings() {
   align-items: center;
 }
 
-.model-config {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-width: 500px;
+/* Models Tab */
+.models-toolbar {
+  margin-bottom: 16px;
 }
 
+.model-form {
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.model-form .form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.model-form .form-row label {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.models-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.model-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+}
+
+.model-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.model-avatar {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.15));
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-accent-light);
+}
+
+.model-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.model-name {
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.model-meta {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+/* Intervention Tab */
 .intervention-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .intervention-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 12px;
+  padding: 14px 18px;
 }
 
 .intervention-label {
@@ -469,5 +796,43 @@ async function saveSettings() {
 
 .strategy-btn.active {
   border-width: 1px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 60px 0;
+  color: var(--color-text-muted);
+}
+
+.empty-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 14px;
+  border: 1px solid var(--color-border-subtle);
+  margin-bottom: 14px;
+}
+
+.empty-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin: 0 0 4px;
+}
+
+.empty-desc {
+  font-size: 13px;
+  margin: 0;
 }
 </style>

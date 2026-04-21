@@ -7,14 +7,37 @@ import type { SwarmConfig } from "../types/index.js";
 
 const swarmStore = useSwarmStore();
 const showDialog = ref(false);
+const editingSwarm = ref<SwarmConfig | null>(null);
 
 onMounted(() => {
   swarmStore.fetchSwarms();
 });
 
-async function handleCreate(swarm: SwarmConfig) {
-  await swarmStore.createSwarm(swarm);
+function handleCreate(swarm: SwarmConfig) {
+  swarmStore.createSwarm(swarm);
   showDialog.value = false;
+}
+
+function handleUpdate(swarm: SwarmConfig) {
+  swarmStore.updateSwarm(swarm.id, swarm);
+  editingSwarm.value = null;
+  showDialog.value = false;
+}
+
+function handleEdit(swarm: SwarmConfig) {
+  editingSwarm.value = swarm;
+  showDialog.value = true;
+}
+
+function handleCloseDialog() {
+  showDialog.value = false;
+  editingSwarm.value = null;
+}
+
+function handleDelete(swarm: SwarmConfig) {
+  if (confirm(`确定要删除 Swarm "${swarm.name}" 吗？`)) {
+    swarmStore.removeSwarm(swarm.id);
+  }
 }
 </script>
 
@@ -40,6 +63,8 @@ async function handleCreate(swarm: SwarmConfig) {
         :key="swarm.id"
         :swarm="swarm"
         @click="swarmStore.selectSwarm(swarm)"
+        @edit="handleEdit"
+        @delete="handleDelete"
       />
       <div v-if="swarmStore.swarms.length === 0" class="empty-state">
         <div class="empty-icon">
@@ -56,8 +81,10 @@ async function handleCreate(swarm: SwarmConfig) {
 
     <CreateSwarmDialog
       v-if="showDialog"
+      :edit-swarm="editingSwarm"
       @create="handleCreate"
-      @close="showDialog = false"
+      @update="handleUpdate"
+      @close="handleCloseDialog"
     />
   </div>
 </template>

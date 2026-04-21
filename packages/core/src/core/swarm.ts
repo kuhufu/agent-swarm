@@ -168,6 +168,38 @@ export class AgentSwarm {
     return config;
   }
 
+  /**
+   * Update an existing swarm config.
+   */
+  async updateSwarmConfig(id: string, config: SwarmConfig): Promise<SwarmConfig> {
+    this.ensureInitialized();
+    if (!this.swarmConfigs.has(id)) {
+      throw new Error(`Swarm not found: ${id}`);
+    }
+
+    await this.storage.saveSwarm(config);
+    this.swarmConfigs.set(id, config);
+    const index = this.config.swarms.findIndex((s) => s.id === id);
+    if (index >= 0) {
+      this.config.swarms[index] = config;
+    }
+    return config;
+  }
+
+  /**
+   * Delete a swarm config.
+   */
+  async deleteSwarmConfig(id: string): Promise<void> {
+    this.ensureInitialized();
+    if (!this.swarmConfigs.has(id)) {
+      throw new Error(`Swarm not found: ${id}`);
+    }
+
+    await this.storage.deleteSwarm(id);
+    this.swarmConfigs.delete(id);
+    this.config.swarms = this.config.swarms.filter((s) => s.id !== id);
+  }
+
   getLLMConfig(): LLMBackendConfig {
     return this.cloneLLMConfig(this.config.llm);
   }

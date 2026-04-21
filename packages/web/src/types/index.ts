@@ -50,11 +50,19 @@ export interface ProviderConfig {
   headers?: Record<string, string>;
 }
 
+export interface SavedModel {
+  id: string;
+  name: string;
+  provider: string;
+  modelId: string;
+}
+
 export interface LLMConfig {
   defaultProvider: string;
   defaultModel: string;
   apiKeys: Record<string, string>;
   providers?: Record<string, ProviderConfig>;
+  models?: SavedModel[];
 }
 
 // ============================================================================

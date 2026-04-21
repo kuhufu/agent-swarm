@@ -1,11 +1,19 @@
 <script setup lang="ts">
-import { ref, reactive } from "vue";
-import type { SwarmConfig, SwarmAgentConfig, CollaborationMode } from "../../types/index.js";
+import { ref, reactive, computed } from "vue";
+import { useSettingsStore } from "../../stores/settings.js";
+import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel } from "../../types/index.js";
 
 const emit = defineEmits<{
   (e: "create", swarm: SwarmConfig): void;
+  (e: "update", swarm: SwarmConfig): void;
   (e: "close"): void;
 }>();
+
+const props = defineProps<{
+  editSwarm?: SwarmConfig | null;
+}>();
+
+const isEdit = computed(() => !!props.editSwarm);
 
 const modes: { value: CollaborationMode; label: string; desc: string; icon: string }[] = [
   { value: "router", label: "Router 路由", desc: "智能路由到最合适的 Agent", icon: "🔀" },
@@ -15,9 +23,9 @@ const modes: { value: CollaborationMode; label: string; desc: string; icon: stri
   { value: "debate", label: "Debate 辩论", desc: "多 Agent 辩论模式", icon: "⚖️" },
 ];
 
-const name = ref("");
-const mode = ref<CollaborationMode>("router");
-const agents = reactive<SwarmAgentConfig[]>([]);
+const name = ref(props.editSwarm?.name ?? "");
+const mode = ref<CollaborationMode>(props.editSwarm?.mode ?? "router");
+const agents = reactive<SwarmAgentConfig[]>(props.editSwarm ? [...props.editSwarm.agents] : []);
 
 const showAgentForm = ref(false);
 const agentForm = reactive<SwarmAgentConfig>({
@@ -27,6 +35,14 @@ const agentForm = reactive<SwarmAgentConfig>({
   systemPrompt: "",
   model: { provider: "", modelId: "" },
 });
+
+const settingsStore = useSettingsStore();
+const savedModels = computed<SavedModel[]>(() => settingsStore.config?.models ?? []);
+
+function selectModelForAgent(model: SavedModel) {
+  agentForm.model.provider = model.provider;
+  agentForm.model.modelId = model.modelId;
+}
 
 function addAgent() {
   if (!agentForm.id || !agentForm.name) return;
@@ -45,13 +61,20 @@ function removeAgent(index: number) {
 
 function submit() {
   if (!name.value || !agents.length) return;
-  const swarmId = name.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-  emit("create", {
+  const swarmId = isEdit.value && props.editSwarm
+    ? props.editSwarm.id
+    : name.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  const swarm: SwarmConfig = {
     id: swarmId,
     name: name.value,
     mode: mode.value,
     agents: [...agents],
-  });
+  };
+  if (isEdit.value) {
+    emit("update", swarm);
+  } else {
+    emit("create", swarm);
+  }
 }
 </script>
 
@@ -60,8 +83,8 @@ function submit() {
     <div class="dialog">
       <div class="dialog-header">
         <div>
-          <h3>创建 Swarm</h3>
-          <p class="dialog-subtitle">配置多 Agent 协作集群</p>
+          <h3>{{ isEdit ? '编辑 Swarm' : '创建 Swarm' }}</h3>
+          <p class="dialog-subtitle">{{ isEdit ? '修改 Swarm 配置' : '配置多 Agent 协作集群' }}</p>
         </div>
         <button class="close-btn" @click="emit('close')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -129,6 +152,23 @@ function submit() {
               <label>System Prompt</label>
               <textarea v-model="agentForm.systemPrompt" class="input-field" placeholder="你是一个..." rows="3" />
             </div>
+
+            <!-- Model Selection -->
+            <div v-if="savedModels.length > 0" class="model-selection">
+              <label class="form-label" style="margin-bottom: 8px;">快速选择模型</label>
+              <div class="model-chips">
+                <button
+                  v-for="sm in savedModels"
+                  :key="sm.id"
+                  class="model-chip"
+                  :class="{ active: agentForm.model.provider === sm.provider && agentForm.model.modelId === sm.modelId }"
+                  @click="selectModelForAgent(sm)"
+                >
+                  {{ sm.name }}
+                </button>
+              </div>
+            </div>
+
             <div class="form-row">
               <label>Provider</label>
               <input v-model="agentForm.model.provider" class="input-field" placeholder="anthropic" />
@@ -149,6 +189,9 @@ function submit() {
                 <div>
                   <span class="agent-name">{{ agent.name }}</span>
                   <span class="agent-desc">{{ agent.description || agent.id }}</span>
+                  <span v-if="agent.model.provider || agent.model.modelId" class="agent-model">
+                    {{ agent.model.provider }} / {{ agent.model.modelId }}
+                  </span>
                 </div>
               </div>
               <button class="remove-btn" @click="removeAgent(i)">
@@ -164,7 +207,9 @@ function submit() {
 
       <div class="dialog-footer">
         <button class="btn-secondary" @click="emit('close')">取消</button>
-        <button class="btn-primary" :disabled="!name || !agents.length" @click="submit">创建</button>
+        <button class="btn-primary" :disabled="!name || !agents.length" @click="submit">
+          {{ isEdit ? '保存' : '创建' }}
+        </button>
       </div>
     </div>
   </div>
@@ -335,6 +380,39 @@ function submit() {
   font-weight: 500;
 }
 
+.model-selection {
+  margin-bottom: 12px;
+}
+
+.model-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.model-chip {
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--color-border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.model-chip:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--color-border-hover);
+}
+
+.model-chip.active {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: var(--color-accent-light);
+}
+
 .agent-list {
   display: flex;
   flex-direction: column;
@@ -387,6 +465,14 @@ function submit() {
   display: block;
   color: var(--color-text-muted);
   font-size: 11px;
+}
+
+.agent-model {
+  display: block;
+  color: var(--color-accent-light);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  margin-top: 2px;
 }
 
 .remove-btn {
