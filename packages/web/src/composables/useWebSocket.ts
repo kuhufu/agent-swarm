@@ -2,7 +2,8 @@ import { ref } from "vue";
 import { useConversationStore } from "../stores/conversation.js";
 import { useInterventionStore } from "../stores/intervention.js";
 import { useSwarmStore } from "../stores/swarm.js";
-import type { WSMessage, ChatMessage, InterventionRequest } from "../types/index.js";
+import type { WSMessage } from "../types/index.js";
+import { executeClientTool } from "../tools/client-tools.js";
 
 const ws = ref<WebSocket | null>(null);
 const connected = ref(false);
@@ -197,6 +198,10 @@ export function useWebSocket() {
         });
         break;
 
+      case "client_tool_execution_required":
+        void handleClientToolExecutionRequired(msg, conversationStore);
+        break;
+
       // ── Swarm lifecycle ──
       case "swarm_start":
         conversationStore.setActive(true);
@@ -229,6 +234,50 @@ export function useWebSocket() {
         conversationStore.setActive(false);
         break;
     }
+  }
+
+  async function handleClientToolExecutionRequired(
+    msg: WSMessage,
+    conversationStore: ReturnType<typeof useConversationStore>,
+  ) {
+    const payload = msg.payload ?? {};
+    const requestId = typeof payload.requestId === "string" ? payload.requestId : "";
+    const toolName = typeof payload.toolName === "string" ? payload.toolName : "";
+    const params = payload.params as Record<string, unknown> | undefined;
+
+    if (!requestId) {
+      return;
+    }
+
+    const executed = await executeClientTool(
+      toolName,
+      params,
+      { jsExecutionToolEnabled: conversationStore.jsExecutionToolEnabled },
+    );
+    const status = executed.isError ? "失败" : "成功";
+
+    conversationStore.addMessage({
+      id: crypto.randomUUID(),
+      role: "tool_result",
+      content: [
+        `前端工具 ${toolName} 执行${status}`,
+        executed.content,
+      ].join("\n"),
+      agentName: "前端工具",
+      timestamp: Date.now(),
+    });
+
+    send({
+      type: "client_tool_result",
+      payload: {
+        requestId,
+        result: {
+          isError: executed.isError,
+          content: executed.content,
+          details: executed.details,
+        },
+      },
+    });
   }
 
   return { ws, connected, connect, disconnect, send };

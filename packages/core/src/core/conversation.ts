@@ -14,6 +14,8 @@ import { SwarmMode } from "../modes/swarm-mode.js";
 import { DebateMode } from "../modes/debate.js";
 import { createRouteToAgentTool } from "../tools/route-to-agent.js";
 import { createHandoffTool } from "../tools/handoff.js";
+import { createClientBridgeTool } from "../tools/client-bridge.js";
+import type { ClientToolDefinition, ClientToolExecutionResult } from "../tools/client-bridge.js";
 import { storedToMessage } from "../storage/message-mapper.js";
 import type { ModeExecutor, ModeExecutionContext } from "../modes/types.js";
 
@@ -27,6 +29,13 @@ interface ActiveAgent {
   config: SwarmAgentConfig;
 }
 
+export interface ConversationPromptOptions {
+  clientTools?: ClientToolDefinition[];
+  clientToolExecutor?: (
+    request: { toolName: string; toolCallId: string; params: unknown },
+  ) => Promise<ClientToolExecutionResult>;
+}
+
 export class Conversation {
   private id: string;
   private swarmConfig: SwarmConfig;
@@ -36,6 +45,13 @@ export class Conversation {
   private llmConfig: LLMBackendConfig;
   private agents: Map<string, ActiveAgent> = new Map();
   private restoredMessages: Message[];
+  private runtimeOptions: Required<ConversationPromptOptions> = {
+    clientTools: [],
+    clientToolExecutor: async () => ({
+      content: "Client tool executor not configured",
+      isError: true,
+    }),
+  };
   private eventListeners: ((event: SwarmEvent) => void)[] = [];
   private _aborted = false;
 
@@ -60,8 +76,25 @@ export class Conversation {
   /**
    * Send a user message and stream SwarmEvents as the collaboration unfolds.
    */
-  async *prompt(message: string): AsyncGenerator<SwarmEvent> {
+  async *prompt(message: string, options: ConversationPromptOptions = {}): AsyncGenerator<SwarmEvent> {
     this._aborted = false;
+    this.runtimeOptions = {
+      clientTools: Array.isArray(options.clientTools)
+        ? options.clientTools.filter((tool) =>
+          tool
+          && typeof tool.name === "string"
+          && tool.name.trim().length > 0
+          && typeof tool.label === "string"
+          && tool.label.trim().length > 0
+          && typeof tool.description === "string"
+          && tool.description.trim().length > 0)
+        : [],
+      clientToolExecutor: options.clientToolExecutor ?? (async () => ({
+        content: "Client tool executor not configured",
+        isError: true,
+      })),
+    };
+    this.syncActiveAgentTools();
 
     // Save user message
     await this.storage.appendMessage(this.id, {
@@ -305,7 +338,36 @@ export class Conversation {
       );
     }
 
+    for (const clientTool of this.runtimeOptions.clientTools) {
+      const remoteExecutor = async (request: { toolCallId: string; params: unknown }) => this.runtimeOptions.clientToolExecutor({
+        toolName: clientTool.name,
+        toolCallId: request.toolCallId,
+        params: request.params,
+      });
+
+      tools.push(createClientBridgeTool({
+        tool: clientTool,
+        execute: remoteExecutor,
+      }));
+    }
+
     return tools;
+  }
+
+  private syncActiveAgentTools() {
+    for (const [agentId, active] of this.agents.entries()) {
+      const baseConfig = this.resolveAgentConfig(agentId) ?? active.config;
+      const enhanced = this.withAutoTools(baseConfig);
+      active.config = enhanced;
+      active.agent.state.tools = enhanced.tools ?? [];
+    }
+  }
+
+  private resolveAgentConfig(agentId: string): SwarmAgentConfig | undefined {
+    if (this.swarmConfig.orchestrator?.id === agentId) {
+      return this.swarmConfig.orchestrator;
+    }
+    return this.swarmConfig.agents.find((agent) => agent.id === agentId);
   }
 
   private getInterventionStrategy(point: InterventionPoint, config?: SwarmAgentConfig): string {

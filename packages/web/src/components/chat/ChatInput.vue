@@ -7,7 +7,7 @@ const props = defineProps<{
   active?: boolean;
 }>();
 
-const { inputText, sending, connected, connect, sendMessage, abort } = useChat();
+const { inputText, sending, connected, connect, sendMessage, abort, jsExecutionToolEnabled } = useChat();
 
 function handleSend() {
   if (props.active) {
@@ -35,6 +35,13 @@ onMounted(() => {
 
 <template>
   <div class="chat-input">
+    <div class="tool-options">
+      <label class="tool-toggle">
+        <input v-model="jsExecutionToolEnabled" type="checkbox">
+        <span>前端 JS 执行工具</span>
+      </label>
+      <span class="tool-hint">模型默认可调用 `current_time`；开启后可调用 `javascript_execute`</span>
+    </div>
     <div class="input-wrapper">
       <div class="textarea-wrapper">
         <textarea
@@ -76,6 +83,33 @@ onMounted(() => {
   border-top: 1px solid var(--color-border-subtle);
   background: rgba(255, 255, 255, 0.02);
   backdrop-filter: blur(12px);
+}
+
+.tool-options {
+  max-width: 900px;
+  margin: 0 auto 10px;
+}
+
+.tool-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  user-select: none;
+  cursor: pointer;
+}
+
+.tool-toggle input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--color-accent);
+}
+
+.tool-hint {
+  margin-left: 12px;
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 
 .input-wrapper {

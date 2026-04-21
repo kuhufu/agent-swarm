@@ -37,6 +37,7 @@ export type { ModeExecutor, ModeExecutionContext } from "./modes/types.js";
 // Core classes
 export { AgentSwarm } from "./core/swarm.js";
 export { Conversation as SwarmConversation } from "./core/conversation.js";
+export type { ConversationPromptOptions } from "./core/conversation.js";
 
 // Intervention
 export { InterventionHandler, WSInterventionHandler } from "./intervention/handler.js";
@@ -49,6 +50,9 @@ export { SqliteStorage } from "./storage/sqlite.js";
 // Tools
 export { createRouteToAgentTool, routeToAgentTool } from "./tools/route-to-agent.js";
 export { createHandoffTool, handoffTool } from "./tools/handoff.js";
+export { createJavascriptExecuteTool, javascriptExecuteTool } from "./tools/javascript-execute.js";
+export { createClientBridgeTool } from "./tools/client-bridge.js";
+export type { ClientToolDefinition, ClientToolExecutionResult } from "./tools/client-bridge.js";
 // Modes
 export { RouterMode } from "./modes/router.js";
 export { SequentialMode } from "./modes/sequential.js";
@@ -61,4 +65,3 @@ export { resolveModel, resolveModelFromProvider, mapThinkingLevel } from "./llm/
 
 // Config helper
 export { defineConfig } from "./core/config.js";
-

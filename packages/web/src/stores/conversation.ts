@@ -14,6 +14,7 @@ export const useConversationStore = defineStore("conversation", () => {
   const loading = ref(false);
   const loadingMessages = ref(false);
   const conversations = ref<ConversationInfo[]>([]);
+  const jsExecutionToolEnabled = ref(false);
 
   function addMessage(msg: ChatMessage) {
     messages.value.push(msg);
@@ -225,6 +226,10 @@ export const useConversationStore = defineStore("conversation", () => {
     }
   }
 
+  function setJsExecutionToolEnabled(enabled: boolean) {
+    jsExecutionToolEnabled.value = enabled;
+  }
+
   return {
     currentConversationId,
     messages,
@@ -234,6 +239,7 @@ export const useConversationStore = defineStore("conversation", () => {
     loading,
     loadingMessages,
     conversations,
+    jsExecutionToolEnabled,
     addMessage,
     startStreamingMessage,
     appendStreamDelta,
@@ -247,5 +253,6 @@ export const useConversationStore = defineStore("conversation", () => {
     fetchConversations,
     updateConversationTitle,
     deleteConversation,
+    setJsExecutionToolEnabled,
   };
 });
