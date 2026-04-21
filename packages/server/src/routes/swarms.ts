@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { AgentSwarm } from "@agent-swarm/core";
 
-export function swarmRoutes(swarm: AgentSwarm) {
+export function swarmRoutes(swarm: AgentSwarm): Router {
   const router = Router();
 
   router.get("/", (_req, res) => {
@@ -16,8 +16,6 @@ export function swarmRoutes(swarm: AgentSwarm) {
     }
     res.json({ data: config });
   });
-
-  // POST/PUT/DELETE will be implemented with storage layer
 
   return router;
 }

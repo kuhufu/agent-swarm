@@ -2,21 +2,22 @@ import type { SwarmConfig } from "../core/types.js";
 
 export interface StoredMessage {
   id: string;
-  agentId?: string;
+  agentId?: string | null;
   role: string;
-  content?: string;
-  thinking?: string;
-  toolCalls?: string; // JSON
-  toolCallId?: string;
-  metadata?: string; // JSON
+  content?: string | null;
+  thinking?: string | null;
+  toolCalls?: string | null; // JSON
+  toolCallId?: string | null;
+  metadata?: string | null; // JSON
   timestamp: number;
+  createdAt?: number;
 }
 
 export interface StoredEvent {
   id: string;
-  agentId?: string;
+  agentId?: string | null;
   eventType: string;
-  eventData?: string; // JSON
+  eventData?: string | null; // JSON
   timestamp: number;
 }
 

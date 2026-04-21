@@ -1,5 +1,7 @@
 import { ref, onUnmounted } from "vue";
-import type { WSMessage } from "../types/index.js";
+import { useConversationStore } from "../stores/conversation.js";
+import { useInterventionStore } from "../stores/intervention.js";
+import type { WSMessage, ChatMessage, InterventionRequest } from "../types/index.js";
 
 export function useWebSocket() {
   const ws = ref<WebSocket | null>(null);
@@ -64,9 +66,137 @@ export function useWebSocket() {
     ws.value?.close();
   }
 
-  // TODO: wire up message handlers to stores
-  function handleMessage(_msg: WSMessage) {
-    // Will be implemented to dispatch to stores
+  /**
+   * Dispatch incoming WS messages to the appropriate Pinia store.
+   */
+  function handleMessage(msg: WSMessage) {
+    const conversationStore = useConversationStore();
+    const interventionStore = useInterventionStore();
+
+    switch (msg.type) {
+      case "connected":
+        break;
+
+      case "conversation_created":
+        conversationStore.setCurrentConversation(msg.payload.conversationId);
+        break;
+
+      // ── Agent lifecycle events ──
+      case "agent_start":
+        conversationStore.setAgentStatus(msg.payload.agentId, "thinking");
+        if (msg.payload.agentName) {
+          conversationStore.setAgentName(msg.payload.agentId, msg.payload.agentName);
+        }
+        break;
+
+      case "agent_end":
+        conversationStore.setAgentStatus(msg.payload.agentId, "idle");
+        break;
+
+      // ── Message events ──
+      case "message_start":
+        if (msg.payload.role === "assistant") {
+          conversationStore.startStreamingMessage({
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: "",
+            agentId: msg.payload.agentId,
+            agentName: msg.payload.agentName,
+            timestamp: Date.now(),
+          });
+        }
+        break;
+
+      case "message_update":
+        if (msg.payload.delta) {
+          conversationStore.appendStreamDelta(msg.payload.delta);
+        }
+        break;
+
+      case "message_end":
+        conversationStore.finalizeStream();
+        break;
+
+      // ── Tool execution events ──
+      case "tool_execution_start":
+        conversationStore.setAgentStatus(msg.payload.agentId, "executing_tool");
+        // Add tool call notification to messages
+        conversationStore.addMessage({
+          id: crypto.randomUUID(),
+          role: "notification",
+          content: `🔧 执行工具: ${msg.payload.toolName}`,
+          timestamp: Date.now(),
+        });
+        break;
+
+      case "tool_execution_end": {
+        const isError = msg.payload.isError;
+        conversationStore.setAgentStatus(msg.payload.agentId, "thinking");
+        conversationStore.addMessage({
+          id: crypto.randomUUID(),
+          role: "notification",
+          content: isError
+            ? `❌ 工具执行失败: ${msg.payload.toolName}`
+            : `✅ 工具执行完成: ${msg.payload.toolName}`,
+          timestamp: Date.now(),
+        });
+        break;
+      }
+
+      // ── Handoff event ──
+      case "handoff":
+        conversationStore.setAgentStatus(msg.payload.fromAgentId, "idle");
+        conversationStore.setAgentStatus(msg.payload.toAgentId, "thinking");
+        conversationStore.addMessage({
+          id: crypto.randomUUID(),
+          role: "notification",
+          content: `🔄 Agent 交接: ${msg.payload.fromAgentId} → ${msg.payload.toAgentId}`,
+          timestamp: Date.now(),
+        });
+        break;
+
+      // ── Intervention events ──
+      case "intervention_required":
+        interventionStore.addIntervention({
+          requestId: msg.payload.requestId,
+          point: msg.payload.point,
+          context: msg.payload.context,
+          timestamp: Date.now(),
+        });
+        break;
+
+      // ── Swarm lifecycle ──
+      case "swarm_start":
+        conversationStore.setActive(true);
+        break;
+
+      case "swarm_end":
+        conversationStore.setActive(false);
+        if (msg.payload.finalMessage) {
+          conversationStore.addMessage({
+            id: crypto.randomUUID(),
+            role: "notification",
+            content: msg.payload.finalMessage,
+            timestamp: Date.now(),
+          });
+        }
+        break;
+
+      case "prompt_completed":
+        conversationStore.setActive(false);
+        break;
+
+      // ── Error ──
+      case "error":
+        conversationStore.addMessage({
+          id: crypto.randomUUID(),
+          role: "system",
+          content: `Error: ${msg.payload.message ?? "Unknown error"}`,
+          timestamp: Date.now(),
+        });
+        conversationStore.setActive(false);
+        break;
+    }
   }
 
   onUnmounted(() => {

@@ -1,13 +1,14 @@
 import express from "express";
 import cors from "cors";
 import type { AgentSwarm } from "@agent-swarm/core";
+import type { SwarmConversation } from "@agent-swarm/core";
 import { swarmRoutes } from "./routes/swarms.js";
 import { conversationRoutes } from "./routes/conversations.js";
 import { messageRoutes } from "./routes/messages.js";
 import { configRoutes } from "./routes/config.js";
 import { errorHandler } from "./middleware/error-handler.js";
 
-export function createApp(swarm: AgentSwarm) {
+export function createApp(swarm: AgentSwarm): any {
   const app = express();
 
   // Middleware
@@ -30,3 +31,6 @@ export function createApp(swarm: AgentSwarm) {
 
   return app;
 }
+
+// Re-export for ws.ts
+export type { SwarmConversation as Conversation };

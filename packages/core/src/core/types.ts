@@ -21,8 +21,11 @@ export interface DebateConfig {
 
 export interface PipelineStep {
   agentId: string;
-  condition?: (output: any) => boolean;
-  transform?: (output: any) => any;
+  /** Condition expression (JSON-serializable) — evaluated at runtime */
+  condition?: Record<string, any>;
+  /** Transform expression (JSON-serializable) — evaluated at runtime */
+  transform?: Record<string, any>;
+  /** Skip to this agent ID if condition is false */
   onSkip?: string;
 }
 
@@ -30,7 +33,7 @@ export interface PipelineStep {
 // Thinking
 // ============================================================================
 
-export type ThinkingLevel = "off" | "low" | "medium" | "high";
+export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high";
 
 export interface ThinkingBudgets {
   maxTokens?: number;

@@ -1,13 +1,16 @@
 import { Router } from "express";
 import type { AgentSwarm } from "@agent-swarm/core";
 
-export function messageRoutes(_swarm: AgentSwarm) {
+export function messageRoutes(swarm: AgentSwarm): Router {
   const router = Router();
 
-  // GET /conversations/:id/messages
   router.get("/conversations/:id/messages", async (req, res) => {
-    // TODO: implement
-    res.json({ data: [] });
+    try {
+      const messages = await swarm.getMessages(req.params.id);
+      res.json({ data: messages });
+    } catch (err: any) {
+      res.status(404).json({ error: err.message });
+    }
   });
 
   return router;

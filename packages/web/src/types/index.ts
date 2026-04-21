@@ -88,6 +88,8 @@ export type InterventionPoint =
 
 export type InterventionAction = "approve" | "reject" | "edit" | "retry" | "abort";
 
+export type InterventionStrategy = "auto" | "confirm" | "review" | "edit" | "reject";
+
 export interface InterventionRequest {
   requestId: string;
   point: InterventionPoint;

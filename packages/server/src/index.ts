@@ -6,7 +6,6 @@ import { AgentSwarm } from "@agent-swarm/core";
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
 
 async function main() {
-  // TODO: load config from agent-swarm.config.ts
   const swarm = new AgentSwarm({
     config: {
       llm: {
@@ -33,7 +32,15 @@ async function main() {
 
   server.listen(PORT, () => {
     console.log(`Agent Swarm server running on http://localhost:${PORT}`);
-    console.log(`WebSocket available on ws://localhost:${PORT}`);
+    console.log(`WebSocket available on ws://localhost:${PORT}/ws`);
+  });
+
+  // Graceful shutdown
+  process.on("SIGINT", async () => {
+    console.log("\nShutting down...");
+    await swarm.close();
+    server.close();
+    process.exit(0);
   });
 }
 

@@ -1,24 +1,36 @@
 <script setup lang="ts">
+import { onMounted } from "vue";
 import { useChat } from "../../composables/useChat.js";
 
 const props = defineProps<{
-  conversationId: string | null;
+  swarmId: string;
+  active?: boolean;
 }>();
 
-const { inputText, sending, sendMessage } = useChat();
+const { inputText, sending, connected, connect, sendMessage, abort } = useChat();
 
 function handleSend() {
-  if (props.conversationId) {
-    sendMessage(props.conversationId);
+  if (props.active) {
+    abort();
+  } else {
+    sendMessage(props.swarmId);
   }
 }
 
 function handleKeydown(e: KeyboardEvent) {
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
-    handleSend();
+    if (!props.active) {
+      sendMessage(props.swarmId);
+    }
   }
 }
+
+onMounted(() => {
+  if (!connected.value) {
+    connect();
+  }
+});
 </script>
 
 <template>
@@ -28,16 +40,25 @@ function handleKeydown(e: KeyboardEvent) {
         v-model="inputText"
         placeholder="输入消息..."
         rows="1"
-        :disabled="!conversationId || sending"
+        :disabled="sending || !swarmId"
         @keydown="handleKeydown"
       />
       <t-button
+        v-if="!active"
         theme="primary"
         size="small"
-        :disabled="!conversationId || sending || !inputText.trim()"
-        @click="handleSend"
+        :disabled="!swarmId || sending || !inputText.trim()"
+        @click="sendMessage(swarmId)"
       >
         发送
+      </t-button>
+      <t-button
+        v-else
+        theme="danger"
+        size="small"
+        @click="abort"
+      >
+        停止
       </t-button>
     </div>
   </div>

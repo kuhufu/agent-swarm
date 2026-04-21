@@ -1,7 +1,8 @@
-import type { SwarmConfig, AgentSwarmRootConfig, SwarmEvent } from "./types.js";
+import type { SwarmConfig, AgentSwarmRootConfig, SwarmEvent, LLMBackendConfig } from "./types.js";
 import type { IStorage } from "../storage/interface.js";
 import type { InterventionHandler } from "../intervention/handler.js";
 import { SqliteStorage } from "../storage/sqlite.js";
+import { Conversation } from "./conversation.js";
 
 export interface AgentSwarmOptions {
   configPath?: string;
@@ -22,7 +23,6 @@ export class AgentSwarm {
       throw new Error("Either config or configPath must be provided");
     }
 
-    // TODO: load from configPath if config not provided
     this.config = options.config!;
     this.storage = options.storage ?? new SqliteStorage(this.config.storage.path);
     this.interventionHandler = options.interventionHandler;
@@ -49,26 +49,80 @@ export class AgentSwarm {
     this._initialized = true;
   }
 
-  async createConversation(swarmId: string) {
+  /**
+   * Create a new conversation for a swarm.
+   */
+  async createConversation(swarmId: string, title?: string): Promise<Conversation> {
     this.ensureInitialized();
     const swarmConfig = this.swarmConfigs.get(swarmId);
     if (!swarmConfig) {
       throw new Error(`Swarm not found: ${swarmId}`);
     }
 
-    const { Conversation } = await import("./conversation.js");
-    return new Conversation(swarmConfig, this.storage, this.interventionHandler);
+    const conv = await this.storage.createConversation(swarmId, title);
+
+    return new Conversation(
+      conv.id,
+      swarmConfig,
+      this.storage,
+      this.config.llm,
+      this.interventionHandler,
+    );
   }
 
-  async resumeConversation(conversationId: string) {
+  /**
+   * Resume an existing conversation.
+   */
+  async resumeConversation(conversationId: string): Promise<Conversation> {
     this.ensureInitialized();
-    // TODO: implement conversation resumption
-    throw new Error("Not implemented yet");
+
+    const conv = await this.storage.getConversation(conversationId);
+    if (!conv) {
+      throw new Error(`Conversation not found: ${conversationId}`);
+    }
+
+    const swarmConfig = this.swarmConfigs.get(conv.swarmId);
+    if (!swarmConfig) {
+      throw new Error(`Swarm not found: ${conv.swarmId}`);
+    }
+
+    const conversation = new Conversation(
+      conv.id,
+      swarmConfig,
+      this.storage,
+      this.config.llm,
+      this.interventionHandler,
+    );
+
+    // Load history into agents
+    const messages = await this.storage.getMessages(conversationId);
+    // TODO: restore messages into agent state
+
+    return conversation;
   }
 
+  /**
+   * List conversations for a swarm.
+   */
   async listConversations(swarmId: string) {
     this.ensureInitialized();
     return this.storage.listConversations(swarmId);
+  }
+
+  /**
+   * Delete a conversation.
+   */
+  async deleteConversation(id: string) {
+    this.ensureInitialized();
+    await this.storage.deleteConversation(id);
+  }
+
+  /**
+   * Get messages for a conversation.
+   */
+  async getMessages(conversationId: string) {
+    this.ensureInitialized();
+    return this.storage.getMessages(conversationId);
   }
 
   getSwarmConfig(swarmId: string): SwarmConfig | undefined {
@@ -77,6 +131,10 @@ export class AgentSwarm {
 
   listSwarms(): SwarmConfig[] {
     return Array.from(this.swarmConfigs.values());
+  }
+
+  getLLMConfig(): LLMBackendConfig {
+    return { ...this.config.llm };
   }
 
   async close(): Promise<void> {

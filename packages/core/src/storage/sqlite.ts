@@ -1,8 +1,13 @@
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import { eq, desc, and } from "drizzle-orm";
 import type { IStorage, StoredMessage, StoredEvent, Conversation } from "./interface.js";
 import type { SwarmConfig } from "../core/types.js";
+import { swarmsTable, conversationsTable, messagesTable, eventsTable } from "./schema.js";
 
 export class SqliteStorage implements IStorage {
-  private db: any = null;
+  private db: ReturnType<typeof drizzle> | null = null;
+  private rawDb: Database.Database | null = null;
   private dbPath: string;
 
   constructor(dbPath: string) {
@@ -10,71 +15,253 @@ export class SqliteStorage implements IStorage {
   }
 
   async init(): Promise<void> {
-    // TODO: implement with better-sqlite3 + drizzle-orm
-    // Will be implemented when integrating the full storage layer
-    throw new Error("SqliteStorage.init() not implemented yet");
+    // Ensure directory exists
+    const fs = await import("fs");
+    const dir = this.dbPath.substring(0, this.dbPath.lastIndexOf("/"));
+    if (dir && !fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    this.rawDb = new Database(this.dbPath);
+    this.rawDb.pragma("journal_mode = WAL");
+    this.rawDb.pragma("foreign_keys = ON");
+
+    this.db = drizzle(this.rawDb);
+
+    // Create tables if not exist
+    this.rawDb.exec(`
+      CREATE TABLE IF NOT EXISTS swarms (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        config TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS agents (
+        id TEXT PRIMARY KEY,
+        swarm_id TEXT NOT NULL REFERENCES swarms(id),
+        name TEXT NOT NULL,
+        config TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS conversations (
+        id TEXT PRIMARY KEY,
+        swarm_id TEXT NOT NULL REFERENCES swarms(id),
+        title TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS messages (
+        id TEXT PRIMARY KEY,
+        conversation_id TEXT NOT NULL REFERENCES conversations(id),
+        agent_id TEXT REFERENCES agents(id),
+        role TEXT NOT NULL,
+        content TEXT,
+        thinking TEXT,
+        tool_calls TEXT,
+        tool_call_id TEXT,
+        metadata TEXT,
+        timestamp INTEGER NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS events (
+        id TEXT PRIMARY KEY,
+        conversation_id TEXT NOT NULL REFERENCES conversations(id),
+        agent_id TEXT REFERENCES agents(id),
+        event_type TEXT NOT NULL,
+        event_data TEXT,
+        timestamp INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, timestamp);
+      CREATE INDEX IF NOT EXISTS idx_messages_agent ON messages(agent_id);
+      CREATE INDEX IF NOT EXISTS idx_events_conversation ON events(conversation_id, timestamp);
+      CREATE INDEX IF NOT EXISTS idx_conversations_swarm ON conversations(swarm_id);
+    `);
   }
 
   async close(): Promise<void> {
-    if (this.db) {
-      this.db.close();
+    if (this.rawDb) {
+      this.rawDb.close();
+      this.rawDb = null;
       this.db = null;
     }
   }
 
-  async saveSwarm(_config: SwarmConfig): Promise<void> {
-    throw new Error("Not implemented yet");
+  private getDb() {
+    if (!this.db) throw new Error("Storage not initialized");
+    return this.db;
   }
 
-  async loadSwarm(_id: string): Promise<SwarmConfig | null> {
-    throw new Error("Not implemented yet");
+  // ── Swarm management ──
+
+  async saveSwarm(config: SwarmConfig): Promise<void> {
+    const now = Date.now();
+    this.getDb().insert(swarmsTable).values({
+      id: config.id,
+      name: config.name,
+      config: JSON.stringify(config),
+      createdAt: now,
+      updatedAt: now,
+    }).onConflictDoUpdate({
+      target: swarmsTable.id,
+      set: { name: config.name, config: JSON.stringify(config), updatedAt: now },
+    }).run();
+  }
+
+  async loadSwarm(id: string): Promise<SwarmConfig | null> {
+    const rows = this.getDb().select().from(swarmsTable).where(eq(swarmsTable.id, id)).all();
+    if (rows.length === 0) return null;
+    return JSON.parse(rows[0].config);
   }
 
   async listSwarms(): Promise<SwarmConfig[]> {
-    throw new Error("Not implemented yet");
+    const rows = this.getDb().select().from(swarmsTable).all();
+    return rows.map((r) => JSON.parse(r.config));
   }
 
-  async deleteSwarm(_id: string): Promise<void> {
-    throw new Error("Not implemented yet");
+  async deleteSwarm(id: string): Promise<void> {
+    this.getDb().delete(swarmsTable).where(eq(swarmsTable.id, id)).run();
   }
 
-  async createConversation(_swarmId: string, _title?: string): Promise<Conversation> {
-    throw new Error("Not implemented yet");
+  // ── Conversation management ──
+
+  async createConversation(swarmId: string, title?: string): Promise<Conversation> {
+    const now = Date.now();
+    const conv: Conversation = {
+      id: crypto.randomUUID(),
+      swarmId,
+      title: title ?? "新对话",
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.getDb().insert(conversationsTable).values({
+      id: conv.id,
+      swarmId: conv.swarmId,
+      title: conv.title,
+      createdAt: conv.createdAt,
+      updatedAt: conv.updatedAt,
+    }).run();
+    return conv;
   }
 
-  async getConversation(_id: string): Promise<Conversation | null> {
-    throw new Error("Not implemented yet");
+  async getConversation(id: string): Promise<Conversation | null> {
+    const rows = this.getDb().select().from(conversationsTable).where(eq(conversationsTable.id, id)).all();
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return { id: r.id, swarmId: r.swarmId, title: r.title ?? undefined, createdAt: r.createdAt, updatedAt: r.updatedAt };
   }
 
-  async listConversations(_swarmId: string): Promise<Conversation[]> {
-    throw new Error("Not implemented yet");
+  async listConversations(swarmId: string): Promise<Conversation[]> {
+    const rows = this.getDb().select().from(conversationsTable)
+      .where(eq(conversationsTable.swarmId, swarmId))
+      .orderBy(desc(conversationsTable.updatedAt))
+      .all();
+    return rows.map((r) => ({
+      id: r.id, swarmId: r.swarmId, title: r.title ?? undefined, createdAt: r.createdAt, updatedAt: r.updatedAt,
+    }));
   }
 
-  async deleteConversation(_id: string): Promise<void> {
-    throw new Error("Not implemented yet");
+  async deleteConversation(id: string): Promise<void> {
+    this.getDb().delete(messagesTable).where(eq(messagesTable.conversationId, id)).run();
+    this.getDb().delete(eventsTable).where(eq(eventsTable.conversationId, id)).run();
+    this.getDb().delete(conversationsTable).where(eq(conversationsTable.id, id)).run();
   }
 
-  async appendMessage(_conversationId: string, _message: StoredMessage): Promise<void> {
-    throw new Error("Not implemented yet");
+  // ── Message management ──
+
+  async appendMessage(conversationId: string, message: StoredMessage): Promise<void> {
+    this.getDb().insert(messagesTable).values({
+      id: message.id || crypto.randomUUID(),
+      conversationId,
+      agentId: message.agentId ?? null,
+      role: message.role,
+      content: message.content ?? null,
+      thinking: message.thinking ?? null,
+      toolCalls: message.toolCalls ?? null,
+      toolCallId: message.toolCallId ?? null,
+      metadata: message.metadata ?? null,
+      timestamp: message.timestamp,
+      createdAt: message.createdAt ?? Date.now(),
+    }).run();
+
+    // Update conversation updatedAt
+    this.getDb().update(conversationsTable)
+      .set({ updatedAt: Date.now() })
+      .where(eq(conversationsTable.id, conversationId))
+      .run();
   }
 
-  async getMessages(_conversationId: string): Promise<StoredMessage[]> {
-    throw new Error("Not implemented yet");
+  async getMessages(conversationId: string): Promise<StoredMessage[]> {
+    const rows = this.getDb().select().from(messagesTable)
+      .where(eq(messagesTable.conversationId, conversationId))
+      .orderBy(messagesTable.timestamp)
+      .all();
+    return rows.map((r) => ({
+      id: r.id,
+      agentId: r.agentId,
+      role: r.role,
+      content: r.content,
+      thinking: r.thinking,
+      toolCalls: r.toolCalls,
+      toolCallId: r.toolCallId,
+      metadata: r.metadata,
+      timestamp: r.timestamp,
+      createdAt: r.createdAt ?? undefined,
+    }));
   }
 
-  async getMessagesByAgent(_conversationId: string, _agentId: string): Promise<StoredMessage[]> {
-    throw new Error("Not implemented yet");
+  async getMessagesByAgent(conversationId: string, agentId: string): Promise<StoredMessage[]> {
+    const rows = this.getDb().select().from(messagesTable)
+      .where(and(eq(messagesTable.conversationId, conversationId), eq(messagesTable.agentId, agentId)))
+      .orderBy(messagesTable.timestamp)
+      .all();
+    return rows.map((r) => ({
+      id: r.id,
+      agentId: r.agentId,
+      role: r.role,
+      content: r.content,
+      thinking: r.thinking,
+      toolCalls: r.toolCalls,
+      toolCallId: r.toolCallId,
+      metadata: r.metadata,
+      timestamp: r.timestamp,
+      createdAt: r.createdAt ?? undefined,
+    }));
   }
 
-  async clearMessages(_conversationId: string): Promise<void> {
-    throw new Error("Not implemented yet");
+  async clearMessages(conversationId: string): Promise<void> {
+    this.getDb().delete(messagesTable).where(eq(messagesTable.conversationId, conversationId)).run();
   }
 
-  async logEvent(_conversationId: string, _event: StoredEvent): Promise<void> {
-    throw new Error("Not implemented yet");
+  // ── Event log ──
+
+  async logEvent(conversationId: string, event: StoredEvent): Promise<void> {
+    this.getDb().insert(eventsTable).values({
+      id: event.id || crypto.randomUUID(),
+      conversationId,
+      agentId: event.agentId ?? null,
+      eventType: event.eventType,
+      eventData: event.eventData ?? null,
+      timestamp: event.timestamp,
+    }).run();
   }
 
-  async getEvents(_conversationId: string, _eventType?: string): Promise<StoredEvent[]> {
-    throw new Error("Not implemented yet");
+  async getEvents(conversationId: string, eventType?: string): Promise<StoredEvent[]> {
+    const conditions = eventType
+      ? and(eq(eventsTable.conversationId, conversationId), eq(eventsTable.eventType, eventType))
+      : eq(eventsTable.conversationId, conversationId);
+
+    const rows = this.getDb().select().from(eventsTable)
+      .where(conditions)
+      .orderBy(eventsTable.timestamp)
+      .all();
+    return rows.map((r) => ({
+      id: r.id,
+      agentId: r.agentId,
+      eventType: r.eventType,
+      eventData: r.eventData,
+      timestamp: r.timestamp,
+    }));
   }
 }
