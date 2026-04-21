@@ -150,27 +150,24 @@ export function useWebSocket() {
       // ── Tool execution events ──
       case "tool_execution_start":
         conversationStore.setAgentStatus(msg.payload.agentId, "executing_tool");
-        if (typeof msg.payload?.toolName === "string" && msg.payload.toolName.trim().length > 0) {
-          conversationStore.addMessage({
-            id: crypto.randomUUID(),
-            role: "notification",
-            content: `🔧 执行工具: ${msg.payload.toolName}`,
-            timestamp: Date.now(),
+        if (typeof msg.payload?.toolCallId === "string" && typeof msg.payload?.toolName === "string") {
+          conversationStore.upsertToolCall(msg.payload.agentId, {
+            id: msg.payload.toolCallId,
+            name: msg.payload.toolName,
+            arguments: msg.payload?.args,
           });
         }
         break;
 
       case "tool_execution_end": {
-        const isError = msg.payload.isError;
         conversationStore.setAgentStatus(msg.payload.agentId, "thinking");
-        if (typeof msg.payload?.toolName === "string" && msg.payload.toolName.trim().length > 0) {
-          conversationStore.addMessage({
-            id: crypto.randomUUID(),
-            role: "notification",
-            content: isError
-              ? `❌ 工具执行失败: ${msg.payload.toolName}`
-              : `✅ 工具执行完成: ${msg.payload.toolName}`,
-            timestamp: Date.now(),
+        if (typeof msg.payload?.toolCallId === "string" && typeof msg.payload?.toolName === "string") {
+          conversationStore.upsertToolCall(msg.payload.agentId, {
+            id: msg.payload.toolCallId,
+            name: msg.payload.toolName,
+            arguments: msg.payload?.args,
+            result: msg.payload?.result,
+            isError: msg.payload.isError === true,
           });
         }
         break;
@@ -221,6 +218,9 @@ export function useWebSocket() {
 
       case "prompt_completed":
         conversationStore.setActive(false);
+        if (conversationStore.currentConversationId) {
+          void conversationStore.openConversation(conversationStore.currentConversationId);
+        }
         break;
 
       // ── Error ──
@@ -243,10 +243,19 @@ export function useWebSocket() {
     const payload = msg.payload ?? {};
     const requestId = typeof payload.requestId === "string" ? payload.requestId : "";
     const toolName = typeof payload.toolName === "string" ? payload.toolName : "";
+    const toolCallId = typeof payload.toolCallId === "string" ? payload.toolCallId : "";
     const params = payload.params as Record<string, unknown> | undefined;
 
     if (!requestId) {
       return;
+    }
+
+    if (toolCallId && toolName) {
+      conversationStore.upsertToolCall(undefined, {
+        id: toolCallId,
+        name: toolName,
+        arguments: params ?? {},
+      });
     }
 
     const executed = await executeClientTool(
@@ -254,18 +263,15 @@ export function useWebSocket() {
       params,
       { jsExecutionToolEnabled: conversationStore.jsExecutionToolEnabled },
     );
-    const status = executed.isError ? "失败" : "成功";
-
-    conversationStore.addMessage({
-      id: crypto.randomUUID(),
-      role: "tool_result",
-      content: [
-        `前端工具 ${toolName} 执行${status}`,
-        executed.content,
-      ].join("\n"),
-      agentName: "前端工具",
-      timestamp: Date.now(),
-    });
+    if (toolCallId && toolName) {
+      conversationStore.upsertToolCall(undefined, {
+        id: toolCallId,
+        name: toolName,
+        arguments: params ?? {},
+        result: executed.details ?? executed.content,
+        isError: executed.isError,
+      });
+    }
 
     send({
       type: "client_tool_result",

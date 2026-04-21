@@ -241,6 +241,7 @@ export interface ToolExecutionStartEvent {
   agentId: string;
   toolName: string;
   toolCallId: string;
+  args: any;
 }
 
 export interface ToolExecutionUpdateEvent {
@@ -255,6 +256,7 @@ export interface ToolExecutionEndEvent {
   agentId: string;
   toolName: string;
   toolCallId: string;
+  result: any;
   isError: boolean;
 }
 

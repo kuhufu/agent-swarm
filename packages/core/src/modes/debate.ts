@@ -195,8 +195,8 @@ export class DebateMode implements ModeExecutor {
         if (e.assistantMessageEvent.type !== "text_delta") return null;
         return { type: "message_update", agentId, delta: e.assistantMessageEvent.delta };
       case "message_end": return { type: "message_end", agentId, agentName, role: e.message.role };
-      case "tool_execution_start": return { type: "tool_execution_start", agentId, toolName: e.toolName, toolCallId: e.toolCallId };
-      case "tool_execution_end": return { type: "tool_execution_end", agentId, toolName: e.toolName, toolCallId: e.toolCallId, isError: e.isError };
+      case "tool_execution_start": return { type: "tool_execution_start", agentId, toolName: e.toolName, toolCallId: e.toolCallId, args: e.args };
+      case "tool_execution_end": return { type: "tool_execution_end", agentId, toolName: e.toolName, toolCallId: e.toolCallId, result: e.result, isError: e.isError };
       default: return null;
     }
   }

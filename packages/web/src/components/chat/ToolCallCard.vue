@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import type { ToolCallInfo } from "../../types/index.js";
 
 const props = defineProps<{
@@ -7,6 +7,15 @@ const props = defineProps<{
 }>();
 
 const expanded = ref(false);
+const status = computed(() => {
+  if (props.toolCall.isError === true) {
+    return { label: "失败", cls: "error" };
+  }
+  if (props.toolCall.isError === false) {
+    return { label: "完成", cls: "success" };
+  }
+  return { label: "运行中", cls: "running" };
+});
 </script>
 
 <template>
@@ -18,8 +27,8 @@ const expanded = ref(false);
         </svg>
       </div>
       <span class="tool-name">{{ toolCall.name }}</span>
-      <span :class="['tool-status', toolCall.isError ? 'error' : 'success']">
-        {{ toolCall.isError ? "失败" : "完成" }}
+      <span :class="['tool-status', status.cls]">
+        {{ status.label }}
       </span>
       <svg
         class="expand-icon"
@@ -124,6 +133,11 @@ const expanded = ref(false);
 .tool-status.error {
   background: rgba(239, 68, 68, 0.12);
   color: var(--color-danger);
+}
+
+.tool-status.running {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--color-warning);
 }
 
 .expand-icon {
