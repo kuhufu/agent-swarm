@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from "vue";
 import { useSwarmStore } from "../stores/swarm.js";
-import SwarmCard from "../components/swarm/SwarmCard.vue";
 import CreateSwarmDialog from "../components/swarm/CreateSwarmDialog.vue";
 import type { SwarmConfig } from "../types/index.js";
 
 const swarmStore = useSwarmStore();
 const showDialog = ref(false);
 const editingSwarm = ref<SwarmConfig | null>(null);
+const activeTab = ref<"list" | "detail">("list");
 const selectedSwarmId = ref<string | null>(null);
 
 const selectedSwarm = computed(() =>
@@ -51,60 +51,124 @@ function handleDelete(swarm: SwarmConfig) {
 function handleSelect(swarm: SwarmConfig) {
   selectedSwarmId.value = swarm.id;
   swarmStore.selectSwarm(swarm);
+  activeTab.value = "detail";
 }
 
 function getModeConfig(mode: string) {
   const map: Record<string, { icon: string; label: string; color: string }> = {
-    router: { icon: "🔀", label: "Router 路由", color: "#818cf8" },
-    sequential: { icon: "➡️", label: "Sequential 顺序", color: "#34d399" },
-    parallel: { icon: "⏩", label: "Parallel 并行", color: "#60a5fa" },
-    swarm: { icon: "🐝", label: "Swarm 蜂群", color: "#fbbf24" },
-    debate: { icon: "⚖️", label: "Debate 辩论", color: "#f87171" },
+    router: { icon: "🔀", label: "Router", color: "#818cf8" },
+    sequential: { icon: "➡️", label: "Sequential", color: "#34d399" },
+    parallel: { icon: "⏩", label: "Parallel", color: "#60a5fa" },
+    swarm: { icon: "🐝", label: "Swarm", color: "#fbbf24" },
+    debate: { icon: "⚖️", label: "Debate", color: "#f87171" },
   };
   return map[mode] ?? { icon: "📦", label: mode, color: "#9ca3af" };
 }
 </script>
 
 <template>
-  <div class="swarms-view page-container">
+  <div class="swarms-view">
     <div class="swarms-layout">
-      <!-- Left: Swarm List -->
-      <div class="swarm-list-panel">
-        <div class="swarms-header">
-          <div>
-            <h2 class="section-title">Swarm 管理</h2>
-            <p class="section-desc">管理和配置多 Agent 协作集群</p>
-          </div>
-          <button class="btn-primary" @click="showDialog = true">
+      <!-- Left Sidebar -->
+      <aside class="swarms-sidebar">
+        <div class="sidebar-header">
+          <h2>Swarm 管理</h2>
+          <p>配置多 Agent 协作集群</p>
+        </div>
+
+        <nav class="swarms-nav">
+          <button
+            class="nav-item"
+            :class="{ active: activeTab === 'list' }"
+            @click="activeTab = 'list'"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="8" y1="6" x2="21" y2="6" />
+              <line x1="8" y1="12" x2="21" y2="12" />
+              <line x1="8" y1="18" x2="21" y2="18" />
+              <line x1="3" y1="6" x2="3.01" y2="6" />
+              <line x1="3" y1="12" x2="3.01" y2="12" />
+              <line x1="3" y1="18" x2="3.01" y2="18" />
+            </svg>
+            <div>
+              <span class="nav-label">Swarm 列表</span>
+              <span class="nav-desc">{{ swarmStore.swarms.length }} 个集群</span>
+            </div>
+          </button>
+
+          <div class="nav-divider">已配置</div>
+
+          <button
+            v-for="swarm in swarmStore.swarms"
+            :key="swarm.id"
+            class="nav-item swarm-nav-item"
+            :class="{ active: activeTab === 'detail' && selectedSwarmId === swarm.id }"
+            @click="handleSelect(swarm)"
+          >
+            <span class="swarm-nav-icon">{{ getModeConfig(swarm.mode).icon }}</span>
+            <div>
+              <span class="nav-label">{{ swarm.name }}</span>
+              <span class="nav-desc">{{ swarm.agents.length }} 个 Agent · {{ getModeConfig(swarm.mode).label }}</span>
+            </div>
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button class="btn-primary save-btn" @click="showDialog = true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            创建
+            创建 Swarm
           </button>
         </div>
+      </aside>
 
-        <div class="swarm-list">
-          <div
-            v-for="swarm in swarmStore.swarms"
-            :key="swarm.id"
-            class="swarm-list-item"
-            :class="{ active: selectedSwarmId === swarm.id }"
-            @click="handleSelect(swarm)"
-          >
-            <div class="item-icon">{{ getModeConfig(swarm.mode).icon }}</div>
-            <div class="item-info">
-              <div class="item-name">{{ swarm.name }}</div>
-              <div class="item-meta">
-                <span class="item-mode" :style="{ color: getModeConfig(swarm.mode).color }">
+      <!-- Right Content -->
+      <main class="swarms-content">
+        <!-- List Tab -->
+        <div v-if="activeTab === 'list'" class="tab-panel">
+          <div class="content-header">
+            <h3>Swarm 列表</h3>
+            <p>所有已配置的多 Agent 协作集群</p>
+          </div>
+
+          <div v-if="swarmStore.swarms.length" class="swarm-grid">
+            <div
+              v-for="swarm in swarmStore.swarms"
+              :key="swarm.id"
+              class="swarm-grid-card card"
+              @click="handleSelect(swarm)"
+            >
+              <div class="grid-card-header">
+                <span class="grid-card-icon">{{ getModeConfig(swarm.mode).icon }}</span>
+                <span
+                  class="badge"
+                  :style="{ background: getModeConfig(swarm.mode).color + '20', color: getModeConfig(swarm.mode).color, borderColor: getModeConfig(swarm.mode).color + '30' }"
+                >
                   {{ getModeConfig(swarm.mode).label }}
                 </span>
-                <span class="item-agents">{{ swarm.agents.length }} 个 Agent</span>
+              </div>
+              <h4 class="grid-card-name">{{ swarm.name }}</h4>
+              <p class="grid-card-agents">{{ swarm.agents.length }} 个 Agent</p>
+              <div class="grid-card-actions">
+                <button class="action-btn" @click.stop="handleEdit(swarm)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
+                <button class="action-btn danger" @click.stop="handleDelete(swarm)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
 
-          <div v-if="swarmStore.swarms.length === 0" class="empty-state">
+          <div v-else class="empty-state">
             <div class="empty-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2L2 7l10 5 10-5-10-5z" />
@@ -113,14 +177,12 @@ function getModeConfig(mode: string) {
               </svg>
             </div>
             <p class="empty-title">暂无 Swarm 配置</p>
-            <p class="empty-desc">点击上方按钮创建你的第一个 Swarm</p>
+            <p class="empty-desc">点击左侧按钮创建你的第一个 Swarm</p>
           </div>
         </div>
-      </div>
 
-      <!-- Right: Swarm Detail -->
-      <div class="swarm-detail-panel">
-        <template v-if="selectedSwarm">
+        <!-- Detail Tab -->
+        <div v-else-if="activeTab === 'detail' && selectedSwarm" class="tab-panel">
           <div class="detail-header">
             <div class="detail-title-row">
               <span class="detail-mode-icon">{{ getModeConfig(selectedSwarm.mode).icon }}</span>
@@ -179,20 +241,8 @@ function getModeConfig(mode: string) {
               </div>
             </div>
           </div>
-        </template>
-
-        <div v-else class="detail-empty">
-          <div class="detail-empty-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
-          </div>
-          <p class="detail-empty-title">选择一个 Swarm</p>
-          <p class="detail-empty-desc">从左侧列表选择 Swarm 查看详情</p>
         </div>
-      </div>
+      </main>
     </div>
 
     <CreateSwarmDialog
@@ -212,63 +262,183 @@ function getModeConfig(mode: string) {
 }
 
 .swarms-layout {
-  display: grid;
-  grid-template-columns: 360px 1fr;
+  display: flex;
   height: 100%;
-  gap: 1px;
-  background: var(--color-border-subtle);
 }
 
-/* Left Panel */
-.swarm-list-panel {
-  background: var(--color-bg-primary);
+/* Left Sidebar */
+.swarms-sidebar {
+  width: 280px;
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(16px);
+  border-right: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-}
-
-.swarms-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 20px;
-  border-bottom: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
+  padding: 24px 16px;
 }
 
-.section-desc {
-  color: var(--color-text-muted);
+.sidebar-header {
+  margin-bottom: 20px;
+  padding: 0 8px;
+}
+
+.sidebar-header h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 4px;
+}
+
+.sidebar-header p {
   font-size: 13px;
-  margin: 4px 0 0;
+  color: var(--color-text-muted);
+  margin: 0;
 }
 
-.swarm-list {
+.swarms-nav {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   overflow-y: auto;
-  padding: 8px;
 }
 
-.swarm-list-item {
+.nav-item {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px;
-  border-radius: 10px;
+  border-radius: 12px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  background: transparent;
+  text-align: left;
+  width: 100%;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-primary);
+}
+
+.nav-item.active {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--color-accent-light);
+}
+
+.nav-item svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.nav-item div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nav-label {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-desc {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.nav-item.active .nav-desc {
+  color: rgba(129, 140, 248, 0.7);
+}
+
+.nav-divider {
+  padding: 12px 8px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.swarm-nav-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.sidebar-footer {
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.save-btn {
+  width: 100%;
+}
+
+/* Right Content */
+.swarms-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 32px;
+}
+
+.content-header {
+  margin-bottom: 24px;
+}
+
+.content-header h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 4px;
+}
+
+.content-header p {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* Grid Cards */
+.swarm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.swarm-grid-card {
+  padding: 20px;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid transparent;
+  position: relative;
 }
 
-.swarm-list-item:hover {
-  background: rgba(255, 255, 255, 0.04);
+.swarm-grid-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-border-hover);
 }
 
-.swarm-list-item.active {
-  background: rgba(99, 102, 241, 0.1);
-  border-color: rgba(99, 102, 241, 0.2);
+.grid-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
 }
 
-.item-icon {
+.grid-card-icon {
   width: 40px;
   height: 40px;
   display: flex;
@@ -278,46 +448,58 @@ function getModeConfig(mode: string) {
   border-radius: 10px;
   border: 1px solid var(--color-border-subtle);
   font-size: 18px;
-  flex-shrink: 0;
 }
 
-.item-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.item-name {
-  font-size: 14px;
+.grid-card-name {
+  font-size: 16px;
   font-weight: 600;
   color: var(--color-text-primary);
-  margin-bottom: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin: 0 0 6px;
 }
 
-.item-meta {
+.grid-card-agents {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0 0 14px;
+}
+
+.grid-card-actions {
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.swarm-grid-card:hover .grid-card-actions {
+  opacity: 1;
+}
+
+.action-btn {
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
-}
-
-.item-mode {
-  font-weight: 500;
-}
-
-.item-agents {
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
   color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-/* Right Panel */
-.swarm-detail-panel {
-  background: var(--color-bg-primary);
-  overflow-y: auto;
-  padding: 24px;
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
 }
 
+.action-btn.danger:hover {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+/* Detail View */
 .detail-header {
   margin-bottom: 24px;
   padding-bottom: 20px;
@@ -463,7 +645,7 @@ function getModeConfig(mode: string) {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 60px 20px;
+  padding: 80px 0;
   color: var(--color-text-muted);
 }
 
@@ -493,45 +675,6 @@ function getModeConfig(mode: string) {
 
 .empty-desc {
   font-size: 13px;
-  margin: 0;
-}
-
-.detail-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--color-text-muted);
-  text-align: center;
-}
-
-.detail-empty-icon {
-  width: 64px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 20px;
-  border: 1px solid var(--color-border-subtle);
-  margin-bottom: 20px;
-}
-
-.detail-empty-icon svg {
-  width: 32px;
-  height: 32px;
-}
-
-.detail-empty-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  margin: 0 0 6px;
-}
-
-.detail-empty-desc {
-  font-size: 14px;
   margin: 0;
 }
 </style>
