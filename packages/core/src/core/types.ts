@@ -49,8 +49,21 @@ export interface ModelConfig {
   modelId: string;
   apiKey?: string;
   baseUrl?: string;
+  apiProtocol?: ApiProtocol;
   options?: Record<string, any>;
 }
+
+/** Supported LLM API protocols */
+export type ApiProtocol =
+  | "openai-completions"
+  | "openai-responses"
+  | "anthropic-messages"
+  | "google-generative-ai"
+  | "mistral-conversations"
+  | "azure-openai-responses"
+  | "bedrock-converse-stream"
+  | "google-vertex"
+  | (string & {});
 
 // ============================================================================
 // Agent Config
@@ -137,12 +150,20 @@ export interface LLMBackendConfig {
   defaultProvider: string;
   defaultModel: string;
   apiKeys: Record<string, string>;
+  /** Per-provider custom endpoint configuration */
+  providers?: Record<string, ProviderConfig>;
   endpoints?: Record<string, {
     baseUrl: string;
     headers?: Record<string, string>;
   }>;
   defaultThinkingLevel?: ThinkingLevel;
   defaultThinkingBudgets?: ThinkingBudgets;
+}
+
+export interface ProviderConfig {
+  baseUrl?: string;
+  apiProtocol?: ApiProtocol;
+  headers?: Record<string, string>;
 }
 
 // ============================================================================

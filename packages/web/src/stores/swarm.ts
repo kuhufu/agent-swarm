@@ -18,9 +18,15 @@ export const useSwarmStore = defineStore("swarm", () => {
     }
   }
 
+  async function createSwarm(swarm: SwarmConfig) {
+    const res = await swarmApi.createSwarm(swarm);
+    swarms.value.push(res.data);
+    return res.data;
+  }
+
   function selectSwarm(swarm: SwarmConfig) {
     currentSwarm.value = swarm;
   }
 
-  return { swarms, currentSwarm, loading, fetchSwarms, selectSwarm };
+  return { swarms, currentSwarm, loading, fetchSwarms, createSwarm, selectSwarm };
 });

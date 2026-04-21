@@ -20,6 +20,7 @@ export function configRoutes(swarm: AgentSwarm): Router {
         defaultProvider: config.defaultProvider,
         defaultModel: config.defaultModel,
         apiKeys: maskedApiKeys,
+        providers: config.providers,
         endpoints: config.endpoints,
         defaultThinkingLevel: config.defaultThinkingLevel,
       },
@@ -28,13 +29,30 @@ export function configRoutes(swarm: AgentSwarm): Router {
 
   router.put("/", (req, res) => {
     try {
-      const { defaultProvider, defaultModel } = req.body;
+      const { defaultProvider, defaultModel, apiKeys, providers } = req.body;
       const currentConfig = swarm.getLLMConfig();
+
+      // Merge API keys: keep existing keys that weren't sent (masked values)
+      const mergedApiKeys: Record<string, string> = { ...currentConfig.apiKeys };
+      if (apiKeys) {
+        for (const [provider, key] of Object.entries(apiKeys)) {
+          if (typeof key === "string") {
+            // If the key looks masked (contains "..."), keep the existing one
+            if (key.includes("...") && currentConfig.apiKeys[provider]) {
+              // keep existing
+            } else {
+              mergedApiKeys[provider] = key;
+            }
+          }
+        }
+      }
 
       res.json({
         data: {
           defaultProvider: defaultProvider ?? currentConfig.defaultProvider,
           defaultModel: defaultModel ?? currentConfig.defaultModel,
+          apiKeys: mergedApiKeys,
+          providers: providers ?? currentConfig.providers,
         },
       });
     } catch (err: any) {

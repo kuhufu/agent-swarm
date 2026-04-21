@@ -1,20 +1,28 @@
 <script setup lang="ts">
-import { onMounted } from "vue";
+import { onMounted, ref } from "vue";
 import { useSwarmStore } from "../stores/swarm.js";
 import SwarmCard from "../components/swarm/SwarmCard.vue";
+import CreateSwarmDialog from "../components/swarm/CreateSwarmDialog.vue";
+import type { SwarmConfig } from "../types/index.js";
 
 const swarmStore = useSwarmStore();
+const showDialog = ref(false);
 
 onMounted(() => {
   swarmStore.fetchSwarms();
 });
+
+async function handleCreate(swarm: SwarmConfig) {
+  await swarmStore.createSwarm(swarm);
+  showDialog.value = false;
+}
 </script>
 
 <template>
   <div class="swarms-view">
     <div class="swarms-header">
       <h2>Swarm 管理</h2>
-      <t-button theme="primary">创建 Swarm</t-button>
+      <t-button theme="primary" @click="showDialog = true">创建 Swarm</t-button>
     </div>
     <div class="swarms-grid">
       <SwarmCard
@@ -27,6 +35,12 @@ onMounted(() => {
         <p>暂无 Swarm 配置，点击上方按钮创建</p>
       </div>
     </div>
+
+    <CreateSwarmDialog
+      v-if="showDialog"
+      @create="handleCreate"
+      @close="showDialog = false"
+    />
   </div>
 </template>
 

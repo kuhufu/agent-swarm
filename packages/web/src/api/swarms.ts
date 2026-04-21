@@ -16,3 +16,10 @@ export function listSwarms() {
 export function getSwarm(id: string) {
   return apiClient<SwarmDetailResponse>(`/swarms/${id}`);
 }
+
+export function createSwarm(swarm: Omit<SwarmConfig, "agents"> & { agents: SwarmConfig["agents"] }) {
+  return apiClient<SwarmDetailResponse>("/swarms", {
+    method: "POST",
+    body: JSON.stringify(swarm),
+  });
+}

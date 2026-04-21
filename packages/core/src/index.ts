@@ -1,5 +1,5 @@
 // Core types
-export type { SwarmConfig, SwarmAgentConfig, ModelConfig, ThinkingLevel, ThinkingBudgets } from "./core/types.js";
+export type { SwarmConfig, SwarmAgentConfig, ModelConfig, ThinkingLevel, ThinkingBudgets, ApiProtocol, ProviderConfig } from "./core/types.js";
 export type { CollaborationMode, AggregationStrategy, DebateConfig, PipelineStep } from "./core/types.js";
 export type { ContextConfig, StorageConfig, AgentSwarmRootConfig, LLMBackendConfig } from "./core/types.js";
 export type {
@@ -57,6 +57,9 @@ export { SequentialMode } from "./modes/sequential.js";
 export { ParallelMode } from "./modes/parallel.js";
 export { SwarmMode } from "./modes/swarm-mode.js";
 export { DebateMode } from "./modes/debate.js";
+
+// LLM helpers
+export { resolveModel, resolveModelFromProvider, mapThinkingLevel } from "./llm/provider.js";
 
 // Config helper
 export { defineConfig } from "./core/config.js";

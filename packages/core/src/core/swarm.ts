@@ -133,6 +133,23 @@ export class AgentSwarm {
     return Array.from(this.swarmConfigs.values());
   }
 
+  /**
+   * Add a new swarm config at runtime.
+   */
+  addSwarmConfig(config: SwarmConfig): SwarmConfig {
+    if (this.swarmConfigs.has(config.id)) {
+      throw new Error(`Swarm already exists: ${config.id}`);
+    }
+    this.swarmConfigs.set(config.id, config);
+    // Persist to storage if initialized
+    if (this._initialized) {
+      this.storage.saveSwarm(config).catch(() => { /* ignore storage errors */ });
+    }
+    // Also add to root config
+    this.config.swarms.push(config);
+    return config;
+  }
+
   getLLMConfig(): LLMBackendConfig {
     return { ...this.config.llm };
   }

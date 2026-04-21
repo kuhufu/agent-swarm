@@ -35,10 +35,26 @@ export interface ConversationInfo {
   updatedAt: number;
 }
 
+export type ApiProtocol =
+  | "openai-completions"
+  | "openai-responses"
+  | "anthropic-messages"
+  | "google-generative-ai"
+  | "mistral-conversations"
+  | "azure-openai-responses"
+  | (string & {});
+
+export interface ProviderConfig {
+  baseUrl?: string;
+  apiProtocol?: ApiProtocol;
+  headers?: Record<string, string>;
+}
+
 export interface LLMConfig {
   defaultProvider: string;
   defaultModel: string;
   apiKeys: Record<string, string>;
+  providers?: Record<string, ProviderConfig>;
 }
 
 // ============================================================================

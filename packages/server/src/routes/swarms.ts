@@ -17,5 +17,18 @@ export function swarmRoutes(swarm: AgentSwarm): Router {
     res.json({ data: config });
   });
 
+  router.post("/", (req, res) => {
+    try {
+      const { id, name, mode, agents } = req.body;
+      if (!id || !name || !mode || !agents?.length) {
+        return res.status(400).json({ error: "id, name, mode, and at least one agent are required" });
+      }
+      const config = swarm.addSwarmConfig({ id, name, mode, agents });
+      res.status(201).json({ data: config });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return router;
 }
