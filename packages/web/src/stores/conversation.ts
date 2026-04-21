@@ -8,7 +8,7 @@ export const useConversationStore = defineStore("conversation", () => {
   const swarmStore = useSwarmStore();
   const currentConversationId = ref<string | null>(null);
   const messages = ref<ChatMessage[]>([]);
-  const streamingMessage = ref<ChatMessage | null>(null);
+  const streamingMessages = ref<Map<string, ChatMessage>>(new Map());
   const agentStates = ref<Map<string, AgentState>>(new Map());
   const isActive = ref(false);
   const loading = ref(false);
@@ -19,35 +19,55 @@ export const useConversationStore = defineStore("conversation", () => {
     messages.value.push(msg);
   }
 
+  function streamKeyFromMessage(msg: ChatMessage): string {
+    return msg.agentId ?? msg.id;
+  }
+
   function startStreamingMessage(msg: ChatMessage) {
-    // Close previous stream first to avoid losing partial text
-    if (streamingMessage.value && streamingMessage.value.content.trim().length > 0) {
-      messages.value.push({ ...streamingMessage.value });
+    const key = streamKeyFromMessage(msg);
+    const existing = streamingMessages.value.get(key);
+    if (existing && existing.content.trim().length > 0) {
+      messages.value.push({ ...existing });
     }
-    streamingMessage.value = { ...msg, content: "" };
+    streamingMessages.value.set(key, { ...msg, content: "" });
+    streamingMessages.value = new Map(streamingMessages.value);
   }
 
   function appendStreamDelta(agentId: string, delta: string) {
-    if (streamingMessage.value && streamingMessage.value.agentId === agentId) {
-      streamingMessage.value = {
-        ...streamingMessage.value,
-        content: streamingMessage.value.content + delta,
-      };
+    const current = streamingMessages.value.get(agentId);
+    if (!current) {
+      return;
     }
+    streamingMessages.value.set(agentId, {
+      ...current,
+      content: current.content + delta,
+    });
+    streamingMessages.value = new Map(streamingMessages.value);
   }
 
   function finalizeStream(agentId?: string) {
-    if (streamingMessage.value && (!agentId || streamingMessage.value.agentId === agentId)) {
-      if (streamingMessage.value.content.trim().length > 0) {
-        messages.value.push({ ...streamingMessage.value });
+    if (agentId) {
+      const stream = streamingMessages.value.get(agentId);
+      if (stream && stream.content.trim().length > 0) {
+        messages.value.push({ ...stream });
       }
-      streamingMessage.value = null;
+      streamingMessages.value.delete(agentId);
+      streamingMessages.value = new Map(streamingMessages.value);
+      return;
     }
+
+    for (const [key, stream] of streamingMessages.value.entries()) {
+      if (stream.content.trim().length > 0) {
+        messages.value.push({ ...stream });
+      }
+      streamingMessages.value.delete(key);
+    }
+    streamingMessages.value = new Map(streamingMessages.value);
   }
 
   function clearMessages() {
     messages.value = [];
-    streamingMessage.value = null;
+    streamingMessages.value = new Map();
   }
 
   function setCurrentConversation(id: string | null) {
@@ -147,7 +167,7 @@ export const useConversationStore = defineStore("conversation", () => {
       const res = await conversationsApi.getMessages(id);
       currentConversationId.value = id;
       messages.value = (Array.isArray(res.data) ? res.data : []).map((msg) => normalizeHistoryMessage(msg));
-      streamingMessage.value = null;
+      streamingMessages.value = new Map();
       isActive.value = false;
     } finally {
       loadingMessages.value = false;
@@ -208,7 +228,7 @@ export const useConversationStore = defineStore("conversation", () => {
   return {
     currentConversationId,
     messages,
-    streamingMessage,
+    streamingMessages,
     agentStates,
     isActive,
     loading,

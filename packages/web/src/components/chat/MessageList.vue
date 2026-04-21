@@ -5,7 +5,7 @@ import MessageItem from "./MessageItem.vue";
 
 const props = defineProps<{
   messages: ChatMessage[];
-  streamingMessage: ChatMessage | null;
+  streamingMessages: ChatMessage[];
 }>();
 
 const visibleMessages = computed(() =>
@@ -19,11 +19,35 @@ const visibleMessages = computed(() =>
     return hasText || hasThinking || hasToolCalls;
   }),
 );
+
+interface RenderEntry {
+  message: ChatMessage;
+  streaming: boolean;
+}
+
+const renderEntries = computed<RenderEntry[]>(() => {
+  const byId = new Map<string, RenderEntry>();
+
+  for (const msg of visibleMessages.value) {
+    byId.set(msg.id, { message: msg, streaming: false });
+  }
+
+  for (const msg of props.streamingMessages) {
+    byId.set(msg.id, { message: msg, streaming: true });
+  }
+
+  return Array.from(byId.values()).sort((a, b) => {
+    if (a.message.timestamp !== b.message.timestamp) {
+      return a.message.timestamp - b.message.timestamp;
+    }
+    return a.message.id.localeCompare(b.message.id);
+  });
+});
 </script>
 
 <template>
   <div class="message-list">
-    <div v-if="visibleMessages.length === 0 && !streamingMessage" class="empty-state">
+    <div v-if="renderEntries.length === 0" class="empty-state">
       <div class="empty-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -34,14 +58,10 @@ const visibleMessages = computed(() =>
     </div>
     <div v-else class="messages-container">
       <MessageItem
-        v-for="msg in visibleMessages"
-        :key="msg.id"
-        :message="msg"
-      />
-      <MessageItem
-        v-if="streamingMessage"
-        :message="streamingMessage"
-        :streaming="true"
+        v-for="entry in renderEntries"
+        :key="entry.message.id"
+        :message="entry.message"
+        :streaming="entry.streaming"
       />
     </div>
   </div>

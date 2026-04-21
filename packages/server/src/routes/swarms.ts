@@ -1,9 +1,19 @@
 import { Router } from "express";
 import type { AgentSwarm, SwarmConfig } from "@agent-swarm/core";
+import { randomUUID } from "node:crypto";
 
-function buildSwarmConfig(input: any, idOverride?: string): SwarmConfig {
+interface BuildSwarmConfigOptions {
+  idOverride?: string;
+  autoGenerateId?: boolean;
+}
+
+function buildSwarmConfig(input: any, options: BuildSwarmConfigOptions = {}): SwarmConfig {
+  const incomingId = typeof input.id === "string" ? input.id.trim() : "";
+  const resolvedId = options.idOverride
+    ?? (incomingId || (options.autoGenerateId ? `swarm-${randomUUID()}` : ""));
+
   const config: SwarmConfig = {
-    id: idOverride ?? input.id,
+    id: resolvedId,
     name: input.name,
     mode: input.mode,
     agents: input.agents,
@@ -56,7 +66,7 @@ export function swarmRoutes(swarm: AgentSwarm): Router {
 
   router.post("/", async (req, res) => {
     try {
-      const config = await swarm.addSwarmConfig(buildSwarmConfig(req.body));
+      const config = await swarm.addSwarmConfig(buildSwarmConfig(req.body, { autoGenerateId: true }));
       res.status(201).json({ data: config });
     } catch (err: any) {
       const message = err?.message ?? "Failed to create swarm";
@@ -88,7 +98,7 @@ export function swarmRoutes(swarm: AgentSwarm): Router {
         maxConcurrency: body.maxConcurrency ?? existing.maxConcurrency,
       };
 
-      const config = await swarm.updateSwarmConfig(id, buildSwarmConfig(mergedInput, id));
+      const config = await swarm.updateSwarmConfig(id, buildSwarmConfig(mergedInput, { idOverride: id }));
       res.json({ data: config });
     } catch (err: any) {
       const message = err?.message ?? "Failed to update swarm";

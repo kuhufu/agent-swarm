@@ -13,6 +13,9 @@ const conversationStore = useConversationStore();
 const { connect, connected } = useWebSocket();
 
 const swarmId = computed(() => swarmStore.currentSwarm?.id ?? "");
+const streamingMessages = computed(() =>
+  Array.from(conversationStore.streamingMessages.values()),
+);
 
 onMounted(() => {
   swarmStore.fetchSwarms();
@@ -46,7 +49,7 @@ function handleNewConversation() {
       </div>
       <MessageList
         :messages="conversationStore.messages"
-        :streaming-message="conversationStore.streamingMessage"
+        :streaming-messages="streamingMessages"
       />
       <InterventionPanel />
       <ChatInput :swarm-id="swarmId" :active="conversationStore.isActive" />
