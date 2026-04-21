@@ -1,6 +1,6 @@
 import { Agent } from "@mariozechner/pi-agent-core";
-import type { ThinkingLevel } from "@mariozechner/pi-agent-core";
-import type { SwarmAgentConfig, ModelConfig, InterventionPoint } from "./types.js";
+import type { AgentOptions } from "@mariozechner/pi-agent-core";
+import type { SwarmAgentConfig } from "./types.js";
 import { resolveModel, mapThinkingLevel } from "../llm/provider.js";
 import type { LLMBackendConfig } from "./types.js";
 import type { InterventionHandler } from "../intervention/handler.js";
@@ -9,6 +9,8 @@ interface CreateAgentOptions {
   config: SwarmAgentConfig;
   llmConfig: LLMBackendConfig;
   interventionHandler?: InterventionHandler;
+  beforeToolCall?: AgentOptions["beforeToolCall"];
+  afterToolCall?: AgentOptions["afterToolCall"];
 }
 
 /**
@@ -38,6 +40,8 @@ export function createAgent(opts: CreateAgentOptions): Agent {
     },
     getApiKey: (provider: string) => apiKeys[provider],
     steeringMode: "one-at-a-time",
+    beforeToolCall: opts.beforeToolCall,
+    afterToolCall: opts.afterToolCall,
   });
 
   return agent;

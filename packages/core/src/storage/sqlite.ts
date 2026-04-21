@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import { eq, desc, and } from "drizzle-orm";
 import type { IStorage, StoredMessage, StoredEvent, Conversation } from "./interface.js";
 import type { SwarmConfig } from "../core/types.js";
-import { swarmsTable, conversationsTable, messagesTable, eventsTable } from "./schema.js";
+import { settingsTable, swarmsTable, agentsTable, conversationsTable, messagesTable, eventsTable } from "./schema.js";
 
 export class SqliteStorage implements IStorage {
   private db: ReturnType<typeof drizzle> | null = null;
@@ -35,6 +35,11 @@ export class SqliteStorage implements IStorage {
         name TEXT NOT NULL,
         config TEXT NOT NULL,
         created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
         updated_at INTEGER NOT NULL
       );
       CREATE TABLE IF NOT EXISTS agents (
@@ -93,6 +98,26 @@ export class SqliteStorage implements IStorage {
     return this.db;
   }
 
+  // ── Global settings ──
+
+  async saveSetting(key: string, value: string): Promise<void> {
+    const now = Date.now();
+    this.getDb().insert(settingsTable).values({
+      key,
+      value,
+      updatedAt: now,
+    }).onConflictDoUpdate({
+      target: settingsTable.key,
+      set: { value, updatedAt: now },
+    }).run();
+  }
+
+  async loadSetting(key: string): Promise<string | null> {
+    const rows = this.getDb().select().from(settingsTable).where(eq(settingsTable.key, key)).all();
+    if (rows.length === 0) return null;
+    return rows[0].value;
+  }
+
   // ── Swarm management ──
 
   async saveSwarm(config: SwarmConfig): Promise<void> {
@@ -107,6 +132,31 @@ export class SqliteStorage implements IStorage {
       target: swarmsTable.id,
       set: { name: config.name, config: JSON.stringify(config), updatedAt: now },
     }).run();
+
+    const agents = [...config.agents];
+    if (config.orchestrator && !agents.some((agent) => agent.id === config.orchestrator!.id)) {
+      agents.push(config.orchestrator);
+    }
+
+    for (const agent of agents) {
+      const serializableAgent = { ...agent, tools: undefined };
+      this.getDb().insert(agentsTable).values({
+        id: agent.id,
+        swarmId: config.id,
+        name: agent.name,
+        config: JSON.stringify(serializableAgent),
+        createdAt: now,
+        updatedAt: now,
+      }).onConflictDoUpdate({
+        target: agentsTable.id,
+        set: {
+          swarmId: config.id,
+          name: agent.name,
+          config: JSON.stringify(serializableAgent),
+          updatedAt: now,
+        },
+      }).run();
+    }
   }
 
   async loadSwarm(id: string): Promise<SwarmConfig | null> {

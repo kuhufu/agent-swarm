@@ -33,6 +33,10 @@ export interface IStorage {
   init(): Promise<void>;
   close(): Promise<void>;
 
+  // Global settings
+  saveSetting(key: string, value: string): Promise<void>;
+  loadSetting(key: string): Promise<string | null>;
+
   // Swarm management
   saveSwarm(config: SwarmConfig): Promise<void>;
   loadSwarm(id: string): Promise<SwarmConfig | null>;

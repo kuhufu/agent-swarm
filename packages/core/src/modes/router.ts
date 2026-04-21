@@ -1,6 +1,8 @@
 import type { ModeExecutor, ModeExecutionContext } from "./types.js";
 import type { SwarmEvent, InterventionPoint } from "../core/types.js";
-import type { AgentEvent as PiAgentEvent } from "@mariozechner/pi-agent-core";
+import type { AgentEvent as PiAgentEvent, AgentMessage } from "@mariozechner/pi-agent-core";
+import type { Message } from "@mariozechner/pi-ai";
+import { messageToStored } from "../storage/message-mapper.js";
 
 /**
  * Router mode: an orchestrator agent decides which specialist agent to route to.
@@ -8,7 +10,7 @@ import type { AgentEvent as PiAgentEvent } from "@mariozechner/pi-agent-core";
  */
 export class RouterMode implements ModeExecutor {
   async *execute(ctx: ModeExecutionContext): AsyncGenerator<SwarmEvent> {
-    const { swarmConfig, message, agents, createAgentFn, emit, isAborted } = ctx;
+    const { swarmConfig, message, agents, createAgentFn, emit } = ctx;
     const orchId = swarmConfig.orchestrator?.id;
     if (!orchId) throw new Error("Router mode requires an orchestrator agent");
 
@@ -19,6 +21,7 @@ export class RouterMode implements ModeExecutor {
 
     const orchActive = agents.get(orchId)!;
     let routedAgentId: string | null = null;
+    let routedMessage = message;
 
     // Subscribe to detect routing decisions
     const unsub = orchActive.agent.subscribe((e: PiAgentEvent) => {
@@ -26,6 +29,9 @@ export class RouterMode implements ModeExecutor {
         const result = e.result;
         if (typeof result === "object" && result?.details?.routedTo) {
           routedAgentId = result.details.routedTo;
+          if (typeof result?.details?.message === "string" && result.details.message.trim()) {
+            routedMessage = result.details.message;
+          }
         }
       }
     });
@@ -35,7 +41,18 @@ export class RouterMode implements ModeExecutor {
     unsub();
 
     // Check intervention for handoff
-    if (routedAgentId && agents.has(routedAgentId)) {
+    if (routedAgentId) {
+      if (!agents.has(routedAgentId)) {
+        const targetConfig = swarmConfig.agents.find((agent) => agent.id === routedAgentId);
+        if (targetConfig) {
+          createAgentFn(targetConfig);
+        }
+      }
+      if (!agents.has(routedAgentId)) {
+        yield { type: "error", error: new Error(`Routed agent not found: ${routedAgentId}`) };
+        return;
+      }
+
       const strategy = this.getStrategy(ctx, "on_handoff");
       if (strategy !== "auto" && ctx.interventionCallback) {
         const decision = await ctx.interventionCallback("on_handoff", {
@@ -44,6 +61,9 @@ export class RouterMode implements ModeExecutor {
           reason: "Router decision",
         });
         if (decision?.action === "reject" || decision?.action === "abort") {
+          if (decision?.action === "abort") {
+            ctx.abort();
+          }
           return;
         }
       }
@@ -51,7 +71,7 @@ export class RouterMode implements ModeExecutor {
       emit({ type: "handoff", fromAgentId: orchId, toAgentId: routedAgentId, reason: "Router decision" });
 
       // Run the routed agent
-      yield* this.runAgent(routedAgentId, message, ctx);
+      yield* this.runAgent(routedAgentId, routedMessage, ctx);
     }
   }
 
@@ -65,6 +85,8 @@ export class RouterMode implements ModeExecutor {
 
     const { agent, config } = active;
     const events: SwarmEvent[] = [];
+    const initialMessageCount = agent.state.messages.length;
+
     let resolveDone: () => void;
     const donePromise = new Promise<void>((r) => { resolveDone = r; });
 
@@ -75,6 +97,12 @@ export class RouterMode implements ModeExecutor {
         ctx.emit(swarmEvent);
       }
       if (e.type === "agent_end") {
+        void this.persistNewMessages(ctx, agentId, agent.state.messages.slice(initialMessageCount))
+          .catch((err) => {
+            const persistenceError: SwarmEvent = { type: "error", agentId, error: err as Error };
+            events.push(persistenceError);
+            ctx.emit(persistenceError);
+          });
         resolveDone();
       }
     });
@@ -102,6 +130,29 @@ export class RouterMode implements ModeExecutor {
       }
     }
     unsub();
+  }
+
+  private async persistNewMessages(
+    ctx: ModeExecutionContext,
+    agentId: string,
+    newMessages: AgentMessage[],
+  ): Promise<void> {
+    for (const message of newMessages) {
+      if (!this.isPersistablePiMessage(message) || message.role === "user") {
+        continue;
+      }
+      await ctx.storage.appendMessage(
+        ctx.conversationId,
+        messageToStored(message, agentId),
+      );
+    }
+  }
+
+  private isPersistablePiMessage(message: AgentMessage): message is Message {
+    return typeof message === "object"
+      && message !== null
+      && "role" in message
+      && (message.role === "user" || message.role === "assistant" || message.role === "toolResult");
   }
 
   private mapAgentEvent(e: PiAgentEvent, agentId: string, agentName: string): SwarmEvent | null {

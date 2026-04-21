@@ -10,7 +10,7 @@
     "build:core": "pnpm --filter @agent-swarm/core build",
     "build:server": "pnpm --filter @agent-swarm/server build",
     "build:web": "pnpm --filter @agent-swarm/web build",
-    "test": "pnpm --filter @agent-swarm/core test",
+    "test": "pnpm --filter @agent-swarm/core test && pnpm --filter @agent-swarm/server test",
     "lint": "pnpm -r run lint",
     "clean": "pnpm -r run clean && rm -rf node_modules"
   },

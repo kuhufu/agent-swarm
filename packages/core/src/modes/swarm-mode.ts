@@ -1,6 +1,8 @@
 import type { ModeExecutor, ModeExecutionContext } from "./types.js";
 import type { SwarmEvent, InterventionPoint } from "../core/types.js";
-import type { AgentEvent as PiAgentEvent } from "@mariozechner/pi-agent-core";
+import type { AgentEvent as PiAgentEvent, AgentMessage } from "@mariozechner/pi-agent-core";
+import type { Message } from "@mariozechner/pi-ai";
+import { messageToStored } from "../storage/message-mapper.js";
 
 /**
  * Swarm mode: agents can hand off to each other dynamically.
@@ -35,8 +37,14 @@ export class SwarmMode implements ModeExecutor {
           input: currentMessage,
           turn,
         });
-        if (decision?.action === "abort") break;
-        if (decision?.action === "reject") { turn++; continue; }
+        if (decision?.action === "abort") {
+          ctx.abort();
+          break;
+        }
+        if (decision?.action === "reject") {
+          turn++;
+          continue;
+        }
         if (decision?.action === "edit" && decision?.editedInput) {
           currentMessage = decision.editedInput;
         }
@@ -44,12 +52,16 @@ export class SwarmMode implements ModeExecutor {
 
       // Listen for handoff during agent execution
       let handoffTo: string | null = null;
+      let handoffMessage: string | null = null;
       const active = agents.get(currentAgentId)!;
       const unsub = active.agent.subscribe((e: PiAgentEvent) => {
         if (e.type === "tool_execution_end" && !e.isError) {
           const result = e.result;
           if (typeof result === "object" && result?.details?.handoffTo) {
             handoffTo = result.details.handoffTo;
+            if (typeof result?.details?.message === "string" && result.details.message.trim()) {
+              handoffMessage = result.details.message;
+            }
           }
         }
       });
@@ -60,7 +72,8 @@ export class SwarmMode implements ModeExecutor {
       // Check for handoff
       if (handoffTo) {
         // Ensure target agent is created
-        const targetConfig = swarmConfig.agents.find((a) => a.id === handoffTo);
+        const targetConfig = swarmConfig.agents.find((a) => a.id === handoffTo)
+          ?? (swarmConfig.orchestrator?.id === handoffTo ? swarmConfig.orchestrator : undefined);
         if (targetConfig && !agents.has(handoffTo)) {
           createAgentFn(targetConfig);
         }
@@ -74,6 +87,9 @@ export class SwarmMode implements ModeExecutor {
               toAgentId: handoffTo,
             });
             if (decision?.action === "reject" || decision?.action === "abort") {
+              if (decision?.action === "abort") {
+                ctx.abort();
+              }
               break;
             }
           }
@@ -81,12 +97,16 @@ export class SwarmMode implements ModeExecutor {
           emit({ type: "handoff", fromAgentId: currentAgentId, toAgentId: handoffTo });
 
           // Build context message from previous agent's output
-          const prevAgent = agents.get(currentAgentId);
-          if (prevAgent) {
-            const msgs = prevAgent.agent.state.messages;
-            const lastAssistant = [...msgs].reverse().find((m: any) => m.role === "assistant");
-            if (lastAssistant) {
-              currentMessage = this.extractText(lastAssistant.content);
+          if (handoffMessage) {
+            currentMessage = handoffMessage;
+          } else {
+            const prevAgent = agents.get(currentAgentId);
+            if (prevAgent) {
+              const msgs = prevAgent.agent.state.messages;
+              const lastAssistant = [...msgs].reverse().find((m: any) => m.role === "assistant");
+              if (lastAssistant) {
+                currentMessage = this.extractText(lastAssistant.content);
+              }
             }
           }
 
@@ -113,6 +133,8 @@ export class SwarmMode implements ModeExecutor {
 
     const { agent, config } = active;
     const events: SwarmEvent[] = [];
+    const initialMessageCount = agent.state.messages.length;
+
     let resolveDone: () => void;
     const donePromise = new Promise<void>((r) => { resolveDone = r; });
 
@@ -122,7 +144,15 @@ export class SwarmMode implements ModeExecutor {
         events.push(swarmEvent);
         ctx.emit(swarmEvent);
       }
-      if (e.type === "agent_end") resolveDone();
+      if (e.type === "agent_end") {
+        void this.persistNewMessages(ctx, agentId, agent.state.messages.slice(initialMessageCount))
+          .catch((err) => {
+            const persistenceError: SwarmEvent = { type: "error", agentId, error: err as Error };
+            events.push(persistenceError);
+            ctx.emit(persistenceError);
+          });
+        resolveDone();
+      }
     });
 
     agent.prompt(input).catch((err) => {
@@ -145,6 +175,29 @@ export class SwarmMode implements ModeExecutor {
       }
     }
     unsub();
+  }
+
+  private async persistNewMessages(
+    ctx: ModeExecutionContext,
+    agentId: string,
+    newMessages: AgentMessage[],
+  ): Promise<void> {
+    for (const message of newMessages) {
+      if (!this.isPersistablePiMessage(message) || message.role === "user") {
+        continue;
+      }
+      await ctx.storage.appendMessage(
+        ctx.conversationId,
+        messageToStored(message, agentId),
+      );
+    }
+  }
+
+  private isPersistablePiMessage(message: AgentMessage): message is Message {
+    return typeof message === "object"
+      && message !== null
+      && "role" in message
+      && (message.role === "user" || message.role === "assistant" || message.role === "toolResult");
   }
 
   private extractText(content: any): string {

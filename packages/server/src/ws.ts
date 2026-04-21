@@ -45,10 +45,10 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
             }
             break;
           default:
-            ws.send(JSON.stringify({ type: "error", payload: { message: `Unknown message type: ${msg.type}` } }));
+            send(client, { type: "error", payload: { message: `Unknown message type: ${msg.type}` } });
         }
       } catch (err: any) {
-        ws.send(JSON.stringify({ type: "error", payload: { message: err.message ?? "Internal error" } }));
+        send(client, { type: "error", payload: { message: err.message ?? "Internal error" } });
       }
     });
 
@@ -56,10 +56,14 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
       if (client.activeConversation) {
         client.activeConversation.abort();
       }
+      for (const resolve of client.pendingDecisions.values()) {
+        resolve({ action: "abort", reason: "WebSocket disconnected" });
+      }
+      client.pendingDecisions.clear();
       clients.delete(client);
     });
 
-    ws.send(JSON.stringify({ type: "connected", payload: { message: "Connected to Agent Swarm" } }));
+    send(client, { type: "connected", payload: { message: "Connected to Agent Swarm" } });
   });
 
   /**
@@ -68,32 +72,35 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
   async function handleSendMessage(client: WSClient, msg: any, swarm: AgentSwarm) {
     const { swarmId, content, conversationId } = msg.payload ?? {};
 
-    try {
-      let conversation: SwarmConversation;
+    if (typeof content !== "string" || content.trim().length === 0) {
+      send(client, { type: "error", payload: { message: "content must be a non-empty string" } });
+      return;
+    }
 
+    let conversation: SwarmConversation | undefined;
+    try {
       if (conversationId) {
         conversation = await swarm.resumeConversation(conversationId);
       } else if (swarmId) {
         conversation = await swarm.createConversation(swarmId);
       } else {
-        client.ws.send(JSON.stringify({ type: "error", payload: { message: "swarmId or conversationId required" } }));
+        send(client, { type: "error", payload: { message: "swarmId or conversationId required" } });
         return;
       }
 
       client.activeConversation = conversation;
       const convId = conversation.getId();
+      client.conversationId = convId;
 
       // Set up intervention callback
       conversation.onIntervention(async (point: any, context: any) => {
         const requestId = crypto.randomUUID();
 
-        if (client.ws.readyState === WebSocket.OPEN) {
-          client.ws.send(JSON.stringify({
-            type: "intervention_required",
-            payload: { requestId, point, context },
-            conversationId: convId,
-          }));
-        }
+        send(client, {
+          type: "intervention_required",
+          payload: { requestId, point, context },
+          conversationId: convId,
+        });
 
         return new Promise<any>((resolve) => {
           client.pendingDecisions.set(requestId, resolve);
@@ -109,40 +116,39 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
       });
 
       // Send conversation created event
-      client.ws.send(JSON.stringify({
+      const createdPacket = {
         type: "conversation_created",
         payload: { conversationId: convId },
-      }));
+      };
+      send(client, createdPacket);
+      broadcastPacketToConversation(convId, createdPacket, client);
 
       // Stream events from the conversation
       const stream = conversation.prompt(content);
 
       for await (const event of stream) {
-        if (client.ws.readyState !== WebSocket.OPEN) break;
-
-        client.ws.send(JSON.stringify({
+        const packet = {
           type: event.type,
           payload: serializeEvent(event),
           conversationId: convId,
-        }));
+        };
+        send(client, packet);
+        broadcastPacketToConversation(convId, packet, client);
       }
 
-      // Send completion event
-      if (client.ws.readyState === WebSocket.OPEN) {
-        client.ws.send(JSON.stringify({
-          type: "prompt_completed",
-          payload: { conversationId: convId },
-        }));
-      }
-
-      client.activeConversation = undefined;
+      const completedPacket = {
+        type: "prompt_completed",
+        payload: { conversationId: convId },
+      };
+      send(client, completedPacket);
+      broadcastPacketToConversation(convId, completedPacket, client);
     } catch (err: any) {
-      if (client.ws.readyState === WebSocket.OPEN) {
-        client.ws.send(JSON.stringify({
-          type: "error",
-          payload: { message: err.message ?? "Failed to process message" },
-        }));
-      }
+      send(client, {
+        type: "error",
+        payload: { message: err.message ?? "Failed to process message" },
+      });
+    } finally {
+      client.activeConversation = undefined;
     }
   }
 
@@ -176,14 +182,24 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
     return serialized;
   }
 
-  function broadcastToConversation(conversationId: string, event: SwarmEvent) {
-    const payload = JSON.stringify({
-      type: event.type,
-      payload: serializeEvent(event),
-      conversationId,
-    });
+  function send(client: WSClient, packet: Record<string, any>) {
+    if (client.ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    client.ws.send(JSON.stringify(packet));
+  }
+
+  function broadcastPacketToConversation(
+    conversationId: string,
+    packet: Record<string, any>,
+    excludeClient?: WSClient,
+  ) {
+    const payload = JSON.stringify({ ...packet, conversationId });
 
     for (const client of clients) {
+      if (excludeClient && client === excludeClient) {
+        continue;
+      }
       if (client.conversationId === conversationId && client.ws.readyState === WebSocket.OPEN) {
         client.ws.send(payload);
       }

@@ -19,6 +19,8 @@ export interface ModeExecutionContext {
   agents: Map<string, { agent: Agent; config: SwarmAgentConfig }>;
   /** Emit event to listeners */
   emit: (event: SwarmEvent) => void;
+  /** Abort current execution */
+  abort: () => void;
   /** Whether the execution has been aborted */
   isAborted: () => boolean;
 }

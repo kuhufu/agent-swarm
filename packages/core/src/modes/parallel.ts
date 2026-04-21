@@ -1,6 +1,8 @@
 import type { ModeExecutor, ModeExecutionContext } from "./types.js";
 import type { SwarmEvent } from "../core/types.js";
-import type { AgentEvent as PiAgentEvent } from "@mariozechner/pi-agent-core";
+import type { AgentEvent as PiAgentEvent, AgentMessage } from "@mariozechner/pi-agent-core";
+import type { Message } from "@mariozechner/pi-ai";
+import { messageToStored } from "../storage/message-mapper.js";
 
 /**
  * Parallel mode: all agents run simultaneously on the same input.
@@ -8,7 +10,7 @@ import type { AgentEvent as PiAgentEvent } from "@mariozechner/pi-agent-core";
  */
 export class ParallelMode implements ModeExecutor {
   async *execute(ctx: ModeExecutionContext): AsyncGenerator<SwarmEvent> {
-    const { swarmConfig, message, agents, createAgentFn, isAborted, emit } = ctx;
+    const { swarmConfig, message, agents, createAgentFn, isAborted } = ctx;
     const agentIds = swarmConfig.agents.map((a) => a.id);
 
     // Ensure all agents are created
@@ -58,11 +60,11 @@ export class ParallelMode implements ModeExecutor {
 
       for (const agentId of agentIds) {
         const queue = eventQueues.get(agentId) ?? [];
-        const yielded = yieldedCounts.get(agentId) ?? 0;
-        while (yielded < queue.length) {
+        let yielded = yieldedCounts.get(agentId) ?? 0;
+        if (yielded < queue.length) {
           yield queue[yielded];
-          yieldedCounts.set(agentId, yielded + 1);
-          break; // yield one at a time for fairness
+          yielded += 1;
+          yieldedCounts.set(agentId, yielded);
         }
       }
     }
@@ -98,6 +100,8 @@ export class ParallelMode implements ModeExecutor {
 
     const { agent, config } = active;
     const events: SwarmEvent[] = [];
+    const initialMessageCount = agent.state.messages.length;
+
     let resolveDone: () => void;
     const donePromise = new Promise<void>((r) => { resolveDone = r; });
 
@@ -107,7 +111,15 @@ export class ParallelMode implements ModeExecutor {
         events.push(swarmEvent);
         ctx.emit(swarmEvent);
       }
-      if (e.type === "agent_end") resolveDone();
+      if (e.type === "agent_end") {
+        void this.persistNewMessages(ctx, agentId, agent.state.messages.slice(initialMessageCount))
+          .catch((err) => {
+            const persistenceError: SwarmEvent = { type: "error", agentId, error: err as Error };
+            events.push(persistenceError);
+            ctx.emit(persistenceError);
+          });
+        resolveDone();
+      }
     });
 
     agent.prompt(input).catch((err) => {
@@ -130,6 +142,29 @@ export class ParallelMode implements ModeExecutor {
       }
     }
     unsub();
+  }
+
+  private async persistNewMessages(
+    ctx: ModeExecutionContext,
+    agentId: string,
+    newMessages: AgentMessage[],
+  ): Promise<void> {
+    for (const message of newMessages) {
+      if (!this.isPersistablePiMessage(message) || message.role === "user") {
+        continue;
+      }
+      await ctx.storage.appendMessage(
+        ctx.conversationId,
+        messageToStored(message, agentId),
+      );
+    }
+  }
+
+  private isPersistablePiMessage(message: AgentMessage): message is Message {
+    return typeof message === "object"
+      && message !== null
+      && "role" in message
+      && (message.role === "user" || message.role === "assistant" || message.role === "toolResult");
   }
 
   private async *aggregate(

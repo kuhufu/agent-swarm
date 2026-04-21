@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import type { AgentSwarm } from "@agent-swarm/core";
+import type { Express } from "express";
 import type { SwarmConversation } from "@agent-swarm/core";
 import { swarmRoutes } from "./routes/swarms.js";
 import { conversationRoutes } from "./routes/conversations.js";
@@ -8,7 +9,7 @@ import { messageRoutes } from "./routes/messages.js";
 import { configRoutes } from "./routes/config.js";
 import { errorHandler } from "./middleware/error-handler.js";
 
-export function createApp(swarm: AgentSwarm): any {
+export function createApp(swarm: AgentSwarm): Express {
   const app = express();
 
   // Middleware

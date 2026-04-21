@@ -1,6 +1,8 @@
 import type { ModeExecutor, ModeExecutionContext } from "./types.js";
 import type { SwarmEvent } from "../core/types.js";
-import type { AgentEvent as PiAgentEvent } from "@mariozechner/pi-agent-core";
+import type { AgentEvent as PiAgentEvent, AgentMessage } from "@mariozechner/pi-agent-core";
+import type { Message } from "@mariozechner/pi-ai";
+import { messageToStored } from "../storage/message-mapper.js";
 
 /**
  * Debate mode: pro and con agents argue for a specified number of rounds,
@@ -65,6 +67,8 @@ export class DebateMode implements ModeExecutor {
 
     const { agent, config } = active;
     const events: SwarmEvent[] = [];
+    const initialMessageCount = agent.state.messages.length;
+
     let resolveDone: () => void;
     const donePromise = new Promise<void>((r) => { resolveDone = r; });
 
@@ -74,7 +78,15 @@ export class DebateMode implements ModeExecutor {
         events.push(swarmEvent);
         ctx.emit(swarmEvent);
       }
-      if (e.type === "agent_end") resolveDone();
+      if (e.type === "agent_end") {
+        void this.persistNewMessages(ctx, agentId, agent.state.messages.slice(initialMessageCount))
+          .catch((err) => {
+            const persistenceError: SwarmEvent = { type: "error", agentId, error: err as Error };
+            events.push(persistenceError);
+            ctx.emit(persistenceError);
+          });
+        resolveDone();
+      }
     });
 
     agent.prompt(input).catch((err) => {
@@ -97,6 +109,29 @@ export class DebateMode implements ModeExecutor {
       }
     }
     unsub();
+  }
+
+  private async persistNewMessages(
+    ctx: ModeExecutionContext,
+    agentId: string,
+    newMessages: AgentMessage[],
+  ): Promise<void> {
+    for (const message of newMessages) {
+      if (!this.isPersistablePiMessage(message) || message.role === "user") {
+        continue;
+      }
+      await ctx.storage.appendMessage(
+        ctx.conversationId,
+        messageToStored(message, agentId),
+      );
+    }
+  }
+
+  private isPersistablePiMessage(message: AgentMessage): message is Message {
+    return typeof message === "object"
+      && message !== null
+      && "role" in message
+      && (message.role === "user" || message.role === "assistant" || message.role === "toolResult");
   }
 
   private extractText(content: any): string {

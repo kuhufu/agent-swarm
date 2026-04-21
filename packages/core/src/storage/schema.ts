@@ -1,5 +1,11 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 
+export const settingsTable = sqliteTable("settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
 export const swarmsTable = sqliteTable("swarms", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),

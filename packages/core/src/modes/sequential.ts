@@ -1,6 +1,8 @@
 import type { ModeExecutor, ModeExecutionContext } from "./types.js";
 import type { SwarmEvent, InterventionPoint, PipelineStep } from "../core/types.js";
-import type { AgentEvent as PiAgentEvent } from "@mariozechner/pi-agent-core";
+import type { AgentEvent as PiAgentEvent, AgentMessage } from "@mariozechner/pi-agent-core";
+import type { Message } from "@mariozechner/pi-ai";
+import { messageToStored } from "../storage/message-mapper.js";
 
 /**
  * Sequential mode: agents are run one after another in pipeline order.
@@ -10,18 +12,39 @@ export class SequentialMode implements ModeExecutor {
   async *execute(ctx: ModeExecutionContext): AsyncGenerator<SwarmEvent> {
     const { swarmConfig, message, agents, createAgentFn, isAborted } = ctx;
     const pipeline: PipelineStep[] = swarmConfig.pipeline ?? swarmConfig.agents.map((a) => ({ agentId: a.id }));
-    let currentInput = message;
+    const stepIndexByAgentId = new Map<string, number>(pipeline.map((step, index) => [step.agentId, index]));
 
-    for (const step of pipeline) {
+    let currentInput = message;
+    let stepIndex = 0;
+
+    while (stepIndex < pipeline.length) {
       if (isAborted()) break;
 
+      const step = pipeline[stepIndex];
       const agentId = step.agentId;
       const agentConfig = swarmConfig.agents.find((a) => a.id === agentId);
-      if (!agentConfig) continue;
+      if (!agentConfig) {
+        stepIndex++;
+        continue;
+      }
+
+      if (step.condition && !this.evaluateCondition(step.condition, currentInput)) {
+        if (step.onSkip && stepIndexByAgentId.has(step.onSkip)) {
+          const target = stepIndexByAgentId.get(step.onSkip)!;
+          stepIndex = target > stepIndex ? target : stepIndex + 1;
+        } else {
+          stepIndex++;
+        }
+        continue;
+      }
 
       // Ensure agent is created
       if (!agents.has(agentId)) {
         createAgentFn(agentConfig);
+      }
+
+      if (step.transform) {
+        currentInput = this.applyTransform(step.transform, currentInput);
       }
 
       // Check intervention
@@ -31,8 +54,14 @@ export class SequentialMode implements ModeExecutor {
           agentId,
           input: currentInput,
         });
-        if (decision?.action === "abort") break;
-        if (decision?.action === "reject") continue;
+        if (decision?.action === "abort") {
+          ctx.abort();
+          break;
+        }
+        if (decision?.action === "reject") {
+          stepIndex++;
+          continue;
+        }
         if (decision?.action === "edit" && decision?.editedInput) {
           currentInput = decision.editedInput;
         }
@@ -48,16 +77,7 @@ export class SequentialMode implements ModeExecutor {
         currentInput = this.extractText(lastAssistant.content);
       }
 
-      // Apply transform if defined (transform is a JSON expression for future evaluation)
-      // Currently transforms are not supported in the serializable PipelineStep
-      // if (step.transform) { currentInput = step.transform(currentInput); }
-
-      // Check condition (condition is a JSON expression for future evaluation)
-      // Currently conditions are not supported in the serializable PipelineStep
-      if (step.onSkip) {
-        // Skip to the specified step if condition would fail
-        continue;
-      }
+      stepIndex++;
     }
   }
 
@@ -71,6 +91,8 @@ export class SequentialMode implements ModeExecutor {
 
     const { agent, config } = active;
     const events: SwarmEvent[] = [];
+    const initialMessageCount = agent.state.messages.length;
+
     let resolveDone: () => void;
     const donePromise = new Promise<void>((r) => { resolveDone = r; });
 
@@ -80,7 +102,15 @@ export class SequentialMode implements ModeExecutor {
         events.push(swarmEvent);
         ctx.emit(swarmEvent);
       }
-      if (e.type === "agent_end") resolveDone();
+      if (e.type === "agent_end") {
+        void this.persistNewMessages(ctx, agentId, agent.state.messages.slice(initialMessageCount))
+          .catch((err) => {
+            const persistenceError: SwarmEvent = { type: "error", agentId, error: err as Error };
+            events.push(persistenceError);
+            ctx.emit(persistenceError);
+          });
+        resolveDone();
+      }
     });
 
     agent.prompt(input).catch((err) => {
@@ -103,6 +133,81 @@ export class SequentialMode implements ModeExecutor {
       }
     }
     unsub();
+  }
+
+  private async persistNewMessages(
+    ctx: ModeExecutionContext,
+    agentId: string,
+    newMessages: AgentMessage[],
+  ): Promise<void> {
+    for (const message of newMessages) {
+      if (!this.isPersistablePiMessage(message) || message.role === "user") {
+        continue;
+      }
+      await ctx.storage.appendMessage(
+        ctx.conversationId,
+        messageToStored(message, agentId),
+      );
+    }
+  }
+
+  private isPersistablePiMessage(message: AgentMessage): message is Message {
+    return typeof message === "object"
+      && message !== null
+      && "role" in message
+      && (message.role === "user" || message.role === "assistant" || message.role === "toolResult");
+  }
+
+  private evaluateCondition(condition: Record<string, any>, input: string): boolean {
+    if (typeof condition.equals === "string") {
+      return input === condition.equals;
+    }
+    if (typeof condition.notEquals === "string") {
+      return input !== condition.notEquals;
+    }
+    if (typeof condition.contains === "string") {
+      return input.includes(condition.contains);
+    }
+    if (typeof condition.regex === "string") {
+      try {
+        return new RegExp(condition.regex).test(input);
+      } catch {
+        return false;
+      }
+    }
+    if (typeof condition.minLength === "number") {
+      return input.length >= condition.minLength;
+    }
+    if (typeof condition.maxLength === "number") {
+      return input.length <= condition.maxLength;
+    }
+    return true;
+  }
+
+  private applyTransform(transform: Record<string, any>, input: string): string {
+    let output = input;
+
+    if (typeof transform.prepend === "string") {
+      output = transform.prepend + output;
+    }
+    if (typeof transform.append === "string") {
+      output = output + transform.append;
+    }
+    if (typeof transform.template === "string") {
+      output = transform.template.replaceAll("{{input}}", output);
+    }
+    if (transform.trim === true) {
+      output = output.trim();
+    }
+    if (transform.replace && typeof transform.replace.from === "string") {
+      const from = transform.replace.from;
+      const to = typeof transform.replace.to === "string" ? transform.replace.to : "";
+      output = transform.replace.all === true
+        ? output.split(from).join(to)
+        : output.replace(from, to);
+    }
+
+    return output;
   }
 
   private extractText(content: any): string {
