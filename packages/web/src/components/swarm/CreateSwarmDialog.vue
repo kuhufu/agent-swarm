@@ -35,6 +35,7 @@ const agentForm = reactive<SwarmAgentConfig>({
   systemPrompt: "",
   model: { provider: "", modelId: "" },
 });
+const showCustomModel = ref(false);
 
 const settingsStore = useSettingsStore();
 const savedModels = computed<SavedModel[]>(() => settingsStore.config?.models ?? []);
@@ -42,6 +43,13 @@ const savedModels = computed<SavedModel[]>(() => settingsStore.config?.models ??
 function selectModelForAgent(model: SavedModel) {
   agentForm.model.provider = model.provider;
   agentForm.model.modelId = model.modelId;
+  showCustomModel.value = false;
+}
+
+function clearModelSelection() {
+  agentForm.model.provider = "";
+  agentForm.model.modelId = "";
+  showCustomModel.value = true;
 }
 
 function addAgent() {
@@ -53,6 +61,7 @@ function addAgent() {
   agentForm.systemPrompt = "";
   agentForm.model = { provider: "", modelId: "" };
   showAgentForm.value = false;
+  showCustomModel.value = false;
 }
 
 function removeAgent(index: number) {
@@ -155,7 +164,7 @@ function submit() {
 
             <!-- Model Selection -->
             <div v-if="savedModels.length > 0" class="model-selection">
-              <label class="form-label" style="margin-bottom: 8px;">快速选择模型</label>
+              <label class="form-label" style="margin-bottom: 8px;">选择模型</label>
               <div class="model-chips">
                 <button
                   v-for="sm in savedModels"
@@ -166,16 +175,29 @@ function submit() {
                 >
                   {{ sm.name }}
                 </button>
+                <button
+                  class="model-chip"
+                  :class="{ active: showCustomModel }"
+                  @click="clearModelSelection"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px;">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                  自定义
+                </button>
               </div>
             </div>
 
-            <div class="form-row">
-              <label>Provider</label>
-              <input v-model="agentForm.model.provider" class="input-field" placeholder="anthropic" />
-            </div>
-            <div class="form-row">
-              <label>模型</label>
-              <input v-model="agentForm.model.modelId" class="input-field" placeholder="claude-sonnet-4-20250514" />
+            <div v-if="showCustomModel || savedModels.length === 0" class="custom-model-fields">
+              <div class="form-row">
+                <label>Provider</label>
+                <input v-model="agentForm.model.provider" class="input-field" placeholder="anthropic" />
+              </div>
+              <div class="form-row">
+                <label>模型</label>
+                <input v-model="agentForm.model.modelId" class="input-field" placeholder="claude-sonnet-4-20250514" />
+              </div>
             </div>
             <button class="btn-primary" style="margin-top: 8px;" :disabled="!agentForm.id || !agentForm.name" @click="addAgent">
               确认添加
