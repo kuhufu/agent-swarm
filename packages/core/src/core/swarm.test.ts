@@ -41,8 +41,6 @@ function createSwarmConfig(id: string): SwarmConfig {
 function createRootConfig(dbPath: string, swarms: SwarmConfig[]): AgentSwarmRootConfig {
   return {
     llm: {
-      defaultProvider: "anthropic",
-      defaultModel: "claude-sonnet-4-20250514",
       apiKeys: {
         anthropic: "",
         openai: "",
@@ -93,8 +91,6 @@ describe("AgentSwarm persistence", () => {
 
     await first.init();
     await first.updateLLMConfig({
-      defaultProvider: "openai",
-      defaultModel: "gpt-4o-mini",
       apiKeys: {
         openai: "sk-test-1234567890",
       },
@@ -108,8 +104,6 @@ describe("AgentSwarm persistence", () => {
     await second.init();
     const llmConfig = second.getLLMConfig();
 
-    expect(llmConfig.defaultProvider).toBe("openai");
-    expect(llmConfig.defaultModel).toBe("gpt-4o-mini");
     expect(llmConfig.apiKeys.openai).toBe("sk-test-1234567890");
 
     await second.close();

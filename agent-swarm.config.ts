@@ -2,8 +2,6 @@ import { defineConfig } from "@agent-swarm/core";
 
 export default defineConfig({
   llm: {
-    defaultProvider: "deepseek",
-    defaultModel: "deepseek-chat",
     apiKeys: {
       deepseek: process.env.DEEPSEEK_API_KEY ?? "",
     },

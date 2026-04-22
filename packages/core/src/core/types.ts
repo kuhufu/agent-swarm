@@ -154,8 +154,6 @@ export interface SavedModel {
 }
 
 export interface LLMBackendConfig {
-  defaultProvider: string;
-  defaultModel: string;
   apiKeys: Record<string, string>;
   /** Per-provider custom endpoint configuration */
   providers?: Record<string, ProviderConfig>;

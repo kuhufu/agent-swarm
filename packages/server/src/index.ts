@@ -9,8 +9,6 @@ async function main() {
   const swarm = new AgentSwarm({
     config: {
       llm: {
-        defaultProvider: "deepseek",
-        defaultModel: "",
         apiKeys: {
           deepseek: process.env.DEEPSEEK_API_KEY ?? "",
         },

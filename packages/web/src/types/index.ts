@@ -68,8 +68,6 @@ export interface SavedModel {
 }
 
 export interface LLMConfig {
-  defaultProvider: string;
-  defaultModel: string;
   apiKeys: Record<string, string>;
   providers?: Record<string, ProviderConfig>;
   endpoints?: Record<string, { baseUrl: string; headers?: Record<string, string> }>;

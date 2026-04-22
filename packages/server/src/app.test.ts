@@ -6,8 +6,6 @@ import { createApp } from "./app.js";
 
 function createMockSwarm(): AgentSwarm {
   let llmConfig: LLMBackendConfig = {
-    defaultProvider: "anthropic",
-    defaultModel: "claude-sonnet-4-20250514",
     apiKeys: {
       anthropic: "",
       openai: "",
@@ -124,8 +122,6 @@ test("PUT /api/config persists config via updateLLMConfig and returns masked api
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        defaultProvider: "openai",
-        defaultModel: "gpt-4o-mini",
         apiKeys: {
           openai: "sk-test-1234567890123456",
         },
@@ -134,15 +130,11 @@ test("PUT /api/config persists config via updateLLMConfig and returns masked api
 
     const data = await response.json() as {
       data: {
-        defaultProvider: string;
-        defaultModel: string;
         apiKeys: Record<string, string>;
       };
     };
 
     assert.equal(response.status, 200);
-    assert.equal(data.data.defaultProvider, "openai");
-    assert.equal(data.data.defaultModel, "gpt-4o-mini");
     assert.equal(data.data.apiKeys.openai, "sk-test-...3456");
   } finally {
     await server.close();

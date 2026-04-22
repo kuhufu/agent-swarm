@@ -45,9 +45,6 @@ function addCustomProvider() {
 
 function removeProvider(id: string) {
   delete providers[id];
-  if (defaultProvider.value === id) {
-    defaultProvider.value = Object.keys(providers)[0] ?? "";
-  }
 }
 
 function getEffectiveProtocol(id: string): ApiProtocol {
@@ -55,9 +52,6 @@ function getEffectiveProtocol(id: string): ApiProtocol {
   if (entry?.apiProtocol) return entry.apiProtocol;
   return "openai-completions";
 }
-
-const defaultProvider = ref("");
-const defaultModel = ref("");
 
 // ── Models ──
 const models = reactive<SavedModel[]>([]);
@@ -129,8 +123,6 @@ onMounted(async () => {
     loadError.value = "";
     const config = settingsStore.config;
     if (config) {
-      defaultProvider.value = config.defaultProvider;
-      defaultModel.value = config.defaultModel;
       // Merge server config
       for (const [provider, key] of Object.entries(config.apiKeys)) {
         if (!providers[provider]) {
@@ -149,9 +141,6 @@ onMounted(async () => {
       }
       if (config.models) {
         models.push(...config.models);
-      }
-      if (!providers[defaultProvider.value]) {
-        defaultProvider.value = Object.keys(providers)[0] ?? "";
       }
     }
   } catch (error) {
@@ -176,8 +165,6 @@ async function saveSettings() {
       }
     }
     await settingsStore.updateConfig({
-      defaultProvider: defaultProvider.value,
-      defaultModel: defaultModel.value,
       apiKeys,
       providers: providerConfigs,
       models: [...models],
@@ -209,8 +196,6 @@ function getProviderOverride(providerId: string) {
 function modelTestKey(provider: string, modelId: string): string {
   return `${provider}::${modelId}`;
 }
-
-const defaultModelTestKey = computed(() => modelTestKey(defaultProvider.value, defaultModel.value));
 
 async function testModel(provider: string, modelId: string) {
   const p = provider.trim();
@@ -339,36 +324,6 @@ async function testModel(provider: string, modelId: string) {
           <div class="content-header">
             <h3>LLM 提供商</h3>
             <p>配置 API Key、Base URL 和协议</p>
-          </div>
-
-          <div class="default-model-section card">
-            <h4>默认模型</h4>
-            <div class="field-row">
-              <label>提供商</label>
-              <select v-model="defaultProvider" class="input-field">
-                <option v-for="p in providerList" :key="p.id" :value="p.id">{{ p.id }}</option>
-              </select>
-            </div>
-            <div class="field-row">
-              <label>模型 ID</label>
-              <input v-model="defaultModel" class="input-field" placeholder="模型名称" />
-            </div>
-            <div class="default-model-actions">
-              <button
-                class="btn-secondary"
-                :disabled="!defaultProvider.trim() || !defaultModel.trim() || testingMap[defaultModelTestKey]"
-                @click="testModel(defaultProvider, defaultModel)"
-              >
-                {{ testingMap[defaultModelTestKey] ? "测试中..." : "测试默认模型" }}
-              </button>
-              <span
-                v-if="testResultMap[defaultModelTestKey]"
-                class="test-result-text"
-                :class="{ ok: testResultMap[defaultModelTestKey].ok, fail: !testResultMap[defaultModelTestKey].ok }"
-              >
-                {{ testResultMap[defaultModelTestKey].message }}
-              </span>
-            </div>
           </div>
 
           <div class="provider-list">
@@ -691,27 +646,6 @@ async function testModel(provider: string, modelId: string) {
 
 .tab-panel {
   max-width: 720px;
-}
-
-.default-model-section {
-  padding: 20px;
-  margin-bottom: 20px;
-}
-
-.default-model-section h4 {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  margin: 0 0 16px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.default-model-actions {
-  margin-top: 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 
 .provider-list {

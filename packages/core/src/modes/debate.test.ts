@@ -123,8 +123,6 @@ describe("DebateMode", () => {
       conversationId: "conv-1",
       storage,
       llmConfig: {
-        defaultProvider: "openai",
-        defaultModel: "gpt-4o-mini",
         apiKeys: {},
       },
       agents,

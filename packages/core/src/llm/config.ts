@@ -11,14 +11,6 @@ export class LLMConfigManager {
     return this.config.apiKeys[provider];
   }
 
-  getDefaultProvider(): string {
-    return this.config.defaultProvider;
-  }
-
-  getDefaultModel(): string {
-    return this.config.defaultModel;
-  }
-
   getEndpoint(provider: string): { baseUrl: string; headers?: Record<string, string> } | undefined {
     return this.config.endpoints?.[provider];
   }

@@ -20,8 +20,6 @@ function maskApiKeys(apiKeys: Record<string, string>): Record<string, string> {
 function toResponse(config: LLMBackendConfig) {
   const apiKeys = config.apiKeys && typeof config.apiKeys === "object" ? config.apiKeys : {};
   return {
-    defaultProvider: config.defaultProvider,
-    defaultModel: config.defaultModel,
     apiKeys: maskApiKeys(apiKeys),
     providers: config.providers,
     endpoints: config.endpoints,
@@ -46,8 +44,6 @@ export function configRoutes(swarm: AgentSwarm): Router {
       }
 
       const {
-        defaultProvider,
-        defaultModel,
         apiKeys,
         providers,
         endpoints,
@@ -87,8 +83,6 @@ export function configRoutes(swarm: AgentSwarm): Router {
 
       const nextConfig: LLMBackendConfig = {
         ...currentConfig,
-        defaultProvider: defaultProvider ?? currentConfig.defaultProvider,
-        defaultModel: defaultModel ?? currentConfig.defaultModel,
         apiKeys: nextApiKeys,
         providers: providers ?? currentProviders,
         endpoints: endpoints ?? currentEndpoints,
