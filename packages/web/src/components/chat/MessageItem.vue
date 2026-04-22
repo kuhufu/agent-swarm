@@ -10,6 +10,17 @@ const props = defineProps<{
 
 const hasRenderableContent = computed(() => props.message.content.trim().length > 0);
 
+const displayAgentName = computed(() => {
+  if (props.message.agentName) {
+    return props.message.agentName;
+  }
+  const meta = props.message.metadata;
+  if (meta && typeof meta.provider === "string" && typeof meta.model === "string") {
+    return `${meta.provider}/${meta.model}`;
+  }
+  return props.message.agentId || "Assistant";
+});
+
 function roleClass(role: string): string {
   switch (role) {
     case "user": return "msg-user";
@@ -42,7 +53,7 @@ function formatTime(ts: number): string {
         <template v-if="message.role === 'assistant'">
           <span class="agent-name-with-dot">
             <span class="status-dot" :style="{ background: agentColor(message.agentName) }" />
-            {{ message.agentName || message.agentId || "Assistant" }}
+            {{ displayAgentName }}
           </span>
         </template>
         <template v-else-if="message.role === 'user'">

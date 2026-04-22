@@ -105,30 +105,18 @@ export function useChat() {
       enabledTools: conversationStore.enabledTools,
     });
 
-    if (conversationId) {
-      send({
-        type: "send_message",
-        payload: {
-          conversationId,
-          content: text,
-          clientTools,
-          enabledTools: conversationStore.enabledTools,
-          thinkModeEnabled: conversationStore.thinkModeEnabled,
-        },
-      });
-    } else {
-      send({
-        type: "send_message",
-        payload: {
-          provider: directModel.value.provider,
-          modelId: directModel.value.modelId,
-          content: text,
-          clientTools,
-          enabledTools: conversationStore.enabledTools,
-          thinkModeEnabled: conversationStore.thinkModeEnabled,
-        },
-      });
-    }
+    send({
+      type: "send_message",
+      payload: {
+        conversationId: conversationId ?? undefined,
+        provider: directModel.value.provider,
+        modelId: directModel.value.modelId,
+        content: text,
+        clientTools,
+        enabledTools: conversationStore.enabledTools,
+        thinkModeEnabled: conversationStore.thinkModeEnabled,
+      },
+    });
 
     inputText.value = "";
   }

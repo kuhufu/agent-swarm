@@ -178,7 +178,7 @@ export class AgentSwarm {
       mode: "sequential",
       agents: [{
         id: agentId,
-        name: modelId,
+        name: `${provider}/${modelId}`,
         description: `Direct chat with ${provider}/${modelId}`,
         systemPrompt: "You are a helpful assistant.",
         model: { provider, modelId },

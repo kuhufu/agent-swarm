@@ -141,6 +141,16 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
       let effectivePreferences: ConversationPreferencesPayload = { ...DEFAULT_CONVERSATION_PREFERENCES };
 
       if (conversationId) {
+        // Direct chat model switch: update the swarm config's agent model in memory
+        if (provider && modelId) {
+          const storedConv = await swarm.getConversation(conversationId);
+          if (storedConv) {
+            const swarmConfig = swarm.getSwarmConfig(storedConv.swarmId);
+            if (swarmConfig && swarmConfig.id.startsWith("__direct_") && swarmConfig.agents[0]) {
+              swarmConfig.agents[0].model = { provider, modelId };
+            }
+          }
+        }
         conversation = await swarm.resumeConversation(conversationId);
         const storedConversation = await swarm.getConversation(conversationId);
         if (!storedConversation) {

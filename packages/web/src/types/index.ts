@@ -126,6 +126,7 @@ export interface ChatMessage {
   agentName?: string;
   thinking?: string;
   toolCalls?: ToolCallInfo[];
+  metadata?: Record<string, unknown>;
   timestamp: number;
 }
 

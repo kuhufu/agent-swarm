@@ -305,6 +305,8 @@ export const useConversationStore = defineStore("conversation", () => {
     const agentName = typeof message.agentName === "string" ? message.agentName : resolveAgentName(agentId);
     const timestamp = typeof message.timestamp === "number" ? message.timestamp : Date.now();
     const id = typeof message.id === "string" ? message.id : crypto.randomUUID();
+    const rawMetadata = typeof message.metadata === "string" ? message.metadata : undefined;
+    const metadata = rawMetadata ? parseMetadata(rawMetadata) : undefined;
 
     return {
       id,
@@ -314,6 +316,7 @@ export const useConversationStore = defineStore("conversation", () => {
       toolCalls,
       agentId,
       agentName,
+      metadata: metadata ?? undefined,
       timestamp,
     };
   }
