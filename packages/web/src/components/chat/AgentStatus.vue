@@ -26,6 +26,17 @@ const swarmInfo = computed(() => {
   };
 });
 
+/** Configured agents from the current Swarm (shown before conversation starts) */
+const configuredAgents = computed(() => {
+  const swarm = swarmStore.currentSwarm;
+  if (!swarm) return [];
+  const list = [...swarm.agents];
+  if (swarm.orchestrator) {
+    list.unshift(swarm.orchestrator);
+  }
+  return list;
+});
+
 function statusLabel(status: AgentState["status"]): string {
   switch (status) {
     case "thinking": return "思考中";
@@ -134,6 +145,46 @@ function agentSystemPrompt(agentId: string): string {
           <div v-if="agentSystemPrompt(agent.id)" class="meta-row">
             <span class="meta-label">指令</span>
             <span class="meta-value mono">{{ agentSystemPrompt(agent.id) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-else-if="configuredAgents.length > 0" class="agent-list">
+      <div
+        v-for="agent in configuredAgents"
+        :key="agent.id"
+        class="agent-card"
+      >
+        <div class="agent-card-header">
+          <div class="agent-avatar" :style="{ borderColor: agentColor(agent.id) }">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+              <rect x="3" y="11" width="18" height="10" rx="2" />
+              <circle cx="12" cy="5" r="2" />
+              <path d="M12 7v4" />
+            </svg>
+          </div>
+          <div class="agent-info">
+            <span class="agent-name">{{ agent.name }}</span>
+            <span class="agent-status-text">
+              <span class="status-dot status-idle" />
+              待命中
+            </span>
+          </div>
+        </div>
+
+        <div v-if="agent.description" class="agent-desc">
+          {{ agent.description }}
+        </div>
+
+        <div class="agent-meta">
+          <div class="meta-row">
+            <span class="meta-label">模型</span>
+            <span class="meta-value">{{ agent.model.provider }}/{{ agent.model.modelId }}</span>
+          </div>
+          <div v-if="agent.systemPrompt" class="meta-row">
+            <span class="meta-label">指令</span>
+            <span class="meta-value mono">{{ agent.systemPrompt.split('\n').filter(Boolean)[0] ?? '' }}</span>
           </div>
         </div>
       </div>
@@ -269,6 +320,10 @@ function agentSystemPrompt(agentId: string): string {
   height: 7px;
   border-radius: 50%;
   display: inline-block;
+}
+
+.status-dot.status-idle {
+  background: var(--color-text-muted);
 }
 
 .agent-desc {

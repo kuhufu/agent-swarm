@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import type { ChatMessage } from "../../types/index.js";
+import type { ChatMessage, SwarmConfig } from "../../types/index.js";
+import { useSwarmStore } from "../../stores/swarm.js";
 import MessageItem from "./MessageItem.vue";
 
 const props = defineProps<{
@@ -8,6 +9,22 @@ const props = defineProps<{
   streamingMessages: ChatMessage[];
   isDirectMode?: boolean;
 }>();
+
+const swarmStore = useSwarmStore();
+
+const swarms = computed(() => swarmStore.swarms);
+
+const modeLabels: Record<string, string> = {
+  router: "路由",
+  sequential: "顺序",
+  parallel: "并行",
+  swarm: "协作",
+  debate: "辩论",
+};
+
+function selectSwarm(swarm: SwarmConfig) {
+  swarmStore.selectSwarm(swarm);
+}
 
 const visibleMessages = computed(() =>
   props.messages.filter((msg) => {
@@ -56,6 +73,27 @@ const renderEntries = computed<RenderEntry[]>(() => {
       </div>
       <p class="empty-title">{{ isDirectMode ? '选择模型开始对话' : '开始新的对话' }}</p>
       <p class="empty-desc">{{ isDirectMode ? '在下方选择提供商和模型，然后发送消息' : '选择一个 Swarm 并发送消息开始协作' }}</p>
+      <div v-if="!isDirectMode && swarms.length > 0" class="swarm-grid">
+        <button
+          v-for="swarm in swarms"
+          :key="swarm.id"
+          class="swarm-card"
+          :class="{ active: swarmStore.currentSwarm?.id === swarm.id }"
+          @click="selectSwarm(swarm)"
+        >
+          <div class="swarm-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
+            </svg>
+          </div>
+          <div class="swarm-card-info">
+            <span class="swarm-card-name">{{ swarm.name }}</span>
+            <span class="swarm-card-meta">{{ swarm.agents.length }} 个 Agent · {{ modeLabels[swarm.mode] ?? swarm.mode }}</span>
+          </div>
+        </button>
+      </div>
     </div>
     <div v-else class="messages-container">
       <MessageItem
@@ -113,6 +151,85 @@ const renderEntries = computed<RenderEntry[]>(() => {
   font-size: 14px;
   color: var(--color-text-muted);
   margin: 0;
+}
+
+.swarm-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  max-width: 680px;
+  margin-top: 4px;
+}
+
+.swarm-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  backdrop-filter: blur(8px);
+}
+
+.swarm-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--color-border-hover);
+}
+
+.swarm-card.active {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.swarm-card-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.swarm-card.active .swarm-card-icon {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.25));
+}
+
+.swarm-card-icon svg {
+  width: 18px;
+  height: 18px;
+  color: var(--color-accent-light);
+}
+
+.swarm-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.swarm-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.swarm-card.active .swarm-card-name {
+  color: var(--color-accent-light);
+}
+
+.swarm-card-meta {
+  font-size: 11px;
+  color: var(--color-text-muted);
 }
 
 .messages-container {
