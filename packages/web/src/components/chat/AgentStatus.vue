@@ -9,6 +9,23 @@ const props = defineProps<{
 
 const swarmStore = useSwarmStore();
 
+const swarmInfo = computed(() => {
+  const swarm = swarmStore.currentSwarm;
+  if (!swarm) return null;
+  const modeMap: Record<string, string> = {
+    router: "路由",
+    sequential: "顺序",
+    parallel: "并行",
+    swarm: "群集",
+    debate: "辩论",
+  };
+  return {
+    name: swarm.name,
+    mode: modeMap[swarm.mode] ?? swarm.mode,
+    agentCount: swarm.agents.length,
+  };
+});
+
 function statusLabel(status: AgentState["status"]): string {
   switch (status) {
     case "thinking": return "思考中";
@@ -19,65 +36,67 @@ function statusLabel(status: AgentState["status"]): string {
   }
 }
 
-function agentColor(name: string): string {
-  if (name.includes("正")) return "#3b82f6";
-  if (name.includes("反")) return "#a855f7";
-  if (name.includes("裁判") || name.includes("判")) return "#f59e0b";
-  return "#6366f1";
+const COLORS = ["#6366f1", "#3b82f6", "#a855f7", "#f59e0b", "#10b981", "#ef4444", "#ec4899", "#06b6d4"];
+
+function hashId(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) {
+    h = ((h << 5) - h + id.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
 }
 
-function agentModel(agentId: string): string {
+function agentColor(agentId: string): string {
+  return COLORS[hashId(agentId) % COLORS.length];
+}
+
+function getAgentConfig(agentId: string) {
   const swarm = swarmStore.currentSwarm;
-  if (!swarm) return "unknown";
-  const agent = swarm.agents.find((a) => a.id === agentId)
-    ?? (swarm.orchestrator?.id === agentId ? swarm.orchestrator : undefined);
-  return agent?.model?.modelId ?? "unknown";
+  if (!swarm) return null;
+  return swarm.agents.find((a) => a.id === agentId)
+    ?? (swarm.orchestrator?.id === agentId ? swarm.orchestrator : undefined)
+    ?? null;
 }
 
-function agentTokens(name: string): string {
-  const base = 1.2 + (name.charCodeAt(0) % 5) * 0.4;
-  return `${base.toFixed(1)}k tokens`;
+function agentModelLabel(agentId: string): string {
+  const config = getAgentConfig(agentId);
+  if (!config?.model) return "unknown";
+  return `${config.model.provider}/${config.model.modelId}`;
 }
 
-function agentProgress(name: string, status: AgentState["status"]): number {
-  if (status === "thinking") return 65 + (name.charCodeAt(0) % 20);
-  if (status === "executing_tool") return 80 + (name.charCodeAt(0) % 15);
-  return 35 + (name.charCodeAt(0) % 30);
+function agentDescription(agentId: string): string {
+  const config = getAgentConfig(agentId);
+  return config?.description ?? "";
 }
 
-const debateConfig = computed(() => swarmStore.currentSwarm?.debateConfig);
-const swarmMode = computed(() => swarmStore.currentSwarm?.mode);
-const maxTurns = computed(() => swarmStore.currentSwarm?.maxTotalTurns ?? 10);
-const currentRound = computed(() => {
-  const activeCount = props.agents.filter(
-    (a) => a.status === "thinking" || a.status === "executing_tool",
-  ).length;
-  return Math.max(1, Math.min(maxTurns.value, Math.floor(activeCount * 2.5) + 1));
-});
+function agentSystemPrompt(agentId: string): string {
+  const config = getAgentConfig(agentId);
+  if (!config?.systemPrompt) return "";
+  const lines = config.systemPrompt.split("\n").filter(Boolean);
+  return lines[0] ?? "";
+}
 
-const modeLabel = computed(() => {
-  const map: Record<string, string> = {
-    router: "路由",
-    sequential: "顺序",
-    parallel: "并行",
-    swarm: "群集",
-    debate: "辩论",
-  };
-  return map[swarmMode.value ?? ""] ?? swarmMode.value ?? "-";
-});
+
 </script>
 
 <template>
   <div class="agent-status">
-    <h3>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-      </svg>
-      AGENT 状态
-    </h3>
+    <div class="status-section">
+      <h3>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        AGENT 状态
+      </h3>
+
+      <div v-if="swarmInfo" class="swarm-info-bar">
+        <span class="swarm-badge">{{ swarmInfo.mode }}</span>
+        <span class="swarm-name">{{ swarmInfo.name }}</span>
+      </div>
+    </div>
 
     <div v-if="agents.length > 0" class="agent-list">
       <div
@@ -86,7 +105,7 @@ const modeLabel = computed(() => {
         class="agent-card"
       >
         <div class="agent-card-header">
-          <div class="agent-avatar">
+          <div class="agent-avatar" :style="{ borderColor: agentColor(agent.id) }">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
               <rect x="3" y="11" width="18" height="10" rx="2" />
               <circle cx="12" cy="5" r="2" />
@@ -96,31 +115,26 @@ const modeLabel = computed(() => {
           <div class="agent-info">
             <span class="agent-name">{{ agent.name }}</span>
             <span class="agent-status-text">
-              <span class="status-dot" :style="{ background: agentColor(agent.name) }" />
+              <span class="status-dot" :style="{ background: agentColor(agent.id) }" />
               {{ statusLabel(agent.status) }}
             </span>
+
           </div>
+        </div>
+
+        <div v-if="agentDescription(agent.id)" class="agent-desc">
+          {{ agentDescription(agent.id) }}
         </div>
 
         <div class="agent-meta">
           <div class="meta-row">
             <span class="meta-label">模型</span>
-            <span class="meta-value">{{ agentModel(agent.id) }}</span>
+            <span class="meta-value">{{ agentModelLabel(agent.id) }}</span>
           </div>
-          <div class="meta-row">
-            <span class="meta-label">上下文</span>
-            <span class="meta-value">{{ agentTokens(agent.name) }}</span>
+          <div v-if="agentSystemPrompt(agent.id)" class="meta-row">
+            <span class="meta-label">指令</span>
+            <span class="meta-value mono">{{ agentSystemPrompt(agent.id) }}</span>
           </div>
-        </div>
-
-        <div class="agent-progress">
-          <div
-            class="progress-bar"
-            :style="{
-              width: `${agentProgress(agent.name, agent.status)}%`,
-              background: agentColor(agent.name),
-            }"
-          />
         </div>
       </div>
     </div>
@@ -135,24 +149,7 @@ const modeLabel = computed(() => {
       <span>开始对话后将显示 Agent 状态</span>
     </div>
 
-    <!-- Debate config -->
-    <div v-if="swarmStore.currentSwarm && (swarmMode === 'debate' || debateConfig)" class="debate-config">
-      <h4>辩论配置</h4>
-      <div class="config-list">
-        <div class="config-row">
-          <span class="config-label">模式</span>
-          <span class="config-value">{{ modeLabel }}</span>
-        </div>
-        <div class="config-row">
-          <span class="config-label">回合限制</span>
-          <span class="config-value">{{ maxTurns }}</span>
-        </div>
-        <div class="config-row">
-          <span class="config-label">当前回合</span>
-          <span class="config-value">{{ currentRound }} / {{ maxTurns }}</span>
-        </div>
-      </div>
-    </div>
+
   </div>
 </template>
 
@@ -164,16 +161,45 @@ const modeLabel = computed(() => {
   gap: 16px;
 }
 
-.agent-status h3 {
+.status-section h3 {
   display: flex;
   align-items: center;
   gap: 8px;
   color: var(--color-text-secondary);
   font-size: 13px;
   font-weight: 600;
-  margin: 0;
+  margin: 0 0 10px 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.swarm-info-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+}
+
+.swarm-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--color-accent-light);
+  flex-shrink: 0;
+}
+
+.swarm-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .agent-list {
@@ -185,7 +211,7 @@ const modeLabel = computed(() => {
 .agent-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   padding: 14px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--color-border-subtle);
@@ -245,10 +271,19 @@ const modeLabel = computed(() => {
   display: inline-block;
 }
 
+.agent-desc {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+}
+
 .agent-meta {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .meta-row {
@@ -256,28 +291,27 @@ const modeLabel = computed(() => {
   align-items: center;
   justify-content: space-between;
   font-size: 12px;
+  min-width: 0;
 }
 
 .meta-label {
   color: var(--color-text-muted);
+  flex-shrink: 0;
+  margin-right: 8px;
 }
 
 .meta-value {
   color: var(--color-text-secondary);
   font-weight: 500;
-}
-
-.agent-progress {
-  height: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 2px;
+  text-align: right;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.progress-bar {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.6s ease;
+.meta-value.mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
 .no-agents {
@@ -303,45 +337,5 @@ const modeLabel = computed(() => {
   font-size: 12px;
 }
 
-.debate-config {
-  margin-top: 4px;
-}
 
-.debate-config h4 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  font-weight: 600;
-  margin: 0 0 10px 0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.config-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 12px;
-}
-
-.config-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-}
-
-.config-label {
-  color: var(--color-text-muted);
-}
-
-.config-value {
-  color: var(--color-text-secondary);
-  font-weight: 500;
-}
 </style>

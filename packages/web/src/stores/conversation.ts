@@ -419,6 +419,30 @@ export const useConversationStore = defineStore("conversation", () => {
     return agent?.name;
   }
 
+  function populateAgentStatesFromSwarm(swarmId: string) {
+    const swarm = swarmStore.swarms.find((s) => s.id === swarmId) ?? swarmStore.currentSwarm;
+    if (!swarm) {
+      return;
+    }
+    const newStates = new Map<string, AgentState>();
+    const allAgents = [...(swarm.agents ?? [])];
+    if (swarm.orchestrator) {
+      allAgents.push(swarm.orchestrator);
+    }
+    for (const agent of allAgents) {
+      const existing = agentStates.value.get(agent.id);
+      newStates.set(agent.id, {
+        id: agent.id,
+        name: agent.name,
+        status: existing?.status ?? "idle",
+        model: agent.model,
+        description: agent.description,
+        systemPrompt: agent.systemPrompt,
+      });
+    }
+    agentStates.value = newStates;
+  }
+
   async function openConversation(id: string) {
     loadingMessages.value = true;
     try {
@@ -432,6 +456,7 @@ export const useConversationStore = defineStore("conversation", () => {
       isActive.value = false;
       applyConversationPreferences(conversationRes.data);
       updateConversationInfo(id, conversationRes.data);
+      populateAgentStatesFromSwarm(conversationRes.data.swarmId);
     } finally {
       loadingMessages.value = false;
     }

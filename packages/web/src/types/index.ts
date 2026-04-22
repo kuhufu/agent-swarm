@@ -145,6 +145,9 @@ export interface AgentState {
   name: string;
   status: AgentStatus;
   currentTool?: string;
+  model?: ModelConfig;
+  description?: string;
+  systemPrompt?: string;
 }
 
 // ============================================================================

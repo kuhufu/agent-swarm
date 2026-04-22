@@ -31,12 +31,19 @@ function roleClass(role: string): string {
   }
 }
 
-function agentColor(name?: string): string {
-  if (!name) return "var(--color-accent)";
-  if (name.includes("正")) return "#3b82f6";
-  if (name.includes("反")) return "#a855f7";
-  if (name.includes("裁判") || name.includes("判")) return "#f59e0b";
-  return "var(--color-accent)";
+const COLORS = ["#6366f1", "#3b82f6", "#a855f7", "#f59e0b", "#10b981", "#ef4444", "#ec4899", "#06b6d4"];
+
+function hashId(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) {
+    h = ((h << 5) - h + id.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+function agentColor(id?: string): string {
+  if (!id) return "var(--color-accent)";
+  return COLORS[hashId(id) % COLORS.length];
 }
 
 function formatTime(ts: number): string {
@@ -52,7 +59,7 @@ function formatTime(ts: number): string {
       <div class="msg-header">
         <template v-if="message.role === 'assistant'">
           <span class="agent-name-with-dot">
-            <span class="status-dot" :style="{ background: agentColor(message.agentName) }" />
+            <span class="status-dot" :style="{ background: agentColor(message.agentId ?? message.agentName) }" />
             {{ displayAgentName }}
           </span>
         </template>
