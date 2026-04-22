@@ -76,6 +76,22 @@ export interface LLMConfig {
   models?: SavedModel[];
 }
 
+export interface ProviderInfo {
+  id: string;
+  builtIn: boolean;
+  defaultApiProtocol?: string;
+}
+
+export interface ModelInfo {
+  id: string;
+  name: string;
+  provider: string;
+  api: string;
+  reasoning: boolean;
+  contextWindow: number;
+  maxTokens: number;
+}
+
 export interface ModelTestRequest {
   provider: string;
   modelId: string;

@@ -1,5 +1,5 @@
 import { apiClient } from "./client.js";
-import type { LLMConfig, ModelTestRequest, ModelTestResult } from "../types/index.js";
+import type { LLMConfig, ModelTestRequest, ModelTestResult, ProviderInfo, ModelInfo } from "../types/index.js";
 
 interface ConfigResponse {
   data: LLMConfig;
@@ -7,6 +7,14 @@ interface ConfigResponse {
 
 interface ModelTestResponse {
   data: ModelTestResult;
+}
+
+interface ProvidersResponse {
+  data: ProviderInfo[];
+}
+
+interface ModelsResponse {
+  data: ModelInfo[];
 }
 
 export function getConfig() {
@@ -18,6 +26,14 @@ export function updateConfig(config: Partial<LLMConfig>) {
     method: "PUT",
     body: JSON.stringify(config),
   });
+}
+
+export function listProviders() {
+  return apiClient<ProvidersResponse>("/config/providers");
+}
+
+export function listModels(providerId: string) {
+  return apiClient<ModelsResponse>(`/config/providers/${encodeURIComponent(providerId)}/models`);
 }
 
 export function testModelConnection(payload: ModelTestRequest) {

@@ -38,7 +38,7 @@ export type { ModeExecutor, ModeExecutionContext } from "./modes/types.js";
 export { AgentSwarm } from "./core/swarm.js";
 export { Conversation as SwarmConversation } from "./core/conversation.js";
 export type { ConversationPromptOptions } from "./core/conversation.js";
-export type { ModelConnectionTestOptions, ModelConnectionTestResult } from "./core/swarm.js";
+export type { ModelConnectionTestOptions, ModelConnectionTestResult, ProviderInfo, ModelInfo } from "./core/swarm.js";
 
 // Intervention
 export { InterventionHandler, WSInterventionHandler } from "./intervention/handler.js";

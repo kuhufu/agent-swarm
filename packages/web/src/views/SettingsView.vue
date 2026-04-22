@@ -2,7 +2,7 @@
 import { onMounted, ref, reactive, computed } from "vue";
 import { MessagePlugin } from "tdesign-vue-next";
 import { useSettingsStore } from "../stores/settings.js";
-import type { InterventionPoint, InterventionStrategy, ApiProtocol, ProviderConfig, SavedModel } from "../types/index.js";
+import type { InterventionPoint, InterventionStrategy, ApiProtocol, ProviderConfig, SavedModel, ModelInfo } from "../types/index.js";
 import * as configApi from "../api/config.js";
 
 const settingsStore = useSettingsStore();
@@ -60,6 +60,40 @@ const modelForm = reactive<SavedModel>({ id: "", name: "", provider: "", modelId
 
 const modelProviderOptions = computed(() => providerList.value.map(p => p.id));
 
+const availableModels = ref<ModelInfo[]>([]);
+const loadingModels = ref(false);
+
+async function loadModelsForProvider(providerId: string) {
+  if (!providerId) {
+    availableModels.value = [];
+    return;
+  }
+  loadingModels.value = true;
+  try {
+    const res = await configApi.listModels(providerId);
+    availableModels.value = res.data ?? [];
+  } catch {
+    availableModels.value = [];
+  } finally {
+    loadingModels.value = false;
+  }
+}
+
+function onModelFormProviderChange() {
+  modelForm.modelId = "";
+  loadModelsForProvider(modelForm.provider);
+}
+
+function onModelSelect(m: ModelInfo) {
+  modelForm.modelId = m.id;
+  if (!modelForm.name) {
+    modelForm.name = m.name;
+  }
+  if (!modelForm.id) {
+    modelForm.id = m.id;
+  }
+}
+
 function addModel() {
   if (!modelForm.id || !modelForm.name || !modelForm.provider || !modelForm.modelId) return;
   models.push({ ...modelForm });
@@ -67,6 +101,7 @@ function addModel() {
   modelForm.name = "";
   modelForm.provider = "";
   modelForm.modelId = "";
+  availableModels.value = [];
   showModelForm.value = false;
 }
 
@@ -422,14 +457,33 @@ async function testModel(provider: string, modelId: string) {
             </div>
             <div class="form-row">
               <label>提供商</label>
-              <select v-model="modelForm.provider" class="input-field">
+              <select v-model="modelForm.provider" class="input-field" @change="onModelFormProviderChange">
                 <option value="">选择提供商</option>
                 <option v-for="p in modelProviderOptions" :key="p" :value="p">{{ p }}</option>
               </select>
             </div>
             <div class="form-row">
               <label>模型 ID</label>
-              <input v-model="modelForm.modelId" class="input-field" placeholder="claude-sonnet-4-20250514" />
+              <input v-model="modelForm.modelId" class="input-field" placeholder="输入模型 ID 或从下方列表选择" />
+            </div>
+            <div v-if="loadingModels" class="model-list-hint">加载模型列表中...</div>
+            <div v-else-if="modelForm.provider && availableModels.length" class="model-picker">
+              <div class="model-picker-label">从 {{ modelForm.provider }} 选择模型：</div>
+              <div class="model-picker-list">
+                <button
+                  v-for="m in availableModels"
+                  :key="m.id"
+                  class="model-pick-item"
+                  :class="{ active: modelForm.modelId === m.id }"
+                  @click="onModelSelect(m)"
+                >
+                  <span class="model-pick-id">{{ m.id }}</span>
+                  <span class="model-pick-meta">{{ m.contextWindow / 1000 }}k ctx</span>
+                </button>
+              </div>
+            </div>
+            <div v-else-if="modelForm.provider && !loadingModels && availableModels.length === 0" class="model-list-hint">
+              该提供商暂无内置模型列表，请手动输入模型 ID
             </div>
             <button class="btn-primary" :disabled="!modelForm.id || !modelForm.name || !modelForm.provider || !modelForm.modelId" @click="addModel">
               确认添加
@@ -823,6 +877,66 @@ async function testModel(provider: string, modelId: string) {
 .model-test-btn {
   padding: 6px 10px;
   font-size: 12px;
+}
+
+.model-list-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+}
+
+.model-picker {
+  margin-bottom: 12px;
+}
+
+.model-picker-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+
+.model-picker-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.model-pick-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.model-pick-item:hover {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: var(--color-border-hover);
+}
+
+.model-pick-item.active {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: var(--color-accent-light);
+}
+
+.model-pick-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.model-pick-meta {
+  font-size: 10px;
+  color: var(--color-text-muted);
 }
 
 .test-result-text {

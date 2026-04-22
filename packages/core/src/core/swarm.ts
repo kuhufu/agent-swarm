@@ -6,7 +6,8 @@ import { SqliteStorage } from "../storage/sqlite.js";
 import { Conversation } from "./conversation.js";
 import { readFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
-import { complete } from "@mariozechner/pi-ai";
+import { complete, getProviders as piGetProviders, getModels as piGetModels } from "@mariozechner/pi-ai";
+import type { Model as PiModel, KnownProvider } from "@mariozechner/pi-ai";
 import { resolveModelFromProvider } from "../llm/provider.js";
 
 export interface AgentSwarmOptions {
@@ -36,6 +37,24 @@ export interface ModelConnectionTestResult {
   stopReason?: string;
   error?: string;
   durationMs: number;
+}
+
+export interface ProviderInfo {
+  id: string;
+  /** Whether this is a built-in pi-ai provider */
+  builtIn: boolean;
+  /** Default API protocol for this provider */
+  defaultApiProtocol?: string;
+}
+
+export interface ModelInfo {
+  id: string;
+  name: string;
+  provider: string;
+  api: string;
+  reasoning: boolean;
+  contextWindow: number;
+  maxTokens: number;
 }
 
 export class AgentSwarm {
@@ -208,6 +227,182 @@ export class AgentSwarm {
 
   listSwarms(): SwarmConfig[] {
     return Array.from(this.swarmConfigs.values());
+  }
+
+  /**
+   * List all available providers (built-in pi-ai providers + user-configured providers).
+   */
+  listProviders(): ProviderInfo[] {
+    const builtInProviders = piGetProviders() as KnownProvider[];
+    const builtInSet = new Set<string>(builtInProviders);
+
+    const result: ProviderInfo[] = builtInProviders.map((id) => ({
+      id,
+      builtIn: true,
+      defaultApiProtocol: this.getDefaultApiProtocol(id),
+    }));
+
+    // Add user-configured providers that are not built-in
+    const configuredProviders = new Set<string>([
+      ...Object.keys(this.config.llm.apiKeys ?? {}),
+      ...Object.keys(this.config.llm.providers ?? {}),
+    ]);
+
+    for (const id of configuredProviders) {
+      if (!builtInSet.has(id)) {
+        result.push({
+          id,
+          builtIn: false,
+          defaultApiProtocol: this.getDefaultApiProtocol(id),
+        });
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * List all available models for a given provider.
+   * Priority: 1. Online API fetch → 2. pi-ai built-in catalog → 3. User-saved models
+   */
+  async listModels(providerId: string): Promise<ModelInfo[]> {
+    // 1. Try online model listing via OpenAI-compatible /v1/models endpoint
+    const onlineModels = await this.fetchOnlineModels(providerId);
+    if (onlineModels.length > 0) {
+      return onlineModels;
+    }
+
+    // 2. Built-in pi-ai providers: return static catalog
+    const builtInProviders = piGetProviders() as KnownProvider[];
+    if ((builtInProviders as string[]).includes(providerId)) {
+      try {
+        const piModels = piGetModels(providerId as KnownProvider) as PiModel<any>[];
+        return piModels.map((m) => ({
+          id: m.id,
+          name: m.name,
+          provider: m.provider,
+          api: m.api,
+          reasoning: m.reasoning,
+          contextWindow: m.contextWindow,
+          maxTokens: m.maxTokens,
+        }));
+      } catch {
+        // Fall through to saved models
+      }
+    }
+
+    // 3. Fallback: user-saved models
+    const savedModels = this.config.llm.models ?? [];
+    return savedModels
+      .filter((m) => m.provider === providerId)
+      .map((m) => ({
+        id: m.modelId,
+        name: m.name,
+        provider: m.provider,
+        api: this.getDefaultApiProtocol(providerId) ?? "openai-completions",
+        reasoning: false,
+        contextWindow: 128000,
+        maxTokens: 4096,
+      }));
+  }
+
+  /**
+   * Fetch model list from provider's online API.
+   * Supports OpenAI-compatible /v1/models and Anthropic /v1/models endpoints.
+   */
+  private async fetchOnlineModels(providerId: string): Promise<ModelInfo[]> {
+    const apiKey = this.config.llm.apiKeys?.[providerId];
+    const providerConfig = this.config.llm.providers?.[providerId];
+    const baseUrl = providerConfig?.baseUrl;
+
+    // Provider-specific base URLs for known providers
+    const KNOWN_BASE_URLS: Record<string, string> = {
+      openai: "https://api.openai.com",
+      anthropic: "https://api.anthropic.com",
+      groq: "https://api.groq.com",
+      cerebras: "https://api.cerebras.ai",
+      openrouter: "https://openrouter.ai/api",
+      xai: "https://api.x.ai",
+      mistral: "https://api.mistral.ai",
+      deepseek: "https://api.deepseek.com",
+      zai: "https://api.z.ai",
+    };
+
+    const effectiveBaseUrl = baseUrl ?? KNOWN_BASE_URLS[providerId];
+    if (!effectiveBaseUrl || !apiKey) return [];
+
+    try {
+      // baseUrl may already include /v1 (e.g. http://localhost:8317/v1)
+      // or may not (e.g. https://api.openai.com). Handle both cases.
+      const base = effectiveBaseUrl.replace(/\/+$/, "");
+      const modelsUrl = base.endsWith("/v1")
+        ? `${base}/models`
+        : `${base}/v1/models`;
+      const headers: Record<string, string> = {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      };
+      // Anthropic uses x-api-key instead of Bearer
+      if (providerId === "anthropic") {
+        headers["x-api-key"] = apiKey;
+        headers["anthropic-version"] = "2023-06-01";
+        delete headers["Authorization"];
+      }
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch(modelsUrl, {
+        method: "GET",
+        headers,
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) return [];
+
+      const body = await response.json() as any;
+
+      // OpenAI-compatible response: { data: [{ id, object, ... }] }
+      const rawModels: any[] = body?.data ?? body?.models ?? [];
+      if (!Array.isArray(rawModels)) return [];
+
+      const apiProtocol = this.getDefaultApiProtocol(providerId) ?? "openai-completions";
+
+      return rawModels
+        .filter((m: any) => typeof m.id === "string")
+        .map((m: any) => ({
+          id: m.id,
+          name: m.name ?? m.id,
+          provider: providerId,
+          api: apiProtocol,
+          reasoning: false,
+          contextWindow: m.context_window ?? m.contextWindow ?? 128000,
+          maxTokens: m.max_output_tokens ?? m.maxTokens ?? 4096,
+        }))
+        .sort((a: ModelInfo, b: ModelInfo) => a.id.localeCompare(b.id));
+    } catch {
+      return [];
+    }
+  }
+
+  private getDefaultApiProtocol(providerId: string): string | undefined {
+    const providerConfig = this.config.llm.providers?.[providerId];
+    if (providerConfig?.apiProtocol) return providerConfig.apiProtocol;
+
+    // Check DEFAULT_PROTOCOL_MAP from provider.ts — inline the mapping here
+    const PROTOCOL_MAP: Record<string, string> = {
+      anthropic: "anthropic-messages",
+      openai: "openai-completions",
+      google: "google-generative-ai",
+      xai: "openai-completions",
+      groq: "openai-completions",
+      cerebras: "openai-completions",
+      openrouter: "openai-completions",
+      mistral: "mistral-conversations",
+      zai: "openai-completions",
+    };
+    return PROTOCOL_MAP[providerId];
   }
 
   /**

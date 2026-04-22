@@ -98,6 +98,24 @@ export function configRoutes(swarm: AgentSwarm): Router {
     }
   });
 
+  router.get("/providers", (_req, res) => {
+    const providers = swarm.listProviders();
+    res.json({ data: providers });
+  });
+
+  router.get("/providers/:providerId/models", async (req, res) => {
+    try {
+      const providerId = req.params.providerId;
+      if (!providerId || typeof providerId !== "string") {
+        return res.status(400).json({ error: "providerId is required" });
+      }
+      const modelList = await swarm.listModels(providerId);
+      res.json({ data: modelList });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message ?? "Failed to list models" });
+    }
+  });
+
   router.post("/test-model", async (req, res) => {
     try {
       if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
