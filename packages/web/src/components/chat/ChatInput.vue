@@ -81,6 +81,13 @@ watch(() => props.isDirectMode, (isDirect) => {
   }
 }, { immediate: true });
 
+// Auto-select first model in direct mode
+watch(savedModels, (models) => {
+  if (props.isDirectMode && models.length > 0 && !directModel.value) {
+    selectSavedModel(models[0]);
+  }
+}, { immediate: true });
+
 onMounted(() => {
   if (!connected.value) {
     connect();

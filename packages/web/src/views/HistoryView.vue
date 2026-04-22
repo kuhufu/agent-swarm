@@ -32,11 +32,7 @@ const selectedMessages = computed(() =>
 );
 
 onMounted(async () => {
-  for (const swarm of swarmStore.swarms) {
-    try {
-      await conversationStore.fetchConversations(swarm.id);
-    } catch { /* ignore */ }
-  }
+  await conversationStore.fetchAllConversations();
 });
 
 async function selectConv(conv: ConversationInfo) {

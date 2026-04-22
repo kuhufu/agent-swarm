@@ -18,6 +18,14 @@ const streamingMessages = computed(() =>
   Array.from(conversationStore.streamingMessages.values()),
 );
 
+const currentConversationTitle = computed(() => {
+  if (!conversationStore.currentConversationId) return null;
+  const conv = conversationStore.conversations.find(
+    (c) => c.id === conversationStore.currentConversationId,
+  );
+  return conv?.title ?? null;
+});
+
 onMounted(() => {
   swarmStore.fetchSwarms();
   if (!connected.value) {
@@ -35,7 +43,12 @@ function handleNewConversation() {
     <div class="chat-main">
       <div class="chat-header">
         <div class="chat-header-left">
-          <h2>{{ isDirectMode ? '直接对话' : '对话' }}</h2>
+          <template v-if="currentConversationTitle">
+            <h2>{{ currentConversationTitle }}</h2>
+          </template>
+          <template v-else>
+            <h2>{{ isDirectMode ? '直接对话' : '对话' }}</h2>
+          </template>
           <span v-if="conversationStore.currentConversationId" class="conversation-id">
             {{ conversationStore.currentConversationId.slice(0, 8) }}
           </span>

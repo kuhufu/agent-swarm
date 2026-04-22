@@ -1,7 +1,6 @@
 import { ref } from "vue";
 import { useConversationStore } from "../stores/conversation.js";
 import { useInterventionStore } from "../stores/intervention.js";
-import { useSwarmStore } from "../stores/swarm.js";
 import type { WSMessage } from "../types/index.js";
 import { executeClientTool } from "../tools/client-tools.js";
 
@@ -90,7 +89,6 @@ export function useWebSocket() {
   function handleMessage(msg: WSMessage) {
     const conversationStore = useConversationStore();
     const interventionStore = useInterventionStore();
-    const swarmStore = useSwarmStore();
 
     switch (msg.type) {
       case "connected":
@@ -99,9 +97,7 @@ export function useWebSocket() {
       case "conversation_created":
         conversationStore.setCurrentConversation(msg.payload.conversationId);
         conversationStore.applyConversationSettingsFromServer(msg.payload);
-        if (swarmStore.currentSwarm?.id) {
-          void conversationStore.fetchConversations(swarmStore.currentSwarm.id);
-        }
+        void conversationStore.fetchAllConversations();
         break;
 
       // ── Agent lifecycle events ──
