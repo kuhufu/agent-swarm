@@ -247,8 +247,7 @@ function getRoleColor(role: string): string {
               <span v-if="selectedMessages" class="msg-count">{{ selectedMessages.length }} 条</span>
             </h4>
 
-            <div v-if="loadingMessages" class="detail-loading">加载中...</div>
-            <div v-else-if="selectedMessages && selectedMessages.length" class="detail-messages">
+            <div v-if="selectedMessages && selectedMessages.length" class="detail-messages">
               <div
                 v-for="msg in selectedMessages"
                 :key="msg.id"

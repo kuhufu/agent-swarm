@@ -305,8 +305,7 @@ import { h } from "vue";
             </svg>
           </button>
         </div>
-        <div v-if="conversationStore.loading" class="conversation-empty">加载中...</div>
-        <div v-else-if="!recentConversations.length" class="conversation-empty">暂无会话</div>
+        <div v-if="!recentConversations.length" class="conversation-empty">暂无会话</div>
       </div>
     </section>
 
