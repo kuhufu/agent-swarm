@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, computed, watch } from "vue";
-import { useChat, type DirectModelSelection } from "../../composables/useChat.js";
+import { useChat } from "../../composables/useChat.js";
 import { useSettingsStore } from "../../stores/settings.js";
 import type { SavedModel } from "../../types/index.js";
 
@@ -74,10 +74,6 @@ function selectSavedModel(sm: SavedModel) {
   showModelSelect.value = false;
 }
 
-function closeModelSelect() {
-  showModelSelect.value = false;
-}
-
 // When entering direct mode, ensure settings are loaded
 watch(() => props.isDirectMode, (isDirect) => {
   if (isDirect && !settingsStore.config) {
@@ -135,18 +131,38 @@ onMounted(() => {
       </div>
       <!-- Tool toggles (right-aligned) -->
       <div class="tool-toggles-right">
-        <label class="tool-toggle">
-          <input v-model="currentTimeToolEnabled" type="checkbox">
+        <button
+          class="tool-btn"
+          :class="{ active: currentTimeToolEnabled }"
+          @click="currentTimeToolEnabled = !currentTimeToolEnabled"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
           <span>当前时间</span>
-        </label>
-        <label class="tool-toggle">
-          <input v-model="jsExecutionToolEnabled" type="checkbox">
+        </button>
+        <button
+          class="tool-btn"
+          :class="{ active: jsExecutionToolEnabled }"
+          @click="jsExecutionToolEnabled = !jsExecutionToolEnabled"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6" />
+            <polyline points="8 6 2 12 8 18" />
+          </svg>
           <span>JS 执行</span>
-        </label>
-        <label class="tool-toggle">
-          <input v-model="thinkModeEnabled" type="checkbox">
+        </button>
+        <button
+          class="tool-btn"
+          :class="{ active: thinkModeEnabled }"
+          @click="thinkModeEnabled = !thinkModeEnabled"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
           <span>Think</span>
-        </label>
+        </button>
       </div>
     </div>
     <div class="input-wrapper">
@@ -187,7 +203,7 @@ onMounted(() => {
 
 <style scoped>
 .chat-input {
-  padding: 16px 24px 24px;
+  padding: 12px 24px 20px;
   border-top: 1px solid var(--color-border-subtle);
   background: rgba(255, 255, 255, 0.02);
   backdrop-filter: blur(12px);
@@ -205,25 +221,41 @@ onMounted(() => {
 .tool-toggles-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-shrink: 0;
   margin-left: auto;
 }
 
-.tool-toggle {
+.tool-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  user-select: none;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1.4;
 }
 
-.tool-toggle input {
+.tool-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text-secondary);
+}
+
+.tool-btn.active {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.2);
+  color: var(--color-accent-light);
+}
+
+.tool-btn svg {
   width: 14px;
   height: 14px;
-  accent-color: var(--color-accent);
 }
 
 /* ── Inline model selector ── */
@@ -397,7 +429,7 @@ textarea:disabled {
 .send-btn {
   width: 48px;
   height: 48px;
-  border-radius: 16px;
+  border-radius: 50%;
   border: none;
   background: linear-gradient(135deg, var(--color-accent), var(--color-accent-dark));
   color: white;
@@ -407,7 +439,6 @@ textarea:disabled {
   justify-content: center;
   flex-shrink: 0;
   transition: all 0.2s;
-  margin-bottom: 2px;
 }
 
 .send-btn:hover:not(:disabled) {

@@ -41,7 +41,7 @@ function handleNewConversation() {
           </span>
           <span v-if="isDirectMode" class="mode-badge direct">直接对话模式</span>
         </div>
-        <button class="btn-secondary" @click="handleNewConversation">
+        <button class="new-chat-btn" @click="handleNewConversation">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
@@ -81,7 +81,7 @@ function handleNewConversation() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
+  padding: 14px 24px;
   border-bottom: 1px solid var(--color-border-subtle);
   background: rgba(255, 255, 255, 0.02);
   backdrop-filter: blur(12px);
@@ -94,7 +94,7 @@ function handleNewConversation() {
 }
 
 .chat-header h2 {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--color-text-primary);
   margin: 0;
@@ -123,12 +123,46 @@ function handleNewConversation() {
   border-color: rgba(34, 197, 94, 0.25);
 }
 
+.chat-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.new-chat-btn {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.new-chat-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--color-border-hover);
+  color: var(--color-text-primary);
+}
+
 .chat-sidebar-right {
-  width: 280px;
+  width: 260px;
   background: rgba(255, 255, 255, 0.02);
   backdrop-filter: blur(12px);
   padding: 20px;
   overflow-y: auto;
   flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .chat-sidebar-right {
+    display: none;
+  }
 }
 </style>
