@@ -3,6 +3,7 @@ import { onMounted, ref, reactive, computed, watch } from "vue";
 import { useSwarmStore } from "../stores/swarm.js";
 import { useSettingsStore } from "../stores/settings.js";
 import CreateSwarmDialog from "../components/swarm/CreateSwarmDialog.vue";
+import ModeIcon from "../components/common/ModeIcon.vue";
 import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, DebateConfig } from "../types/index.js";
 import { confirmDialog, showError } from "../utils/ui-feedback.js";
 
@@ -221,14 +222,14 @@ function clearModelSelection() {
 }
 
 function getModeConfig(mode: string) {
-  const map: Record<string, { icon: string; label: string; color: string }> = {
-    router: { icon: "🔀", label: "Router", color: "#818cf8" },
-    sequential: { icon: "➡️", label: "Sequential", color: "#34d399" },
-    parallel: { icon: "⏩", label: "Parallel", color: "#60a5fa" },
-    swarm: { icon: "🐝", label: "Swarm", color: "#fbbf24" },
-    debate: { icon: "⚖️", label: "Debate", color: "#f87171" },
+  const map: Record<string, { label: string; color: string }> = {
+    router: { label: "Router", color: "#818cf8" },
+    sequential: { label: "Sequential", color: "#34d399" },
+    parallel: { label: "Parallel", color: "#60a5fa" },
+    swarm: { label: "Swarm", color: "#fbbf24" },
+    debate: { label: "Debate", color: "#f87171" },
   };
-  return map[mode] ?? { icon: "📦", label: mode, color: "#9ca3af" };
+  return map[mode] ?? { label: mode, color: "#9ca3af" };
 }
 </script>
 
@@ -252,7 +253,7 @@ function getModeConfig(mode: string) {
             :class="{ active: selectedSwarmId === swarm.id }"
             @click="handleSelect(swarm)"
           >
-            <span class="swarm-nav-icon">{{ getModeConfig(swarm.mode).icon }}</span>
+            <span class="swarm-nav-icon"><ModeIcon :mode="swarm.mode" /></span>
             <div>
               <span class="nav-label">{{ swarm.name }}</span>
               <span class="nav-desc">{{ swarm.agents.length }} 个 Agent · {{ getModeConfig(swarm.mode).label }}</span>
@@ -294,7 +295,7 @@ function getModeConfig(mode: string) {
         <div v-else class="detail-panel">
           <div class="detail-header">
             <div class="detail-title-row">
-              <span class="detail-mode-icon">{{ getModeConfig(editForm.mode).icon }}</span>
+              <span class="detail-mode-icon"><ModeIcon :mode="editForm.mode" :size="22" /></span>
               <div class="detail-title-input-wrap">
                 <input
                   v-model="editForm.name"
@@ -346,7 +347,7 @@ function getModeConfig(mode: string) {
                 :class="{ active: editForm.mode === m.value }"
                 @click="editForm.mode = m.value; markDirty()"
               >
-                <span class="mode-icon">{{ m.icon }}</span>
+                <span class="mode-icon"><ModeIcon :mode="m.value" /></span>
                 <div class="mode-info">
                   <span class="mode-name">{{ m.label }}</span>
                   <span class="mode-desc">{{ m.desc }}</span>
@@ -659,7 +660,6 @@ function getModeConfig(mode: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
   flex-shrink: 0;
 }
 
@@ -752,7 +752,6 @@ function getModeConfig(mode: string) {
   background: rgba(255, 255, 255, 0.04);
   border-radius: 12px;
   border: 1px solid var(--color-border-subtle);
-  font-size: 22px;
   flex-shrink: 0;
 }
 
@@ -904,7 +903,11 @@ function getModeConfig(mode: string) {
 }
 
 .mode-icon {
-  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
 }
 

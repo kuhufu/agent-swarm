@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import { useConversationStore } from "../stores/conversation.js";
 import { useSwarmStore } from "../stores/swarm.js";
 import * as conversationsApi from "../api/conversations.js";
+import ModeIcon from "../components/common/ModeIcon.vue";
 import type { ConversationInfo, SwarmConfig, ChatMessage } from "../types/index.js";
 import { confirmDialog, showError } from "../utils/ui-feedback.js";
 
@@ -103,14 +104,14 @@ function getSwarmMode(swarmId: string): string {
 }
 
 function getModeConfig(mode: string) {
-  const map: Record<string, { icon: string; label: string; color: string }> = {
-    router: { icon: "🔀", label: "Router", color: "#818cf8" },
-    sequential: { icon: "➡️", label: "Sequential", color: "#34d399" },
-    parallel: { icon: "⏩", label: "Parallel", color: "#60a5fa" },
-    swarm: { icon: "🐝", label: "Swarm", color: "#fbbf24" },
-    debate: { icon: "⚖️", label: "Debate", color: "#f87171" },
+  const map: Record<string, { label: string; color: string }> = {
+    router: { label: "Router", color: "#818cf8" },
+    sequential: { label: "Sequential", color: "#34d399" },
+    parallel: { label: "Parallel", color: "#60a5fa" },
+    swarm: { label: "Swarm", color: "#fbbf24" },
+    debate: { label: "Debate", color: "#f87171" },
   };
-  return map[mode] ?? { icon: "📦", label: mode, color: "#9ca3af" };
+  return map[mode] ?? { label: mode, color: "#9ca3af" };
 }
 
 function getRoleLabel(role: string): string {
@@ -211,6 +212,7 @@ function getRoleColor(role: string): string {
                 <h3 class="detail-title">{{ selectedConv.title ?? "新对话" }}</h3>
                 <div class="detail-meta">
                   <span class="swarm-badge" :style="{ background: getModeConfig(getSwarmMode(selectedConv.swarmId)).color + '20', color: getModeConfig(getSwarmMode(selectedConv.swarmId)).color }">
+                    <ModeIcon :mode="getSwarmMode(selectedConv.swarmId)" :size="12" />
                     {{ getSwarmName(selectedConv.swarmId) }}
                   </span>
                   <span class="meta-text">{{ formatTime(selectedConv.updatedAt) }}</span>

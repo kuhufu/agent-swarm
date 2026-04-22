@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SwarmConfig } from "../../types/index.js";
+import ModeIcon from "../common/ModeIcon.vue";
 
 const props = defineProps<{
   swarm: SwarmConfig;
@@ -11,16 +12,16 @@ const emit = defineEmits<{
   (e: "delete", swarm: SwarmConfig): void;
 }>();
 
-const modeConfig: Record<string, { icon: string; label: string; color: string; bg: string }> = {
-  router: { icon: "🔀", label: "Router 路由", color: "#818cf8", bg: "rgba(99, 102, 241, 0.1)" },
-  sequential: { icon: "➡️", label: "Sequential 顺序", color: "#34d399", bg: "rgba(52, 211, 153, 0.1)" },
-  parallel: { icon: "⏩", label: "Parallel 并行", color: "#60a5fa", bg: "rgba(96, 165, 250, 0.1)" },
-  swarm: { icon: "🐝", label: "Swarm 蜂群", color: "#fbbf24", bg: "rgba(251, 191, 36, 0.1)" },
-  debate: { icon: "⚖️", label: "Debate 辩论", color: "#f87171", bg: "rgba(248, 113, 113, 0.1)" },
+const modeConfig: Record<string, { label: string; color: string; bg: string }> = {
+  router: { label: "Router 路由", color: "#818cf8", bg: "rgba(99, 102, 241, 0.1)" },
+  sequential: { label: "Sequential 顺序", color: "#34d399", bg: "rgba(52, 211, 153, 0.1)" },
+  parallel: { label: "Parallel 并行", color: "#60a5fa", bg: "rgba(96, 165, 250, 0.1)" },
+  swarm: { label: "Swarm 蜂群", color: "#fbbf24", bg: "rgba(251, 191, 36, 0.1)" },
+  debate: { label: "Debate 辩论", color: "#f87171", bg: "rgba(248, 113, 113, 0.1)" },
 };
 
 function getModeConfig(mode: string) {
-  return modeConfig[mode] ?? { icon: "📦", label: mode, color: "#9ca3af", bg: "rgba(255, 255, 255, 0.05)" };
+  return modeConfig[mode] ?? { label: mode, color: "#9ca3af", bg: "rgba(255, 255, 255, 0.05)" };
 }
 
 function handleClick() {
@@ -42,7 +43,7 @@ function handleDelete(e: Event) {
   <div class="swarm-card card" @click="handleClick">
     <div class="card-header">
       <div class="mode-badge" :style="{ background: getModeConfig(swarm.mode).bg, color: getModeConfig(swarm.mode).color }">
-        <span class="mode-icon">{{ getModeConfig(swarm.mode).icon }}</span>
+        <ModeIcon :mode="swarm.mode" :size="14" />
         <span class="mode-label">{{ getModeConfig(swarm.mode).label }}</span>
       </div>
       <div class="card-actions">
@@ -115,9 +116,7 @@ function handleDelete(e: Event) {
   font-weight: 600;
 }
 
-.mode-icon {
-  font-size: 14px;
-}
+
 
 .card-actions {
   display: flex;

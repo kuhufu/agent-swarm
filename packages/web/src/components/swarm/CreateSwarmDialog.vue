@@ -2,6 +2,7 @@
 import { ref, reactive, computed } from "vue";
 import { useSettingsStore } from "../../stores/settings.js";
 import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel } from "../../types/index.js";
+import ModeIcon from "../common/ModeIcon.vue";
 
 const emit = defineEmits<{
   (e: "create", swarm: SwarmConfig): void;
@@ -120,7 +121,7 @@ function submit() {
               :class="{ active: mode === m.value }"
               @click="mode = m.value"
             >
-              <span class="mode-icon">{{ m.icon }}</span>
+              <span class="mode-icon"><ModeIcon :mode="m.value" /></span>
               <div class="mode-info">
                 <span class="mode-name">{{ m.label }}</span>
                 <span class="mode-desc">{{ m.desc }}</span>
@@ -357,7 +358,11 @@ function submit() {
 }
 
 .mode-icon {
-  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
 }
 
