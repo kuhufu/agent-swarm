@@ -2,8 +2,7 @@
 import { onMounted, ref, computed, watch } from "vue";
 import { useChat, type DirectModelSelection } from "../../composables/useChat.js";
 import { useSettingsStore } from "../../stores/settings.js";
-import * as configApi from "../../api/config.js";
-import type { SavedModel, ProviderInfo, ModelInfo } from "../../types/index.js";
+import type { SavedModel } from "../../types/index.js";
 
 const props = defineProps<{
   swarmId: string;
@@ -28,20 +27,23 @@ const {
 const settingsStore = useSettingsStore();
 
 // ── Model selector state ──
-const selectedSavedModelId = ref<string>("");
-const showMoreModels = ref(false);
-const providerList = ref<ProviderInfo[]>([]);
-const modelList = ref<ModelInfo[]>([]);
-const loadingProviders = ref(false);
-const loadingModels = ref(false);
-const selectedProvider = ref("");
-const selectedModelId = ref("");
+const selectedModelValue = ref("");
+const showModelSelect = ref(false);
 
 const savedModels = computed<SavedModel[]>(() => settingsStore.config?.models ?? []);
 
 const canSendDirect = computed(() =>
   directModel.value !== null && directModel.value.provider !== "" && directModel.value.modelId !== "",
 );
+
+// Display name for currently selected model
+const selectedModelLabel = computed(() => {
+  if (!directModel.value) return "";
+  const sm = savedModels.value.find(
+    (m) => m.provider === directModel.value!.provider && m.modelId === directModel.value!.modelId,
+  );
+  return sm ? sm.name : `${directModel.value.provider}/${directModel.value.modelId}`;
+});
 
 function handleSend() {
   if (props.active) {
@@ -66,60 +68,14 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
-// ── Saved model selection ──
 function selectSavedModel(sm: SavedModel) {
-  selectedSavedModelId.value = sm.id;
+  selectedModelValue.value = sm.id;
   directModel.value = { provider: sm.provider, modelId: sm.modelId };
-  showMoreModels.value = false;
+  showModelSelect.value = false;
 }
 
-// ── Online model selection (for models not in saved list) ──
-async function loadProviders() {
-  loadingProviders.value = true;
-  try {
-    const res = await configApi.listProviders();
-    providerList.value = res.data ?? [];
-  } catch {
-    providerList.value = [];
-  } finally {
-    loadingProviders.value = false;
-  }
-}
-
-async function loadModels(providerId: string) {
-  if (!providerId) {
-    modelList.value = [];
-    return;
-  }
-  loadingModels.value = true;
-  try {
-    const res = await configApi.listModels(providerId);
-    modelList.value = res.data ?? [];
-  } catch {
-    modelList.value = [];
-  } finally {
-    loadingModels.value = false;
-  }
-}
-
-function onProviderChange() {
-  selectedModelId.value = "";
-  directModel.value = null;
-  loadModels(selectedProvider.value);
-}
-
-function selectOnlineModel(m: ModelInfo) {
-  selectedSavedModelId.value = "";
-  selectedModelId.value = m.id;
-  directModel.value = { provider: selectedProvider.value, modelId: m.id };
-  showMoreModels.value = false;
-}
-
-function applyManualModelId() {
-  if (selectedProvider && selectedModelId) {
-    directModel.value = { provider: selectedProvider.value, modelId: selectedModelId.value };
-    selectedSavedModelId.value = "";
-  }
+function closeModelSelect() {
+  showModelSelect.value = false;
 }
 
 // When entering direct mode, ensure settings are loaded
@@ -127,100 +83,71 @@ watch(() => props.isDirectMode, (isDirect) => {
   if (isDirect && !settingsStore.config) {
     settingsStore.fetchConfig();
   }
-  if (isDirect && providerList.value.length === 0) {
-    loadProviders();
-  }
 }, { immediate: true });
 
 onMounted(() => {
   if (!connected.value) {
     connect();
   }
-  if (props.isDirectMode) {
+  if (props.isDirectMode && !settingsStore.config) {
     settingsStore.fetchConfig();
-    loadProviders();
   }
 });
 </script>
 
 <template>
   <div class="chat-input">
-    <!-- Direct mode: model selector -->
-    <div v-if="isDirectMode" class="model-selector">
-      <!-- Saved models as primary selection -->
-      <div v-if="savedModels.length" class="model-chips">
+    <div class="tool-options">
+      <!-- Direct mode: model selector inline (left-aligned) -->
+      <div v-if="isDirectMode" class="model-select-inline">
         <button
-          v-for="sm in savedModels"
-          :key="sm.id"
-          class="model-chip"
-          :class="{ active: selectedSavedModelId === sm.id }"
-          @click="selectSavedModel(sm)"
+          class="model-select-btn"
+          :class="{ selected: canSendDirect }"
+          @click="showModelSelect = !showModelSelect"
         >
-          <span class="chip-provider">{{ sm.provider }}</span>
-          <span class="chip-separator">/</span>
-          <span class="chip-model">{{ sm.name }}</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+          </svg>
+          <span v-if="canSendDirect" class="model-select-label">{{ selectedModelLabel }}</span>
+          <span v-else class="model-select-label placeholder">选择模型</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; flex-shrink: 0;">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </button>
-      </div>
-
-      <!-- Toggle for more models -->
-      <button class="more-models-btn" @click="showMoreModels = !showMoreModels">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        {{ showMoreModels ? '收起' : '更多模型...' }}
-      </button>
-
-      <!-- Online model selection (expanded) -->
-      <div v-if="showMoreModels" class="online-model-selector">
-        <div class="provider-model-row">
-          <select
-            v-model="selectedProvider"
-            class="input-field provider-select"
-            @change="onProviderChange"
+        <!-- Dropdown -->
+        <div v-if="showModelSelect" class="model-dropdown">
+          <button
+            v-for="sm in savedModels"
+            :key="sm.id"
+            class="model-dropdown-item"
+            :class="{ active: selectedModelValue === sm.id }"
+            @click="selectSavedModel(sm)"
           >
-            <option value="">选择提供商</option>
-            <option v-for="p in providerList" :key="p.id" :value="p.id">{{ p.id }}</option>
-          </select>
-          <div class="model-select-wrapper">
-            <input
-              v-model="selectedModelId"
-              class="input-field model-input"
-              placeholder="模型 ID"
-              @change="applyManualModelId"
-            />
+            <span class="dropdown-model-name">{{ sm.name }}</span>
+            <span class="dropdown-model-provider">{{ sm.provider }}</span>
+          </button>
+          <div v-if="!savedModels.length" class="model-dropdown-empty">
+            暂无已配置模型，请先在设置中添加
           </div>
         </div>
-        <div v-if="loadingModels" class="loading-hint">加载模型列表...</div>
-        <div v-else-if="modelList.length > 0" class="online-model-list">
-          <button
-            v-for="m in modelList"
-            :key="m.id"
-            class="online-model-item"
-            :class="{ active: directModel?.provider === selectedProvider && directModel?.modelId === m.id }"
-            @click="selectOnlineModel(m)"
-          >
-            <span class="online-model-id">{{ m.id }}</span>
-            <span class="online-model-meta">{{ (m.contextWindow / 1000).toFixed(0) }}k</span>
-          </button>
-        </div>
       </div>
-    </div>
-
-    <div class="tool-options">
-      <label class="tool-toggle">
-        <input v-model="currentTimeToolEnabled" type="checkbox">
-        <span>当前时间工具</span>
-      </label>
-      <label class="tool-toggle">
-        <input v-model="jsExecutionToolEnabled" type="checkbox">
-        <span>前端 JS 执行工具</span>
-      </label>
-      <label class="tool-toggle">
-        <input v-model="thinkModeEnabled" type="checkbox">
-        <span>Think 模式</span>
-      </label>
-      <span class="tool-hint">工具默认关闭；Think 仅对支持 think/no_think 的模型生效</span>
+      <!-- Tool toggles (right-aligned) -->
+      <div class="tool-toggles-right">
+        <label class="tool-toggle">
+          <input v-model="currentTimeToolEnabled" type="checkbox">
+          <span>当前时间</span>
+        </label>
+        <label class="tool-toggle">
+          <input v-model="jsExecutionToolEnabled" type="checkbox">
+          <span>JS 执行</span>
+        </label>
+        <label class="tool-toggle">
+          <input v-model="thinkModeEnabled" type="checkbox">
+          <span>Think</span>
+        </label>
+      </div>
     </div>
     <div class="input-wrapper">
       <div class="textarea-wrapper">
@@ -266,167 +193,27 @@ onMounted(() => {
   backdrop-filter: blur(12px);
 }
 
-.model-selector {
-  max-width: 900px;
-  margin: 0 auto 10px;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 12px;
-}
-
-.model-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-.model-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 5px 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  border: 1px solid var(--color-border-subtle);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.model-chip:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: var(--color-border-hover);
-}
-
-.model-chip.active {
-  background: rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.3);
-  color: var(--color-accent-light);
-}
-
-.chip-provider {
-  color: var(--color-text-muted);
-  font-size: 11px;
-}
-
-.model-chip.active .chip-provider {
-  color: rgba(129, 140, 248, 0.7);
-}
-
-.chip-separator {
-  color: var(--color-text-muted);
-  margin: 0 2px;
-  font-size: 11px;
-}
-
-.chip-model {
-  font-weight: 600;
-}
-
-.more-models-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  border: none;
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  cursor: pointer;
-  padding: 4px 0;
-  transition: color 0.15s;
-}
-
-.more-models-btn:hover {
-  color: var(--color-text-secondary);
-}
-
-.online-model-selector {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--color-border-subtle);
-}
-
-.provider-model-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.provider-select {
-  width: 160px;
-  flex-shrink: 0;
-}
-
-.model-select-wrapper {
-  flex: 1;
-  position: relative;
-}
-
-.model-input {
-  width: 100%;
-}
-
-.loading-hint {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  padding: 4px 0;
-}
-
-.online-model-list {
-  max-height: 200px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.online-model-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  transition: background 0.1s;
-  font-size: 12px;
-  text-align: left;
-  color: var(--color-text-secondary);
-}
-
-.online-model-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.online-model-item.active {
-  background: rgba(99, 102, 241, 0.12);
-  color: var(--color-accent-light);
-}
-
-.online-model-id {
-  font-family: var(--font-mono);
-  font-size: 11px;
-}
-
-.online-model-meta {
-  font-size: 10px;
-  color: var(--color-text-muted);
-}
-
 .tool-options {
   max-width: 900px;
   margin: 0 auto 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 30px;
+}
+
+.tool-toggles-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .tool-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   color: var(--color-text-secondary);
   font-size: 13px;
   user-select: none;
@@ -439,16 +226,124 @@ onMounted(() => {
   accent-color: var(--color-accent);
 }
 
-.tool-hint {
-  margin-left: 12px;
-  font-size: 12px;
-  color: var(--color-text-muted);
+/* ── Inline model selector ── */
+.model-select-inline {
+  position: relative;
+  display: inline-flex;
 }
 
+.model-select-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1.4;
+}
+
+.model-select-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--color-border-hover);
+}
+
+.model-select-btn.selected {
+  border-color: rgba(99, 102, 241, 0.3);
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--color-accent-light);
+}
+
+.model-select-label {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.model-select-label.placeholder {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+/* ── Dropdown ── */
+.model-dropdown {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-width: 220px;
+  max-width: 320px;
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 50;
+  background: rgba(20, 22, 35, 0.98);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  padding: 4px;
+}
+
+.model-dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+  font-size: 13px;
+  text-align: left;
+  color: var(--color-text-secondary);
+}
+
+.model-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.model-dropdown-item.active {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--color-accent-light);
+}
+
+.dropdown-model-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-model-provider {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.model-dropdown-item.active .dropdown-model-provider {
+  color: rgba(129, 140, 248, 0.6);
+}
+
+.model-dropdown-empty {
+  padding: 12px 10px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* ── Input area ── */
 .input-wrapper {
   display: flex;
   gap: 10px;
-  align-items: flex-end;
+  align-items: center;
   max-width: 900px;
   margin: 0 auto;
 }
@@ -456,33 +351,6 @@ onMounted(() => {
 .textarea-wrapper {
   flex: 1;
   position: relative;
-}
-
-.input-field {
-  width: 100%;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  color: var(--color-text-primary);
-  font-size: 13px;
-  outline: none;
-  transition: all 0.2s;
-  box-sizing: border-box;
-}
-
-.input-field:focus {
-  border-color: rgba(99, 102, 241, 0.5);
-  background: rgba(99, 102, 241, 0.05);
-}
-
-.input-field::placeholder {
-  color: var(--color-text-muted);
-}
-
-.input-field:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 textarea {
@@ -527,9 +395,9 @@ textarea:disabled {
 }
 
 .send-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
   border: none;
   background: linear-gradient(135deg, var(--color-accent), var(--color-accent-dark));
   color: white;
@@ -539,6 +407,7 @@ textarea:disabled {
   justify-content: center;
   flex-shrink: 0;
   transition: all 0.2s;
+  margin-bottom: 2px;
 }
 
 .send-btn:hover:not(:disabled) {
