@@ -13,6 +13,7 @@ const conversationStore = useConversationStore();
 const { connect, connected } = useWebSocket();
 
 const swarmId = computed(() => swarmStore.currentSwarm?.id ?? "");
+const isDirectMode = computed(() => !swarmStore.currentSwarm);
 const streamingMessages = computed(() =>
   Array.from(conversationStore.streamingMessages.values()),
 );
@@ -34,10 +35,11 @@ function handleNewConversation() {
     <div class="chat-main">
       <div class="chat-header">
         <div class="chat-header-left">
-          <h2>对话</h2>
+          <h2>{{ isDirectMode ? '直接对话' : '对话' }}</h2>
           <span v-if="conversationStore.currentConversationId" class="conversation-id">
             {{ conversationStore.currentConversationId.slice(0, 8) }}
           </span>
+          <span v-if="isDirectMode" class="mode-badge direct">直接对话模式</span>
         </div>
         <button class="btn-secondary" @click="handleNewConversation">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
@@ -50,9 +52,10 @@ function handleNewConversation() {
       <MessageList
         :messages="conversationStore.messages"
         :streaming-messages="streamingMessages"
+        :is-direct-mode="isDirectMode"
       />
       <InterventionPanel />
-      <ChatInput :swarm-id="swarmId" :active="conversationStore.isActive" />
+      <ChatInput :swarm-id="swarmId" :active="conversationStore.isActive" :is-direct-mode="isDirectMode" />
     </div>
     <aside class="chat-sidebar-right">
       <AgentStatus :agents="Array.from(conversationStore.agentStates.values())" />
@@ -104,6 +107,20 @@ function handleNewConversation() {
   padding: 2px 8px;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 6px;
+}
+
+.mode-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  border: 1px solid;
+}
+
+.mode-badge.direct {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.25);
 }
 
 .chat-sidebar-right {

@@ -125,6 +125,8 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
     const content = typeof payload.content === "string" ? payload.content : undefined;
     const conversationId = typeof payload.conversationId === "string" ? payload.conversationId : undefined;
     const clientTools = payload.clientTools;
+    const provider = typeof payload.provider === "string" ? payload.provider : undefined;
+    const modelId = typeof payload.modelId === "string" ? payload.modelId : undefined;
     const preferencesPatch = parseConversationPreferencesPatch(payload);
     const hasExplicitPreferences = preferencesPatch.enabledTools !== undefined
       || preferencesPatch.thinkModeEnabled !== undefined;
@@ -174,8 +176,27 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
             thinkModeEnabled: initialPreferences.thinkModeEnabled ?? false,
           };
         }
+      } else if (provider && modelId) {
+        // Direct conversation mode (no swarm needed)
+        const initialPreferences: ConversationPreferencesPatch = {
+          enabledTools: preferencesPatch.enabledTools ?? DEFAULT_CONVERSATION_PREFERENCES.enabledTools,
+          thinkModeEnabled: preferencesPatch.thinkModeEnabled ?? DEFAULT_CONVERSATION_PREFERENCES.thinkModeEnabled,
+        };
+        conversation = await swarm.createDirectConversation(provider, modelId, undefined, initialPreferences);
+        const createdConversation = await swarm.getConversation(conversation.getId());
+        if (createdConversation) {
+          effectivePreferences = {
+            enabledTools: createdConversation.enabledTools,
+            thinkModeEnabled: createdConversation.thinkModeEnabled,
+          };
+        } else {
+          effectivePreferences = {
+            enabledTools: initialPreferences.enabledTools ?? [],
+            thinkModeEnabled: initialPreferences.thinkModeEnabled ?? false,
+          };
+        }
       } else {
-        send(client, { type: "error", payload: { message: "swarmId or conversationId required" } });
+        send(client, { type: "error", payload: { message: "swarmId or (provider + modelId) or conversationId required" } });
         return;
       }
 

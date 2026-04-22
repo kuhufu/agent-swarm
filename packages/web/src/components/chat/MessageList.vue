@@ -6,6 +6,7 @@ import MessageItem from "./MessageItem.vue";
 const props = defineProps<{
   messages: ChatMessage[];
   streamingMessages: ChatMessage[];
+  isDirectMode?: boolean;
 }>();
 
 const visibleMessages = computed(() =>
@@ -53,8 +54,8 @@ const renderEntries = computed<RenderEntry[]>(() => {
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
         </svg>
       </div>
-      <p class="empty-title">开始新的对话</p>
-      <p class="empty-desc">选择一个 Swarm 并发送消息开始协作</p>
+      <p class="empty-title">{{ isDirectMode ? '选择模型开始对话' : '开始新的对话' }}</p>
+      <p class="empty-desc">{{ isDirectMode ? '在下方选择提供商和模型，然后发送消息' : '选择一个 Swarm 并发送消息开始协作' }}</p>
     </div>
     <div v-else class="messages-container">
       <MessageItem

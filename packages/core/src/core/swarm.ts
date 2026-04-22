@@ -157,6 +157,50 @@ export class AgentSwarm {
   }
 
   /**
+   * Create a direct (single-model) conversation without a pre-configured swarm.
+   * Internally creates a virtual SwarmConfig with one agent for the given model.
+   */
+  async createDirectConversation(
+    provider: string,
+    modelId: string,
+    title?: string,
+    preferences?: Partial<ConversationPreferences>,
+  ): Promise<Conversation> {
+    this.ensureInitialized();
+
+    const swarmId = `__direct_${provider}_${modelId}`;
+    const agentId = `direct-agent`;
+
+    // Create a virtual swarm config for direct chat
+    const directSwarm: SwarmConfig = {
+      id: swarmId,
+      name: `${provider}/${modelId}`,
+      mode: "sequential",
+      agents: [{
+        id: agentId,
+        name: modelId,
+        description: `Direct chat with ${provider}/${modelId}`,
+        systemPrompt: "You are a helpful assistant.",
+        model: { provider, modelId },
+      }],
+    };
+
+    // Register the virtual swarm temporarily
+    this.swarmConfigs.set(swarmId, directSwarm);
+
+    const conv = await this.storage.createConversation(swarmId, title, preferences);
+
+    return new Conversation(
+      conv.id,
+      directSwarm,
+      this.storage,
+      this.config.llm,
+      this.interventionHandler,
+      [],
+    );
+  }
+
+  /**
    * Resume an existing conversation.
    */
   async resumeConversation(conversationId: string): Promise<Conversation> {
