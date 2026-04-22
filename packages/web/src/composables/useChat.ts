@@ -13,7 +13,21 @@ export function useChat() {
   const { send, connected, connect } = useWebSocket();
   const inputText = ref("");
   const sending = ref(false);
-  const directModel = ref<DirectModelSelection | null>(null);
+  const directModel = computed<DirectModelSelection | null>({
+    get: (): DirectModelSelection | null => {
+      const model = conversationStore.currentDirectModel;
+      if (!model) {
+        return null;
+      }
+      return {
+        provider: model.provider,
+        modelId: model.modelId,
+      };
+    },
+    set: (value: DirectModelSelection | null): void => {
+      conversationStore.setDirectModel(value, true);
+    },
+  });
   const currentTimeToolEnabled = computed({
     get: () => conversationStore.isToolEnabled("current_time"),
     set: (value: boolean) => conversationStore.setClientToolEnabled("current_time", value),

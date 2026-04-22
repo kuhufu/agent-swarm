@@ -41,6 +41,7 @@ export interface ConversationInfo {
   title?: string;
   enabledTools: string[];
   thinkModeEnabled: boolean;
+  directModel?: ModelConfig;
   createdAt: number;
   updatedAt: number;
 }

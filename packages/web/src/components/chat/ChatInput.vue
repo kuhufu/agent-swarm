@@ -88,6 +88,17 @@ watch(savedModels, (models) => {
   }
 }, { immediate: true });
 
+watch([directModel, savedModels], ([model, models]) => {
+  if (!model) {
+    selectedModelValue.value = "";
+    return;
+  }
+  const matched = models.find(
+    (item) => item.provider === model.provider && item.modelId === model.modelId,
+  );
+  selectedModelValue.value = matched?.id ?? "";
+}, { immediate: true });
+
 onMounted(() => {
   if (!connected.value) {
     connect();

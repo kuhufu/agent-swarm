@@ -30,15 +30,13 @@ const recentConversations = computed(() =>
 
 /**
  * Resolve display label for a conversation's swarm context.
- * - Direct mode conversations have swarmId like "__direct_{provider}_{modelId}"
+ * - Direct mode conversations have swarmId prefixed with "__direct_"
  * - Regular conversations reference a real swarm
  */
 function getConversationMode(conv: ConversationInfo): { type: "direct" | "swarm"; label: string } {
   if (conv.swarmId.startsWith("__direct_")) {
-    // Parse provider and modelId from virtual swarmId
-    const parts = conv.swarmId.replace("__direct_", "").split("_");
-    const provider = parts[0] || "";
-    const modelId = parts.slice(1).join("_") || "";
+    const provider = conv.directModel?.provider?.trim() ?? "";
+    const modelId = conv.directModel?.modelId?.trim() ?? "";
     return { type: "direct", label: modelId || provider || "直接对话" };
   }
   const swarm = swarmStore.swarms.find((s) => s.id === conv.swarmId);
@@ -289,7 +287,7 @@ import { h } from "vue";
               <span
                 class="mode-tag"
                 :class="getConversationMode(conv).type"
-              >{{ getConversationMode(conv).type === 'direct' ? getConversationMode(conv).label : getConversationMode(conv).label }}</span>
+              >{{ getConversationMode(conv).label }}</span>
             </div>
             <span class="conversation-time">{{ formatTime(conv.updatedAt) }}</span>
           </div>

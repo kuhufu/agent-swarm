@@ -42,6 +42,25 @@ function createMockSwarm(): AgentSwarm {
   };
   swarms.set(routerSwarm.id, routerSwarm);
 
+  const directSwarm: SwarmConfig = {
+    id: "__direct_chat",
+    name: "openai/gpt-4o-mini",
+    mode: "sequential",
+    agents: [
+      {
+        id: "direct-agent",
+        name: "openai/gpt-4o-mini",
+        description: "Direct chat",
+        systemPrompt: "You are a helpful assistant.",
+        model: {
+          provider: "openai",
+          modelId: "gpt-4o-mini",
+        },
+      },
+    ],
+  };
+  swarms.set(directSwarm.id, directSwarm);
+
   const mock = {
     listSwarms: () => Array.from(swarms.values()),
     getSwarmConfig: (id: string) => swarms.get(id),
@@ -187,6 +206,20 @@ test("DELETE /api/swarms/:id removes swarm", async () => {
 
     assert.equal(response.status, 200);
     assert.equal(data.success, true);
+  } finally {
+    await server.close();
+  }
+});
+
+test("GET /api/swarms hides virtual direct-chat swarms", async () => {
+  const server = await startTestServer();
+  try {
+    const response = await fetch(`${server.baseUrl}/api/swarms`);
+    const data = await response.json() as { data: SwarmConfig[] };
+
+    assert.equal(response.status, 200);
+    assert.ok(data.data.every((item) => !item.id.startsWith("__direct_")));
+    assert.ok(data.data.some((item) => item.id === "router_swarm"));
   } finally {
     await server.close();
   }

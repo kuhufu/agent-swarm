@@ -27,7 +27,14 @@ export type {
 export type { InterventionDecision, InterventionContext } from "./intervention/types.js";
 
 // Storage types
-export type { IStorage, StoredMessage, StoredEvent, Conversation, ConversationPreferences } from "./storage/interface.js";
+export type {
+  IStorage,
+  StoredMessage,
+  StoredEvent,
+  Conversation,
+  ConversationPreferences,
+  ConversationDirectModel,
+} from "./storage/interface.js";
 
 // LLM types — LLMBackendConfig is already exported from core/types.js above
 

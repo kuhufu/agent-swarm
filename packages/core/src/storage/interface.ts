@@ -27,13 +27,20 @@ export interface Conversation {
   title?: string;
   enabledTools: string[];
   thinkModeEnabled: boolean;
+  directModel?: ConversationDirectModel;
   createdAt: number;
   updatedAt: number;
+}
+
+export interface ConversationDirectModel {
+  provider: string;
+  modelId: string;
 }
 
 export interface ConversationPreferences {
   enabledTools: string[];
   thinkModeEnabled: boolean;
+  directModel?: ConversationDirectModel;
 }
 
 export interface IStorage {

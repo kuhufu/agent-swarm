@@ -1,6 +1,6 @@
 import type { SwarmConfig, AgentSwarmRootConfig, LLMBackendConfig, ApiProtocol } from "./types.js";
 import type { IStorage } from "../storage/interface.js";
-import type { ConversationPreferences } from "../storage/interface.js";
+import type { Conversation as StoredConversation, ConversationPreferences } from "../storage/interface.js";
 import type { InterventionHandler } from "../intervention/handler.js";
 import { SqliteStorage } from "../storage/sqlite.js";
 import { Conversation } from "./conversation.js";
@@ -59,6 +59,7 @@ export interface ModelInfo {
 
 export class AgentSwarm {
   private static readonly LLM_CONFIG_KEY = "llm_config";
+  private static readonly DIRECT_SWARM_ID = "__direct_chat";
 
   private config: AgentSwarmRootConfig;
   private storage: IStorage;
@@ -168,7 +169,7 @@ export class AgentSwarm {
   ): Promise<Conversation> {
     this.ensureInitialized();
 
-    const swarmId = `__direct_${provider}_${modelId}`;
+    const swarmId = AgentSwarm.DIRECT_SWARM_ID;
     const agentId = `direct-agent`;
 
     // Create a virtual swarm config for direct chat
@@ -188,17 +189,17 @@ export class AgentSwarm {
     // Register the virtual swarm temporarily
     this.swarmConfigs.set(swarmId, directSwarm);
 
-    // Persist the virtual swarm to DB so the FK constraint on conversations.swarm_id is satisfied
+    // Persist virtual swarm so conversations.swarm_id FK is always valid.
     try {
-      const existing = await this.storage.loadSwarm(swarmId);
-      if (!existing) {
-        await this.storage.saveSwarm(directSwarm);
-      }
+      await this.storage.saveSwarm(directSwarm);
     } catch {
-      // If saveSwarm fails (e.g. already exists race), ignore — the in-memory config is set
+      // If saveSwarm fails (e.g. transient DB issue), keep in-memory config available.
     }
 
-    const conv = await this.storage.createConversation(swarmId, title, preferences);
+    const conv = await this.storage.createConversation(swarmId, title, {
+      ...preferences,
+      directModel: { provider, modelId },
+    });
 
     return new Conversation(
       conv.id,
@@ -228,7 +229,7 @@ export class AgentSwarm {
 
     const conversation = new Conversation(
       conv.id,
-      swarmConfig,
+      this.applyConversationDirectModel(swarmConfig, conv),
       this.storage,
       this.config.llm,
       this.interventionHandler,
@@ -692,5 +693,38 @@ export class AgentSwarm {
         judgeAgent: agents[0]?.id ?? "",
       };
     }
+  }
+
+  private applyConversationDirectModel(
+    swarmConfig: SwarmConfig,
+    conversation: StoredConversation,
+  ): SwarmConfig {
+    if (!swarmConfig.id.startsWith("__direct_")) {
+      return swarmConfig;
+    }
+
+    const directModel = conversation.directModel;
+    if (!directModel || !swarmConfig.agents[0]) {
+      return swarmConfig;
+    }
+
+    const [firstAgent, ...restAgents] = swarmConfig.agents;
+    return {
+      ...swarmConfig,
+      name: `${directModel.provider}/${directModel.modelId}`,
+      agents: [
+        {
+          ...firstAgent,
+          name: `${directModel.provider}/${directModel.modelId}`,
+          description: `Direct chat with ${directModel.provider}/${directModel.modelId}`,
+          model: {
+            ...firstAgent.model,
+            provider: directModel.provider,
+            modelId: directModel.modelId,
+          },
+        },
+        ...restAgents,
+      ],
+    };
   }
 }

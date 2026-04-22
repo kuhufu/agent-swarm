@@ -159,4 +159,57 @@ describe("AgentSwarm persistence", () => {
     await swarm.close();
     cleanupDb(dbPath);
   });
+
+  it("isolates direct-chat model selection per conversation", async () => {
+    const dbPath = createTestDbPath("direct-conversation");
+    cleanupDb(dbPath);
+
+    const swarm = new AgentSwarm({
+      config: createRootConfig(dbPath, [createSwarmConfig("default_swarm")]),
+    });
+
+    await swarm.init();
+
+    const first = await swarm.createDirectConversation("openai", "gpt-4o-mini");
+    const firstConversation = await swarm.getConversation(first.getId());
+    expect(firstConversation?.swarmId).toBe("__direct_chat");
+    expect(firstConversation?.directModel).toEqual({
+      provider: "openai",
+      modelId: "gpt-4o-mini",
+    });
+
+    const second = await swarm.createDirectConversation("anthropic", "claude-3-5-sonnet");
+    const secondConversation = await swarm.getConversation(second.getId());
+    expect(secondConversation?.swarmId).toBe("__direct_chat");
+    expect(secondConversation?.directModel).toEqual({
+      provider: "anthropic",
+      modelId: "claude-3-5-sonnet",
+    });
+
+    const resumedFirst = await swarm.resumeConversation(first.getId()) as unknown as { swarmConfig: SwarmConfig };
+    expect(resumedFirst.swarmConfig.agents[0]?.model).toEqual({
+      provider: "openai",
+      modelId: "gpt-4o-mini",
+    });
+
+    const resumedSecond = await swarm.resumeConversation(second.getId()) as unknown as { swarmConfig: SwarmConfig };
+    expect(resumedSecond.swarmConfig.agents[0]?.model).toEqual({
+      provider: "anthropic",
+      modelId: "claude-3-5-sonnet",
+    });
+
+    await swarm.close();
+
+    const restarted = new AgentSwarm({
+      config: createRootConfig(dbPath, [createSwarmConfig("default_swarm")]),
+    });
+    await restarted.init();
+
+    const persistedDirectSwarms = restarted.listSwarms().filter((item) => item.id.startsWith("__direct_"));
+    expect(persistedDirectSwarms).toHaveLength(1);
+    expect(persistedDirectSwarms[0].id).toBe("__direct_chat");
+
+    await restarted.close();
+    cleanupDb(dbPath);
+  });
 });

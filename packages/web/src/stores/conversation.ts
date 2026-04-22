@@ -16,6 +16,7 @@ export const useConversationStore = defineStore("conversation", () => {
   const conversations = ref<ConversationInfo[]>([]);
   const enabledTools = ref<string[]>([]);
   const thinkModeEnabled = ref(false);
+  const currentDirectModel = ref<ConversationInfo["directModel"] | null>(null);
 
   function addMessage(msg: ChatMessage) {
     messages.value.push(msg);
@@ -33,10 +34,25 @@ export const useConversationStore = defineStore("conversation", () => {
   }
 
   function applyConversationPreferences(
-    preferences?: Partial<Pick<ConversationInfo, "enabledTools" | "thinkModeEnabled">> | null,
+    preferences?: Partial<Pick<ConversationInfo, "enabledTools" | "thinkModeEnabled" | "directModel">> | null,
   ) {
     enabledTools.value = normalizeEnabledTools(preferences?.enabledTools);
     thinkModeEnabled.value = preferences?.thinkModeEnabled === true;
+    currentDirectModel.value = normalizeDirectModel(preferences?.directModel);
+  }
+
+  function normalizeDirectModel(
+    model: ConversationInfo["directModel"] | null | undefined,
+  ): ConversationInfo["directModel"] | null {
+    if (!model) {
+      return null;
+    }
+    const provider = typeof model.provider === "string" ? model.provider.trim() : "";
+    const modelId = typeof model.modelId === "string" ? model.modelId.trim() : "";
+    if (!provider || !modelId) {
+      return null;
+    }
+    return { provider, modelId };
   }
 
   function updateConversationInfo(id: string, patch: Partial<ConversationInfo>) {
@@ -536,7 +552,7 @@ export const useConversationStore = defineStore("conversation", () => {
   }
 
   async function persistCurrentConversationPreferences(
-    patch: Partial<Pick<ConversationInfo, "enabledTools" | "thinkModeEnabled">>,
+    patch: Partial<Pick<ConversationInfo, "enabledTools" | "thinkModeEnabled" | "directModel">>,
   ) {
     const conversationId = currentConversationId.value;
     if (!conversationId) {
@@ -580,6 +596,32 @@ export const useConversationStore = defineStore("conversation", () => {
     }
   }
 
+  function setDirectModel(
+    model: ConversationInfo["directModel"] | null,
+    persist = true,
+  ) {
+    const normalized = normalizeDirectModel(model);
+    currentDirectModel.value = normalized;
+
+    const conversationId = currentConversationId.value;
+    const currentConversation = conversationId
+      ? conversations.value.find((item) => item.id === conversationId)
+      : undefined;
+    const isDirectConversation = Boolean(
+      currentConversation && currentConversation.swarmId.startsWith("__direct_"),
+    );
+
+    if (conversationId && isDirectConversation) {
+      updateConversationInfo(conversationId, { directModel: normalized ?? undefined });
+    }
+
+    if (persist && conversationId && normalized && isDirectConversation) {
+      void persistCurrentConversationPreferences({ directModel: normalized }).catch(() => {
+        // ignore persistence failures; current UI state is still usable for this turn
+      });
+    }
+  }
+
   function applyConversationSettingsFromServer(payload: unknown) {
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
       return;
@@ -601,8 +643,24 @@ export const useConversationStore = defineStore("conversation", () => {
         thinkModeEnabled.value = raw.thinkModeEnabled;
       }
     }
+    if (raw.directModel && typeof raw.directModel === "object" && !Array.isArray(raw.directModel)) {
+      const normalized = normalizeDirectModel(raw.directModel as ConversationInfo["directModel"]);
+      if (normalized) {
+        patch.directModel = normalized;
+        if (isCurrentConversation) {
+          currentDirectModel.value = normalized;
+        }
+      }
+    }
 
-    if (conversationId && (patch.enabledTools !== undefined || patch.thinkModeEnabled !== undefined)) {
+    if (
+      conversationId
+      && (
+        patch.enabledTools !== undefined
+        || patch.thinkModeEnabled !== undefined
+        || patch.directModel !== undefined
+      )
+    ) {
       updateConversationInfo(conversationId, patch);
     }
   }
@@ -618,6 +676,7 @@ export const useConversationStore = defineStore("conversation", () => {
     conversations,
     enabledTools,
     thinkModeEnabled,
+    currentDirectModel,
     addMessage,
     upsertToolCall,
     startStreamingMessage,
@@ -638,6 +697,7 @@ export const useConversationStore = defineStore("conversation", () => {
     setEnabledTools,
     setClientToolEnabled,
     setThinkModeEnabled,
+    setDirectModel,
     applyConversationSettingsFromServer,
   };
 });

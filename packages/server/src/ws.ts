@@ -18,11 +18,19 @@ interface WSClient {
 interface ConversationPreferencesPayload {
   enabledTools: string[];
   thinkModeEnabled: boolean;
+  directModel?: {
+    provider: string;
+    modelId: string;
+  };
 }
 
 interface ConversationPreferencesPatch {
   enabledTools?: string[];
   thinkModeEnabled?: boolean;
+  directModel?: {
+    provider: string;
+    modelId: string;
+  };
 }
 
 const DEFAULT_CONVERSATION_PREFERENCES: ConversationPreferencesPayload = {
@@ -48,6 +56,14 @@ function parseConversationPreferencesPatch(payload: Record<string, unknown>): Co
   }
   if (typeof payload.thinkModeEnabled === "boolean") {
     patch.thinkModeEnabled = payload.thinkModeEnabled;
+  }
+  if (payload.directModel && typeof payload.directModel === "object" && !Array.isArray(payload.directModel)) {
+    const directModelRaw = payload.directModel as Record<string, unknown>;
+    const provider = typeof directModelRaw.provider === "string" ? directModelRaw.provider.trim() : "";
+    const modelId = typeof directModelRaw.modelId === "string" ? directModelRaw.modelId.trim() : "";
+    if (provider && modelId) {
+      patch.directModel = { provider, modelId };
+    }
   }
 
   return patch;
@@ -128,8 +144,6 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
     const provider = typeof payload.provider === "string" ? payload.provider : undefined;
     const modelId = typeof payload.modelId === "string" ? payload.modelId : undefined;
     const preferencesPatch = parseConversationPreferencesPatch(payload);
-    const hasExplicitPreferences = preferencesPatch.enabledTools !== undefined
-      || preferencesPatch.thinkModeEnabled !== undefined;
 
     if (typeof content !== "string" || content.trim().length === 0) {
       send(client, { type: "error", payload: { message: "content must be a non-empty string" } });
@@ -139,46 +153,44 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
     let conversation: SwarmConversation | undefined;
     try {
       let effectivePreferences: ConversationPreferencesPayload = { ...DEFAULT_CONVERSATION_PREFERENCES };
+      let storedConversation: Awaited<ReturnType<typeof swarm.getConversation>> = null;
 
       if (conversationId) {
-        // Direct chat model switch: update the swarm config's agent model in memory
-        if (provider && modelId) {
-          const storedConv = await swarm.getConversation(conversationId);
-          if (storedConv) {
-            const swarmConfig = swarm.getSwarmConfig(storedConv.swarmId);
-            if (swarmConfig && swarmConfig.id.startsWith("__direct_") && swarmConfig.agents[0]) {
-              swarmConfig.agents[0].model = { provider, modelId };
-            }
-          }
-        }
-        conversation = await swarm.resumeConversation(conversationId);
-        const storedConversation = await swarm.getConversation(conversationId);
+        storedConversation = await swarm.getConversation(conversationId);
         if (!storedConversation) {
           throw new Error(`Conversation not found: ${conversationId}`);
         }
-        if (hasExplicitPreferences) {
-          const updatedConversation = await swarm.updateConversationPreferences(conversationId, preferencesPatch);
-          effectivePreferences = {
-            enabledTools: updatedConversation.enabledTools,
-            thinkModeEnabled: updatedConversation.thinkModeEnabled,
-          };
-        } else {
-          effectivePreferences = {
-            enabledTools: storedConversation.enabledTools,
-            thinkModeEnabled: storedConversation.thinkModeEnabled,
-          };
+
+        const mergedPatch: ConversationPreferencesPatch = { ...preferencesPatch };
+        if (provider && modelId && storedConversation.swarmId.startsWith("__direct_")) {
+          mergedPatch.directModel = { provider, modelId };
         }
+
+        if (
+          mergedPatch.enabledTools !== undefined
+          || mergedPatch.thinkModeEnabled !== undefined
+          || mergedPatch.directModel !== undefined
+        ) {
+          storedConversation = await swarm.updateConversationPreferences(conversationId, mergedPatch);
+        }
+        conversation = await swarm.resumeConversation(conversationId);
+        effectivePreferences = {
+          enabledTools: storedConversation.enabledTools,
+          thinkModeEnabled: storedConversation.thinkModeEnabled,
+          ...(storedConversation.directModel ? { directModel: storedConversation.directModel } : {}),
+        };
       } else if (swarmId) {
         const initialPreferences: ConversationPreferencesPatch = {
           enabledTools: preferencesPatch.enabledTools ?? DEFAULT_CONVERSATION_PREFERENCES.enabledTools,
           thinkModeEnabled: preferencesPatch.thinkModeEnabled ?? DEFAULT_CONVERSATION_PREFERENCES.thinkModeEnabled,
         };
         conversation = await swarm.createConversation(swarmId, undefined, initialPreferences);
-        const createdConversation = await swarm.getConversation(conversation.getId());
-        if (createdConversation) {
+        storedConversation = await swarm.getConversation(conversation.getId());
+        if (storedConversation) {
           effectivePreferences = {
-            enabledTools: createdConversation.enabledTools,
-            thinkModeEnabled: createdConversation.thinkModeEnabled,
+            enabledTools: storedConversation.enabledTools,
+            thinkModeEnabled: storedConversation.thinkModeEnabled,
+            ...(storedConversation.directModel ? { directModel: storedConversation.directModel } : {}),
           };
         } else {
           effectivePreferences = {
@@ -191,18 +203,21 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
         const initialPreferences: ConversationPreferencesPatch = {
           enabledTools: preferencesPatch.enabledTools ?? DEFAULT_CONVERSATION_PREFERENCES.enabledTools,
           thinkModeEnabled: preferencesPatch.thinkModeEnabled ?? DEFAULT_CONVERSATION_PREFERENCES.thinkModeEnabled,
+          directModel: { provider, modelId },
         };
         conversation = await swarm.createDirectConversation(provider, modelId, undefined, initialPreferences);
-        const createdConversation = await swarm.getConversation(conversation.getId());
-        if (createdConversation) {
+        storedConversation = await swarm.getConversation(conversation.getId());
+        if (storedConversation) {
           effectivePreferences = {
-            enabledTools: createdConversation.enabledTools,
-            thinkModeEnabled: createdConversation.thinkModeEnabled,
+            enabledTools: storedConversation.enabledTools,
+            thinkModeEnabled: storedConversation.thinkModeEnabled,
+            ...(storedConversation.directModel ? { directModel: storedConversation.directModel } : {}),
           };
         } else {
           effectivePreferences = {
             enabledTools: initialPreferences.enabledTools ?? [],
             thinkModeEnabled: initialPreferences.thinkModeEnabled ?? false,
+            directModel: initialPreferences.directModel,
           };
         }
       } else {
@@ -244,6 +259,7 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
           conversationId: convId,
           enabledTools: effectivePreferences.enabledTools,
           thinkModeEnabled: effectivePreferences.thinkModeEnabled,
+          ...(effectivePreferences.directModel ? { directModel: effectivePreferences.directModel } : {}),
         },
       };
       send(client, createdPacket);

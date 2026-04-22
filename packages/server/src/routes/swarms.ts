@@ -52,7 +52,8 @@ export function swarmRoutes(swarm: AgentSwarm): Router {
   const router = Router();
 
   router.get("/", (_req, res) => {
-    const swarms = swarm.listSwarms();
+    // Hide virtual direct-chat swarms from swarm management.
+    const swarms = swarm.listSwarms().filter((item) => !item.id.startsWith("__direct_"));
     res.json({ data: swarms });
   });
 

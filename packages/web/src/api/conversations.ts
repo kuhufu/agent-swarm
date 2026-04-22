@@ -37,7 +37,7 @@ export function getConversation(conversationId: string) {
 
 export function updateConversationPreferences(
   conversationId: string,
-  payload: Partial<Pick<ConversationInfo, "enabledTools" | "thinkModeEnabled">>,
+  payload: Partial<Pick<ConversationInfo, "enabledTools" | "thinkModeEnabled" | "directModel">>,
 ) {
   return apiClient<ConversationDetailResponse>(`/conversations/${conversationId}/preferences`, {
     method: "PATCH",

@@ -29,6 +29,8 @@ export const conversationsTable = sqliteTable("conversations", {
   title: text("title"),
   enabledTools: text("enabled_tools").notNull().default("[]"),
   thinkModeEnabled: integer("think_mode_enabled").notNull().default(0),
+  directProvider: text("direct_provider"),
+  directModelId: text("direct_model_id"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 });

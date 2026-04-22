@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { AgentSwarm } from "@agent-swarm/core";
-import type { ConversationPreferences } from "@agent-swarm/core";
+import type { ConversationPreferences, ConversationDirectModel } from "@agent-swarm/core";
 
 function normalizeEnabledTools(input: unknown): string[] {
   if (!Array.isArray(input)) {
@@ -25,6 +25,14 @@ function parseConversationPreferences(input: unknown): Partial<ConversationPrefe
   }
   if (typeof raw.thinkModeEnabled === "boolean") {
     preferences.thinkModeEnabled = raw.thinkModeEnabled;
+  }
+  if (raw.directModel && typeof raw.directModel === "object" && !Array.isArray(raw.directModel)) {
+    const directModelRaw = raw.directModel as Record<string, unknown>;
+    const provider = typeof directModelRaw.provider === "string" ? directModelRaw.provider.trim() : "";
+    const modelId = typeof directModelRaw.modelId === "string" ? directModelRaw.modelId.trim() : "";
+    if (provider && modelId) {
+      preferences.directModel = { provider, modelId } satisfies ConversationDirectModel;
+    }
   }
 
   return preferences;

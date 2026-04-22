@@ -1,7 +1,14 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { eq, desc, and } from "drizzle-orm";
-import type { IStorage, StoredMessage, StoredEvent, Conversation, ConversationPreferences } from "./interface.js";
+import type {
+  IStorage,
+  StoredMessage,
+  StoredEvent,
+  Conversation,
+  ConversationPreferences,
+  ConversationDirectModel,
+} from "./interface.js";
 import type { SwarmConfig } from "../core/types.js";
 import { settingsTable, swarmsTable, agentsTable, conversationsTable, messagesTable, eventsTable } from "./schema.js";
 
@@ -61,6 +68,8 @@ export class SqliteStorage implements IStorage {
         title TEXT,
         enabled_tools TEXT NOT NULL DEFAULT '[]',
         think_mode_enabled INTEGER NOT NULL DEFAULT 0,
+        direct_provider TEXT,
+        direct_model_id TEXT,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       );
@@ -133,21 +142,41 @@ export class SqliteStorage implements IStorage {
     }
   }
 
+  private normalizeDirectModel(input: unknown): ConversationDirectModel | undefined {
+    if (!input || typeof input !== "object" || Array.isArray(input)) {
+      return undefined;
+    }
+    const raw = input as Record<string, unknown>;
+    const provider = typeof raw.provider === "string" ? raw.provider.trim() : "";
+    const modelId = typeof raw.modelId === "string" ? raw.modelId.trim() : "";
+    if (!provider || !modelId) {
+      return undefined;
+    }
+    return { provider, modelId };
+  }
+
   private mapConversationRow(row: {
     id: string;
     swarmId: string;
     title: string | null;
     enabledTools: string | null;
     thinkModeEnabled: number | null;
+    directProvider: string | null;
+    directModelId: string | null;
     createdAt: number;
     updatedAt: number;
   }): Conversation {
+    const directProvider = typeof row.directProvider === "string" ? row.directProvider.trim() : "";
+    const directModelId = typeof row.directModelId === "string" ? row.directModelId.trim() : "";
     return {
       id: row.id,
       swarmId: row.swarmId,
       title: row.title ?? undefined,
       enabledTools: this.parseStoredEnabledTools(row.enabledTools),
       thinkModeEnabled: row.thinkModeEnabled === 1,
+      directModel: (directProvider && directModelId)
+        ? { provider: directProvider, modelId: directModelId }
+        : undefined,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -168,6 +197,14 @@ export class SqliteStorage implements IStorage {
     }
     if (!columns.has("think_mode_enabled")) {
       this.rawDb.exec("ALTER TABLE conversations ADD COLUMN think_mode_enabled INTEGER NOT NULL DEFAULT 0;");
+      schemaChanged = true;
+    }
+    if (!columns.has("direct_provider")) {
+      this.rawDb.exec("ALTER TABLE conversations ADD COLUMN direct_provider TEXT;");
+      schemaChanged = true;
+    }
+    if (!columns.has("direct_model_id")) {
+      this.rawDb.exec("ALTER TABLE conversations ADD COLUMN direct_model_id TEXT;");
       schemaChanged = true;
     }
 
@@ -295,12 +332,14 @@ export class SqliteStorage implements IStorage {
     const thinkModeEnabled = typeof preferences?.thinkModeEnabled === "boolean"
       ? preferences.thinkModeEnabled
       : DEFAULT_CONVERSATION_PREFERENCES.thinkModeEnabled;
+    const directModel = this.normalizeDirectModel(preferences?.directModel);
     const conv: Conversation = {
       id: crypto.randomUUID(),
       swarmId,
       title: title ?? "新对话",
       enabledTools,
       thinkModeEnabled,
+      directModel,
       createdAt: now,
       updatedAt: now,
     };
@@ -310,6 +349,8 @@ export class SqliteStorage implements IStorage {
       title: conv.title,
       enabledTools: JSON.stringify(conv.enabledTools),
       thinkModeEnabled: conv.thinkModeEnabled ? 1 : 0,
+      directProvider: conv.directModel?.provider ?? null,
+      directModelId: conv.directModel?.modelId ?? null,
       createdAt: conv.createdAt,
       updatedAt: conv.updatedAt,
     }).run();
@@ -352,12 +393,17 @@ export class SqliteStorage implements IStorage {
     const thinkModeEnabled = typeof preferences.thinkModeEnabled === "boolean"
       ? preferences.thinkModeEnabled
       : current.thinkModeEnabled;
+    const directModel = preferences.directModel !== undefined
+      ? this.normalizeDirectModel(preferences.directModel)
+      : current.directModel;
     const now = Date.now();
 
     this.getDb().update(conversationsTable)
       .set({
         enabledTools: JSON.stringify(enabledTools),
         thinkModeEnabled: thinkModeEnabled ? 1 : 0,
+        directProvider: directModel?.provider ?? null,
+        directModelId: directModel?.modelId ?? null,
         updatedAt: now,
       })
       .where(eq(conversationsTable.id, id))
@@ -367,6 +413,7 @@ export class SqliteStorage implements IStorage {
       ...current,
       enabledTools,
       thinkModeEnabled,
+      directModel,
       updatedAt: now,
     };
   }
