@@ -136,8 +136,13 @@ export function useWebSocket() {
         break;
 
       case "message_update":
-        if (typeof msg.payload?.agentId === "string" && typeof msg.payload?.delta === "string") {
-          conversationStore.appendStreamDelta(msg.payload.agentId, msg.payload.delta);
+        if (typeof msg.payload?.agentId === "string") {
+          if (typeof msg.payload?.delta === "string") {
+            conversationStore.appendStreamDelta(msg.payload.agentId, msg.payload.delta);
+          }
+          if (typeof msg.payload?.thinkingDelta === "string") {
+            conversationStore.appendStreamThinkingDelta(msg.payload.agentId, msg.payload.thinkingDelta);
+          }
         }
         break;
 
@@ -218,9 +223,6 @@ export function useWebSocket() {
 
       case "prompt_completed":
         conversationStore.setActive(false);
-        if (conversationStore.currentConversationId) {
-          void conversationStore.openConversation(conversationStore.currentConversationId);
-        }
         break;
 
       // ── Error ──
@@ -243,19 +245,10 @@ export function useWebSocket() {
     const payload = msg.payload ?? {};
     const requestId = typeof payload.requestId === "string" ? payload.requestId : "";
     const toolName = typeof payload.toolName === "string" ? payload.toolName : "";
-    const toolCallId = typeof payload.toolCallId === "string" ? payload.toolCallId : "";
     const params = payload.params as Record<string, unknown> | undefined;
 
     if (!requestId) {
       return;
-    }
-
-    if (toolCallId && toolName) {
-      conversationStore.upsertToolCall(undefined, {
-        id: toolCallId,
-        name: toolName,
-        arguments: params ?? {},
-      });
     }
 
     const executed = await executeClientTool(
@@ -263,15 +256,6 @@ export function useWebSocket() {
       params,
       { jsExecutionToolEnabled: conversationStore.jsExecutionToolEnabled },
     );
-    if (toolCallId && toolName) {
-      conversationStore.upsertToolCall(undefined, {
-        id: toolCallId,
-        name: toolName,
-        arguments: params ?? {},
-        result: executed.details ?? executed.content,
-        isError: executed.isError,
-      });
-    }
 
     send({
       type: "client_tool_result",

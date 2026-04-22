@@ -63,7 +63,7 @@ export const useConversationStore = defineStore("conversation", () => {
       if (message.role !== "assistant") {
         continue;
       }
-      if (agentId && message.agentId && message.agentId !== agentId) {
+      if (agentId && message.agentId !== agentId) {
         continue;
       }
       messages.value[i] = upsertToolCallInMessage(message, toolCall);
@@ -108,10 +108,29 @@ export const useConversationStore = defineStore("conversation", () => {
     streamingMessages.value = new Map(streamingMessages.value);
   }
 
+  function appendStreamThinkingDelta(agentId: string, delta: string) {
+    const current = streamingMessages.value.get(agentId);
+    if (!current) {
+      return;
+    }
+    streamingMessages.value.set(agentId, {
+      ...current,
+      thinking: (current.thinking ?? "") + delta,
+    });
+    streamingMessages.value = new Map(streamingMessages.value);
+  }
+
   function finalizeStream(agentId?: string) {
     if (agentId) {
       const stream = streamingMessages.value.get(agentId);
-      if (stream && stream.content.trim().length > 0) {
+      if (
+        stream
+        && (
+          stream.content.trim().length > 0
+          || (typeof stream.thinking === "string" && stream.thinking.trim().length > 0)
+          || (Array.isArray(stream.toolCalls) && stream.toolCalls.length > 0)
+        )
+      ) {
         messages.value.push({ ...stream });
       }
       streamingMessages.value.delete(agentId);
@@ -120,7 +139,11 @@ export const useConversationStore = defineStore("conversation", () => {
     }
 
     for (const [key, stream] of streamingMessages.value.entries()) {
-      if (stream.content.trim().length > 0) {
+      if (
+        stream.content.trim().length > 0
+        || (typeof stream.thinking === "string" && stream.thinking.trim().length > 0)
+        || (Array.isArray(stream.toolCalls) && stream.toolCalls.length > 0)
+      ) {
         messages.value.push({ ...stream });
       }
       streamingMessages.value.delete(key);
@@ -440,6 +463,7 @@ export const useConversationStore = defineStore("conversation", () => {
     upsertToolCall,
     startStreamingMessage,
     appendStreamDelta,
+    appendStreamThinkingDelta,
     finalizeStream,
     clearMessages,
     setCurrentConversation,

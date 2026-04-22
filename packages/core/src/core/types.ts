@@ -227,6 +227,7 @@ export interface MessageUpdateEvent {
   type: "message_update";
   agentId: string;
   delta?: string;
+  thinkingDelta?: string;
 }
 
 export interface MessageEndEvent {

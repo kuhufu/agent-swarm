@@ -1,11 +1,14 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { ChatMessage } from "../../types/index.js";
 import ToolCallCard from "./ToolCallCard.vue";
 
-defineProps<{
+const props = defineProps<{
   message: ChatMessage;
   streaming?: boolean;
 }>();
+
+const hasRenderableContent = computed(() => props.message.content.trim().length > 0);
 
 function roleClass(role: string): string {
   switch (role) {
@@ -86,9 +89,6 @@ function roleIcon(role: string): string {
           <span class="dot" />
         </span>
       </div>
-      <div class="msg-content">
-        <p>{{ message.content }}</p>
-      </div>
       <div v-if="message.thinking" class="msg-thinking">
         <details>
           <summary>
@@ -101,6 +101,9 @@ function roleIcon(role: string): string {
           </summary>
           <p>{{ message.thinking }}</p>
         </details>
+      </div>
+      <div v-if="hasRenderableContent" class="msg-content">
+        <p>{{ message.content }}</p>
       </div>
       <div v-if="message.toolCalls?.length" class="msg-tool-calls">
         <ToolCallCard

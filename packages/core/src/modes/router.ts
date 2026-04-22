@@ -168,14 +168,21 @@ export class RouterMode implements ModeExecutor {
       case "message_start":
         return { type: "message_start", agentId, agentName, role: e.message.role };
       case "message_update":
-        if (e.assistantMessageEvent.type !== "text_delta") {
-          return null;
+        if (e.assistantMessageEvent.type === "text_delta") {
+          return {
+            type: "message_update",
+            agentId,
+            delta: e.assistantMessageEvent.delta,
+          };
         }
-        return {
-          type: "message_update",
-          agentId,
-          delta: e.assistantMessageEvent.delta,
-        };
+        if (e.assistantMessageEvent.type === "thinking_delta") {
+          return {
+            type: "message_update",
+            agentId,
+            thinkingDelta: e.assistantMessageEvent.delta,
+          };
+        }
+        return null;
       case "message_end":
         return { type: "message_end", agentId, agentName, role: e.message.role };
       case "tool_execution_start":
