@@ -4,6 +4,7 @@ import { MessagePlugin } from "tdesign-vue-next";
 import { useSettingsStore } from "../stores/settings.js";
 import type { InterventionPoint, InterventionStrategy, ApiProtocol, ProviderConfig, SavedModel, ModelInfo } from "../types/index.js";
 import * as configApi from "../api/config.js";
+import CustomSelect from "../components/common/CustomSelect.vue";
 
 const settingsStore = useSettingsStore();
 const activeTab = ref<"providers" | "models" | "intervention">("providers");
@@ -396,12 +397,11 @@ async function testModel(provider: string, modelId: string) {
                 </div>
                 <div class="field-row">
                   <label>API 协议</label>
-                  <select v-model="providers[p.id].apiProtocol" class="input-field">
-                    <option value="">默认 ({{ getEffectiveProtocol(p.id) }})</option>
-                    <option v-for="proto in API_PROTOCOLS" :key="proto.value" :value="proto.value">
-                      {{ proto.label }}
-                    </option>
-                  </select>
+                  <CustomSelect
+                    :model-value="providers[p.id].apiProtocol"
+                    :options="[{ value: '', label: `默认 (${getEffectiveProtocol(p.id)})` }, ...API_PROTOCOLS]"
+                    @update:model-value="providers[p.id].apiProtocol = $event"
+                  />
                 </div>
               </div>
             </div>
@@ -457,10 +457,12 @@ async function testModel(provider: string, modelId: string) {
             </div>
             <div class="form-row">
               <label>提供商</label>
-              <select v-model="modelForm.provider" class="input-field" @change="onModelFormProviderChange">
-                <option value="">选择提供商</option>
-                <option v-for="p in modelProviderOptions" :key="p" :value="p">{{ p }}</option>
-              </select>
+              <CustomSelect
+                :model-value="modelForm.provider"
+                :options="[{ value: '', label: '选择提供商' }, ...modelProviderOptions.map(p => ({ value: p, label: p }))]"
+                placeholder="选择提供商"
+                @update:model-value="modelForm.provider = $event; onModelFormProviderChange()"
+              />
             </div>
             <div class="form-row">
               <label>模型 ID</label>
@@ -784,8 +786,7 @@ async function testModel(provider: string, modelId: string) {
   flex-shrink: 0;
 }
 
-.field-row input,
-.field-row select {
+.field-row input {
   flex: 1;
 }
 
