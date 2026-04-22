@@ -1,7 +1,7 @@
 import { Agent } from "@mariozechner/pi-agent-core";
 import type { AgentOptions } from "@mariozechner/pi-agent-core";
 import type { SwarmAgentConfig } from "./types.js";
-import { resolveModel, mapThinkingLevel } from "../llm/provider.js";
+import { resolveModelFromProvider, mapThinkingLevel } from "../llm/provider.js";
 import type { LLMBackendConfig } from "./types.js";
 import type { InterventionHandler } from "../intervention/handler.js";
 
@@ -24,7 +24,12 @@ export function createAgent(opts: CreateAgentOptions): Agent {
     apiKeys[config.model.provider] = config.model.apiKey;
   }
 
-  const model = resolveModel(config.model);
+  const model = resolveModelFromProvider(
+    config.model.provider,
+    config.model.modelId,
+    llmConfig,
+    config.model,
+  );
   const thinkingLevel = mapThinkingLevel(config.thinkingLevel);
 
   // Build tools list — intervention hooks are handled at mode level, not agent level

@@ -1,6 +1,5 @@
-import { getModel } from "@mariozechner/pi-ai";
 import type { Model, KnownApi } from "@mariozechner/pi-ai";
-import type { ModelConfig, LLMBackendConfig, ThinkingLevel, ApiProtocol } from "../core/types.js";
+import type { ModelConfig, LLMBackendConfig, ThinkingLevel } from "../core/types.js";
 
 const PI_THINKING_LEVEL_MAP: Record<string, import("@mariozechner/pi-agent-core").ThinkingLevel> = {
   off: "off",
@@ -23,7 +22,7 @@ const DEFAULT_PROTOCOL_MAP: Record<string, KnownApi> = {
   zai: "openai-completions",
 };
 
-function normalizeBaseUrl(baseUrl: string | undefined, apiProtocol: ApiProtocol | undefined): string | undefined {
+function normalizeBaseUrl(baseUrl: string | undefined): string | undefined {
   if (!baseUrl || typeof baseUrl !== "string") {
     return baseUrl;
   }
@@ -38,31 +37,23 @@ function normalizeBaseUrl(baseUrl: string | undefined, apiProtocol: ApiProtocol 
 
 /**
  * Resolve a ModelConfig to a pi-ai Model instance.
- * Uses apiProtocol and baseUrl when provided.
+ * Uses apiProtocol and baseUrl.
  */
 export function resolveModel(config: ModelConfig): Model<any> {
   const apiProtocol = config.apiProtocol ?? DEFAULT_PROTOCOL_MAP[config.provider] ?? "openai-completions";
-  const normalizedBaseUrl = normalizeBaseUrl(config.baseUrl, apiProtocol);
+  const normalizedBaseUrl = normalizeBaseUrl(config.baseUrl);
 
-  // For known providers without custom baseUrl/apiProtocol, try the model registry
-  if (!normalizedBaseUrl && !config.apiProtocol) {
-    const knownProviders = Object.keys(DEFAULT_PROTOCOL_MAP);
-    if (knownProviders.includes(config.provider)) {
-      try {
-        return getModel(config.provider as any, config.modelId as any);
-      } catch {
-        // Model ID not in registry, fall through to manual construction
-      }
-    }
+  if (!normalizedBaseUrl) {
+    throw new Error(`Provider ${config.provider} 缺少 baseUrl，当前仅支持通过 baseUrl 调用模型`);
   }
 
-  // Manual model construction with custom baseUrl and/or apiProtocol
+  // Manual model construction with explicit baseUrl
   return {
     id: config.modelId,
     name: config.modelId,
     api: apiProtocol as KnownApi,
     provider: config.provider,
-    baseUrl: normalizedBaseUrl ?? `https://api.${config.provider}.com/v1`,
+    baseUrl: normalizedBaseUrl,
     reasoning: false,
     input: ["text"] as const,
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
