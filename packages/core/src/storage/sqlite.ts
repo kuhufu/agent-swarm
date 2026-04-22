@@ -330,6 +330,13 @@ export class SqliteStorage implements IStorage {
     return rows.map((row) => this.mapConversationRow(row));
   }
 
+  async listAllConversations(): Promise<Conversation[]> {
+    const rows = this.getDb().select().from(conversationsTable)
+      .orderBy(desc(conversationsTable.updatedAt))
+      .all();
+    return rows.map((row) => this.mapConversationRow(row));
+  }
+
   async updateConversationPreferences(
     id: string,
     preferences: Partial<ConversationPreferences>,

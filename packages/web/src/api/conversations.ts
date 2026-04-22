@@ -19,8 +19,9 @@ interface DeleteConversationResponse {
   };
 }
 
-export function listConversations(swarmId: string) {
-  return apiClient<ConversationListResponse>(`/conversations?swarmId=${swarmId}`);
+export function listConversations(swarmId?: string) {
+  const query = swarmId ? `?swarmId=${swarmId}` : "";
+  return apiClient<ConversationListResponse>(`/conversations${query}`);
 }
 
 export function createConversation(swarmId: string) {

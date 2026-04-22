@@ -35,11 +35,10 @@ export function conversationRoutes(swarm: AgentSwarm): Router {
 
   router.get("/", async (req, res) => {
     const swarmId = req.query.swarmId as string | undefined;
-    if (!swarmId) {
-      return res.status(400).json({ error: "swarmId query parameter required" });
-    }
     try {
-      const conversations = await swarm.listConversations(swarmId);
+      const conversations = swarmId
+        ? await swarm.listConversations(swarmId)
+        : await swarm.listAllConversations();
       res.json({ data: conversations });
     } catch (err: any) {
       res.status(500).json({ error: err.message });

@@ -188,6 +188,16 @@ export class AgentSwarm {
     // Register the virtual swarm temporarily
     this.swarmConfigs.set(swarmId, directSwarm);
 
+    // Persist the virtual swarm to DB so the FK constraint on conversations.swarm_id is satisfied
+    try {
+      const existing = await this.storage.loadSwarm(swarmId);
+      if (!existing) {
+        await this.storage.saveSwarm(directSwarm);
+      }
+    } catch {
+      // If saveSwarm fails (e.g. already exists race), ignore — the in-memory config is set
+    }
+
     const conv = await this.storage.createConversation(swarmId, title, preferences);
 
     return new Conversation(
@@ -234,6 +244,14 @@ export class AgentSwarm {
   async listConversations(swarmId: string) {
     this.ensureInitialized();
     return this.storage.listConversations(swarmId);
+  }
+
+  /**
+   * List all conversations across all swarms.
+   */
+  async listAllConversations() {
+    this.ensureInitialized();
+    return this.storage.listAllConversations();
   }
 
   async getConversation(conversationId: string) {

@@ -475,6 +475,22 @@ export const useConversationStore = defineStore("conversation", () => {
     }
   }
 
+  async function fetchAllConversations() {
+    loading.value = true;
+    try {
+      const res = await conversationsApi.listConversations();
+      conversations.value = res.data;
+      if (currentConversationId.value) {
+        const current = conversations.value.find((conv) => conv.id === currentConversationId.value);
+        if (current) {
+          applyConversationPreferences(current);
+        }
+      }
+    } finally {
+      loading.value = false;
+    }
+  }
+
   function updateConversationTitle(id: string, title: string) {
     const conv = conversations.value.find((c) => c.id === id);
     if (conv) {
@@ -587,6 +603,7 @@ export const useConversationStore = defineStore("conversation", () => {
     setAgentName,
     setActive,
     fetchConversations,
+    fetchAllConversations,
     updateConversationTitle,
     deleteConversation,
     isToolEnabled,

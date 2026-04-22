@@ -3,7 +3,7 @@ import { onMounted, ref, computed, watch } from "vue";
 import { useChat, type DirectModelSelection } from "../../composables/useChat.js";
 import { useSettingsStore } from "../../stores/settings.js";
 import * as configApi from "../../api/config.js";
-import type { ProviderInfo, ModelInfo, SavedModel } from "../../types/index.js";
+import type { SavedModel, ProviderInfo, ModelInfo } from "../../types/index.js";
 
 const props = defineProps<{
   swarmId: string;
@@ -28,13 +28,14 @@ const {
 const settingsStore = useSettingsStore();
 
 // ── Model selector state ──
+const selectedSavedModelId = ref<string>("");
+const showMoreModels = ref(false);
 const providerList = ref<ProviderInfo[]>([]);
 const modelList = ref<ModelInfo[]>([]);
 const loadingProviders = ref(false);
 const loadingModels = ref(false);
 const selectedProvider = ref("");
 const selectedModelId = ref("");
-const showModelDropdown = ref(false);
 
 const savedModels = computed<SavedModel[]>(() => settingsStore.config?.models ?? []);
 
@@ -65,7 +66,14 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
-// ── Provider/model loading ──
+// ── Saved model selection ──
+function selectSavedModel(sm: SavedModel) {
+  selectedSavedModelId.value = sm.id;
+  directModel.value = { provider: sm.provider, modelId: sm.modelId };
+  showMoreModels.value = false;
+}
+
+// ── Online model selection (for models not in saved list) ──
 async function loadProviders() {
   loadingProviders.value = true;
   try {
@@ -100,22 +108,25 @@ function onProviderChange() {
   loadModels(selectedProvider.value);
 }
 
-function selectModel(modelId: string) {
-  selectedModelId.value = modelId;
-  directModel.value = { provider: selectedProvider.value, modelId };
-  showModelDropdown.value = false;
+function selectOnlineModel(m: ModelInfo) {
+  selectedSavedModelId.value = "";
+  selectedModelId.value = m.id;
+  directModel.value = { provider: selectedProvider.value, modelId: m.id };
+  showMoreModels.value = false;
 }
 
-function selectSavedModel(sm: SavedModel) {
-  selectedProvider.value = sm.provider;
-  selectedModelId.value = sm.modelId;
-  directModel.value = { provider: sm.provider, modelId: sm.modelId };
-  showModelDropdown.value = false;
-  loadModels(sm.provider);
+function applyManualModelId() {
+  if (selectedProvider && selectedModelId) {
+    directModel.value = { provider: selectedProvider.value, modelId: selectedModelId.value };
+    selectedSavedModelId.value = "";
+  }
 }
 
-// When entering direct mode, load providers
+// When entering direct mode, ensure settings are loaded
 watch(() => props.isDirectMode, (isDirect) => {
+  if (isDirect && !settingsStore.config) {
+    settingsStore.fetchConfig();
+  }
   if (isDirect && providerList.value.length === 0) {
     loadProviders();
   }
@@ -126,6 +137,7 @@ onMounted(() => {
     connect();
   }
   if (props.isDirectMode) {
+    settingsStore.fetchConfig();
     loadProviders();
   }
 });
@@ -135,55 +147,62 @@ onMounted(() => {
   <div class="chat-input">
     <!-- Direct mode: model selector -->
     <div v-if="isDirectMode" class="model-selector">
-      <div v-if="savedModels.length" class="saved-model-chips">
+      <!-- Saved models as primary selection -->
+      <div v-if="savedModels.length" class="model-chips">
         <button
           v-for="sm in savedModels"
           :key="sm.id"
           class="model-chip"
-          :class="{ active: directModel?.provider === sm.provider && directModel?.modelId === sm.modelId }"
+          :class="{ active: selectedSavedModelId === sm.id }"
           @click="selectSavedModel(sm)"
         >
-          {{ sm.name }}
+          <span class="chip-provider">{{ sm.provider }}</span>
+          <span class="chip-separator">/</span>
+          <span class="chip-model">{{ sm.name }}</span>
         </button>
       </div>
-      <div class="provider-model-row">
-        <select
-          v-model="selectedProvider"
-          class="input-field provider-select"
-          @change="onProviderChange"
-        >
-          <option value="">选择提供商</option>
-          <option v-for="p in providerList" :key="p.id" :value="p.id">{{ p.id }}</option>
-        </select>
-        <div class="model-select-wrapper">
-          <input
-            v-model="selectedModelId"
-            class="input-field model-input"
-            placeholder="模型 ID"
-            @focus="showModelDropdown = modelList.length > 0"
-            @input="directModel = selectedProvider && selectedModelId ? { provider: selectedProvider, modelId: selectedModelId } : null"
-          />
-          <button
-            v-if="selectedProvider && modelList.length > 0"
-            class="model-dropdown-toggle"
-            @click="showModelDropdown = !showModelDropdown"
+
+      <!-- Toggle for more models -->
+      <button class="more-models-btn" @click="showMoreModels = !showMoreModels">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        {{ showMoreModels ? '收起' : '更多模型...' }}
+      </button>
+
+      <!-- Online model selection (expanded) -->
+      <div v-if="showMoreModels" class="online-model-selector">
+        <div class="provider-model-row">
+          <select
+            v-model="selectedProvider"
+            class="input-field provider-select"
+            @change="onProviderChange"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
-          <div v-if="showModelDropdown && modelList.length > 0" class="model-dropdown">
-            <div
-              v-for="m in modelList"
-              :key="m.id"
-              class="model-dropdown-item"
-              :class="{ active: selectedModelId === m.id }"
-              @click="selectModel(m.id)"
-            >
-              <span class="model-dropdown-id">{{ m.id }}</span>
-              <span class="model-dropdown-meta">{{ (m.contextWindow / 1000).toFixed(0) }}k ctx</span>
-            </div>
+            <option value="">选择提供商</option>
+            <option v-for="p in providerList" :key="p.id" :value="p.id">{{ p.id }}</option>
+          </select>
+          <div class="model-select-wrapper">
+            <input
+              v-model="selectedModelId"
+              class="input-field model-input"
+              placeholder="模型 ID"
+              @change="applyManualModelId"
+            />
           </div>
+        </div>
+        <div v-if="loadingModels" class="loading-hint">加载模型列表...</div>
+        <div v-else-if="modelList.length > 0" class="online-model-list">
+          <button
+            v-for="m in modelList"
+            :key="m.id"
+            class="online-model-item"
+            :class="{ active: directModel?.provider === selectedProvider && directModel?.modelId === m.id }"
+            @click="selectOnlineModel(m)"
+          >
+            <span class="online-model-id">{{ m.id }}</span>
+            <span class="online-model-meta">{{ (m.contextWindow / 1000).toFixed(0) }}k</span>
+          </button>
         </div>
       </div>
     </div>
@@ -201,7 +220,7 @@ onMounted(() => {
         <input v-model="thinkModeEnabled" type="checkbox">
         <span>Think 模式</span>
       </label>
-      <span class="tool-hint">工具默认关闭；`Think` 仅对支持 think/no_think 的模型生效</span>
+      <span class="tool-hint">工具默认关闭；Think 仅对支持 think/no_think 的模型生效</span>
     </div>
     <div class="input-wrapper">
       <div class="textarea-wrapper">
@@ -256,7 +275,7 @@ onMounted(() => {
   border-radius: 12px;
 }
 
-.saved-model-chips {
+.model-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -264,8 +283,11 @@ onMounted(() => {
 }
 
 .model-chip {
-  padding: 4px 10px;
-  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 12px;
+  border-radius: 8px;
   font-size: 12px;
   font-weight: 500;
   border: 1px solid var(--color-border-subtle);
@@ -286,9 +308,52 @@ onMounted(() => {
   color: var(--color-accent-light);
 }
 
+.chip-provider {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.model-chip.active .chip-provider {
+  color: rgba(129, 140, 248, 0.7);
+}
+
+.chip-separator {
+  color: var(--color-text-muted);
+  margin: 0 2px;
+  font-size: 11px;
+}
+
+.chip-model {
+  font-weight: 600;
+}
+
+.more-models-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color 0.15s;
+}
+
+.more-models-btn:hover {
+  color: var(--color-text-secondary);
+}
+
+.online-model-selector {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
 .provider-model-row {
   display: flex;
   gap: 8px;
+  margin-bottom: 8px;
 }
 
 .provider-select {
@@ -303,69 +368,52 @@ onMounted(() => {
 
 .model-input {
   width: 100%;
-  padding-right: 32px;
 }
 
-.model-dropdown-toggle {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
+.loading-hint {
+  font-size: 12px;
   color: var(--color-text-muted);
-  cursor: pointer;
-  padding: 4px;
-  display: flex;
-  align-items: center;
+  padding: 4px 0;
 }
 
-.model-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 50;
-  margin-top: 4px;
-  max-height: 240px;
+.online-model-list {
+  max-height: 200px;
   overflow-y: auto;
-  background: rgba(20, 22, 35, 0.98);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 10px;
-  backdrop-filter: blur(16px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.model-dropdown-item {
+.online-model-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
   cursor: pointer;
   transition: background 0.1s;
   font-size: 12px;
+  text-align: left;
+  color: var(--color-text-secondary);
 }
 
-.model-dropdown-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+.online-model-item:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
-.model-dropdown-item.active {
+.online-model-item.active {
   background: rgba(99, 102, 241, 0.12);
   color: var(--color-accent-light);
 }
 
-.model-dropdown-id {
+.online-model-id {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--color-text-secondary);
 }
 
-.model-dropdown-item.active .model-dropdown-id {
-  color: var(--color-accent-light);
-}
-
-.model-dropdown-meta {
+.online-model-meta {
   font-size: 10px;
   color: var(--color-text-muted);
 }

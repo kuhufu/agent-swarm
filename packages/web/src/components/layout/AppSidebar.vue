@@ -4,7 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useSwarmStore } from "../../stores/swarm.js";
 import { useConversationStore } from "../../stores/conversation.js";
 import type { ConversationInfo } from "../../types/index.js";
-import { confirmDialog, showError } from "../../utils/ui-feedback.js";
+import { showError } from "../../utils/ui-feedback.js";
 
 const route = useRoute();
 const router = useRouter();
@@ -25,8 +25,26 @@ const menuPosition = ref<{ left: number; top: number } | null>(null);
 const recentConversations = computed(() =>
   [...conversationStore.conversations]
     .sort((a, b) => b.updatedAt - a.updatedAt)
-    .slice(0, 10),
+    .slice(0, 30),
 );
+
+/**
+ * Resolve display label for a conversation's swarm context.
+ * - Direct mode conversations have swarmId like "__direct_{provider}_{modelId}"
+ * - Regular conversations reference a real swarm
+ */
+function getConversationMode(conv: ConversationInfo): { type: "direct" | "swarm"; label: string } {
+  if (conv.swarmId.startsWith("__direct_")) {
+    // Parse provider and modelId from virtual swarmId
+    const parts = conv.swarmId.replace("__direct_", "").split("_");
+    const provider = parts[0] || "";
+    const modelId = parts.slice(1).join("_") || "";
+    return { type: "direct", label: modelId || provider || "直接对话" };
+  }
+  const swarm = swarmStore.swarms.find((s) => s.id === conv.swarmId);
+  return { type: "swarm", label: swarm?.name ?? conv.swarmId };
+}
+
 const openedMenuConversation = computed(() =>
   openedMenuConversationId.value
     ? recentConversations.value.find((conv) => conv.id === openedMenuConversationId.value) ?? null
@@ -38,6 +56,17 @@ function navigateTo(path: string) {
 }
 
 function formatTime(ts: number): string {
+  const now = Date.now();
+  const diff = now - ts;
+  // Less than 1 minute
+  if (diff < 60_000) return "刚刚";
+  // Less than 1 hour
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}分钟前`;
+  // Less than 24 hours
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}小时前`;
+  // Less than 7 days
+  if (diff < 604_800_000) return `${Math.floor(diff / 86_400_000)}天前`;
+  // Otherwise date
   return new Date(ts).toLocaleString("zh-CN", {
     month: "2-digit",
     day: "2-digit",
@@ -51,11 +80,30 @@ async function handleOpenConversation(conv: ConversationInfo) {
   if (route.path !== "/chat") {
     await router.push("/chat");
   }
+  // For direct conversations, clear currentSwarm so ChatView enters direct mode
+  if (conv.swarmId.startsWith("__direct_")) {
+    swarmStore.selectSwarm(null as any);
+  } else {
+    const swarm = swarmStore.swarms.find((s) => s.id === conv.swarmId);
+    if (swarm) {
+      swarmStore.selectSwarm(swarm);
+    }
+  }
   await conversationStore.openConversation(conv.id);
 }
 
 function handleNewConversation() {
   closeConversationMenu();
+  if (route.path !== "/chat") {
+    router.push("/chat");
+  }
+  conversationStore.setCurrentConversation(null);
+}
+
+function handleNewDirectConversation() {
+  closeConversationMenu();
+  // Clear current swarm to enter direct mode
+  swarmStore.selectSwarm(null as any);
   if (route.path !== "/chat") {
     router.push("/chat");
   }
@@ -104,16 +152,6 @@ function toggleConversationMenu(event: MouseEvent, conversationId: string) {
 
 async function handleDeleteConversation(conv: ConversationInfo) {
   closeConversationMenu();
-  const confirmed = await confirmDialog({
-    header: "删除会话",
-    body: `确定要删除对话 "${conv.title ?? "新对话"}" 吗？`,
-    confirmText: "删除",
-    cancelText: "取消",
-    theme: "danger",
-  });
-  if (!confirmed) {
-    return;
-  }
   try {
     await conversationStore.deleteConversation(conv.id);
   } catch (err) {
@@ -144,6 +182,8 @@ onMounted(() => {
   window.addEventListener("click", handleGlobalClick);
   window.addEventListener("resize", handleWindowChange);
   window.addEventListener("scroll", handleWindowChange, true);
+  // Fetch all conversations on mount
+  conversationStore.fetchAllConversations().catch(() => {});
 });
 
 onBeforeUnmount(() => {
@@ -152,19 +192,16 @@ onBeforeUnmount(() => {
   window.removeEventListener("scroll", handleWindowChange, true);
 });
 
+// Refresh conversation list when navigating to chat or when swarm changes
 watch(
   () => swarmStore.currentSwarm?.id,
-  async (swarmId) => {
-    if (!swarmId) {
-      return;
-    }
+  async () => {
     try {
-      await conversationStore.fetchConversations(swarmId);
+      await conversationStore.fetchAllConversations();
     } catch {
       // ignore sidebar conversation list fetch failure
     }
   },
-  { immediate: true },
 );
 </script>
 
@@ -221,8 +258,22 @@ import { h } from "vue";
 
     <section class="sidebar-section">
       <div class="section-header">
-        <span>历史对话</span>
-        <button class="new-conv-btn" @click="handleNewConversation">新建</button>
+        <span>会话</span>
+        <div class="section-actions">
+          <button class="action-btn direct" title="直接对话" @click="handleNewDirectConversation">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 13px; height: 13px;">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            直接对话
+          </button>
+          <button class="action-btn new" title="新 Swarm 对话" @click="handleNewConversation">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 13px; height: 13px;">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            新建
+          </button>
+        </div>
       </div>
       <div class="conversation-list">
         <div
@@ -233,7 +284,13 @@ import { h } from "vue";
           @click="handleOpenConversation(conv)"
         >
           <div class="conversation-main">
-            <span class="conversation-title">{{ conv.title ?? "新对话" }}</span>
+            <div class="conversation-title-row">
+              <span class="conversation-title">{{ conv.title ?? "新对话" }}</span>
+              <span
+                class="mode-tag"
+                :class="getConversationMode(conv).type"
+              >{{ getConversationMode(conv).type === 'direct' ? getConversationMode(conv).label : getConversationMode(conv).label }}</span>
+            </div>
             <span class="conversation-time">{{ formatTime(conv.updatedAt) }}</span>
           </div>
           <button
@@ -249,14 +306,18 @@ import { h } from "vue";
           </button>
         </div>
         <div v-if="conversationStore.loading" class="conversation-empty">加载中...</div>
-        <div v-else-if="!recentConversations.length" class="conversation-empty">暂无历史对话</div>
+        <div v-else-if="!recentConversations.length" class="conversation-empty">暂无会话</div>
       </div>
     </section>
 
     <div class="sidebar-footer">
-      <div v-if="swarmStore.currentSwarm" class="current-swarm">
+      <div v-if="swarmStore.currentSwarm" class="current-swarm" @click="swarmStore.selectSwarm(null as any)" title="点击切换为直接对话模式">
         <span class="swarm-label">当前 Swarm</span>
         <span class="swarm-name">{{ swarmStore.currentSwarm.name }}</span>
+      </div>
+      <div v-else class="current-swarm direct" @click="handleNewDirectConversation" title="直接对话模式">
+        <span class="swarm-label">对话模式</span>
+        <span class="swarm-name direct-name">直接对话</span>
       </div>
     </div>
   </aside>
@@ -280,7 +341,7 @@ import { h } from "vue";
 
 <style scoped>
 .sidebar {
-  width: 240px;
+  width: 260px;
   background: rgba(255, 255, 255, 0.02);
   backdrop-filter: blur(16px);
   border-right: 1px solid var(--color-border-subtle);
@@ -385,6 +446,44 @@ import { h } from "vue";
   padding: 0 4px;
 }
 
+.section-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+
+.action-btn.direct {
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.action-btn.direct:hover {
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.action-btn.new {
+  color: var(--color-accent-light);
+}
+
+.action-btn.new:hover {
+  background: rgba(99, 102, 241, 0.1);
+}
+
 .new-conv-btn {
   border: none;
   background: transparent;
@@ -399,7 +498,7 @@ import { h } from "vue";
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .conversation-item {
@@ -424,6 +523,21 @@ import { h } from "vue";
   background: rgba(99, 102, 241, 0.12);
 }
 
+.conversation-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.conversation-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .conversation-title {
   color: var(--color-text-secondary);
   font-size: 13px;
@@ -431,17 +545,37 @@ import { h } from "vue";
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
 }
 
 .conversation-item.active .conversation-title {
   color: var(--color-accent-light);
 }
 
-.conversation-main {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.mode-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.5;
+}
+
+.mode-tag.direct {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.mode-tag.swarm {
+  background: rgba(99, 102, 241, 0.12);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
 .conversation-time {
@@ -528,6 +662,21 @@ import { h } from "vue";
   background: rgba(99, 102, 241, 0.08);
   border-radius: 10px;
   border: 1px solid rgba(99, 102, 241, 0.12);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.current-swarm:hover {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.current-swarm.direct {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.12);
+}
+
+.current-swarm.direct:hover {
+  background: rgba(34, 197, 94, 0.12);
 }
 
 .swarm-label {
@@ -541,5 +690,9 @@ import { h } from "vue";
   font-size: 13px;
   font-weight: 600;
   color: var(--color-accent-light);
+}
+
+.swarm-name.direct-name {
+  color: #4ade80;
 }
 </style>

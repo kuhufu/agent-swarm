@@ -58,6 +58,7 @@ export interface IStorage {
   ): Promise<Conversation>;
   getConversation(id: string): Promise<Conversation | null>;
   listConversations(swarmId: string): Promise<Conversation[]>;
+  listAllConversations(): Promise<Conversation[]>;
   updateConversationPreferences(
     id: string,
     preferences: Partial<ConversationPreferences>,
