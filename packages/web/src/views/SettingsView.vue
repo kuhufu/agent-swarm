@@ -17,10 +17,6 @@ const API_PROTOCOLS: { value: ApiProtocol; label: string }[] = [
   { value: "azure-openai-responses", label: "Azure OpenAI Responses" },
 ];
 
-const DEFAULT_PROVIDERS: Record<string, ProviderEntry> = {
-  deepseek: { apiKey: "", baseUrl: "https://api.deepseek.com", apiProtocol: "openai-completions" },
-};
-
 interface ProviderEntry {
   apiKey: string;
   baseUrl: string;
@@ -60,7 +56,7 @@ function getEffectiveProtocol(id: string): ApiProtocol {
   return "openai-completions";
 }
 
-const defaultProvider = ref("deepseek");
+const defaultProvider = ref("");
 const defaultModel = ref("");
 
 // ── Models ──
@@ -135,13 +131,7 @@ onMounted(async () => {
     if (config) {
       defaultProvider.value = config.defaultProvider;
       defaultModel.value = config.defaultModel;
-      // Initialize default providers first
-      for (const [id, entry] of Object.entries(DEFAULT_PROVIDERS)) {
-        if (!providers[id]) {
-          providers[id] = { ...entry };
-        }
-      }
-      // Then merge server config
+      // Merge server config
       for (const [provider, key] of Object.entries(config.apiKeys)) {
         if (!providers[provider]) {
           providers[provider] = { apiKey: "", baseUrl: "", apiProtocol: "openai-completions" };
@@ -159,6 +149,9 @@ onMounted(async () => {
       }
       if (config.models) {
         models.push(...config.models);
+      }
+      if (!providers[defaultProvider.value]) {
+        defaultProvider.value = Object.keys(providers)[0] ?? "";
       }
     }
   } catch (error) {

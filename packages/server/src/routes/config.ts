@@ -68,20 +68,28 @@ export function configRoutes(swarm: AgentSwarm): Router {
         : undefined;
       const currentModels = Array.isArray(currentConfig.models) ? currentConfig.models : undefined;
 
-      const mergedApiKeys: Record<string, string> = { ...currentApiKeys };
-      if (apiKeys && typeof apiKeys === "object") {
+      const nextApiKeys: Record<string, string> = (() => {
+        if (!apiKeys || typeof apiKeys !== "object") {
+          return { ...currentApiKeys };
+        }
+
+        const replaced: Record<string, string> = {};
         for (const [provider, key] of Object.entries(apiKeys as Record<string, unknown>)) {
           if (typeof key !== "string") continue;
-          if (key.includes("...") && currentApiKeys[provider]) continue;
-          mergedApiKeys[provider] = key;
+          if (key.includes("...") && currentApiKeys[provider]) {
+            replaced[provider] = currentApiKeys[provider];
+            continue;
+          }
+          replaced[provider] = key;
         }
-      }
+        return replaced;
+      })();
 
       const nextConfig: LLMBackendConfig = {
         ...currentConfig,
         defaultProvider: defaultProvider ?? currentConfig.defaultProvider,
         defaultModel: defaultModel ?? currentConfig.defaultModel,
-        apiKeys: mergedApiKeys,
+        apiKeys: nextApiKeys,
         providers: providers ?? currentProviders,
         endpoints: endpoints ?? currentEndpoints,
         defaultThinkingLevel: defaultThinkingLevel ?? currentConfig.defaultThinkingLevel,
