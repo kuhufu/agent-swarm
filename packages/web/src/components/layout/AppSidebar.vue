@@ -90,10 +90,28 @@ async function handleOpenConversation(conv: ConversationInfo) {
   await conversationStore.openConversation(conv.id);
 }
 
-function handleNewConversation() {
+async function handleNewConversation() {
   closeConversationMenu();
+  if (swarmStore.swarms.length === 0) {
+    try {
+      await swarmStore.fetchSwarms();
+    } catch {
+      // ignore fetch failure and surface user-friendly message below
+    }
+  }
+
+  const targetSwarm = swarmStore.currentSwarm ?? swarmStore.swarms[0] ?? null;
+  if (!targetSwarm) {
+    showError("暂无可用 Swarm，请先创建");
+    return;
+  }
+
+  if (!swarmStore.currentSwarm || swarmStore.currentSwarm.id !== targetSwarm.id) {
+    swarmStore.selectSwarm(targetSwarm);
+  }
+
   if (route.path !== "/chat") {
-    router.push("/chat");
+    await router.push("/chat");
   }
   conversationStore.setCurrentConversation(null);
 }

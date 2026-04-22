@@ -205,6 +205,7 @@ export const useConversationStore = defineStore("conversation", () => {
     if (id === null) {
       clearMessages();
       applyConversationPreferences(null);
+      agentStates.value = new Map();
       return;
     }
 
@@ -435,19 +436,47 @@ export const useConversationStore = defineStore("conversation", () => {
     return agent?.name;
   }
 
-  function populateAgentStatesFromSwarm(swarmId: string) {
-    const swarm = swarmStore.swarms.find((s) => s.id === swarmId) ?? swarmStore.currentSwarm;
-    if (!swarm) {
+  function buildDirectAgentStates(conversation: ConversationInfo): Map<string, AgentState> {
+    const directModel = normalizeDirectModel(conversation.directModel);
+    if (!directModel) {
+      return new Map();
+    }
+    const label = `${directModel.provider}/${directModel.modelId}`;
+    return new Map([
+      ["direct-agent", {
+        id: "direct-agent",
+        name: label,
+        status: "idle",
+        model: directModel,
+        description: `Direct chat with ${label}`,
+        systemPrompt: "You are a helpful assistant.",
+      }],
+    ]);
+  }
+
+  function populateAgentStatesFromConversation(conversation: ConversationInfo) {
+    if (conversation.swarmId.startsWith("__direct_")) {
+      agentStates.value = buildDirectAgentStates(conversation);
       return;
     }
-    const newStates = new Map<string, AgentState>();
-    const allAgents = [...(swarm.agents ?? [])];
-    if (swarm.orchestrator) {
-      allAgents.push(swarm.orchestrator);
+
+    const matchedSwarm = swarmStore.swarms.find((s) => s.id === conversation.swarmId)
+      ?? (swarmStore.currentSwarm?.id === conversation.swarmId ? swarmStore.currentSwarm : null);
+
+    if (!matchedSwarm) {
+      agentStates.value = new Map();
+      return;
     }
+
+    const next = new Map<string, AgentState>();
+    const allAgents = [...(matchedSwarm.agents ?? [])];
+    if (matchedSwarm.orchestrator) {
+      allAgents.push(matchedSwarm.orchestrator);
+    }
+
     for (const agent of allAgents) {
       const existing = agentStates.value.get(agent.id);
-      newStates.set(agent.id, {
+      next.set(agent.id, {
         id: agent.id,
         name: agent.name,
         status: existing?.status ?? "idle",
@@ -456,7 +485,8 @@ export const useConversationStore = defineStore("conversation", () => {
         systemPrompt: agent.systemPrompt,
       });
     }
-    agentStates.value = newStates;
+
+    agentStates.value = next;
   }
 
   async function openConversation(id: string) {
@@ -472,7 +502,15 @@ export const useConversationStore = defineStore("conversation", () => {
       isActive.value = false;
       applyConversationPreferences(conversationRes.data);
       updateConversationInfo(id, conversationRes.data);
-      populateAgentStatesFromSwarm(conversationRes.data.swarmId);
+      if (conversationRes.data.swarmId.startsWith("__direct_")) {
+        swarmStore.selectSwarm(null as any);
+      } else {
+        const matchedSwarm = swarmStore.swarms.find((item) => item.id === conversationRes.data.swarmId);
+        if (matchedSwarm) {
+          swarmStore.selectSwarm(matchedSwarm);
+        }
+      }
+      populateAgentStatesFromConversation(conversationRes.data);
     } finally {
       loadingMessages.value = false;
     }
@@ -484,6 +522,9 @@ export const useConversationStore = defineStore("conversation", () => {
       id: agentId,
       name: current?.name ?? agentId,
       status,
+      model: current?.model,
+      description: current?.description,
+      systemPrompt: current?.systemPrompt,
     });
     // Trigger reactivity
     agentStates.value = new Map(agentStates.value);
@@ -495,6 +536,9 @@ export const useConversationStore = defineStore("conversation", () => {
       id: agentId,
       name,
       status: current?.status ?? "idle",
+      model: current?.model,
+      description: current?.description,
+      systemPrompt: current?.systemPrompt,
     });
     agentStates.value = new Map(agentStates.value);
   }

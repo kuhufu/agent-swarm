@@ -69,21 +69,31 @@ function getAgentConfig(agentId: string) {
     ?? null;
 }
 
-function agentModelLabel(agentId: string): string {
-  const config = getAgentConfig(agentId);
+function agentModelLabel(agent: AgentState): string {
+  if (agent.model) {
+    return `${agent.model.provider}/${agent.model.modelId}`;
+  }
+  const config = getAgentConfig(agent.id);
   if (!config?.model) return "unknown";
   return `${config.model.provider}/${config.model.modelId}`;
 }
 
-function agentDescription(agentId: string): string {
-  const config = getAgentConfig(agentId);
+function agentDescription(agent: AgentState): string {
+  if (typeof agent.description === "string" && agent.description.length > 0) {
+    return agent.description;
+  }
+  const config = getAgentConfig(agent.id);
   return config?.description ?? "";
 }
 
-function agentSystemPrompt(agentId: string): string {
-  const config = getAgentConfig(agentId);
-  if (!config?.systemPrompt) return "";
-  const lines = config.systemPrompt.split("\n").filter(Boolean);
+function agentSystemPrompt(agent: AgentState): string {
+  const prompt = (
+    typeof agent.systemPrompt === "string" && agent.systemPrompt.length > 0
+      ? agent.systemPrompt
+      : getAgentConfig(agent.id)?.systemPrompt
+  );
+  if (!prompt) return "";
+  const lines = prompt.split("\n").filter(Boolean);
   return lines[0] ?? "";
 }
 
@@ -133,18 +143,18 @@ function agentSystemPrompt(agentId: string): string {
           </div>
         </div>
 
-        <div v-if="agentDescription(agent.id)" class="agent-desc">
-          {{ agentDescription(agent.id) }}
+        <div v-if="agentDescription(agent)" class="agent-desc">
+          {{ agentDescription(agent) }}
         </div>
 
         <div class="agent-meta">
           <div class="meta-row">
             <span class="meta-label">模型</span>
-            <span class="meta-value">{{ agentModelLabel(agent.id) }}</span>
+            <span class="meta-value">{{ agentModelLabel(agent) }}</span>
           </div>
-          <div v-if="agentSystemPrompt(agent.id)" class="meta-row">
+          <div v-if="agentSystemPrompt(agent)" class="meta-row">
             <span class="meta-label">指令</span>
-            <span class="meta-value mono">{{ agentSystemPrompt(agent.id) }}</span>
+            <span class="meta-value mono">{{ agentSystemPrompt(agent) }}</span>
           </div>
         </div>
       </div>
