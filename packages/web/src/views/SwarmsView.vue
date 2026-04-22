@@ -4,6 +4,7 @@ import { useSwarmStore } from "../stores/swarm.js";
 import { useSettingsStore } from "../stores/settings.js";
 import CreateSwarmDialog from "../components/swarm/CreateSwarmDialog.vue";
 import ModeIcon from "../components/common/ModeIcon.vue";
+import CustomSelect from "../components/common/CustomSelect.vue";
 import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, DebateConfig } from "../types/index.js";
 import { confirmDialog, showError } from "../utils/ui-feedback.js";
 
@@ -381,36 +382,27 @@ function getModeConfig(mode: string) {
               </div>
               <div class="form-row">
                 <label>正方 Agent</label>
-                <select
-                  :value="editForm.debateConfig?.proAgent ?? ''"
-                  class="input-field"
-                  @change="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, proAgent: ($event.target as HTMLSelectElement).value }; markDirty()"
-                >
-                  <option value="">选择 Agent</option>
-                  <option v-for="a in editForm.agents" :key="a.id" :value="a.id">{{ a.name }} ({{ a.id }})</option>
-                </select>
+                <CustomSelect
+                  :model-value="editForm.debateConfig?.proAgent ?? ''"
+                  :options="[{ value: '', label: '选择 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]"
+                  @update:model-value="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, proAgent: $event }; markDirty()"
+                />
               </div>
               <div class="form-row">
                 <label>反方 Agent</label>
-                <select
-                  :value="editForm.debateConfig?.conAgent ?? ''"
-                  class="input-field"
-                  @change="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, conAgent: ($event.target as HTMLSelectElement).value }; markDirty()"
-                >
-                  <option value="">选择 Agent</option>
-                  <option v-for="a in editForm.agents" :key="a.id" :value="a.id">{{ a.name }} ({{ a.id }})</option>
-                </select>
+                <CustomSelect
+                  :model-value="editForm.debateConfig?.conAgent ?? ''"
+                  :options="[{ value: '', label: '选择 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]"
+                  @update:model-value="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, conAgent: $event }; markDirty()"
+                />
               </div>
               <div class="form-row">
                 <label>裁判 Agent</label>
-                <select
-                  :value="editForm.debateConfig?.judgeAgent ?? ''"
-                  class="input-field"
-                  @change="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, judgeAgent: ($event.target as HTMLSelectElement).value }; markDirty()"
-                >
-                  <option value="">选择 Agent</option>
-                  <option v-for="a in editForm.agents" :key="a.id" :value="a.id">{{ a.name }} ({{ a.id }})</option>
-                </select>
+                <CustomSelect
+                  :model-value="editForm.debateConfig?.judgeAgent ?? ''"
+                  :options="[{ value: '', label: '选择 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]"
+                  @update:model-value="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, judgeAgent: $event }; markDirty()"
+                />
               </div>
             </div>
           </div>
