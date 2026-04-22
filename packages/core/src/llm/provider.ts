@@ -33,14 +33,6 @@ function normalizeBaseUrl(baseUrl: string | undefined, apiProtocol: ApiProtocol 
     return undefined;
   }
 
-  // SiliconFlow OpenAI-compatible endpoints require /v1.
-  if (
-    (apiProtocol === "openai-completions" || apiProtocol === "openai-responses")
-    && /^https?:\/\/api\.siliconflow\.cn$/i.test(trimmed)
-  ) {
-    return `${trimmed}/v1`;
-  }
-
   return trimmed;
 }
 
