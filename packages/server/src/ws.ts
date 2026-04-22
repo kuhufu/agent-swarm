@@ -151,6 +151,7 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
     }
 
     let conversation: SwarmConversation | undefined;
+    let activeConversationId: string | undefined;
     try {
       let effectivePreferences: ConversationPreferencesPayload = { ...DEFAULT_CONVERSATION_PREFERENCES };
       let storedConversation: Awaited<ReturnType<typeof swarm.getConversation>> = null;
@@ -227,6 +228,7 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
 
       client.activeConversation = conversation;
       const convId = conversation.getId();
+      activeConversationId = convId;
       client.conversationId = convId;
 
       // Set up intervention callback
@@ -297,6 +299,7 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
       const completedPacket = {
         type: "prompt_completed",
         payload: { conversationId: convId },
+        conversationId: convId,
       };
       send(client, completedPacket);
       broadcastPacketToConversation(convId, completedPacket, client);
@@ -304,6 +307,7 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
       send(client, {
         type: "error",
         payload: { message: err.message ?? "Failed to process message" },
+        ...(activeConversationId || conversationId ? { conversationId: activeConversationId ?? conversationId } : {}),
       });
     } finally {
       client.activeConversation = undefined;

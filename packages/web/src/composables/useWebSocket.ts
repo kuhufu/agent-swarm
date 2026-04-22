@@ -11,6 +11,34 @@ const maxReconnectAttempts = 10;
 
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let manualClose = false;
+let lastConversationId: string | null = null;
+
+function conversationIdFromPayload(payload: unknown): string | undefined {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return undefined;
+  }
+  const raw = payload as Record<string, unknown>;
+  return typeof raw.conversationId === "string" ? raw.conversationId : undefined;
+}
+
+function resolveTargetConversationId(
+  msg: WSMessage,
+  currentConversationId: string | null,
+): string | undefined {
+  const topLevelConversationId = typeof msg.conversationId === "string" ? msg.conversationId : undefined;
+  const payloadConversationId = conversationIdFromPayload(msg.payload);
+  const resolvedConversationId = topLevelConversationId ?? payloadConversationId;
+  if (resolvedConversationId) {
+    lastConversationId = resolvedConversationId;
+    return resolvedConversationId;
+  }
+
+  if (msg.type === "prompt_completed" || msg.type === "error") {
+    return lastConversationId ?? currentConversationId ?? undefined;
+  }
+
+  return undefined;
+}
 
 export function useWebSocket() {
   function connect() {
@@ -89,37 +117,39 @@ export function useWebSocket() {
   function handleMessage(msg: WSMessage) {
     const conversationStore = useConversationStore();
     const interventionStore = useInterventionStore();
+    const targetConversationId = resolveTargetConversationId(msg, conversationStore.currentConversationId);
 
     switch (msg.type) {
       case "connected":
         break;
 
       case "conversation_created":
-        conversationStore.setCurrentConversation(msg.payload.conversationId);
+        if (targetConversationId) {
+          conversationStore.setCurrentConversation(targetConversationId);
+        }
         conversationStore.applyConversationSettingsFromServer(msg.payload);
         void conversationStore.fetchAllConversations();
         break;
 
       // ── Agent lifecycle events ──
       case "agent_start":
-        conversationStore.setAgentStatus(msg.payload.agentId, "thinking");
+        conversationStore.setAgentStatus(msg.payload.agentId, "thinking", targetConversationId);
         if (msg.payload.agentName) {
-          conversationStore.setAgentName(msg.payload.agentId, msg.payload.agentName);
+          conversationStore.setAgentName(msg.payload.agentId, msg.payload.agentName, targetConversationId);
         }
         break;
 
       case "agent_end":
-        conversationStore.setAgentStatus(msg.payload.agentId, "idle");
+        conversationStore.setAgentStatus(msg.payload.agentId, "idle", targetConversationId);
         break;
 
       // ── Message events ──
       case "message_start":
         if (msg.payload.role === "assistant") {
           const fallbackName = msg.payload.agentName
-            ?? conversationStore.agentStates.get(msg.payload.agentId)?.name
             ?? msg.payload.agentId;
           if (msg.payload.agentId && fallbackName) {
-            conversationStore.setAgentName(msg.payload.agentId, fallbackName);
+            conversationStore.setAgentName(msg.payload.agentId, fallbackName, targetConversationId);
           }
           conversationStore.startStreamingMessage({
             id: crypto.randomUUID(),
@@ -128,41 +158,41 @@ export function useWebSocket() {
             agentId: msg.payload.agentId,
             agentName: fallbackName,
             timestamp: Date.now(),
-          });
+          }, targetConversationId);
         }
         break;
 
       case "message_update":
         if (typeof msg.payload?.agentId === "string") {
           if (typeof msg.payload?.delta === "string") {
-            conversationStore.appendStreamDelta(msg.payload.agentId, msg.payload.delta);
+            conversationStore.appendStreamDelta(msg.payload.agentId, msg.payload.delta, targetConversationId);
           }
           if (typeof msg.payload?.thinkingDelta === "string") {
-            conversationStore.appendStreamThinkingDelta(msg.payload.agentId, msg.payload.thinkingDelta);
+            conversationStore.appendStreamThinkingDelta(msg.payload.agentId, msg.payload.thinkingDelta, targetConversationId);
           }
         }
         break;
 
       case "message_end":
         if (msg.payload?.role === "assistant" && typeof msg.payload?.agentId === "string") {
-          conversationStore.finalizeStream(msg.payload.agentId);
+          conversationStore.finalizeStream(msg.payload.agentId, targetConversationId);
         }
         break;
 
       // ── Tool execution events ──
       case "tool_execution_start":
-        conversationStore.setAgentStatus(msg.payload.agentId, "executing_tool");
+        conversationStore.setAgentStatus(msg.payload.agentId, "executing_tool", targetConversationId);
         if (typeof msg.payload?.toolCallId === "string" && typeof msg.payload?.toolName === "string") {
           conversationStore.upsertToolCall(msg.payload.agentId, {
             id: msg.payload.toolCallId,
             name: msg.payload.toolName,
             arguments: msg.payload?.args,
-          });
+          }, targetConversationId);
         }
         break;
 
       case "tool_execution_end": {
-        conversationStore.setAgentStatus(msg.payload.agentId, "thinking");
+        conversationStore.setAgentStatus(msg.payload.agentId, "thinking", targetConversationId);
         if (typeof msg.payload?.toolCallId === "string" && typeof msg.payload?.toolName === "string") {
           conversationStore.upsertToolCall(msg.payload.agentId, {
             id: msg.payload.toolCallId,
@@ -170,21 +200,21 @@ export function useWebSocket() {
             arguments: msg.payload?.args,
             result: msg.payload?.result,
             isError: msg.payload.isError === true,
-          });
+          }, targetConversationId);
         }
         break;
       }
 
       // ── Handoff event ──
       case "handoff":
-        conversationStore.setAgentStatus(msg.payload.fromAgentId, "idle");
-        conversationStore.setAgentStatus(msg.payload.toAgentId, "thinking");
+        conversationStore.setAgentStatus(msg.payload.fromAgentId, "idle", targetConversationId);
+        conversationStore.setAgentStatus(msg.payload.toAgentId, "thinking", targetConversationId);
         conversationStore.addMessage({
           id: crypto.randomUUID(),
           role: "notification",
           content: `🔄 Agent 交接: ${msg.payload.fromAgentId} → ${msg.payload.toAgentId}`,
           timestamp: Date.now(),
-        });
+        }, targetConversationId);
         break;
 
       // ── Intervention events ──
@@ -203,23 +233,23 @@ export function useWebSocket() {
 
       // ── Swarm lifecycle ──
       case "swarm_start":
-        conversationStore.setActive(true);
+        conversationStore.setActive(true, targetConversationId);
         break;
 
       case "swarm_end":
-        conversationStore.setActive(false);
+        conversationStore.setActive(false, targetConversationId);
         if (msg.payload.finalMessage) {
           conversationStore.addMessage({
             id: crypto.randomUUID(),
             role: "notification",
             content: msg.payload.finalMessage,
             timestamp: Date.now(),
-          });
+          }, targetConversationId);
         }
         break;
 
       case "prompt_completed":
-        conversationStore.setActive(false);
+        conversationStore.setActive(false, targetConversationId);
         break;
 
       // ── Error ──
@@ -229,8 +259,8 @@ export function useWebSocket() {
           role: "system",
           content: `Error: ${msg.payload.message ?? "Unknown error"}`,
           timestamp: Date.now(),
-        });
-        conversationStore.setActive(false);
+        }, targetConversationId);
+        conversationStore.setActive(false, targetConversationId);
         break;
     }
   }

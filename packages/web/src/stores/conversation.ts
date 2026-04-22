@@ -4,6 +4,13 @@ import type { ChatMessage, AgentState, ConversationInfo, ToolCallInfo } from "..
 import { useSwarmStore } from "./swarm.js";
 import * as conversationsApi from "../api/conversations.js";
 
+interface ConversationRuntimeState {
+  messages: ChatMessage[];
+  streamingMessages: Map<string, ChatMessage>;
+  agentStates: Map<string, AgentState>;
+  isActive: boolean;
+}
+
 export const useConversationStore = defineStore("conversation", () => {
   const swarmStore = useSwarmStore();
   const currentConversationId = ref<string | null>(null);
@@ -17,8 +24,106 @@ export const useConversationStore = defineStore("conversation", () => {
   const enabledTools = ref<string[]>([]);
   const thinkModeEnabled = ref(false);
   const currentDirectModel = ref<ConversationInfo["directModel"] | null>(null);
+  const runtimeStates = ref<Map<string, ConversationRuntimeState>>(new Map());
 
-  function addMessage(msg: ChatMessage) {
+  function cloneToolCall(toolCall: ToolCallInfo): ToolCallInfo {
+    return {
+      ...toolCall,
+      arguments: toolCall.arguments,
+      result: toolCall.result,
+    };
+  }
+
+  function cloneMessage(message: ChatMessage): ChatMessage {
+    return {
+      ...message,
+      toolCalls: Array.isArray(message.toolCalls)
+        ? message.toolCalls.map((toolCall) => cloneToolCall(toolCall))
+        : undefined,
+      metadata: message.metadata ? { ...message.metadata } : undefined,
+    };
+  }
+
+  function cloneAgentState(state: AgentState): AgentState {
+    return {
+      ...state,
+      model: state.model ? { ...state.model } : undefined,
+    };
+  }
+
+  function cloneRuntimeState(state: ConversationRuntimeState): ConversationRuntimeState {
+    return {
+      messages: state.messages.map((message) => cloneMessage(message)),
+      streamingMessages: new Map(
+        Array.from(state.streamingMessages.entries()).map(([key, message]) => [key, cloneMessage(message)]),
+      ),
+      agentStates: new Map(
+        Array.from(state.agentStates.entries()).map(([key, agentState]) => [key, cloneAgentState(agentState)]),
+      ),
+      isActive: state.isActive,
+    };
+  }
+
+  function getOrCreateRuntimeState(conversationId: string): ConversationRuntimeState {
+    const existing = runtimeStates.value.get(conversationId);
+    if (existing) {
+      return existing;
+    }
+    const created: ConversationRuntimeState = {
+      messages: [],
+      streamingMessages: new Map(),
+      agentStates: new Map(),
+      isActive: false,
+    };
+    runtimeStates.value.set(conversationId, created);
+    runtimeStates.value = new Map(runtimeStates.value);
+    return created;
+  }
+
+  function persistCurrentRuntimeState() {
+    const conversationId = currentConversationId.value;
+    if (!conversationId) {
+      return;
+    }
+    runtimeStates.value.set(conversationId, {
+      messages: messages.value.map((message) => cloneMessage(message)),
+      streamingMessages: new Map(
+        Array.from(streamingMessages.value.entries()).map(([key, message]) => [key, cloneMessage(message)]),
+      ),
+      agentStates: new Map(
+        Array.from(agentStates.value.entries()).map(([key, state]) => [key, cloneAgentState(state)]),
+      ),
+      isActive: isActive.value,
+    });
+    runtimeStates.value = new Map(runtimeStates.value);
+  }
+
+  function restoreRuntimeState(conversationId: string): boolean {
+    const runtimeState = runtimeStates.value.get(conversationId);
+    if (!runtimeState) {
+      return false;
+    }
+    const cloned = cloneRuntimeState(runtimeState);
+    messages.value = cloned.messages;
+    streamingMessages.value = cloned.streamingMessages;
+    agentStates.value = cloned.agentStates;
+    isActive.value = cloned.isActive;
+    return true;
+  }
+
+  function mutateRuntimeState(conversationId: string, mutate: (state: ConversationRuntimeState) => void) {
+    const runtimeState = getOrCreateRuntimeState(conversationId);
+    mutate(runtimeState);
+    runtimeStates.value = new Map(runtimeStates.value);
+  }
+
+  function addMessage(msg: ChatMessage, conversationId?: string) {
+    if (conversationId && conversationId !== currentConversationId.value) {
+      mutateRuntimeState(conversationId, (state) => {
+        state.messages.push(cloneMessage(msg));
+      });
+      return;
+    }
     messages.value.push(msg);
   }
 
@@ -88,8 +193,43 @@ export const useConversationStore = defineStore("conversation", () => {
     };
   }
 
-  function upsertToolCall(agentId: string | undefined, toolCall: ToolCallInfo) {
+  function upsertToolCall(agentId: string | undefined, toolCall: ToolCallInfo, conversationId?: string) {
     if (!toolCall.id || !toolCall.name) {
+      return;
+    }
+
+    if (conversationId && conversationId !== currentConversationId.value) {
+      mutateRuntimeState(conversationId, (state) => {
+        if (agentId) {
+          const streaming = state.streamingMessages.get(agentId);
+          if (streaming?.role === "assistant") {
+            state.streamingMessages.set(agentId, upsertToolCallInMessage(streaming, toolCall));
+            return;
+          }
+        }
+
+        for (let i = state.messages.length - 1; i >= 0; i--) {
+          const message = state.messages[i];
+          if (message.role !== "assistant") {
+            continue;
+          }
+          if (agentId && message.agentId !== agentId) {
+            continue;
+          }
+          state.messages[i] = upsertToolCallInMessage(message, toolCall);
+          return;
+        }
+
+        state.messages.push({
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: "",
+          agentId,
+          agentName: agentId,
+          toolCalls: [toolCall],
+          timestamp: Date.now(),
+        });
+      });
       return;
     }
 
@@ -130,7 +270,19 @@ export const useConversationStore = defineStore("conversation", () => {
     return msg.agentId ?? msg.id;
   }
 
-  function startStreamingMessage(msg: ChatMessage) {
+  function startStreamingMessage(msg: ChatMessage, conversationId?: string) {
+    if (conversationId && conversationId !== currentConversationId.value) {
+      mutateRuntimeState(conversationId, (state) => {
+        const key = streamKeyFromMessage(msg);
+        const existing = state.streamingMessages.get(key);
+        if (existing && existing.content.trim().length > 0) {
+          state.messages.push(cloneMessage(existing));
+        }
+        state.streamingMessages.set(key, { ...msg, content: "" });
+      });
+      return;
+    }
+
     const key = streamKeyFromMessage(msg);
     const existing = streamingMessages.value.get(key);
     if (existing && existing.content.trim().length > 0) {
@@ -140,7 +292,21 @@ export const useConversationStore = defineStore("conversation", () => {
     streamingMessages.value = new Map(streamingMessages.value);
   }
 
-  function appendStreamDelta(agentId: string, delta: string) {
+  function appendStreamDelta(agentId: string, delta: string, conversationId?: string) {
+    if (conversationId && conversationId !== currentConversationId.value) {
+      mutateRuntimeState(conversationId, (state) => {
+        const current = state.streamingMessages.get(agentId);
+        if (!current) {
+          return;
+        }
+        state.streamingMessages.set(agentId, {
+          ...current,
+          content: current.content + delta,
+        });
+      });
+      return;
+    }
+
     const current = streamingMessages.value.get(agentId);
     if (!current) {
       return;
@@ -152,7 +318,21 @@ export const useConversationStore = defineStore("conversation", () => {
     streamingMessages.value = new Map(streamingMessages.value);
   }
 
-  function appendStreamThinkingDelta(agentId: string, delta: string) {
+  function appendStreamThinkingDelta(agentId: string, delta: string, conversationId?: string) {
+    if (conversationId && conversationId !== currentConversationId.value) {
+      mutateRuntimeState(conversationId, (state) => {
+        const current = state.streamingMessages.get(agentId);
+        if (!current) {
+          return;
+        }
+        state.streamingMessages.set(agentId, {
+          ...current,
+          thinking: (current.thinking ?? "") + delta,
+        });
+      });
+      return;
+    }
+
     const current = streamingMessages.value.get(agentId);
     if (!current) {
       return;
@@ -164,7 +344,39 @@ export const useConversationStore = defineStore("conversation", () => {
     streamingMessages.value = new Map(streamingMessages.value);
   }
 
-  function finalizeStream(agentId?: string) {
+  function finalizeStream(agentId?: string, conversationId?: string) {
+    if (conversationId && conversationId !== currentConversationId.value) {
+      mutateRuntimeState(conversationId, (state) => {
+        if (agentId) {
+          const stream = state.streamingMessages.get(agentId);
+          if (
+            stream
+            && (
+              stream.content.trim().length > 0
+              || (typeof stream.thinking === "string" && stream.thinking.trim().length > 0)
+              || (Array.isArray(stream.toolCalls) && stream.toolCalls.length > 0)
+            )
+          ) {
+            state.messages.push(cloneMessage(stream));
+          }
+          state.streamingMessages.delete(agentId);
+          return;
+        }
+
+        for (const [key, stream] of state.streamingMessages.entries()) {
+          if (
+            stream.content.trim().length > 0
+            || (typeof stream.thinking === "string" && stream.thinking.trim().length > 0)
+            || (Array.isArray(stream.toolCalls) && stream.toolCalls.length > 0)
+          ) {
+            state.messages.push(cloneMessage(stream));
+          }
+          state.streamingMessages.delete(key);
+        }
+      });
+      return;
+    }
+
     if (agentId) {
       const stream = streamingMessages.value.get(agentId);
       if (
@@ -201,12 +413,25 @@ export const useConversationStore = defineStore("conversation", () => {
   }
 
   function setCurrentConversation(id: string | null) {
+    const previousConversationId = currentConversationId.value;
+    if (previousConversationId && previousConversationId !== id) {
+      persistCurrentRuntimeState();
+    }
+
     currentConversationId.value = id;
     if (id === null) {
       clearMessages();
       applyConversationPreferences(null);
       agentStates.value = new Map();
+      isActive.value = false;
       return;
+    }
+
+    const restored = restoreRuntimeState(id);
+    if (!restored) {
+      clearMessages();
+      agentStates.value = new Map();
+      isActive.value = false;
     }
 
     const conversation = conversations.value.find((item) => item.id === id);
@@ -442,14 +667,15 @@ export const useConversationStore = defineStore("conversation", () => {
       return new Map();
     }
     const label = `${directModel.provider}/${directModel.modelId}`;
+    const existing = agentStates.value.get("direct-agent");
     return new Map([
       ["direct-agent", {
         id: "direct-agent",
-        name: label,
-        status: "idle",
+        name: existing?.name ?? label,
+        status: existing?.status ?? "idle",
         model: directModel,
-        description: `Direct chat with ${label}`,
-        systemPrompt: "You are a helpful assistant.",
+        description: existing?.description ?? `Direct chat with ${label}`,
+        systemPrompt: existing?.systemPrompt ?? "You are a helpful assistant.",
       }],
     ]);
   }
@@ -496,27 +722,59 @@ export const useConversationStore = defineStore("conversation", () => {
         conversationsApi.getMessages(id),
         conversationsApi.getConversation(id),
       ]);
-      currentConversationId.value = id;
-      messages.value = normalizeHistoryMessages(Array.isArray(messagesRes.data) ? messagesRes.data : []);
-      streamingMessages.value = new Map();
-      isActive.value = false;
+      const currentRuntime = runtimeStates.value.get(id);
+      const hasActiveRuntime = Boolean(
+        currentRuntime && (currentRuntime.isActive || currentRuntime.streamingMessages.size > 0),
+      );
+      setCurrentConversation(id);
+      if (!hasActiveRuntime) {
+        messages.value = normalizeHistoryMessages(Array.isArray(messagesRes.data) ? messagesRes.data : []);
+        streamingMessages.value = new Map();
+        isActive.value = false;
+      }
       applyConversationPreferences(conversationRes.data);
       updateConversationInfo(id, conversationRes.data);
       if (conversationRes.data.swarmId.startsWith("__direct_")) {
         swarmStore.selectSwarm(null as any);
       } else {
-        const matchedSwarm = swarmStore.swarms.find((item) => item.id === conversationRes.data.swarmId);
+        let matchedSwarm = swarmStore.swarms.find((item) => item.id === conversationRes.data.swarmId);
+        if (!matchedSwarm) {
+          try {
+            await swarmStore.fetchSwarms();
+          } catch {
+            // ignore swarm refresh failure and fallback to runtime state
+          }
+          matchedSwarm = swarmStore.swarms.find((item) => item.id === conversationRes.data.swarmId);
+        }
         if (matchedSwarm) {
           swarmStore.selectSwarm(matchedSwarm);
+        } else {
+          swarmStore.selectSwarm(null as any);
         }
       }
       populateAgentStatesFromConversation(conversationRes.data);
+      persistCurrentRuntimeState();
     } finally {
       loadingMessages.value = false;
     }
   }
 
-  function setAgentStatus(agentId: string, status: AgentState["status"]) {
+  function setAgentStatus(agentId: string, status: AgentState["status"], conversationId?: string) {
+    if (conversationId && conversationId !== currentConversationId.value) {
+      mutateRuntimeState(conversationId, (state) => {
+        const current = state.agentStates.get(agentId);
+        state.agentStates.set(agentId, {
+          id: agentId,
+          name: current?.name ?? agentId,
+          status,
+          model: current?.model,
+          description: current?.description,
+          systemPrompt: current?.systemPrompt,
+        });
+      });
+      return;
+    }
+
     const current = agentStates.value.get(agentId);
     agentStates.value.set(agentId, {
       id: agentId,
@@ -530,7 +788,22 @@ export const useConversationStore = defineStore("conversation", () => {
     agentStates.value = new Map(agentStates.value);
   }
 
-  function setAgentName(agentId: string, name: string) {
+  function setAgentName(agentId: string, name: string, conversationId?: string) {
+    if (conversationId && conversationId !== currentConversationId.value) {
+      mutateRuntimeState(conversationId, (state) => {
+        const current = state.agentStates.get(agentId);
+        state.agentStates.set(agentId, {
+          id: agentId,
+          name,
+          status: current?.status ?? "idle",
+          model: current?.model,
+          description: current?.description,
+          systemPrompt: current?.systemPrompt,
+        });
+      });
+      return;
+    }
+
     const current = agentStates.value.get(agentId);
     agentStates.value.set(agentId, {
       id: agentId,
@@ -543,7 +816,13 @@ export const useConversationStore = defineStore("conversation", () => {
     agentStates.value = new Map(agentStates.value);
   }
 
-  function setActive(active: boolean) {
+  function setActive(active: boolean, conversationId?: string) {
+    if (conversationId && conversationId !== currentConversationId.value) {
+      mutateRuntimeState(conversationId, (state) => {
+        state.isActive = active;
+      });
+      return;
+    }
     isActive.value = active;
   }
 
@@ -589,6 +868,8 @@ export const useConversationStore = defineStore("conversation", () => {
   async function deleteConversation(id: string) {
     await conversationsApi.deleteConversation(id);
     conversations.value = conversations.value.filter((conv) => conv.id !== id);
+    runtimeStates.value.delete(id);
+    runtimeStates.value = new Map(runtimeStates.value);
     if (currentConversationId.value === id) {
       setCurrentConversation(null);
       isActive.value = false;
