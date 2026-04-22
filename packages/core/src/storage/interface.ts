@@ -25,8 +25,15 @@ export interface Conversation {
   id: string;
   swarmId: string;
   title?: string;
+  enabledTools: string[];
+  thinkModeEnabled: boolean;
   createdAt: number;
   updatedAt: number;
+}
+
+export interface ConversationPreferences {
+  enabledTools: string[];
+  thinkModeEnabled: boolean;
 }
 
 export interface IStorage {
@@ -44,9 +51,17 @@ export interface IStorage {
   deleteSwarm(id: string): Promise<void>;
 
   // Conversation management
-  createConversation(swarmId: string, title?: string): Promise<Conversation>;
+  createConversation(
+    swarmId: string,
+    title?: string,
+    preferences?: Partial<ConversationPreferences>,
+  ): Promise<Conversation>;
   getConversation(id: string): Promise<Conversation | null>;
   listConversations(swarmId: string): Promise<Conversation[]>;
+  updateConversationPreferences(
+    id: string,
+    preferences: Partial<ConversationPreferences>,
+  ): Promise<Conversation>;
   updateConversationTitle(id: string, title: string): Promise<void>;
   deleteConversation(id: string): Promise<void>;
 

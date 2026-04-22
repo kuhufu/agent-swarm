@@ -3,6 +3,11 @@ import type { SwarmEvent } from "../core/types.js";
 import type { AgentEvent as PiAgentEvent, AgentMessage } from "@mariozechner/pi-agent-core";
 import type { Message } from "@mariozechner/pi-ai";
 import { messageToStored } from "../storage/message-mapper.js";
+import {
+  buildModelFailureMessage,
+  extractAssistantErrorMessage,
+  extractAssistantTextAndThinking,
+} from "./message-fallback.js";
 
 /**
  * Debate mode: pro and con agents argue for a specified number of rounds,
@@ -82,11 +87,66 @@ export class DebateMode implements ModeExecutor {
     const { agent, config } = active;
     const events: SwarmEvent[] = [];
     const initialMessageCount = agent.state.messages.length;
+    let assistantHasStreamDelta = false;
+    let assistantErrorEmitted = false;
 
     let resolveDone: () => void;
     const donePromise = new Promise<void>((r) => { resolveDone = r; });
 
     const unsub = agent.subscribe((e: PiAgentEvent) => {
+      if (e.type === "message_start" && e.message.role === "assistant") {
+        assistantHasStreamDelta = false;
+        assistantErrorEmitted = false;
+      }
+
+      if (
+        e.type === "message_update"
+        && (e.assistantMessageEvent.type === "text_delta" || e.assistantMessageEvent.type === "thinking_delta")
+      ) {
+        assistantHasStreamDelta = true;
+      }
+
+      if (e.type === "message_end" && e.message.role === "assistant" && !assistantHasStreamDelta) {
+        const fallback = extractAssistantTextAndThinking(e.message.content);
+        if (fallback.thinking.trim().length > 0) {
+          const thinkingEvent: SwarmEvent = {
+            type: "message_update",
+            agentId,
+            thinkingDelta: fallback.thinking,
+          };
+          events.push(thinkingEvent);
+          ctx.emit(thinkingEvent);
+        }
+        if (fallback.text.trim().length > 0) {
+          const textEvent: SwarmEvent = {
+            type: "message_update",
+            agentId,
+            delta: fallback.text,
+          };
+          events.push(textEvent);
+          ctx.emit(textEvent);
+        }
+
+        if (e.message.stopReason === "error" && !assistantErrorEmitted) {
+          assistantErrorEmitted = true;
+          const assistantErrorMessage = extractAssistantErrorMessage(e.message);
+          const errorEvent: SwarmEvent = {
+            type: "error",
+            agentId,
+            error: new Error(
+              buildModelFailureMessage(
+                config.model.provider,
+                config.model.modelId,
+                assistantErrorMessage,
+                agent.state.errorMessage,
+              ),
+            ),
+          };
+          events.push(errorEvent);
+          ctx.emit(errorEvent);
+        }
+      }
+
       const swarmEvent = this.mapAgentEvent(e, agentId, config.name);
       if (swarmEvent) {
         events.push(swarmEvent);

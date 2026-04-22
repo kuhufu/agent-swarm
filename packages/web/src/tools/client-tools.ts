@@ -14,7 +14,11 @@ export interface ClientToolExecutionResult {
 }
 
 interface ClientToolState {
-  jsExecutionToolEnabled: boolean;
+  enabledTools: string[];
+}
+
+function isToolEnabled(state: ClientToolState, toolName: string): boolean {
+  return state.enabledTools.includes(toolName);
 }
 
 function currentTimeToolDefinition(): ClientToolDefinition {
@@ -61,8 +65,11 @@ function javascriptToolDefinition(): ClientToolDefinition {
 }
 
 export function buildClientToolDefinitions(state: ClientToolState): ClientToolDefinition[] {
-  const tools: ClientToolDefinition[] = [currentTimeToolDefinition()];
-  if (state.jsExecutionToolEnabled) {
+  const tools: ClientToolDefinition[] = [];
+  if (isToolEnabled(state, "current_time")) {
+    tools.push(currentTimeToolDefinition());
+  }
+  if (isToolEnabled(state, "javascript_execute")) {
     tools.push(javascriptToolDefinition());
   }
   return tools;
@@ -99,7 +106,7 @@ export async function executeClientTool(
   }
 
   if (toolName === "javascript_execute") {
-    if (!state.jsExecutionToolEnabled) {
+    if (!isToolEnabled(state, "javascript_execute")) {
       return {
         isError: true,
         content: "前端 JS 工具已关闭",

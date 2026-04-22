@@ -27,7 +27,7 @@ export type {
 export type { InterventionDecision, InterventionContext } from "./intervention/types.js";
 
 // Storage types
-export type { IStorage, StoredMessage, StoredEvent, Conversation } from "./storage/interface.js";
+export type { IStorage, StoredMessage, StoredEvent, Conversation, ConversationPreferences } from "./storage/interface.js";
 
 // LLM types — LLMBackendConfig is already exported from core/types.js above
 
@@ -38,6 +38,7 @@ export type { ModeExecutor, ModeExecutionContext } from "./modes/types.js";
 export { AgentSwarm } from "./core/swarm.js";
 export { Conversation as SwarmConversation } from "./core/conversation.js";
 export type { ConversationPromptOptions } from "./core/conversation.js";
+export type { ModelConnectionTestOptions, ModelConnectionTestResult } from "./core/swarm.js";
 
 // Intervention
 export { InterventionHandler, WSInterventionHandler } from "./intervention/handler.js";

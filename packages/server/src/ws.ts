@@ -15,6 +15,44 @@ interface WSClient {
   pendingToolExecutions: Map<string, (result: any) => void>;
 }
 
+interface ConversationPreferencesPayload {
+  enabledTools: string[];
+  thinkModeEnabled: boolean;
+}
+
+interface ConversationPreferencesPatch {
+  enabledTools?: string[];
+  thinkModeEnabled?: boolean;
+}
+
+const DEFAULT_CONVERSATION_PREFERENCES: ConversationPreferencesPayload = {
+  enabledTools: [],
+  thinkModeEnabled: false,
+};
+
+function normalizeEnabledTools(input: unknown): string[] {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+  const normalized = input
+    .filter((tool): tool is string => typeof tool === "string")
+    .map((tool) => tool.trim())
+    .filter((tool) => tool.length > 0);
+  return Array.from(new Set(normalized));
+}
+
+function parseConversationPreferencesPatch(payload: Record<string, unknown>): ConversationPreferencesPatch {
+  const patch: ConversationPreferencesPatch = {};
+  if (Array.isArray(payload.enabledTools)) {
+    patch.enabledTools = normalizeEnabledTools(payload.enabledTools);
+  }
+  if (typeof payload.thinkModeEnabled === "boolean") {
+    patch.thinkModeEnabled = payload.thinkModeEnabled;
+  }
+
+  return patch;
+}
+
 export function createWSServer(app: Express, swarm: AgentSwarm) {
   const server = createServer(app);
   const wss = new WebSocketServer({ server, path: "/ws" });
@@ -80,7 +118,16 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
    * Handle incoming user messages via WebSocket.
    */
   async function handleSendMessage(client: WSClient, msg: any, swarm: AgentSwarm) {
-    const { swarmId, content, conversationId, enableJavascriptExecutionTool, clientTools } = msg.payload ?? {};
+    const payload = (msg.payload && typeof msg.payload === "object")
+      ? msg.payload as Record<string, unknown>
+      : {};
+    const swarmId = typeof payload.swarmId === "string" ? payload.swarmId : undefined;
+    const content = typeof payload.content === "string" ? payload.content : undefined;
+    const conversationId = typeof payload.conversationId === "string" ? payload.conversationId : undefined;
+    const clientTools = payload.clientTools;
+    const preferencesPatch = parseConversationPreferencesPatch(payload);
+    const hasExplicitPreferences = preferencesPatch.enabledTools !== undefined
+      || preferencesPatch.thinkModeEnabled !== undefined;
 
     if (typeof content !== "string" || content.trim().length === 0) {
       send(client, { type: "error", payload: { message: "content must be a non-empty string" } });
@@ -89,10 +136,44 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
 
     let conversation: SwarmConversation | undefined;
     try {
+      let effectivePreferences: ConversationPreferencesPayload = { ...DEFAULT_CONVERSATION_PREFERENCES };
+
       if (conversationId) {
         conversation = await swarm.resumeConversation(conversationId);
+        const storedConversation = await swarm.getConversation(conversationId);
+        if (!storedConversation) {
+          throw new Error(`Conversation not found: ${conversationId}`);
+        }
+        if (hasExplicitPreferences) {
+          const updatedConversation = await swarm.updateConversationPreferences(conversationId, preferencesPatch);
+          effectivePreferences = {
+            enabledTools: updatedConversation.enabledTools,
+            thinkModeEnabled: updatedConversation.thinkModeEnabled,
+          };
+        } else {
+          effectivePreferences = {
+            enabledTools: storedConversation.enabledTools,
+            thinkModeEnabled: storedConversation.thinkModeEnabled,
+          };
+        }
       } else if (swarmId) {
-        conversation = await swarm.createConversation(swarmId);
+        const initialPreferences: ConversationPreferencesPatch = {
+          enabledTools: preferencesPatch.enabledTools ?? DEFAULT_CONVERSATION_PREFERENCES.enabledTools,
+          thinkModeEnabled: preferencesPatch.thinkModeEnabled ?? DEFAULT_CONVERSATION_PREFERENCES.thinkModeEnabled,
+        };
+        conversation = await swarm.createConversation(swarmId, undefined, initialPreferences);
+        const createdConversation = await swarm.getConversation(conversation.getId());
+        if (createdConversation) {
+          effectivePreferences = {
+            enabledTools: createdConversation.enabledTools,
+            thinkModeEnabled: createdConversation.thinkModeEnabled,
+          };
+        } else {
+          effectivePreferences = {
+            enabledTools: initialPreferences.enabledTools ?? [],
+            thinkModeEnabled: initialPreferences.thinkModeEnabled ?? false,
+          };
+        }
       } else {
         send(client, { type: "error", payload: { message: "swarmId or conversationId required" } });
         return;
@@ -128,14 +209,20 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
       // Send conversation created event
       const createdPacket = {
         type: "conversation_created",
-        payload: { conversationId: convId },
+        payload: {
+          conversationId: convId,
+          enabledTools: effectivePreferences.enabledTools,
+          thinkModeEnabled: effectivePreferences.thinkModeEnabled,
+        },
       };
       send(client, createdPacket);
       broadcastPacketToConversation(convId, createdPacket, client);
 
       // Stream events from the conversation
       const stream = conversation.prompt(content, {
-        clientTools: normalizeClientTools(clientTools, enableJavascriptExecutionTool === true),
+        clientTools: normalizeClientTools(clientTools, effectivePreferences.enabledTools),
+        enabledTools: effectivePreferences.enabledTools,
+        thinkingEnabled: effectivePreferences.thinkModeEnabled,
         clientToolExecutor: async ({ toolName, toolCallId, params }) => {
           const result = await requestClientToolExecution(
             client,
@@ -176,7 +263,9 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
     }
   }
 
-  function normalizeClientTools(input: unknown, enableJavascriptExecutionTool: boolean): ClientToolDefinition[] {
+  function normalizeClientTools(input: unknown, enabledTools: string[]): ClientToolDefinition[] {
+    const enabledSet = new Set(enabledTools);
+
     if (Array.isArray(input)) {
       return input
         .filter((tool): tool is Record<string, unknown> =>
@@ -189,12 +278,37 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
             ? tool.parametersSchema as Record<string, unknown>
             : undefined,
         }))
-        .filter((tool) => tool.name.length > 0 && tool.label.length > 0 && tool.description.length > 0);
+        .filter((tool) => {
+          if (tool.name.length === 0 || tool.label.length === 0 || tool.description.length === 0) {
+            return false;
+          }
+          return enabledSet.has(tool.name);
+        });
     }
 
-    // Backward compatibility for older frontend payload
-    if (enableJavascriptExecutionTool) {
-      return [{
+    // Fallback when frontend does not pass definitions for optional tools.
+    const fallbackTools: ClientToolDefinition[] = [];
+
+    if (enabledSet.has("current_time")) {
+      fallbackTools.push({
+        name: "current_time",
+        label: "Current Time",
+        description: "Get current local date and time from the user's browser.",
+        parametersSchema: {
+          type: "object",
+          properties: {
+            locale: {
+              type: "string",
+              description: "Optional BCP 47 locale, e.g. zh-CN or en-US.",
+            },
+          },
+          additionalProperties: false,
+        },
+      });
+    }
+
+    if (enabledSet.has("javascript_execute")) {
+      fallbackTools.push({
         name: "javascript_execute",
         label: "JavaScript Execute",
         description: "Execute JavaScript snippets for calculation, transformation, and quick checks.",
@@ -212,10 +326,10 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
           required: ["code"],
           additionalProperties: false,
         },
-      }];
+      });
     }
 
-    return [];
+    return fallbackTools;
   }
 
   function handleInterventionDecision(client: WSClient, msg: any) {
@@ -283,7 +397,6 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
       serialized.error = {
         message: serialized.error.message,
         name: serialized.error.name,
-        stack: serialized.error.stack,
       };
     }
 

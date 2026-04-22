@@ -39,6 +39,8 @@ export interface ConversationInfo {
   id: string;
   swarmId: string;
   title?: string;
+  enabledTools: string[];
+  thinkModeEnabled: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -74,6 +76,28 @@ export interface LLMConfig {
   defaultThinkingLevel?: string;
   defaultThinkingBudgets?: { maxTokens?: number; maxThinkingTokens?: number };
   models?: SavedModel[];
+}
+
+export interface ModelTestRequest {
+  provider: string;
+  modelId: string;
+  prompt?: string;
+  timeoutMs?: number;
+  override?: {
+    apiKey?: string;
+    baseUrl?: string;
+    apiProtocol?: ApiProtocol;
+  };
+}
+
+export interface ModelTestResult {
+  ok: boolean;
+  provider: string;
+  modelId: string;
+  text: string;
+  stopReason?: string;
+  error?: string;
+  durationMs: number;
 }
 
 // ============================================================================

@@ -98,6 +98,7 @@ export function useWebSocket() {
 
       case "conversation_created":
         conversationStore.setCurrentConversation(msg.payload.conversationId);
+        conversationStore.applyConversationSettingsFromServer(msg.payload);
         if (swarmStore.currentSwarm?.id) {
           void conversationStore.fetchConversations(swarmStore.currentSwarm.id);
         }
@@ -254,7 +255,7 @@ export function useWebSocket() {
     const executed = await executeClientTool(
       toolName,
       params,
-      { jsExecutionToolEnabled: conversationStore.jsExecutionToolEnabled },
+      { enabledTools: conversationStore.enabledTools },
     );
 
     send({

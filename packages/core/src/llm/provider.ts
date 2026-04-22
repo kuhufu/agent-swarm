@@ -23,15 +23,37 @@ const DEFAULT_PROTOCOL_MAP: Record<string, KnownApi> = {
   zai: "openai-completions",
 };
 
+function normalizeBaseUrl(baseUrl: string | undefined, apiProtocol: ApiProtocol | undefined): string | undefined {
+  if (!baseUrl || typeof baseUrl !== "string") {
+    return baseUrl;
+  }
+
+  const trimmed = baseUrl.trim().replace(/\/+$/, "");
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+
+  // SiliconFlow OpenAI-compatible endpoints require /v1.
+  if (
+    (apiProtocol === "openai-completions" || apiProtocol === "openai-responses")
+    && /^https?:\/\/api\.siliconflow\.cn$/i.test(trimmed)
+  ) {
+    return `${trimmed}/v1`;
+  }
+
+  return trimmed;
+}
+
 /**
  * Resolve a ModelConfig to a pi-ai Model instance.
  * Uses apiProtocol and baseUrl when provided.
  */
 export function resolveModel(config: ModelConfig): Model<any> {
   const apiProtocol = config.apiProtocol ?? DEFAULT_PROTOCOL_MAP[config.provider] ?? "openai-completions";
+  const normalizedBaseUrl = normalizeBaseUrl(config.baseUrl, apiProtocol);
 
   // For known providers without custom baseUrl/apiProtocol, try the model registry
-  if (!config.baseUrl && !config.apiProtocol) {
+  if (!normalizedBaseUrl && !config.apiProtocol) {
     const knownProviders = Object.keys(DEFAULT_PROTOCOL_MAP);
     if (knownProviders.includes(config.provider)) {
       try {
@@ -48,7 +70,7 @@ export function resolveModel(config: ModelConfig): Model<any> {
     name: config.modelId,
     api: apiProtocol as KnownApi,
     provider: config.provider,
-    baseUrl: config.baseUrl ?? `https://api.${config.provider}.com/v1`,
+    baseUrl: normalizedBaseUrl ?? `https://api.${config.provider}.com/v1`,
     reasoning: false,
     input: ["text"] as const,
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },

@@ -8,9 +8,17 @@ export function useChat() {
   const { send, connected, connect } = useWebSocket();
   const inputText = ref("");
   const sending = ref(false);
+  const currentTimeToolEnabled = computed({
+    get: () => conversationStore.isToolEnabled("current_time"),
+    set: (value: boolean) => conversationStore.setClientToolEnabled("current_time", value),
+  });
   const jsExecutionToolEnabled = computed({
-    get: () => conversationStore.jsExecutionToolEnabled,
-    set: (value: boolean) => conversationStore.setJsExecutionToolEnabled(value),
+    get: () => conversationStore.isToolEnabled("javascript_execute"),
+    set: (value: boolean) => conversationStore.setClientToolEnabled("javascript_execute", value),
+  });
+  const thinkModeEnabled = computed({
+    get: () => conversationStore.thinkModeEnabled,
+    set: (value: boolean) => conversationStore.setThinkModeEnabled(value),
   });
 
   // Sync sending state with isActive from the store.
@@ -40,7 +48,7 @@ export function useChat() {
     // Send via WebSocket — create new conversation or use existing
     const conversationId = conversationStore.currentConversationId;
     const clientTools = buildClientToolDefinitions({
-      jsExecutionToolEnabled: conversationStore.jsExecutionToolEnabled,
+      enabledTools: conversationStore.enabledTools,
     });
 
     if (conversationId) {
@@ -50,6 +58,8 @@ export function useChat() {
           conversationId,
           content: text,
           clientTools,
+          enabledTools: conversationStore.enabledTools,
+          thinkModeEnabled: conversationStore.thinkModeEnabled,
         },
       });
     } else {
@@ -59,6 +69,8 @@ export function useChat() {
           swarmId,
           content: text,
           clientTools,
+          enabledTools: conversationStore.enabledTools,
+          thinkModeEnabled: conversationStore.thinkModeEnabled,
         },
       });
     }
@@ -79,5 +91,15 @@ export function useChat() {
     sending.value = false;
   }
 
-  return { inputText, sending, connected, connect, sendMessage, abort, jsExecutionToolEnabled };
+  return {
+    inputText,
+    sending,
+    connected,
+    connect,
+    sendMessage,
+    abort,
+    currentTimeToolEnabled,
+    jsExecutionToolEnabled,
+    thinkModeEnabled,
+  };
 }

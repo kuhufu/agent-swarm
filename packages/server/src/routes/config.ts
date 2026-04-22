@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { AgentSwarm, LLMBackendConfig } from "@agent-swarm/core";
+import type { AgentSwarm, LLMBackendConfig, ApiProtocol } from "@agent-swarm/core";
 
 function maskApiKeys(apiKeys: Record<string, string>): Record<string, string> {
   const maskedApiKeys: Record<string, string> = {};
@@ -93,6 +93,66 @@ export function configRoutes(swarm: AgentSwarm): Router {
       res.json({ data: toResponse(updatedConfig) });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.post("/test-model", async (req, res) => {
+    try {
+      if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+        return res.status(400).json({ error: "Invalid request body" });
+      }
+
+      const body = req.body as Record<string, unknown>;
+      const provider = typeof body.provider === "string" ? body.provider.trim() : "";
+      const modelId = typeof body.modelId === "string" ? body.modelId.trim() : "";
+      if (!provider || !modelId) {
+        return res.status(400).json({ error: "provider and modelId are required" });
+      }
+
+      const prompt = typeof body.prompt === "string" ? body.prompt : undefined;
+      const timeoutMs = typeof body.timeoutMs === "number" ? body.timeoutMs : undefined;
+      const override = (
+        body.override
+        && typeof body.override === "object"
+        && !Array.isArray(body.override)
+      )
+        ? body.override as Record<string, unknown>
+        : undefined;
+      const currentConfig = swarm.getLLMConfig();
+      const currentApiKey = currentConfig.apiKeys?.[provider];
+
+      const overrideApiKey = (() => {
+        if (!override || typeof override.apiKey !== "string") {
+          return undefined;
+        }
+        const key = override.apiKey.trim();
+        if (!key) {
+          return "";
+        }
+        // 脱敏 key（如 sk-xxxx...yyyy）不应覆盖真实 key。
+        if (key.includes("...") && currentApiKey) {
+          return currentApiKey;
+        }
+        return key;
+      })();
+
+      const result = await swarm.testModelConnection({
+        provider,
+        modelId,
+        prompt,
+        timeoutMs,
+        override: override
+          ? {
+            ...(overrideApiKey !== undefined ? { apiKey: overrideApiKey } : {}),
+            ...(typeof override.baseUrl === "string" ? { baseUrl: override.baseUrl } : {}),
+            ...(typeof override.apiProtocol === "string" ? { apiProtocol: override.apiProtocol as ApiProtocol } : {}),
+          }
+          : undefined,
+      });
+
+      res.json({ data: result });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message ?? "Model connection test failed" });
     }
   });
 

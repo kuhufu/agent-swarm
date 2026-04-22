@@ -14,10 +14,38 @@ export const useConversationStore = defineStore("conversation", () => {
   const loading = ref(false);
   const loadingMessages = ref(false);
   const conversations = ref<ConversationInfo[]>([]);
-  const jsExecutionToolEnabled = ref(false);
+  const enabledTools = ref<string[]>([]);
+  const thinkModeEnabled = ref(false);
 
   function addMessage(msg: ChatMessage) {
     messages.value.push(msg);
+  }
+
+  function normalizeEnabledTools(input: unknown): string[] {
+    if (!Array.isArray(input)) {
+      return [];
+    }
+    const normalized = input
+      .filter((tool): tool is string => typeof tool === "string")
+      .map((tool) => tool.trim())
+      .filter((tool) => tool.length > 0);
+    return Array.from(new Set(normalized));
+  }
+
+  function applyConversationPreferences(
+    preferences?: Partial<Pick<ConversationInfo, "enabledTools" | "thinkModeEnabled">> | null,
+  ) {
+    enabledTools.value = normalizeEnabledTools(preferences?.enabledTools);
+    thinkModeEnabled.value = preferences?.thinkModeEnabled === true;
+  }
+
+  function updateConversationInfo(id: string, patch: Partial<ConversationInfo>) {
+    const index = conversations.value.findIndex((conv) => conv.id === id);
+    if (index < 0) {
+      return;
+    }
+    conversations.value[index] = { ...conversations.value[index], ...patch };
+    conversations.value = [...conversations.value];
   }
 
   function mergeToolCall(existing: ToolCallInfo, next: ToolCallInfo): ToolCallInfo {
@@ -160,6 +188,13 @@ export const useConversationStore = defineStore("conversation", () => {
     currentConversationId.value = id;
     if (id === null) {
       clearMessages();
+      applyConversationPreferences(null);
+      return;
+    }
+
+    const conversation = conversations.value.find((item) => item.id === id);
+    if (conversation) {
+      applyConversationPreferences(conversation);
     }
   }
 
@@ -384,11 +419,16 @@ export const useConversationStore = defineStore("conversation", () => {
   async function openConversation(id: string) {
     loadingMessages.value = true;
     try {
-      const res = await conversationsApi.getMessages(id);
+      const [messagesRes, conversationRes] = await Promise.all([
+        conversationsApi.getMessages(id),
+        conversationsApi.getConversation(id),
+      ]);
       currentConversationId.value = id;
-      messages.value = normalizeHistoryMessages(Array.isArray(res.data) ? res.data : []);
+      messages.value = normalizeHistoryMessages(Array.isArray(messagesRes.data) ? messagesRes.data : []);
       streamingMessages.value = new Map();
       isActive.value = false;
+      applyConversationPreferences(conversationRes.data);
+      updateConversationInfo(id, conversationRes.data);
     } finally {
       loadingMessages.value = false;
     }
@@ -424,6 +464,12 @@ export const useConversationStore = defineStore("conversation", () => {
     try {
       const res = await conversationsApi.listConversations(swarmId);
       conversations.value = res.data;
+      if (currentConversationId.value) {
+        const current = conversations.value.find((conv) => conv.id === currentConversationId.value);
+        if (current) {
+          applyConversationPreferences(current);
+        }
+      }
     } finally {
       loading.value = false;
     }
@@ -445,8 +491,76 @@ export const useConversationStore = defineStore("conversation", () => {
     }
   }
 
-  function setJsExecutionToolEnabled(enabled: boolean) {
-    jsExecutionToolEnabled.value = enabled;
+  async function persistCurrentConversationPreferences(
+    patch: Partial<Pick<ConversationInfo, "enabledTools" | "thinkModeEnabled">>,
+  ) {
+    const conversationId = currentConversationId.value;
+    if (!conversationId) {
+      return;
+    }
+
+    const res = await conversationsApi.updateConversationPreferences(conversationId, patch);
+    updateConversationInfo(conversationId, res.data);
+    applyConversationPreferences(res.data);
+  }
+
+  function isToolEnabled(toolName: string): boolean {
+    return enabledTools.value.includes(toolName);
+  }
+
+  function setEnabledTools(nextTools: string[], persist = true) {
+    enabledTools.value = normalizeEnabledTools(nextTools);
+    if (persist) {
+      void persistCurrentConversationPreferences({ enabledTools: enabledTools.value }).catch(() => {
+        // ignore persistence failures; current UI state is still usable for this turn
+      });
+    }
+  }
+
+  function setClientToolEnabled(toolName: string, enabled: boolean, persist = true) {
+    const next = new Set(enabledTools.value);
+    if (enabled) {
+      next.add(toolName);
+    } else {
+      next.delete(toolName);
+    }
+    setEnabledTools(Array.from(next), persist);
+  }
+
+  function setThinkModeEnabled(enabled: boolean, persist = true) {
+    thinkModeEnabled.value = enabled;
+    if (persist) {
+      void persistCurrentConversationPreferences({ thinkModeEnabled: enabled }).catch(() => {
+        // ignore persistence failures; current UI state is still usable for this turn
+      });
+    }
+  }
+
+  function applyConversationSettingsFromServer(payload: unknown) {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      return;
+    }
+    const raw = payload as Record<string, unknown>;
+    const conversationId = typeof raw.conversationId === "string" ? raw.conversationId : currentConversationId.value;
+    const isCurrentConversation = conversationId === currentConversationId.value;
+    const patch: Partial<ConversationInfo> = {};
+
+    if (Array.isArray(raw.enabledTools)) {
+      patch.enabledTools = normalizeEnabledTools(raw.enabledTools);
+      if (isCurrentConversation) {
+        enabledTools.value = patch.enabledTools;
+      }
+    }
+    if (typeof raw.thinkModeEnabled === "boolean") {
+      patch.thinkModeEnabled = raw.thinkModeEnabled;
+      if (isCurrentConversation) {
+        thinkModeEnabled.value = raw.thinkModeEnabled;
+      }
+    }
+
+    if (conversationId && (patch.enabledTools !== undefined || patch.thinkModeEnabled !== undefined)) {
+      updateConversationInfo(conversationId, patch);
+    }
   }
 
   return {
@@ -458,7 +572,8 @@ export const useConversationStore = defineStore("conversation", () => {
     loading,
     loadingMessages,
     conversations,
-    jsExecutionToolEnabled,
+    enabledTools,
+    thinkModeEnabled,
     addMessage,
     upsertToolCall,
     startStreamingMessage,
@@ -474,6 +589,10 @@ export const useConversationStore = defineStore("conversation", () => {
     fetchConversations,
     updateConversationTitle,
     deleteConversation,
-    setJsExecutionToolEnabled,
+    isToolEnabled,
+    setEnabledTools,
+    setClientToolEnabled,
+    setThinkModeEnabled,
+    applyConversationSettingsFromServer,
   };
 });

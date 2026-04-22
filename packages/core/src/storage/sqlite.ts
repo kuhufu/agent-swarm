@@ -1,9 +1,14 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { eq, desc, and } from "drizzle-orm";
-import type { IStorage, StoredMessage, StoredEvent, Conversation } from "./interface.js";
+import type { IStorage, StoredMessage, StoredEvent, Conversation, ConversationPreferences } from "./interface.js";
 import type { SwarmConfig } from "../core/types.js";
 import { settingsTable, swarmsTable, agentsTable, conversationsTable, messagesTable, eventsTable } from "./schema.js";
+
+const DEFAULT_CONVERSATION_PREFERENCES: ConversationPreferences = {
+  enabledTools: [],
+  thinkModeEnabled: false,
+};
 
 export class SqliteStorage implements IStorage {
   private db: ReturnType<typeof drizzle> | null = null;
@@ -54,6 +59,8 @@ export class SqliteStorage implements IStorage {
         id TEXT PRIMARY KEY,
         swarm_id TEXT NOT NULL REFERENCES swarms(id),
         title TEXT,
+        enabled_tools TEXT NOT NULL DEFAULT '[]',
+        think_mode_enabled INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       );
@@ -83,6 +90,8 @@ export class SqliteStorage implements IStorage {
       CREATE INDEX IF NOT EXISTS idx_events_conversation ON events(conversation_id, timestamp);
       CREATE INDEX IF NOT EXISTS idx_conversations_swarm ON conversations(swarm_id);
     `);
+
+    this.ensureConversationColumns();
   }
 
   async close(): Promise<void> {
@@ -96,6 +105,80 @@ export class SqliteStorage implements IStorage {
   private getDb() {
     if (!this.db) throw new Error("Storage not initialized");
     return this.db;
+  }
+
+  private normalizeEnabledTools(input: unknown): string[] {
+    if (!Array.isArray(input)) {
+      return [];
+    }
+
+    const normalized = input
+      .filter((tool): tool is string => typeof tool === "string")
+      .map((tool) => tool.trim())
+      .filter((tool) => tool.length > 0);
+
+    return Array.from(new Set(normalized));
+  }
+
+  private parseStoredEnabledTools(input: unknown): string[] {
+    if (typeof input !== "string" || input.trim().length === 0) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(input) as unknown;
+      return this.normalizeEnabledTools(parsed);
+    } catch {
+      return [];
+    }
+  }
+
+  private mapConversationRow(row: {
+    id: string;
+    swarmId: string;
+    title: string | null;
+    enabledTools: string | null;
+    thinkModeEnabled: number | null;
+    createdAt: number;
+    updatedAt: number;
+  }): Conversation {
+    return {
+      id: row.id,
+      swarmId: row.swarmId,
+      title: row.title ?? undefined,
+      enabledTools: this.parseStoredEnabledTools(row.enabledTools),
+      thinkModeEnabled: row.thinkModeEnabled === 1,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  private ensureConversationColumns() {
+    if (!this.rawDb) {
+      return;
+    }
+
+    const tableInfo = this.rawDb.prepare("PRAGMA table_info(conversations)").all() as Array<{ name?: string }>;
+    const columns = new Set(tableInfo.map((item) => item.name).filter((name): name is string => typeof name === "string"));
+    let schemaChanged = false;
+
+    if (!columns.has("enabled_tools")) {
+      this.rawDb.exec("ALTER TABLE conversations ADD COLUMN enabled_tools TEXT NOT NULL DEFAULT '[]';");
+      schemaChanged = true;
+    }
+    if (!columns.has("think_mode_enabled")) {
+      this.rawDb.exec("ALTER TABLE conversations ADD COLUMN think_mode_enabled INTEGER NOT NULL DEFAULT 0;");
+      schemaChanged = true;
+    }
+
+    // 开发阶段：字段变更后直接清理历史会话，避免历史脏数据影响渲染和运行时行为。
+    if (schemaChanged) {
+      this.rawDb.exec(`
+        DELETE FROM events;
+        DELETE FROM messages;
+        DELETE FROM conversations;
+      `);
+    }
   }
 
   // ── Global settings ──
@@ -200,12 +283,24 @@ export class SqliteStorage implements IStorage {
 
   // ── Conversation management ──
 
-  async createConversation(swarmId: string, title?: string): Promise<Conversation> {
+  async createConversation(
+    swarmId: string,
+    title?: string,
+    preferences?: Partial<ConversationPreferences>,
+  ): Promise<Conversation> {
     const now = Date.now();
+    const enabledTools = this.normalizeEnabledTools(
+      preferences?.enabledTools ?? DEFAULT_CONVERSATION_PREFERENCES.enabledTools,
+    );
+    const thinkModeEnabled = typeof preferences?.thinkModeEnabled === "boolean"
+      ? preferences.thinkModeEnabled
+      : DEFAULT_CONVERSATION_PREFERENCES.thinkModeEnabled;
     const conv: Conversation = {
       id: crypto.randomUUID(),
       swarmId,
       title: title ?? "新对话",
+      enabledTools,
+      thinkModeEnabled,
       createdAt: now,
       updatedAt: now,
     };
@@ -213,6 +308,8 @@ export class SqliteStorage implements IStorage {
       id: conv.id,
       swarmId: conv.swarmId,
       title: conv.title,
+      enabledTools: JSON.stringify(conv.enabledTools),
+      thinkModeEnabled: conv.thinkModeEnabled ? 1 : 0,
       createdAt: conv.createdAt,
       updatedAt: conv.updatedAt,
     }).run();
@@ -222,8 +319,7 @@ export class SqliteStorage implements IStorage {
   async getConversation(id: string): Promise<Conversation | null> {
     const rows = this.getDb().select().from(conversationsTable).where(eq(conversationsTable.id, id)).all();
     if (rows.length === 0) return null;
-    const r = rows[0];
-    return { id: r.id, swarmId: r.swarmId, title: r.title ?? undefined, createdAt: r.createdAt, updatedAt: r.updatedAt };
+    return this.mapConversationRow(rows[0]);
   }
 
   async listConversations(swarmId: string): Promise<Conversation[]> {
@@ -231,9 +327,41 @@ export class SqliteStorage implements IStorage {
       .where(eq(conversationsTable.swarmId, swarmId))
       .orderBy(desc(conversationsTable.updatedAt))
       .all();
-    return rows.map((r) => ({
-      id: r.id, swarmId: r.swarmId, title: r.title ?? undefined, createdAt: r.createdAt, updatedAt: r.updatedAt,
-    }));
+    return rows.map((row) => this.mapConversationRow(row));
+  }
+
+  async updateConversationPreferences(
+    id: string,
+    preferences: Partial<ConversationPreferences>,
+  ): Promise<Conversation> {
+    const current = await this.getConversation(id);
+    if (!current) {
+      throw new Error(`Conversation not found: ${id}`);
+    }
+
+    const enabledTools = preferences.enabledTools !== undefined
+      ? this.normalizeEnabledTools(preferences.enabledTools)
+      : current.enabledTools;
+    const thinkModeEnabled = typeof preferences.thinkModeEnabled === "boolean"
+      ? preferences.thinkModeEnabled
+      : current.thinkModeEnabled;
+    const now = Date.now();
+
+    this.getDb().update(conversationsTable)
+      .set({
+        enabledTools: JSON.stringify(enabledTools),
+        thinkModeEnabled: thinkModeEnabled ? 1 : 0,
+        updatedAt: now,
+      })
+      .where(eq(conversationsTable.id, id))
+      .run();
+
+    return {
+      ...current,
+      enabledTools,
+      thinkModeEnabled,
+      updatedAt: now,
+    };
   }
 
   async updateConversationTitle(id: string, title: string): Promise<void> {

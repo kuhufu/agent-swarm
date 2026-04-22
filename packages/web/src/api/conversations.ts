@@ -30,6 +30,20 @@ export function createConversation(swarmId: string) {
   });
 }
 
+export function getConversation(conversationId: string) {
+  return apiClient<ConversationDetailResponse>(`/conversations/${conversationId}`);
+}
+
+export function updateConversationPreferences(
+  conversationId: string,
+  payload: Partial<Pick<ConversationInfo, "enabledTools" | "thinkModeEnabled">>,
+) {
+  return apiClient<ConversationDetailResponse>(`/conversations/${conversationId}/preferences`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getMessages(conversationId: string) {
   return apiClient<MessageListResponse>(`/conversations/${conversationId}/messages`);
 }

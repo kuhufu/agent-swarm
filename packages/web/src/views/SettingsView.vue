@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref, reactive, computed } from "vue";
+import { MessagePlugin } from "tdesign-vue-next";
 import { useSettingsStore } from "../stores/settings.js";
 import type { InterventionPoint, InterventionStrategy, ApiProtocol, ProviderConfig, SavedModel } from "../types/index.js";
+import * as configApi from "../api/config.js";
 
 const settingsStore = useSettingsStore();
 const activeTab = ref<"providers" | "models" | "intervention">("providers");
@@ -115,6 +117,8 @@ const saving = ref(false);
 const saved = ref(false);
 const saveError = ref("");
 const loadError = ref("");
+const testingMap = reactive<Record<string, boolean>>({});
+const testResultMap = reactive<Record<string, { ok: boolean; message: string }>>({});
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -189,9 +193,70 @@ async function saveSettings() {
     setTimeout(() => { saved.value = false; }, 2000);
   } catch (error) {
     saveError.value = getErrorMessage(error);
-    alert(`保存失败：${saveError.value}`);
+    MessagePlugin.error(`保存失败：${saveError.value}`);
   } finally {
     saving.value = false;
+  }
+}
+
+function getProviderOverride(providerId: string) {
+  const entry = providers[providerId];
+  if (!entry) {
+    return undefined;
+  }
+  const apiKey = entry.apiKey.trim();
+  return {
+    // 配置页读取到的是脱敏 key（如 sk-xxxx...yyyy），测试时不能回传该值。
+    ...(apiKey.length > 0 && !apiKey.includes("...") ? { apiKey } : {}),
+    ...(entry.baseUrl.trim().length > 0 ? { baseUrl: entry.baseUrl.trim() } : {}),
+    ...(entry.apiProtocol ? { apiProtocol: entry.apiProtocol as ApiProtocol } : {}),
+  };
+}
+
+function modelTestKey(provider: string, modelId: string): string {
+  return `${provider}::${modelId}`;
+}
+
+const defaultModelTestKey = computed(() => modelTestKey(defaultProvider.value, defaultModel.value));
+
+async function testModel(provider: string, modelId: string) {
+  const p = provider.trim();
+  const m = modelId.trim();
+  if (!p || !m) {
+    MessagePlugin.warning("请先填写 provider 和 modelId");
+    return;
+  }
+
+  const key = modelTestKey(p, m);
+  testingMap[key] = true;
+  delete testResultMap[key];
+
+  try {
+    const res = await configApi.testModelConnection({
+      provider: p,
+      modelId: m,
+      prompt: "请只回复：OK",
+      timeoutMs: 20000,
+      override: getProviderOverride(p),
+    });
+
+    const result = res.data;
+    const message = result.ok
+      ? `成功（${result.durationMs}ms）${result.text ? `：${result.text}` : ""}`
+      : `失败（${result.durationMs}ms）：${result.error ?? "未知错误"}`;
+    testResultMap[key] = { ok: result.ok, message };
+
+    if (result.ok) {
+      MessagePlugin.success(`${p}/${m} 测试成功`);
+    } else {
+      MessagePlugin.error(`${p}/${m} 测试失败：${result.error ?? "未知错误"}`);
+    }
+  } catch (error) {
+    const message = getErrorMessage(error);
+    testResultMap[key] = { ok: false, message: `失败：${message}` };
+    MessagePlugin.error(`测试失败：${message}`);
+  } finally {
+    testingMap[key] = false;
   }
 }
 </script>
@@ -294,6 +359,22 @@ async function saveSettings() {
             <div class="field-row">
               <label>模型 ID</label>
               <input v-model="defaultModel" class="input-field" placeholder="模型名称" />
+            </div>
+            <div class="default-model-actions">
+              <button
+                class="btn-secondary"
+                :disabled="!defaultProvider.trim() || !defaultModel.trim() || testingMap[defaultModelTestKey]"
+                @click="testModel(defaultProvider, defaultModel)"
+              >
+                {{ testingMap[defaultModelTestKey] ? "测试中..." : "测试默认模型" }}
+              </button>
+              <span
+                v-if="testResultMap[defaultModelTestKey]"
+                class="test-result-text"
+                :class="{ ok: testResultMap[defaultModelTestKey].ok, fail: !testResultMap[defaultModelTestKey].ok }"
+              >
+                {{ testResultMap[defaultModelTestKey].message }}
+              </span>
             </div>
           </div>
 
@@ -414,14 +495,30 @@ async function saveSettings() {
                 <div class="model-info">
                   <span class="model-name">{{ model.name }}</span>
                   <span class="model-meta">{{ model.provider }} / {{ model.modelId }}</span>
+                  <span
+                    v-if="testResultMap[modelTestKey(model.provider, model.modelId)]"
+                    class="test-result-text"
+                    :class="{ ok: testResultMap[modelTestKey(model.provider, model.modelId)].ok, fail: !testResultMap[modelTestKey(model.provider, model.modelId)].ok }"
+                  >
+                    {{ testResultMap[modelTestKey(model.provider, model.modelId)].message }}
+                  </span>
                 </div>
               </div>
-              <button class="remove-btn" @click="removeModel(i)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
+              <div class="model-actions">
+                <button
+                  class="btn-secondary model-test-btn"
+                  :disabled="testingMap[modelTestKey(model.provider, model.modelId)]"
+                  @click="testModel(model.provider, model.modelId)"
+                >
+                  {{ testingMap[modelTestKey(model.provider, model.modelId)] ? "测试中..." : "测试" }}
+                </button>
+                <button class="remove-btn" @click="removeModel(i)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -617,6 +714,13 @@ async function saveSettings() {
   letter-spacing: 0.5px;
 }
 
+.default-model-actions {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .provider-list {
   display: flex;
   flex-direction: column;
@@ -781,6 +885,30 @@ async function saveSettings() {
   color: var(--color-text-muted);
   font-size: 12px;
   font-family: var(--font-mono);
+}
+
+.model-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-test-btn {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.test-result-text {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.test-result-text.ok {
+  color: #22c55e;
+}
+
+.test-result-text.fail {
+  color: #f87171;
 }
 
 /* Intervention Tab */

@@ -7,7 +7,17 @@ const props = defineProps<{
   active?: boolean;
 }>();
 
-const { inputText, sending, connected, connect, sendMessage, abort, jsExecutionToolEnabled } = useChat();
+const {
+  inputText,
+  sending,
+  connected,
+  connect,
+  sendMessage,
+  abort,
+  currentTimeToolEnabled,
+  jsExecutionToolEnabled,
+  thinkModeEnabled,
+} = useChat();
 
 function handleSend() {
   if (props.active) {
@@ -37,10 +47,18 @@ onMounted(() => {
   <div class="chat-input">
     <div class="tool-options">
       <label class="tool-toggle">
+        <input v-model="currentTimeToolEnabled" type="checkbox">
+        <span>当前时间工具</span>
+      </label>
+      <label class="tool-toggle">
         <input v-model="jsExecutionToolEnabled" type="checkbox">
         <span>前端 JS 执行工具</span>
       </label>
-      <span class="tool-hint">模型默认可调用 `current_time`；开启后可调用 `javascript_execute`</span>
+      <label class="tool-toggle">
+        <input v-model="thinkModeEnabled" type="checkbox">
+        <span>Think 模式</span>
+      </label>
+      <span class="tool-hint">工具默认关闭；`Think` 仅对支持 think/no_think 的模型生效</span>
     </div>
     <div class="input-wrapper">
       <div class="textarea-wrapper">

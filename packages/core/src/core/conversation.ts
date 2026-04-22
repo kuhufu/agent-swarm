@@ -18,6 +18,7 @@ import { createClientBridgeTool } from "../tools/client-bridge.js";
 import type { ClientToolDefinition, ClientToolExecutionResult } from "../tools/client-bridge.js";
 import { storedToMessage } from "../storage/message-mapper.js";
 import type { ModeExecutor, ModeExecutionContext } from "../modes/types.js";
+import { mapThinkingLevel, resolveModelFromProvider } from "../llm/provider.js";
 
 export type InterventionCallback = (
   point: InterventionPoint,
@@ -31,7 +32,18 @@ interface ActiveAgent {
 
 export interface ConversationPromptOptions {
   clientTools?: ClientToolDefinition[];
+  enabledTools?: string[];
+  thinkingEnabled?: boolean;
   clientToolExecutor?: (
+    request: { toolName: string; toolCallId: string; params: unknown },
+  ) => Promise<ClientToolExecutionResult>;
+}
+
+interface ConversationRuntimeOptions {
+  clientTools: ClientToolDefinition[];
+  enabledTools: string[];
+  thinkingEnabled?: boolean;
+  clientToolExecutor: (
     request: { toolName: string; toolCallId: string; params: unknown },
   ) => Promise<ClientToolExecutionResult>;
 }
@@ -45,8 +57,10 @@ export class Conversation {
   private llmConfig: LLMBackendConfig;
   private agents: Map<string, ActiveAgent> = new Map();
   private restoredMessages: Message[];
-  private runtimeOptions: Required<ConversationPromptOptions> = {
+  private runtimeOptions: ConversationRuntimeOptions = {
     clientTools: [],
+    enabledTools: [],
+    thinkingEnabled: undefined,
     clientToolExecutor: async () => ({
       content: "Client tool executor not configured",
       isError: true,
@@ -89,6 +103,13 @@ export class Conversation {
           && typeof tool.description === "string"
           && tool.description.trim().length > 0)
         : [],
+      enabledTools: Array.isArray(options.enabledTools)
+        ? Array.from(new Set(options.enabledTools
+          .filter((tool): tool is string => typeof tool === "string")
+          .map((tool) => tool.trim())
+          .filter((tool) => tool.length > 0)))
+        : [],
+      thinkingEnabled: typeof options.thinkingEnabled === "boolean" ? options.thinkingEnabled : undefined,
       clientToolExecutor: options.clientToolExecutor ?? (async () => ({
         content: "Client tool executor not configured",
         isError: true,
@@ -302,6 +323,7 @@ export class Conversation {
     return {
       ...config,
       tools: mergedTools,
+      thinkingLevel: this.resolveRuntimeThinkingLevel(config),
     };
   }
 
@@ -339,6 +361,10 @@ export class Conversation {
     }
 
     for (const clientTool of this.runtimeOptions.clientTools) {
+      if (!this.runtimeOptions.enabledTools.includes(clientTool.name)) {
+        continue;
+      }
+
       const remoteExecutor = async (request: { toolCallId: string; params: unknown }) => this.runtimeOptions.clientToolExecutor({
         toolName: clientTool.name,
         toolCallId: request.toolCallId,
@@ -360,6 +386,7 @@ export class Conversation {
       const enhanced = this.withAutoTools(baseConfig);
       active.config = enhanced;
       active.agent.state.tools = enhanced.tools ?? [];
+      active.agent.state.thinkingLevel = mapThinkingLevel(enhanced.thinkingLevel);
     }
   }
 
@@ -368,6 +395,43 @@ export class Conversation {
       return this.swarmConfig.orchestrator;
     }
     return this.swarmConfig.agents.find((agent) => agent.id === agentId);
+  }
+
+  private resolveRuntimeThinkingLevel(config: SwarmAgentConfig): SwarmAgentConfig["thinkingLevel"] {
+    if (this.runtimeOptions.thinkingEnabled === undefined) {
+      return config.thinkingLevel;
+    }
+    if (this.runtimeOptions.thinkingEnabled === false) {
+      return "off";
+    }
+
+    // Keep explicit per-agent setting when already configured.
+    if (config.thinkingLevel && config.thinkingLevel !== "off") {
+      return config.thinkingLevel;
+    }
+
+    if (!this.modelSupportsThinking(config)) {
+      return "off";
+    }
+
+    if (this.llmConfig.defaultThinkingLevel && this.llmConfig.defaultThinkingLevel !== "off") {
+      return this.llmConfig.defaultThinkingLevel;
+    }
+    return "minimal";
+  }
+
+  private modelSupportsThinking(config: SwarmAgentConfig): boolean {
+    try {
+      const model = resolveModelFromProvider(
+        config.model.provider,
+        config.model.modelId,
+        this.llmConfig,
+        config.model,
+      );
+      return model.reasoning === true;
+    } catch {
+      return false;
+    }
   }
 
   private getInterventionStrategy(point: InterventionPoint, config?: SwarmAgentConfig): string {
@@ -392,7 +456,6 @@ export class Conversation {
       serialized.error = {
         name: serialized.error.name,
         message: serialized.error.message,
-        stack: serialized.error.stack,
       };
     }
     if ("respond" in serialized) {

@@ -1,16 +1,41 @@
-import type { SwarmConfig, AgentSwarmRootConfig, LLMBackendConfig } from "./types.js";
+import type { SwarmConfig, AgentSwarmRootConfig, LLMBackendConfig, ApiProtocol } from "./types.js";
 import type { IStorage } from "../storage/interface.js";
+import type { ConversationPreferences } from "../storage/interface.js";
 import type { InterventionHandler } from "../intervention/handler.js";
 import { SqliteStorage } from "../storage/sqlite.js";
 import { Conversation } from "./conversation.js";
 import { readFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
+import { complete } from "@mariozechner/pi-ai";
+import { resolveModelFromProvider } from "../llm/provider.js";
 
 export interface AgentSwarmOptions {
   configPath?: string;
   config?: AgentSwarmRootConfig;
   storage?: IStorage;
   interventionHandler?: InterventionHandler;
+}
+
+export interface ModelConnectionTestOptions {
+  provider: string;
+  modelId: string;
+  prompt?: string;
+  timeoutMs?: number;
+  override?: {
+    apiKey?: string;
+    baseUrl?: string;
+    apiProtocol?: ApiProtocol;
+  };
+}
+
+export interface ModelConnectionTestResult {
+  ok: boolean;
+  provider: string;
+  modelId: string;
+  text: string;
+  stopReason?: string;
+  error?: string;
+  durationMs: number;
 }
 
 export class AgentSwarm {
@@ -89,14 +114,18 @@ export class AgentSwarm {
   /**
    * Create a new conversation for a swarm.
    */
-  async createConversation(swarmId: string, title?: string): Promise<Conversation> {
+  async createConversation(
+    swarmId: string,
+    title?: string,
+    preferences?: Partial<ConversationPreferences>,
+  ): Promise<Conversation> {
     this.ensureInitialized();
     const swarmConfig = this.swarmConfigs.get(swarmId);
     if (!swarmConfig) {
       throw new Error(`Swarm not found: ${swarmId}`);
     }
 
-    const conv = await this.storage.createConversation(swarmId, title);
+    const conv = await this.storage.createConversation(swarmId, title, preferences);
 
     return new Conversation(
       conv.id,
@@ -142,6 +171,19 @@ export class AgentSwarm {
   async listConversations(swarmId: string) {
     this.ensureInitialized();
     return this.storage.listConversations(swarmId);
+  }
+
+  async getConversation(conversationId: string) {
+    this.ensureInitialized();
+    return this.storage.getConversation(conversationId);
+  }
+
+  async updateConversationPreferences(
+    conversationId: string,
+    preferences: Partial<ConversationPreferences>,
+  ) {
+    this.ensureInitialized();
+    return this.storage.updateConversationPreferences(conversationId, preferences);
   }
 
   /**
@@ -236,6 +278,124 @@ export class AgentSwarm {
       await this.storage.close();
     }
     this._initialized = false;
+  }
+
+  async testModelConnection(options: ModelConnectionTestOptions): Promise<ModelConnectionTestResult> {
+    this.ensureInitialized();
+
+    const provider = options.provider?.trim();
+    const modelId = options.modelId?.trim();
+    if (!provider || !modelId) {
+      throw new Error("provider and modelId are required");
+    }
+
+    const timeoutMs = Number.isFinite(options.timeoutMs) && (options.timeoutMs ?? 0) > 0
+      ? Math.min(options.timeoutMs!, 120_000)
+      : 20_000;
+    const prompt = typeof options.prompt === "string" && options.prompt.trim().length > 0
+      ? options.prompt.trim()
+      : "请只回复：OK";
+
+    const llmConfig = this.cloneLLMConfig(this.config.llm);
+    if (options.override?.apiKey !== undefined) {
+      llmConfig.apiKeys = {
+        ...(llmConfig.apiKeys ?? {}),
+        [provider]: options.override.apiKey,
+      };
+    }
+    if (options.override?.baseUrl !== undefined || options.override?.apiProtocol !== undefined) {
+      llmConfig.providers = {
+        ...(llmConfig.providers ?? {}),
+        [provider]: {
+          ...(llmConfig.providers?.[provider] ?? {}),
+          ...(options.override.baseUrl !== undefined ? { baseUrl: options.override.baseUrl } : {}),
+          ...(options.override.apiProtocol !== undefined ? { apiProtocol: options.override.apiProtocol } : {}),
+        },
+      };
+    }
+
+    const model = resolveModelFromProvider(
+      provider,
+      modelId,
+      llmConfig,
+      {
+        provider,
+        modelId,
+        apiKey: llmConfig.apiKeys?.[provider] ?? "",
+        baseUrl: options.override?.baseUrl,
+        apiProtocol: options.override?.apiProtocol,
+      },
+    );
+
+    const start = Date.now();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const message = await complete(
+        model,
+        {
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+              timestamp: Date.now(),
+            },
+          ],
+        },
+        {
+          apiKey: llmConfig.apiKeys?.[provider] ?? "",
+          signal: controller.signal,
+          maxTokens: 128,
+          temperature: 0,
+        },
+      );
+
+      const text = message.content
+        .filter((part) => part.type === "text")
+        .map((part) => part.text)
+        .join("")
+        .trim();
+
+      if (message.stopReason === "error" || message.stopReason === "aborted") {
+        const rawError = message.errorMessage ?? "Model returned an error stop reason";
+        return {
+          ok: false,
+          provider,
+          modelId,
+          text,
+          stopReason: message.stopReason,
+          error: message.stopReason === "aborted"
+            ? `请求超时（>${timeoutMs}ms）`
+            : rawError,
+          durationMs: Date.now() - start,
+        };
+      }
+
+      return {
+        ok: text.length > 0,
+        provider,
+        modelId,
+        text,
+        stopReason: message.stopReason,
+        durationMs: Date.now() - start,
+        ...(text.length === 0 ? { error: "模型返回为空" } : {}),
+      };
+    } catch (err: any) {
+      const raw = err instanceof Error ? err.message : String(err ?? "Unknown error");
+      return {
+        ok: false,
+        provider,
+        modelId,
+        text: "",
+        error: raw.includes("aborted")
+          ? `请求超时（>${timeoutMs}ms）`
+          : raw,
+        durationMs: Date.now() - start,
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   private ensureInitialized() {

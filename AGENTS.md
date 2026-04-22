@@ -194,3 +194,4 @@ pnpm test                  # 运行 core 单元测试
 - `@mariozechner/pi-agent-core` 和 `@mariozechner/pi-ai` 是核心依赖，Agent/AgentTool/AgentMessage 等类型来自这些包
 - 环境变量（API Key）通过 `.env` 注入 server，不暴露到前端
 - 配置文件 `agent-swarm.config.ts` 使用 `defineConfig()` 辅助函数提供类型检查
+- 开发阶段如果会话/消息 schema、工具协议或事件结构发生变化，直接清理历史会话数据（`conversations/messages/events`），不做向后兼容迁移
