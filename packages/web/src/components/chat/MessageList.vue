@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import type { ChatMessage, SwarmConfig } from "../../types/index.js";
 import { useSwarmStore } from "../../stores/swarm.js";
 import MessageItem from "./MessageItem.vue";
@@ -13,6 +13,9 @@ const props = defineProps<{
 const swarmStore = useSwarmStore();
 
 const swarms = computed(() => swarmStore.swarms);
+const messageListRef = ref<HTMLElement | null>(null);
+const shouldAutoScroll = ref(true);
+const BOTTOM_THRESHOLD_PX = 24;
 
 const modeLabels: Record<string, string> = {
   router: "路由",
@@ -61,10 +64,56 @@ const renderEntries = computed<RenderEntry[]>(() => {
     return a.message.id.localeCompare(b.message.id);
   });
 });
+
+function isNearBottom(el: HTMLElement): boolean {
+  return el.scrollTop + el.clientHeight >= el.scrollHeight - BOTTOM_THRESHOLD_PX;
+}
+
+function updateAutoScrollState() {
+  const el = messageListRef.value;
+  if (!el) {
+    return;
+  }
+  shouldAutoScroll.value = isNearBottom(el);
+}
+
+function scrollToBottom() {
+  const el = messageListRef.value;
+  if (!el) {
+    return;
+  }
+  el.scrollTop = el.scrollHeight;
+}
+
+watch(() => props.messages, async (next, prev) => {
+  if (next === prev) {
+    return;
+  }
+  shouldAutoScroll.value = true;
+  await nextTick();
+  scrollToBottom();
+}, { flush: "post" });
+
+watch(renderEntries, async () => {
+  await nextTick();
+  if (!shouldAutoScroll.value) {
+    return;
+  }
+  scrollToBottom();
+}, { deep: true, flush: "post" });
+
+onMounted(async () => {
+  await nextTick();
+  scrollToBottom();
+});
 </script>
 
 <template>
-  <div class="message-list">
+  <div
+    ref="messageListRef"
+    class="message-list"
+    @scroll="updateAutoScrollState"
+  >
     <div v-if="renderEntries.length === 0" class="empty-state">
       <div class="empty-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -111,7 +160,14 @@ const renderEntries = computed<RenderEntry[]>(() => {
 .message-list {
   flex: 1;
   overflow-y: auto;
+  scrollbar-gutter: stable both-edges;
   padding: 24px 32px;
+}
+
+@supports not (scrollbar-gutter: stable) {
+  .message-list {
+    overflow-y: scroll;
+  }
 }
 
 .empty-state {
