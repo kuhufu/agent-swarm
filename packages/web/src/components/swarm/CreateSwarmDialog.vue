@@ -183,64 +183,58 @@ function submit() {
             </button>
           </div>
 
-          <div v-if="showAgentForm" class="agent-form card">
-            <div class="form-row">
-              <label>ID</label>
-              <input v-model="agentForm.id" class="input-field" placeholder="agent-1" />
-            </div>
-            <div class="form-row">
-              <label>名称</label>
-              <input v-model="agentForm.name" class="input-field" placeholder="Agent 1" />
-            </div>
-            <div class="form-row">
-              <label>描述</label>
-              <input v-model="agentForm.description" class="input-field" placeholder="负责..." />
-            </div>
-            <div class="form-row">
-              <label>System Prompt</label>
-              <textarea v-model="agentForm.systemPrompt" class="input-field" placeholder="你是一个..." rows="3" />
-            </div>
-
-            <!-- Model Selection -->
-            <div v-if="savedModels.length > 0" class="model-selection">
-              <label class="form-label" style="margin-bottom: 8px;">选择模型</label>
-              <div class="model-chips">
-                <button
-                  v-for="sm in savedModels"
-                  :key="sm.id"
-                  class="model-chip"
-                  :class="{ active: agentForm.model.provider === sm.provider && agentForm.model.modelId === sm.modelId }"
-                  @click="selectModelForAgent(sm)"
-                >
-                  {{ sm.name }}
-                </button>
-                <button
-                  class="model-chip"
-                  :class="{ active: showCustomModel }"
-                  @click="clearModelSelection"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px;">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                  </svg>
-                  自定义
+          <!-- Agent Form Dialog -->
+          <div v-if="showAgentForm" class="sub-dialog-overlay" @click.self="showAgentForm = false">
+            <div class="sub-dialog">
+              <div class="sub-dialog-header">
+                <h4>添加 Agent</h4>
+                <button class="close-btn" @click="showAgentForm = false">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                 </button>
               </div>
-            </div>
-
-            <div v-if="showCustomModel || savedModels.length === 0" class="custom-model-fields">
-              <div class="form-row">
-                <label>Provider</label>
-                <input v-model="agentForm.model.provider" class="input-field" placeholder="anthropic" />
+              <div class="sub-dialog-body">
+                <div class="form-row">
+                  <label>ID</label>
+                  <input v-model="agentForm.id" class="input-field" placeholder="agent-1" />
+                </div>
+                <div class="form-row">
+                  <label>名称</label>
+                  <input v-model="agentForm.name" class="input-field" placeholder="Agent 1" />
+                </div>
+                <div class="form-row">
+                  <label>描述</label>
+                  <input v-model="agentForm.description" class="input-field" placeholder="负责..." />
+                </div>
+                <div class="form-row">
+                  <label>System Prompt</label>
+                  <textarea v-model="agentForm.systemPrompt" class="input-field" placeholder="你是一个..." rows="3" />
+                </div>
+                <div v-if="savedModels.length > 0" class="model-selection">
+                  <label class="form-label" style="margin-bottom: 8px;">选择模型</label>
+                  <div class="model-chips">
+                    <button v-for="sm in savedModels" :key="sm.id" class="model-chip" :class="{ active: agentForm.model.provider === sm.provider && agentForm.model.modelId === sm.modelId }" @click="selectModelForAgent(sm)">{{ sm.name }}</button>
+                    <button class="model-chip" :class="{ active: showCustomModel }" @click="clearModelSelection">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                      自定义
+                    </button>
+                  </div>
+                </div>
+                <div v-if="showCustomModel || savedModels.length === 0" class="custom-model-fields">
+                  <div class="form-row">
+                    <label>Provider</label>
+                    <input v-model="agentForm.model.provider" class="input-field" placeholder="anthropic" />
+                  </div>
+                  <div class="form-row">
+                    <label>模型</label>
+                    <input v-model="agentForm.model.modelId" class="input-field" placeholder="claude-sonnet-4-20250514" />
+                  </div>
+                </div>
               </div>
-              <div class="form-row">
-                <label>模型</label>
-                <input v-model="agentForm.model.modelId" class="input-field" placeholder="claude-sonnet-4-20250514" />
+              <div class="sub-dialog-footer">
+                <button class="btn-secondary" @click="showAgentForm = false">取消</button>
+                <button class="btn-primary" :disabled="!agentForm.id || !agentForm.name" @click="addAgent">确认添加</button>
               </div>
             </div>
-            <button class="btn-primary" style="margin-top: 8px;" :disabled="!agentForm.id || !agentForm.name" @click="addAgent">
-              确认添加
-            </button>
           </div>
 
           <div v-if="agents.length" class="agent-list">
@@ -427,9 +421,55 @@ function submit() {
   margin-bottom: 12px;
 }
 
-.agent-form {
-  padding: 16px;
-  margin-bottom: 12px;
+.sub-dialog-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: 20px;
+}
+
+.sub-dialog {
+  width: 440px;
+  max-height: 80vh;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-default);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5);
+}
+
+.sub-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px 0;
+}
+
+.sub-dialog-header h4 {
+  color: var(--color-text-primary);
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.sub-dialog-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+
+.sub-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px 20px;
+  border-top: 1px solid var(--color-border-subtle);
 }
 
 .form-row {
