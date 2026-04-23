@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import type { ChatMessage, SwarmConfig } from "../../types/index.js";
 import { useSwarmStore } from "../../stores/swarm.js";
+import { MODE_LABEL_ZH } from "../../constants/swarm-modes.js";
 import MessageItem from "./MessageItem.vue";
 
 const props = defineProps<{
@@ -139,7 +140,7 @@ onMounted(async () => {
           </div>
           <div class="swarm-card-info">
             <span class="swarm-card-name">{{ swarm.name }}</span>
-            <span class="swarm-card-meta">{{ swarm.agents.length }} 个 Agent · {{ modeLabels[swarm.mode] ?? swarm.mode }}</span>
+            <span class="swarm-card-meta">{{ swarm.agents.length }} 个 Agent · {{ MODE_LABEL_ZH[swarm.mode] ?? swarm.mode }}</span>
           </div>
         </button>
       </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from "vue";
 import { useSettingsStore } from "../../stores/settings.js";
+import { MODE_OPTIONS } from "../../constants/swarm-modes.js";
 import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel } from "../../types/index.js";
 import ModeIcon from "../common/ModeIcon.vue";
 import CustomSelect from "../common/CustomSelect.vue";
@@ -10,13 +11,7 @@ const emit = defineEmits<{
   (e: "close"): void;
 }>();
 
-const modes: { value: CollaborationMode; label: string; desc: string; icon: string }[] = [
-  { value: "router", label: "Router 路由", desc: "智能路由到最合适的 Agent", icon: "🔀" },
-  { value: "sequential", label: "Sequential 顺序", desc: "按顺序依次执行", icon: "➡️" },
-  { value: "parallel", label: "Parallel 并行", desc: "多个 Agent 同时执行", icon: "⏩" },
-  { value: "swarm", label: "Swarm 蜂群", desc: "去中心化协作", icon: "🐝" },
-  { value: "debate", label: "Debate 辩论", desc: "多 Agent 辩论模式", icon: "⚖️" },
-];
+const modes = MODE_OPTIONS;
 
 const name = ref("");
 const mode = ref<CollaborationMode>("router");

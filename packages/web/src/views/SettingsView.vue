@@ -4,19 +4,12 @@ import { MessagePlugin } from "tdesign-vue-next";
 import { useSettingsStore } from "../stores/settings.js";
 import type { InterventionPoint, InterventionStrategy, ApiProtocol, ProviderConfig, SavedModel, ModelInfo } from "../types/index.js";
 import * as configApi from "../api/config.js";
-import CustomSelect from "../components/common/CustomSelect.vue";
+import ProvidersTab from "../components/settings/ProvidersTab.vue";
+import ModelsTab from "../components/settings/ModelsTab.vue";
+import InterventionTab from "../components/settings/InterventionTab.vue";
 
 const settingsStore = useSettingsStore();
 const activeTab = ref<"providers" | "models" | "intervention">("providers");
-
-const API_PROTOCOLS: { value: ApiProtocol; label: string }[] = [
-  { value: "openai-completions", label: "OpenAI Completions" },
-  { value: "openai-responses", label: "OpenAI Responses" },
-  { value: "anthropic-messages", label: "Anthropic Messages" },
-  { value: "google-generative-ai", label: "Google Generative AI" },
-  { value: "mistral-conversations", label: "Mistral Conversations" },
-  { value: "azure-openai-responses", label: "Azure OpenAI Responses" },
-];
 
 interface ProviderEntry {
   apiKey: string;
@@ -26,15 +19,6 @@ interface ProviderEntry {
 }
 
 const providers = reactive<Record<string, ProviderEntry>>({});
-
-const providerList = computed(() => {
-  return Object.keys(providers).map(id => ({
-    id,
-    label: id,
-    defaultProtocol: "openai-completions" as ApiProtocol,
-    custom: true,
-  }));
-});
 
 const newProviderId = ref("");
 
@@ -54,86 +38,26 @@ function removeProvider(id: string) {
   delete providers[id];
 }
 
-function getEffectiveProtocol(id: string): ApiProtocol {
+function updateProvider(id: string, field: string, value: unknown) {
   const entry = providers[id];
-  if (entry?.apiProtocol) return entry.apiProtocol;
-  return "openai-completions";
+  if (!entry) return;
+  if (field === "apiKey") entry.apiKey = value as string;
+  else if (field === "baseUrl") entry.baseUrl = value as string;
+  else if (field === "apiProtocol") entry.apiProtocol = value as ApiProtocol | "";
+  else if (field === "enableThinkingCompat") entry.enableThinkingCompat = value as boolean;
 }
 
-// ── Models ──
 const models = reactive<SavedModel[]>([]);
-const showModelForm = ref(false);
-const modelForm = reactive<SavedModel>({ id: "", name: "", provider: "", modelId: "" });
 
-const modelProviderOptions = computed(() => providerList.value.map(p => p.id));
-
-const availableModels = ref<ModelInfo[]>([]);
-const loadingModels = ref(false);
-
-async function loadModelsForProvider(providerId: string) {
-  if (!providerId) {
-    availableModels.value = [];
-    return;
-  }
-  loadingModels.value = true;
-  try {
-    const res = await configApi.listModels(providerId);
-    availableModels.value = res.data ?? [];
-  } catch {
-    availableModels.value = [];
-  } finally {
-    loadingModels.value = false;
-  }
-}
-
-function onModelFormProviderChange() {
-  modelForm.modelId = "";
-  loadModelsForProvider(modelForm.provider);
-}
-
-function onModelSelect(m: ModelInfo) {
-  modelForm.modelId = m.id;
-  if (!modelForm.name) {
-    modelForm.name = m.name;
-  }
-  if (!modelForm.id) {
-    modelForm.id = m.id;
-  }
-}
-
-function addModel() {
-  if (!modelForm.id || !modelForm.name || !modelForm.provider || !modelForm.modelId) return;
-  models.push({ ...modelForm });
-  modelForm.id = "";
-  modelForm.name = "";
-  modelForm.provider = "";
-  modelForm.modelId = "";
-  availableModels.value = [];
-  showModelForm.value = false;
+function addModel(model: SavedModel) {
+  models.push(model);
 }
 
 function removeModel(index: number) {
   models.splice(index, 1);
 }
 
-// ── Intervention ──
-const interventionPoints: { key: InterventionPoint; label: string }[] = [
-  { key: "before_agent_start", label: "Agent 启动前" },
-  { key: "after_agent_end", label: "Agent 结束后" },
-  { key: "before_tool_call", label: "工具调用前" },
-  { key: "after_tool_call", label: "工具调用后" },
-  { key: "on_handoff", label: "Agent 交接时" },
-  { key: "on_error", label: "发生错误时" },
-  { key: "on_approval_required", label: "需要审批时" },
-];
-
-const strategyOptions: { value: InterventionStrategy; label: string; color: string }[] = [
-  { value: "auto", label: "自动批准", color: "#22c55e" },
-  { value: "confirm", label: "确认", color: "#6366f1" },
-  { value: "review", label: "审查", color: "#f59e0b" },
-  { value: "edit", label: "编辑", color: "#3b82f6" },
-  { value: "reject", label: "拒绝", color: "#ef4444" },
-];
+const providerIds = computed(() => Object.keys(providers));
 
 const interventions = reactive<Partial<Record<InterventionPoint, InterventionStrategy>>>({
   before_agent_start: "auto",
@@ -145,12 +69,14 @@ const interventions = reactive<Partial<Record<InterventionPoint, InterventionStr
   on_approval_required: "confirm",
 });
 
+function updateIntervention(point: InterventionPoint, strategy: InterventionStrategy) {
+  interventions[point] = strategy;
+}
+
 const saving = ref(false);
 const saved = ref(false);
 const saveError = ref("");
 const loadError = ref("");
-const testingMap = reactive<Record<string, boolean>>({});
-const testResultMap = reactive<Record<string, { ok: boolean; message: string }>>({});
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -165,7 +91,6 @@ onMounted(async () => {
     loadError.value = "";
     const config = settingsStore.config;
     if (config) {
-      // Merge server config
       for (const [provider, key] of Object.entries(config.apiKeys)) {
         if (!providers[provider]) {
           providers[provider] = {
@@ -232,72 +157,11 @@ async function saveSettings() {
     saving.value = false;
   }
 }
-
-function getProviderOverride(providerId: string) {
-  const entry = providers[providerId];
-  if (!entry) {
-    return undefined;
-  }
-  const apiKey = entry.apiKey.trim();
-  return {
-    // 配置页读取到的是脱敏 key（如 sk-xxxx...yyyy），测试时不能回传该值。
-    ...(apiKey.length > 0 && !apiKey.includes("...") ? { apiKey } : {}),
-    ...(entry.baseUrl.trim().length > 0 ? { baseUrl: entry.baseUrl.trim() } : {}),
-    ...(entry.apiProtocol ? { apiProtocol: entry.apiProtocol as ApiProtocol } : {}),
-    enable_thinking: entry.enableThinkingCompat,
-  };
-}
-
-function modelTestKey(provider: string, modelId: string): string {
-  return `${provider}::${modelId}`;
-}
-
-async function testModel(provider: string, modelId: string) {
-  const p = provider.trim();
-  const m = modelId.trim();
-  if (!p || !m) {
-    MessagePlugin.warning("请先填写 provider 和 modelId");
-    return;
-  }
-
-  const key = modelTestKey(p, m);
-  testingMap[key] = true;
-  delete testResultMap[key];
-
-  try {
-    const res = await configApi.testModelConnection({
-      provider: p,
-      modelId: m,
-      prompt: "请只回复：OK",
-      timeoutMs: 20000,
-      override: getProviderOverride(p),
-    });
-
-    const result = res.data;
-    const message = result.ok
-      ? `成功（${result.durationMs}ms）${result.text ? `：${result.text}` : ""}`
-      : `失败（${result.durationMs}ms）：${result.error ?? "未知错误"}`;
-    testResultMap[key] = { ok: result.ok, message };
-
-    if (result.ok) {
-      MessagePlugin.success(`${p}/${m} 测试成功`);
-    } else {
-      MessagePlugin.error(`${p}/${m} 测试失败：${result.error ?? "未知错误"}`);
-    }
-  } catch (error) {
-    const message = getErrorMessage(error);
-    testResultMap[key] = { ok: false, message: `失败：${message}` };
-    MessagePlugin.error(`测试失败：${message}`);
-  } finally {
-    testingMap[key] = false;
-  }
-}
 </script>
 
 <template>
   <div class="settings-view">
     <div class="settings-layout">
-      <!-- Left Sidebar -->
       <aside class="settings-sidebar">
         <div class="sidebar-header">
           <h2>设置</h2>
@@ -372,70 +236,13 @@ async function testModel(provider: string, modelId: string) {
         </div>
       </aside>
 
-      <!-- Right Content -->
       <main class="settings-content">
-        <!-- Providers Tab -->
         <div v-if="activeTab === 'providers'" class="tab-panel">
-          <div class="content-header">
-            <h3>LLM 提供商</h3>
-            <p>配置 API Key、Base URL 和协议</p>
-          </div>
-
-          <div class="provider-list">
-            <div v-for="p in providerList" :key="p.id" class="provider-card card">
-              <div class="provider-header">
-                <div class="provider-title">
-                  <div class="provider-avatar">{{ p.id.charAt(0).toUpperCase() }}</div>
-                  <span class="provider-name">{{ p.id }}</span>
-                </div>
-                <button class="remove-btn" @click="removeProvider(p.id)">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-
-              <div class="provider-fields">
-                <div class="field-row">
-                  <label>API Key</label>
-                  <input
-                    v-model="providers[p.id].apiKey"
-                    class="input-field"
-                    placeholder="sk-..."
-                    type="password"
-                  />
-                </div>
-                <div class="field-row">
-                  <label>Base URL</label>
-                  <input
-                    v-model="providers[p.id].baseUrl"
-                    class="input-field"
-                    placeholder="https://api.example.com/v1"
-                  />
-                </div>
-                <div class="field-row">
-                  <label>API 协议</label>
-                  <CustomSelect
-                    :model-value="providers[p.id].apiProtocol"
-                    :options="[{ value: '', label: `默认 (${getEffectiveProtocol(p.id)})` }, ...API_PROTOCOLS]"
-                    @update:model-value="providers[p.id].apiProtocol = $event"
-                  />
-                </div>
-                <div class="field-row">
-                  <label>思考兼容</label>
-                  <label class="checkbox-inline">
-                    <input
-                      v-model="providers[p.id].enableThinkingCompat"
-                      type="checkbox"
-                    />
-                    <span>使用 `enable_thinking` 参数控制思考</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-
+          <ProvidersTab
+            :providers="providers"
+            @remove="removeProvider"
+            @update="updateProvider"
+          />
           <div class="add-provider">
             <input
               v-model="newProviderId"
@@ -454,144 +261,20 @@ async function testModel(provider: string, modelId: string) {
           </div>
         </div>
 
-        <!-- Models Tab -->
         <div v-if="activeTab === 'models'" class="tab-panel">
-          <div class="content-header">
-            <h3>模型管理</h3>
-            <p>添加自定义模型，方便在配置 Swarm 时快速选择</p>
-          </div>
-
-          <div class="models-toolbar">
-            <button class="btn-primary" @click="showModelForm = !showModelForm">
-              <svg v-if="!showModelForm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-              {{ showModelForm ? '取消' : '添加模型' }}
-            </button>
-          </div>
-
-          <div v-if="showModelForm" class="model-form card">
-            <div class="form-row">
-              <label>ID</label>
-              <input v-model="modelForm.id" class="input-field" placeholder="my-model" />
-            </div>
-            <div class="form-row">
-              <label>显示名称</label>
-              <input v-model="modelForm.name" class="input-field" placeholder="My Model" />
-            </div>
-            <div class="form-row">
-              <label>提供商</label>
-              <CustomSelect
-                :model-value="modelForm.provider"
-                :options="[{ value: '', label: '选择提供商' }, ...modelProviderOptions.map(p => ({ value: p, label: p }))]"
-                placeholder="选择提供商"
-                @update:model-value="modelForm.provider = $event; onModelFormProviderChange()"
-              />
-            </div>
-            <div class="form-row">
-              <label>模型 ID</label>
-              <input v-model="modelForm.modelId" class="input-field" placeholder="输入模型 ID 或从下方列表选择" />
-            </div>
-            <div v-if="loadingModels" class="model-list-hint">加载模型列表中...</div>
-            <div v-else-if="modelForm.provider && availableModels.length" class="model-picker">
-              <div class="model-picker-label">从 {{ modelForm.provider }} 选择模型：</div>
-              <div class="model-picker-list">
-                <button
-                  v-for="m in availableModels"
-                  :key="m.id"
-                  class="model-pick-item"
-                  :class="{ active: modelForm.modelId === m.id }"
-                  @click="onModelSelect(m)"
-                >
-                  <span class="model-pick-id">{{ m.id }}</span>
-                  <span class="model-pick-meta">{{ m.contextWindow / 1000 }}k ctx</span>
-                </button>
-              </div>
-            </div>
-            <div v-else-if="modelForm.provider && !loadingModels && availableModels.length === 0" class="model-list-hint">
-              该提供商暂无内置模型列表，请手动输入模型 ID
-            </div>
-            <button class="btn-primary" :disabled="!modelForm.id || !modelForm.name || !modelForm.provider || !modelForm.modelId" @click="addModel">
-              确认添加
-            </button>
-          </div>
-
-          <div v-if="models.length" class="models-list">
-            <div v-for="(model, i) in models" :key="model.id" class="model-item card">
-              <div class="model-main">
-                <div class="model-avatar">{{ model.name.charAt(0).toUpperCase() }}</div>
-                <div class="model-info">
-                  <span class="model-name">{{ model.name }}</span>
-                  <span class="model-meta">{{ model.provider }} / {{ model.modelId }}</span>
-                  <span
-                    v-if="testResultMap[modelTestKey(model.provider, model.modelId)]"
-                    class="test-result-text"
-                    :class="{ ok: testResultMap[modelTestKey(model.provider, model.modelId)].ok, fail: !testResultMap[modelTestKey(model.provider, model.modelId)].ok }"
-                  >
-                    {{ testResultMap[modelTestKey(model.provider, model.modelId)].message }}
-                  </span>
-                </div>
-              </div>
-              <div class="model-actions">
-                <button
-                  class="btn-secondary model-test-btn"
-                  :disabled="testingMap[modelTestKey(model.provider, model.modelId)]"
-                  @click="testModel(model.provider, model.modelId)"
-                >
-                  {{ testingMap[modelTestKey(model.provider, model.modelId)] ? "测试中..." : "测试" }}
-                </button>
-                <button class="remove-btn" @click="removeModel(i)">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div v-else class="empty-state">
-            <div class="empty-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
-              </svg>
-            </div>
-            <p class="empty-title">暂无自定义模型</p>
-            <p class="empty-desc">添加模型后在配置 Swarm 时可快速选择</p>
-          </div>
+          <ModelsTab
+            :models="models"
+            :provider-ids="providerIds"
+            @add="addModel"
+            @remove="removeModel"
+          />
         </div>
 
-        <!-- Intervention Tab -->
         <div v-if="activeTab === 'intervention'" class="tab-panel">
-          <div class="content-header">
-            <h3>全局介入策略</h3>
-            <p>配置各介入点的默认策略</p>
-          </div>
-
-          <div class="intervention-list">
-            <div v-for="point in interventionPoints" :key="point.key" class="intervention-row card">
-              <span class="intervention-label">{{ point.label }}</span>
-              <div class="strategy-options">
-                <button
-                  v-for="opt in strategyOptions"
-                  :key="opt.value"
-                  class="strategy-btn"
-                  :class="{ active: interventions[point.key] === opt.value }"
-                  :style="interventions[point.key] === opt.value ? { background: opt.color + '20', color: opt.color, borderColor: opt.color + '40' } : {}"
-                  @click="interventions[point.key] = opt.value"
-                >
-                  {{ opt.label }}
-                </button>
-              </div>
-            </div>
-          </div>
+          <InterventionTab
+            :interventions="interventions"
+            @update="updateIntervention"
+          />
         </div>
       </main>
     </div>
@@ -712,371 +395,14 @@ async function testModel(provider: string, modelId: string) {
   padding: 28px 32px;
 }
 
-.content-header {
-  margin-bottom: 24px;
-}
-
-.content-header h3 {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  margin: 0 0 4px;
-}
-
-.content-header p {
-  font-size: 14px;
-  color: var(--color-text-muted);
-  margin: 0;
-}
-
 .tab-panel {
   max-width: 720px;
-}
-
-.provider-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.provider-card {
-  padding: 20px;
-}
-
-.provider-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.provider-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.provider-avatar {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.15));
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--color-accent-light);
-}
-
-.provider-name {
-  color: var(--color-text-primary);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.remove-btn {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.remove-btn:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: var(--color-danger);
-}
-
-.provider-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.field-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.field-row label {
-  color: var(--color-text-muted);
-  min-width: 70px;
-  font-size: 13px;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.field-row input {
-  flex: 1;
-}
-
-.checkbox-inline {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-
-.checkbox-inline input[type="checkbox"] {
-  width: 14px;
-  height: 14px;
-  accent-color: #6366f1;
 }
 
 .add-provider {
   display: flex;
   gap: 10px;
   align-items: center;
-}
-
-/* Models Tab */
-.models-toolbar {
-  margin-bottom: 16px;
-}
-
-.model-form {
-  padding: 20px;
-  margin-bottom: 16px;
-}
-
-.model-form .form-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-
-.model-form .form-row label {
-  color: var(--color-text-muted);
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.models-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.model-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-}
-
-.model-main {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.model-avatar {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.15));
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--color-accent-light);
-}
-
-.model-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.model-name {
-  color: var(--color-text-primary);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.model-meta {
-  color: var(--color-text-muted);
-  font-size: 12px;
-  font-family: var(--font-mono);
-}
-
-.model-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.model-test-btn {
-  padding: 6px 10px;
-  font-size: 12px;
-}
-
-.model-list-hint {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  margin-bottom: 12px;
-}
-
-.model-picker {
-  margin-bottom: 12px;
-}
-
-.model-picker-label {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  margin-bottom: 6px;
-}
-
-.model-picker-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  max-height: 200px;
-  overflow-y: auto;
-  padding: 4px 0;
-}
-
-.model-pick-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--color-border-subtle);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.model-pick-item:hover {
-  background: rgba(99, 102, 241, 0.08);
-  border-color: var(--color-border-hover);
-}
-
-.model-pick-item.active {
-  background: rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.4);
-  color: var(--color-accent-light);
-}
-
-.model-pick-id {
-  font-family: var(--font-mono);
-  font-size: 11px;
-}
-
-.model-pick-meta {
-  font-size: 10px;
-  color: var(--color-text-muted);
-}
-
-.test-result-text {
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.test-result-text.ok {
-  color: #22c55e;
-}
-
-.test-result-text.fail {
-  color: #f87171;
-}
-
-/* Intervention Tab */
-.intervention-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.intervention-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-}
-
-.intervention-label {
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.strategy-options {
-  display: flex;
-  gap: 6px;
-}
-
-.strategy-btn {
-  padding: 5px 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  border: 1px solid var(--color-border-subtle);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.strategy-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: var(--color-border-hover);
-}
-
-.strategy-btn.active {
-  border-width: 1px;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 60px 0;
-  color: var(--color-text-muted);
-}
-
-.empty-icon {
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 14px;
-  border: 1px solid var(--color-border-subtle);
-  margin-bottom: 14px;
-}
-
-.empty-icon svg {
-  width: 24px;
-  height: 24px;
-}
-
-.empty-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  margin: 0 0 4px;
-}
-
-.empty-desc {
-  font-size: 13px;
-  margin: 0;
+  margin-top: 16px;
 }
 </style>

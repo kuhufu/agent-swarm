@@ -4,6 +4,8 @@ import { useRouter } from "vue-router";
 import { useConversationStore } from "../stores/conversation.js";
 import { useSwarmStore } from "../stores/swarm.js";
 import * as conversationsApi from "../api/conversations.js";
+import { getModeConfig } from "../constants/swarm-modes.js";
+import { formatTimeLong } from "../utils/format.js";
 import ModeIcon from "../components/common/ModeIcon.vue";
 import type { ConversationInfo, SwarmConfig, ChatMessage } from "../types/index.js";
 import { confirmDialog, showError } from "../utils/ui-feedback.js";
@@ -84,16 +86,7 @@ async function deleteConversation(conv: ConversationInfo) {
   }
 }
 
-function formatTime(ts: number): string {
-  const d = new Date(ts);
-  return d.toLocaleDateString("zh-CN", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+const formatTime = formatTimeLong;
 
 function getSwarmName(swarmId: string): string {
   return swarmStore.swarms.find((s: SwarmConfig) => s.id === swarmId)?.name ?? swarmId;
@@ -101,17 +94,6 @@ function getSwarmName(swarmId: string): string {
 
 function getSwarmMode(swarmId: string): string {
   return swarmStore.swarms.find((s: SwarmConfig) => s.id === swarmId)?.mode ?? "router";
-}
-
-function getModeConfig(mode: string) {
-  const map: Record<string, { label: string; color: string }> = {
-    router: { label: "Router", color: "#818cf8" },
-    sequential: { label: "Sequential", color: "#34d399" },
-    parallel: { label: "Parallel", color: "#60a5fa" },
-    swarm: { label: "Swarm", color: "#fbbf24" },
-    debate: { label: "Debate", color: "#f87171" },
-  };
-  return map[mode] ?? { label: mode, color: "#9ca3af" };
 }
 
 function getRoleLabel(role: string): string {

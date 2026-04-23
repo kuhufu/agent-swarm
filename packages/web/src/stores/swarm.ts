@@ -77,5 +77,9 @@ export const useSwarmStore = defineStore("swarm", () => {
     currentSwarm.value = swarm;
   }
 
-  return { swarms, currentSwarm, loading, fetchSwarms, createSwarm, updateSwarm, removeSwarm, selectSwarm };
+  function clearSwarmSelection() {
+    currentSwarm.value = null;
+  }
+
+  return { swarms, currentSwarm, loading, fetchSwarms, createSwarm, updateSwarm, removeSwarm, selectSwarm, clearSwarmSelection };
 });

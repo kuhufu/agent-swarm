@@ -3,6 +3,10 @@ import { computed, ref } from "vue";
 import type { ChatMessage, AgentState, ConversationInfo, ToolCallInfo } from "../types/index.js";
 import { useSwarmStore } from "./swarm.js";
 import * as conversationsApi from "../api/conversations.js";
+import {
+  normalizeHistoryMessage,
+  normalizeHistoryMessages,
+} from "../utils/normalize-message.js";
 
 interface ConversationRuntimeState {
   messages: ChatMessage[];
@@ -431,207 +435,6 @@ export const useConversationStore = defineStore("conversation", () => {
     }
   }
 
-  function normalizeRole(role: unknown): ChatMessage["role"] {
-    switch (role) {
-      case "user":
-      case "assistant":
-      case "system":
-      case "notification":
-      case "tool_result":
-        return role;
-      case "toolResult":
-        return "tool_result";
-      default:
-        return "notification";
-    }
-  }
-
-  function normalizeToolCalls(toolCalls: unknown): ToolCallInfo[] | undefined {
-    const rawCalls = (() => {
-      if (Array.isArray(toolCalls)) {
-        return toolCalls;
-      }
-      if (typeof toolCalls === "string") {
-        try {
-          const parsed = JSON.parse(toolCalls) as unknown;
-          if (Array.isArray(parsed)) {
-            return parsed;
-          }
-        } catch {
-          return undefined;
-        }
-      }
-      return undefined;
-    })();
-
-    if (!rawCalls) {
-      return undefined;
-    }
-
-    const normalized = rawCalls
-      .map((call, index): ToolCallInfo | null => {
-        if (!call || typeof call !== "object") {
-          return null;
-        }
-        const raw = call as Record<string, unknown>;
-        const id = typeof raw.id === "string"
-          ? raw.id
-          : (typeof raw.toolCallId === "string" ? raw.toolCallId : `tool-call-${index}`);
-        const name = typeof raw.name === "string"
-          ? raw.name
-          : (typeof raw.toolName === "string" ? raw.toolName : "tool");
-        const args = raw.arguments;
-        const normalizedArguments = typeof args === "string"
-          ? (() => {
-            try {
-              return JSON.parse(args);
-            } catch {
-              return args;
-            }
-          })()
-          : (args ?? {});
-
-        return {
-          id,
-          name,
-          arguments: normalizedArguments,
-          result: raw.result,
-          isError: typeof raw.isError === "boolean" ? raw.isError : undefined,
-        };
-      })
-      .filter((call): call is ToolCallInfo => call !== null);
-
-    return normalized.length > 0 ? normalized : undefined;
-  }
-
-  function parseMetadata(rawMetadata: unknown): Record<string, unknown> | null {
-    if (typeof rawMetadata !== "string" || rawMetadata.trim().length === 0) {
-      return null;
-    }
-    try {
-      const parsed = JSON.parse(rawMetadata) as unknown;
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        return parsed as Record<string, unknown>;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
-  function normalizeHistoryMessage(raw: unknown): ChatMessage {
-    if (!raw || typeof raw !== "object") {
-      return {
-        id: crypto.randomUUID(),
-        role: "system",
-        content: "",
-        timestamp: Date.now(),
-      };
-    }
-
-    const message = raw as Record<string, unknown>;
-    const role = normalizeRole(message.role);
-    const content = typeof message.content === "string" ? message.content : "";
-    const toolCalls = normalizeToolCalls(message.toolCalls);
-    const thinking = typeof message.thinking === "string" ? message.thinking : undefined;
-    const agentId = typeof message.agentId === "string" ? message.agentId : undefined;
-    const agentName = typeof message.agentName === "string" ? message.agentName : resolveAgentName(agentId);
-    const timestamp = typeof message.timestamp === "number" ? message.timestamp : Date.now();
-    const id = typeof message.id === "string" ? message.id : crypto.randomUUID();
-    const rawMetadata = typeof message.metadata === "string" ? message.metadata : undefined;
-    const metadata = rawMetadata ? parseMetadata(rawMetadata) : undefined;
-
-    return {
-      id,
-      role,
-      content,
-      thinking,
-      toolCalls,
-      agentId,
-      agentName,
-      metadata: metadata ?? undefined,
-      timestamp,
-    };
-  }
-
-  function isStandaloneClientToolResult(raw: Record<string, unknown>): boolean {
-    const metadata = parseMetadata(raw.metadata);
-    const details = metadata?.details;
-    const source = (
-      details
-      && typeof details === "object"
-      && !Array.isArray(details)
-      && "source" in details
-      && typeof (details as Record<string, unknown>).source === "string"
-    )
-      ? (details as Record<string, unknown>).source as string
-      : "";
-    if (source === "client_tool") {
-      return true;
-    }
-
-    const toolName = typeof metadata?.toolName === "string" ? metadata.toolName : "";
-    return toolName === "javascript_execute" || toolName === "current_time";
-  }
-
-  function normalizeHistoryMessages(rawMessages: unknown[]): ChatMessage[] {
-    const normalized: ChatMessage[] = [];
-    const toolCallIndex = new Map<string, { messageIndex: number; toolCallIndex: number }>();
-
-    for (const raw of rawMessages) {
-      if (!raw || typeof raw !== "object") {
-        normalized.push(normalizeHistoryMessage(raw));
-        continue;
-      }
-
-      const message = raw as Record<string, unknown>;
-      const role = normalizeRole(message.role);
-
-      if (role === "tool_result") {
-        const toolCallId = typeof message.toolCallId === "string" ? message.toolCallId : "";
-        if (toolCallId && toolCallIndex.has(toolCallId)) {
-          const pointer = toolCallIndex.get(toolCallId)!;
-          const targetMessage = normalized[pointer.messageIndex];
-          const toolCalls = targetMessage?.toolCalls;
-          if (toolCalls && toolCalls[pointer.toolCallIndex]) {
-            const metadata = parseMetadata(message.metadata);
-            const details = metadata?.details;
-            const content = typeof message.content === "string" ? message.content : "";
-            const current = toolCalls[pointer.toolCallIndex];
-
-            toolCalls[pointer.toolCallIndex] = {
-              ...current,
-              name: typeof metadata?.toolName === "string" ? metadata.toolName : current.name,
-              isError: typeof metadata?.isError === "boolean" ? metadata.isError : current.isError,
-              result: details ?? (content.trim().length > 0 ? content : current.result),
-            };
-          }
-          continue;
-        }
-
-        if (isStandaloneClientToolResult(message)) {
-          continue;
-        }
-      }
-
-      const normalizedMessage = normalizeHistoryMessage(message);
-      normalized.push(normalizedMessage);
-
-      if (normalizedMessage.role === "assistant" && Array.isArray(normalizedMessage.toolCalls)) {
-        normalizedMessage.toolCalls.forEach((toolCall, index) => {
-          if (typeof toolCall.id === "string" && toolCall.id.trim().length > 0) {
-            toolCallIndex.set(toolCall.id, {
-              messageIndex: normalized.length - 1,
-              toolCallIndex: index,
-            });
-          }
-        });
-      }
-    }
-
-    return normalized;
-  }
-
   function resolveAgentName(agentId?: string, conversationId?: string): string | undefined {
     if (!agentId) {
       return undefined;
@@ -738,7 +541,7 @@ export const useConversationStore = defineStore("conversation", () => {
 
       if (!hasActiveRuntime) {
         mutateRuntimeState(normalizedConversationId, (state) => {
-          state.messages = normalizeHistoryMessages(Array.isArray(messagesRes.data) ? messagesRes.data : []);
+          state.messages = normalizeHistoryMessages(Array.isArray(messagesRes.data) ? messagesRes.data : [], resolveAgentName);
           state.streamingMessages = new Map();
           state.isActive = false;
         });
@@ -747,7 +550,7 @@ export const useConversationStore = defineStore("conversation", () => {
       applyConversationPreferences(conversationRes.data);
       updateConversationInfo(normalizedConversationId, conversationRes.data);
       if (conversationRes.data.swarmId.startsWith("__direct_")) {
-        swarmStore.selectSwarm(null as any);
+        swarmStore.clearSwarmSelection();
       } else {
         let matchedSwarm = swarmStore.swarms.find((item) => item.id === conversationRes.data.swarmId);
         if (!matchedSwarm) {
@@ -761,7 +564,7 @@ export const useConversationStore = defineStore("conversation", () => {
         if (matchedSwarm) {
           swarmStore.selectSwarm(matchedSwarm);
         } else {
-          swarmStore.selectSwarm(null as any);
+          swarmStore.clearSwarmSelection();
         }
       }
       populateAgentStatesFromConversation(conversationRes.data, normalizedConversationId);
@@ -881,7 +684,7 @@ export const useConversationStore = defineStore("conversation", () => {
     });
 
     if (res.data.markerMessage) {
-      const marker = normalizeHistoryMessage(res.data.markerMessage);
+      const marker = normalizeHistoryMessage(res.data.markerMessage, resolveAgentName);
       addMessage(marker, conversationId);
     }
 

@@ -3,6 +3,7 @@ import { computed, watch, ref, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useSwarmStore } from "../../stores/swarm.js";
 import { useConversationStore } from "../../stores/conversation.js";
+import { formatTimeLocale } from "../../utils/format.js";
 import type { ConversationInfo } from "../../types/index.js";
 import { showError } from "../../utils/ui-feedback.js";
 
@@ -110,13 +111,7 @@ function navigateTo(path: string) {
   router.push(path);
 }
 
-function formatTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString("zh-CN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-}
+const formatTime = formatTimeLocale;
 
 async function handleOpenConversation(conv: ConversationInfo) {
   closeConversationMenu();
@@ -125,7 +120,7 @@ async function handleOpenConversation(conv: ConversationInfo) {
   }
   // For direct conversations, clear currentSwarm so ChatView enters direct mode
   if (conv.swarmId.startsWith("__direct_")) {
-    swarmStore.selectSwarm(null as any);
+    swarmStore.clearSwarmSelection();
   } else {
     const swarm = swarmStore.swarms.find((s) => s.id === conv.swarmId);
     if (swarm) {
@@ -374,7 +369,7 @@ import { h } from "vue";
     </section>
 
     <div class="sidebar-footer">
-      <div v-if="swarmStore.currentSwarm" class="current-swarm" @click="swarmStore.selectSwarm(null as any)" title="点击切换为直接对话模式">
+      <div v-if="swarmStore.currentSwarm" class="current-swarm" @click="swarmStore.clearSwarmSelection()" title="点击切换为直接对话模式">
         <span class="swarm-label">当前 Swarm</span>
         <span class="swarm-name">{{ swarmStore.currentSwarm.name }}</span>
       </div>

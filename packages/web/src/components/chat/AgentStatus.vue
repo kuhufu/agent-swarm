@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useSwarmStore } from "../../stores/swarm.js";
+import { agentColor } from "../../utils/agent-color.js";
+import { MODE_LABEL_ZH } from "../../constants/swarm-modes.js";
 import type { AgentState } from "../../types/index.js";
 
 const props = defineProps<{
@@ -12,16 +14,9 @@ const swarmStore = useSwarmStore();
 const swarmInfo = computed(() => {
   const swarm = swarmStore.currentSwarm;
   if (!swarm) return null;
-  const modeMap: Record<string, string> = {
-    router: "路由",
-    sequential: "顺序",
-    parallel: "并行",
-    swarm: "群集",
-    debate: "辩论",
-  };
   return {
     name: swarm.name,
-    mode: modeMap[swarm.mode] ?? swarm.mode,
+    mode: MODE_LABEL_ZH[swarm.mode] ?? swarm.mode,
     agentCount: swarm.agents.length,
   };
 });
@@ -45,20 +40,6 @@ function statusLabel(status: AgentState["status"]): string {
     case "idle": return "待命中";
     default: return "待命中";
   }
-}
-
-const COLORS = ["#6366f1", "#3b82f6", "#a855f7", "#f59e0b", "#10b981", "#ef4444", "#ec4899", "#06b6d4"];
-
-function hashId(id: string): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) {
-    h = ((h << 5) - h + id.charCodeAt(i)) | 0;
-  }
-  return Math.abs(h);
-}
-
-function agentColor(agentId: string): string {
-  return COLORS[hashId(agentId) % COLORS.length];
 }
 
 function getAgentConfig(agentId: string) {

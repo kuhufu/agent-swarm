@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import DOMPurify from "dompurify";
-import hljs from "highlight.js/lib/common";
-import "highlight.js/styles/github-dark.css";
-import { Marked } from "marked";
-import { markedHighlight } from "marked-highlight";
 import type { ChatMessage } from "../../types/index.js";
+import { agentColor } from "../../utils/agent-color.js";
+import { formatTimeShort } from "../../utils/format.js";
+import { renderMarkdown } from "../../composables/useMarkdown.js";
 import ToolCallCard from "./ToolCallCard.vue";
 
 const props = defineProps<{
@@ -15,37 +13,6 @@ const props = defineProps<{
 }>();
 
 const hasRenderableContent = computed(() => props.message.content.trim().length > 0);
-
-const markdownParser = new Marked({
-  gfm: true,
-  breaks: true,
-});
-
-markdownParser.use(markedHighlight({
-  emptyLangClass: "hljs",
-  langPrefix: "hljs language-",
-  highlight(code, language) {
-    if (language && hljs.getLanguage(language)) {
-      return hljs.highlight(code, {
-        language,
-        ignoreIllegals: true,
-      }).value;
-    }
-    return hljs.highlightAuto(code).value;
-  },
-}));
-
-function renderMarkdown(content: string): string {
-  if (content.trim().length === 0) {
-    return "";
-  }
-
-  const parsed = markdownParser.parse(content);
-
-  return DOMPurify.sanitize(typeof parsed === "string" ? parsed : "", {
-    USE_PROFILES: { html: true },
-  });
-}
 
 const renderedContent = computed(() => renderMarkdown(props.message.content));
 const renderedThinking = computed(() => renderMarkdown(props.message.thinking ?? ""));
@@ -101,25 +68,7 @@ function roleClass(role: string): string {
   }
 }
 
-const COLORS = ["#6366f1", "#3b82f6", "#a855f7", "#f59e0b", "#10b981", "#ef4444", "#ec4899", "#06b6d4"];
-
-function hashId(id: string): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) {
-    h = ((h << 5) - h + id.charCodeAt(i)) | 0;
-  }
-  return Math.abs(h);
-}
-
-function agentColor(id?: string): string {
-  if (!id) return "var(--color-accent)";
-  return COLORS[hashId(id) % COLORS.length];
-}
-
-function formatTime(ts: number): string {
-  const d = new Date(ts);
-  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
-}
+const formatTime = formatTimeShort;
 </script>
 
 <template>

@@ -2,6 +2,7 @@
 import { onMounted, ref, reactive, computed, watch } from "vue";
 import { useSwarmStore } from "../stores/swarm.js";
 import { useSettingsStore } from "../stores/settings.js";
+import { getModeConfig, MODE_OPTIONS } from "../constants/swarm-modes.js";
 import CreateSwarmDialog from "../components/swarm/CreateSwarmDialog.vue";
 import ModeIcon from "../components/common/ModeIcon.vue";
 import CustomSelect from "../components/common/CustomSelect.vue";
@@ -248,17 +249,6 @@ function clearModelSelection() {
   agentForm.model.provider = "";
   agentForm.model.modelId = "";
   showCustomModel.value = true;
-}
-
-function getModeConfig(mode: string) {
-  const map: Record<string, { label: string; color: string }> = {
-    router: { label: "Router", color: "#818cf8" },
-    sequential: { label: "Sequential", color: "#34d399" },
-    parallel: { label: "Parallel", color: "#60a5fa" },
-    swarm: { label: "Swarm", color: "#fbbf24" },
-    debate: { label: "Debate", color: "#f87171" },
-  };
-  return map[mode] ?? { label: mode, color: "#9ca3af" };
 }
 </script>
 
