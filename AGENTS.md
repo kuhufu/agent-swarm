@@ -178,21 +178,6 @@ pnpm test                  # 运行 core 单元测试
 
 ---
 
-## 当前实现状态
-
-以下模块已创建骨架但业务逻辑标记为 `TODO`：
-
-- `packages/core/src/core/conversation.ts` — Agent 编排循环
-- `packages/core/src/core/agent-factory.ts` — pi-agent-core Agent 创建
-- `packages/core/src/modes/*.ts` — 5种协作模式的执行逻辑
-- `packages/core/src/storage/sqlite.ts` — SQLite 完整实现
-- `packages/core/src/storage/schema.ts` — Drizzle schema
-- `packages/core/src/llm/provider.ts` — pi-ai 桥接
-- `packages/server/src/ws.ts` — WebSocket 事件桥接
-- 前端 WS 消息分发到 Store 的逻辑
-
----
-
 ## 注意事项
 
 - `better-sqlite3` 是 native 模块，需要 C++ 编译环境（Python 3.12 及以下 + setuptools）
