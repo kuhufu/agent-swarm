@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import DOMPurify from "dompurify";
+import hljs from "highlight.js/lib/common";
+import "highlight.js/styles/github-dark.css";
+import { Marked } from "marked";
+import { markedHighlight } from "marked-highlight";
 import type { ChatMessage } from "../../types/index.js";
 import ToolCallCard from "./ToolCallCard.vue";
 
@@ -10,6 +15,40 @@ const props = defineProps<{
 }>();
 
 const hasRenderableContent = computed(() => props.message.content.trim().length > 0);
+
+const markdownParser = new Marked({
+  gfm: true,
+  breaks: true,
+});
+
+markdownParser.use(markedHighlight({
+  emptyLangClass: "hljs",
+  langPrefix: "hljs language-",
+  highlight(code, language) {
+    if (language && hljs.getLanguage(language)) {
+      return hljs.highlight(code, {
+        language,
+        ignoreIllegals: true,
+      }).value;
+    }
+    return hljs.highlightAuto(code).value;
+  },
+}));
+
+function renderMarkdown(content: string): string {
+  if (content.trim().length === 0) {
+    return "";
+  }
+
+  const parsed = markdownParser.parse(content);
+
+  return DOMPurify.sanitize(typeof parsed === "string" ? parsed : "", {
+    USE_PROFILES: { html: true },
+  });
+}
+
+const renderedContent = computed(() => renderMarkdown(props.message.content));
+const renderedThinking = computed(() => renderMarkdown(props.message.thinking ?? ""));
 
 const isContextClearedMarker = computed(() => {
   if (props.message.role !== "notification") {
@@ -124,13 +163,15 @@ function formatTime(ts: number): string {
             </svg>
             思考过程
           </summary>
-          <p>{{ message.thinking }}</p>
+          <div class="thinking-content markdown-content" v-html="renderedThinking" />
         </details>
       </div>
 
-      <div v-if="hasRenderableContent" class="msg-content">
-        <p>{{ message.content }}</p>
-      </div>
+      <div
+        v-if="hasRenderableContent"
+        class="msg-content markdown-content"
+        v-html="renderedContent"
+      />
 
       <div v-if="message.toolCalls?.length" class="msg-tool-calls">
         <ToolCallCard
@@ -326,11 +367,71 @@ function formatTime(ts: number): string {
   word-break: break-word;
 }
 
-.msg-content p {
+.markdown-content {
+  font-size: 14px;
   margin: 0;
   color: var(--color-text-primary);
-  font-size: 14px;
-  white-space: pre-wrap;
+}
+
+.markdown-content :deep(p) {
+  margin: 0;
+}
+
+.markdown-content :deep(p + p) {
+  margin-top: 10px;
+}
+
+.markdown-content :deep(ul),
+.markdown-content :deep(ol) {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.markdown-content :deep(li + li) {
+  margin-top: 4px;
+}
+
+.markdown-content :deep(a) {
+  color: var(--color-accent-light);
+  text-decoration: underline;
+}
+
+.markdown-content :deep(pre) {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.markdown-content :deep(pre code.hljs) {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-content :deep(code) {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.markdown-content :deep(code:not(pre code)) {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+
+.markdown-content :deep(blockquote) {
+  margin: 10px 0;
+  padding-left: 10px;
+  border-left: 3px solid rgba(148, 163, 184, 0.4);
+  color: var(--color-text-muted);
+}
+
+.markdown-content :deep(hr) {
+  margin: 10px 0;
+  border: 0;
+  border-top: 1px solid var(--color-border-subtle);
 }
 
 /* ── Footer / Timestamp ── */
@@ -397,13 +498,11 @@ function formatTime(ts: number): string {
   display: none;
 }
 
-.msg-thinking p {
+.msg-thinking .thinking-content {
   margin: 10px 0 0;
   color: var(--color-text-secondary);
-  font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.6;
-  white-space: pre-wrap;
 }
 
 /* ── Tool calls ── */

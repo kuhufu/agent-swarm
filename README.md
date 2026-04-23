@@ -12,6 +12,7 @@
 - 直接对话模式：无需预建 swarm，可按会话选择 `provider + modelId`
 - 历史消息持久化：SQLite 存储，支持恢复会话上下文
 - 上下文清空：保留历史消息，仅重置后续模型上下文
+- 消息 Markdown 渲染：基于 `marked + marked-highlight + highlight.js + dompurify`，支持代码高亮与安全净化
 - 介入机制：支持工具调用/错误/handoff 等节点人工决策
 - 事件分级落库：`eventLogLevel = none | key | full`（默认 `key`）
 - 提供商兼容参数：支持 `enable_thinking`（适配部分使用该字段控制思考开关的模型）
@@ -27,6 +28,7 @@ agent-swarm/
 ├── docs/
 │   ├── context-recovery.md
 │   ├── frontend-conversation-runtime.md
+│   ├── message-markdown-rendering.md
 │   └── provider-compatibility.md
 ├── agent-swarm.config.ts     # SDK 配置示例（示例文件，不会被 server 自动读取）
 └── README.md
@@ -242,6 +244,7 @@ export default defineConfig({
 
 - [历史消息恢复上下文机制](./docs/context-recovery.md)
 - [前端会话运行态分桶机制](./docs/frontend-conversation-runtime.md)
+- [消息 Markdown 渲染](./docs/message-markdown-rendering.md)
 - [Provider 兼容参数：enable_thinking](./docs/provider-compatibility.md)
 
 ## License
