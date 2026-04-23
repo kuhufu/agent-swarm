@@ -50,7 +50,17 @@ export interface ModelConfig {
   apiKey?: string;
   baseUrl?: string;
   apiProtocol?: ApiProtocol;
-  options?: Record<string, any>;
+  options?: Record<string, any> & {
+    /**
+     * Compatibility switch for models/providers that use top-level
+     * `enable_thinking` instead of `reasoning_effort`.
+     */
+    enable_thinking?: boolean;
+    /** Force model reasoning capability on/off. */
+    reasoning?: boolean;
+    /** Forwarded to pi-ai model compatibility settings. */
+    compat?: Record<string, unknown>;
+  };
 }
 
 /** Supported LLM API protocols */
@@ -175,6 +185,11 @@ export interface ProviderConfig {
   baseUrl?: string;
   apiProtocol?: ApiProtocol;
   headers?: Record<string, string>;
+  /**
+   * Compatibility switch for providers that require `enable_thinking`
+   * as the thinking toggle parameter.
+   */
+  enable_thinking?: boolean;
 }
 
 // ============================================================================

@@ -166,6 +166,7 @@ export function configRoutes(swarm: AgentSwarm): Router {
             ...(overrideApiKey !== undefined ? { apiKey: overrideApiKey } : {}),
             ...(typeof override.baseUrl === "string" ? { baseUrl: override.baseUrl } : {}),
             ...(typeof override.apiProtocol === "string" ? { apiProtocol: override.apiProtocol as ApiProtocol } : {}),
+            ...(typeof override.enable_thinking === "boolean" ? { enable_thinking: override.enable_thinking } : {}),
           }
           : undefined,
       });

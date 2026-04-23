@@ -22,6 +22,7 @@ interface ProviderEntry {
   apiKey: string;
   baseUrl: string;
   apiProtocol: ApiProtocol | "";
+  enableThinkingCompat: boolean;
 }
 
 const providers = reactive<Record<string, ProviderEntry>>({});
@@ -40,7 +41,12 @@ const newProviderId = ref("");
 function addCustomProvider() {
   const id = newProviderId.value.trim().toLowerCase();
   if (!id || providers[id]) return;
-  providers[id] = { apiKey: "", baseUrl: "", apiProtocol: "openai-completions" };
+  providers[id] = {
+    apiKey: "",
+    baseUrl: "",
+    apiProtocol: "openai-completions",
+    enableThinkingCompat: false,
+  };
   newProviderId.value = "";
 }
 
@@ -162,17 +168,28 @@ onMounted(async () => {
       // Merge server config
       for (const [provider, key] of Object.entries(config.apiKeys)) {
         if (!providers[provider]) {
-          providers[provider] = { apiKey: "", baseUrl: "", apiProtocol: "openai-completions" };
+          providers[provider] = {
+            apiKey: "",
+            baseUrl: "",
+            apiProtocol: "openai-completions",
+            enableThinkingCompat: false,
+          };
         }
         if (key) providers[provider].apiKey = key;
       }
       if (config.providers) {
         for (const [id, pc] of Object.entries(config.providers)) {
           if (!providers[id]) {
-            providers[id] = { apiKey: "", baseUrl: "", apiProtocol: "openai-completions" };
+            providers[id] = {
+              apiKey: "",
+              baseUrl: "",
+              apiProtocol: "openai-completions",
+              enableThinkingCompat: false,
+            };
           }
           providers[id].baseUrl = pc.baseUrl ?? "";
           providers[id].apiProtocol = pc.apiProtocol ?? "";
+          providers[id].enableThinkingCompat = pc.enable_thinking === true;
         }
       }
       if (config.models) {
@@ -193,10 +210,11 @@ async function saveSettings() {
     const providerConfigs: Record<string, ProviderConfig> = {};
     for (const [id, entry] of Object.entries(providers)) {
       if (entry.apiKey.trim()) apiKeys[id] = entry.apiKey;
-      if (entry.baseUrl.trim() || entry.apiProtocol) {
+      if (entry.baseUrl.trim() || entry.apiProtocol || entry.enableThinkingCompat) {
         providerConfigs[id] = {
           ...(entry.baseUrl.trim() ? { baseUrl: entry.baseUrl.trim() } : {}),
           ...(entry.apiProtocol ? { apiProtocol: entry.apiProtocol as ApiProtocol } : {}),
+          ...(entry.enableThinkingCompat ? { enable_thinking: true } : {}),
         };
       }
     }
@@ -226,6 +244,7 @@ function getProviderOverride(providerId: string) {
     ...(apiKey.length > 0 && !apiKey.includes("...") ? { apiKey } : {}),
     ...(entry.baseUrl.trim().length > 0 ? { baseUrl: entry.baseUrl.trim() } : {}),
     ...(entry.apiProtocol ? { apiProtocol: entry.apiProtocol as ApiProtocol } : {}),
+    enable_thinking: entry.enableThinkingCompat,
   };
 }
 
@@ -402,6 +421,16 @@ async function testModel(provider: string, modelId: string) {
                     :options="[{ value: '', label: `默认 (${getEffectiveProtocol(p.id)})` }, ...API_PROTOCOLS]"
                     @update:model-value="providers[p.id].apiProtocol = $event"
                   />
+                </div>
+                <div class="field-row">
+                  <label>思考兼容</label>
+                  <label class="checkbox-inline">
+                    <input
+                      v-model="providers[p.id].enableThinkingCompat"
+                      type="checkbox"
+                    />
+                    <span>使用 `enable_thinking` 参数控制思考</span>
+                  </label>
                 </div>
               </div>
             </div>
@@ -788,6 +817,20 @@ async function testModel(provider: string, modelId: string) {
 
 .field-row input {
   flex: 1;
+}
+
+.checkbox-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.checkbox-inline input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #6366f1;
 }
 
 .add-provider {

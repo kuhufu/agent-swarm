@@ -1,4 +1,4 @@
-import type { Model, KnownApi } from "@mariozechner/pi-ai";
+import type { Model, KnownApi, OpenAICompletionsCompat } from "@mariozechner/pi-ai";
 import type { ModelConfig, LLMBackendConfig, ThinkingLevel } from "../core/types.js";
 
 const PI_THINKING_LEVEL_MAP: Record<string, import("@mariozechner/pi-agent-core").ThinkingLevel> = {
@@ -35,6 +35,61 @@ function normalizeBaseUrl(baseUrl: string | undefined): string | undefined {
   return trimmed;
 }
 
+function normalizeModelOptions(options: ModelConfig["options"] | undefined): NonNullable<ModelConfig["options"]> {
+  if (!options || typeof options !== "object" || Array.isArray(options)) {
+    return {};
+  }
+  return options;
+}
+
+function resolveModelReasoning(options: NonNullable<ModelConfig["options"]>): boolean {
+  if (typeof options.reasoning === "boolean") {
+    return options.reasoning;
+  }
+  if (typeof options.enable_thinking === "boolean") {
+    return options.enable_thinking;
+  }
+
+  const compat = options.compat;
+  if (compat && typeof compat === "object" && !Array.isArray(compat)) {
+    const thinkingFormat = (compat as Record<string, unknown>).thinkingFormat;
+    if (typeof thinkingFormat === "string" && thinkingFormat.trim().length > 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function resolveOpenAICompat(
+  apiProtocol: KnownApi,
+  options: NonNullable<ModelConfig["options"]>,
+): Partial<OpenAICompletionsCompat> | undefined {
+  if (apiProtocol !== "openai-completions") {
+    return undefined;
+  }
+
+  const nextCompat: Partial<OpenAICompletionsCompat> = {};
+  const rawCompat = options.compat;
+  if (rawCompat && typeof rawCompat === "object" && !Array.isArray(rawCompat)) {
+    Object.assign(nextCompat, rawCompat);
+  }
+
+  if (options.enable_thinking === true) {
+    if (!nextCompat.thinkingFormat) {
+      nextCompat.thinkingFormat = "qwen";
+    }
+    if (nextCompat.supportsReasoningEffort === undefined) {
+      nextCompat.supportsReasoningEffort = false;
+    }
+    if (nextCompat.supportsDeveloperRole === undefined) {
+      nextCompat.supportsDeveloperRole = false;
+    }
+  }
+
+  return Object.keys(nextCompat).length > 0 ? nextCompat : undefined;
+}
+
 /**
  * Resolve a ModelConfig to a pi-ai Model instance.
  * Uses apiProtocol and baseUrl.
@@ -42,6 +97,9 @@ function normalizeBaseUrl(baseUrl: string | undefined): string | undefined {
 export function resolveModel(config: ModelConfig): Model<any> {
   const apiProtocol = config.apiProtocol ?? DEFAULT_PROTOCOL_MAP[config.provider] ?? "openai-completions";
   const normalizedBaseUrl = normalizeBaseUrl(config.baseUrl);
+  const normalizedOptions = normalizeModelOptions(config.options);
+  const modelReasoning = resolveModelReasoning(normalizedOptions);
+  const modelCompat = resolveOpenAICompat(apiProtocol as KnownApi, normalizedOptions);
 
   if (!normalizedBaseUrl) {
     throw new Error(`Provider ${config.provider} 缺少 baseUrl，当前仅支持通过 baseUrl 调用模型`);
@@ -54,12 +112,13 @@ export function resolveModel(config: ModelConfig): Model<any> {
     api: apiProtocol as KnownApi,
     provider: config.provider,
     baseUrl: normalizedBaseUrl,
-    reasoning: false,
+    reasoning: modelReasoning,
     input: ["text"] as const,
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: 128000,
     maxTokens: 4096,
     ...(config.apiKey ? { headers: { Authorization: `Bearer ${config.apiKey}` } } : {}),
+    ...(modelCompat ? { compat: modelCompat } : {}),
   };
 }
 
@@ -74,6 +133,11 @@ export function resolveModelFromProvider(
 ): Model<any> {
   const providerConfig = llmConfig.providers?.[providerId];
   const apiKey = perAgentOverride?.apiKey ?? llmConfig.apiKeys[providerId] ?? "";
+  const mergedOptions = {
+    ...(providerConfig?.enable_thinking !== undefined ? { enable_thinking: providerConfig.enable_thinking } : {}),
+    ...(normalizeModelOptions(perAgentOverride?.options)),
+  };
+  const options = Object.keys(mergedOptions).length > 0 ? mergedOptions : undefined;
 
   return resolveModel({
     provider: providerId,
@@ -81,6 +145,7 @@ export function resolveModelFromProvider(
     apiKey,
     baseUrl: perAgentOverride?.baseUrl ?? providerConfig?.baseUrl,
     apiProtocol: perAgentOverride?.apiProtocol ?? providerConfig?.apiProtocol,
+    options,
   });
 }
 

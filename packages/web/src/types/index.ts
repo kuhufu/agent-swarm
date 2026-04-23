@@ -59,6 +59,7 @@ export interface ProviderConfig {
   baseUrl?: string;
   apiProtocol?: ApiProtocol;
   headers?: Record<string, string>;
+  enable_thinking?: boolean;
 }
 
 export interface SavedModel {
@@ -102,6 +103,7 @@ export interface ModelTestRequest {
     apiKey?: string;
     baseUrl?: string;
     apiProtocol?: ApiProtocol;
+    enable_thinking?: boolean;
   };
 }
 

@@ -14,6 +14,7 @@
 - 上下文清空：保留历史消息，仅重置后续模型上下文
 - 介入机制：支持工具调用/错误/handoff 等节点人工决策
 - 事件分级落库：`eventLogLevel = none | key | full`（默认 `key`）
+- 提供商兼容参数：支持 `enable_thinking`（适配部分使用该字段控制思考开关的模型）
 
 ## Monorepo 结构
 
@@ -25,7 +26,8 @@ agent-swarm/
 │   └── web/         # @agent-swarm/web
 ├── docs/
 │   ├── context-recovery.md
-│   └── frontend-conversation-runtime.md
+│   ├── frontend-conversation-runtime.md
+│   └── provider-compatibility.md
 ├── agent-swarm.config.ts     # SDK 配置示例（示例文件，不会被 server 自动读取）
 └── README.md
 ```
@@ -155,6 +157,17 @@ pnpm --filter @agent-swarm/server test
 2. 指定 `conversationId`：续聊已有会话。
 3. 指定 `provider + modelId`：直接对话模式（不依赖预建 swarm）。
 
+## 提供商兼容参数
+
+部分 OpenAI 兼容模型用 `enable_thinking` 控制思考开关，而不是 `reasoning_effort`。  
+可在 provider 配置中启用：
+
+- `providers.<providerId>.enable_thinking = true`
+
+详细说明见：
+
+- [Provider 兼容参数：enable_thinking](./docs/provider-compatibility.md)
+
 ## 上下文恢复机制
 
 当前实现的恢复逻辑：
@@ -229,6 +242,7 @@ export default defineConfig({
 
 - [历史消息恢复上下文机制](./docs/context-recovery.md)
 - [前端会话运行态分桶机制](./docs/frontend-conversation-runtime.md)
+- [Provider 兼容参数：enable_thinking](./docs/provider-compatibility.md)
 
 ## License
 
