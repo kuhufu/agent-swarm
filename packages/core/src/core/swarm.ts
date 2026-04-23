@@ -242,7 +242,9 @@ export class AgentSwarm {
       ? contextClearEvents[contextClearEvents.length - 1]
       : undefined;
     const restoredMessages = lastContextClearEvent
-      ? storedMessages.filter((message) => message.timestamp > lastContextClearEvent.timestamp)
+      // Use storage creation time instead of logical message timestamp.
+      // Message timestamps may come from model/user payloads and are not guaranteed monotonic.
+      ? storedMessages.filter((message) => (message.createdAt ?? message.timestamp) > lastContextClearEvent.timestamp)
       : storedMessages;
 
     const conversation = new Conversation(

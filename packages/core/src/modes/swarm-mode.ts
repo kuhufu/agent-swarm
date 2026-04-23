@@ -58,20 +58,25 @@ export class SwarmMode implements ModeExecutor {
       // Listen for handoff during agent execution
       let handoffTo: string | null = null;
       let handoffMessage: string | null = null;
+      let handoffDetected = false;
       const active = agents.get(currentAgentId)!;
       const unsub = active.agent.subscribe((e: PiAgentEvent) => {
         if (e.type === "tool_execution_end" && !e.isError) {
           const result = e.result;
-          if (typeof result === "object" && result?.details?.handoffTo) {
-            handoffTo = result.details.handoffTo;
+          const nextAgentId = this.extractHandoffTarget(result);
+          if (!handoffDetected && nextAgentId && nextAgentId !== currentAgentId) {
+            handoffDetected = true;
+            handoffTo = nextAgentId;
             if (typeof result?.details?.message === "string" && result.details.message.trim()) {
               handoffMessage = result.details.message;
             }
+            // A successful handoff means current agent should stop and yield control.
+            active.agent.abort();
           }
         }
       });
 
-      yield* this.runAgent(currentAgentId, currentMessage, ctx);
+      yield* this.runAgent(currentAgentId, currentMessage, ctx, () => handoffDetected);
       unsub();
 
       // Check for handoff
@@ -117,6 +122,13 @@ export class SwarmMode implements ModeExecutor {
 
           currentAgentId = handoffTo;
         } else {
+          const missingTargetError: SwarmEvent = {
+            type: "error",
+            agentId: currentAgentId,
+            error: new Error(`Handoff target agent not found: ${handoffTo}`),
+          };
+          emit(missingTargetError);
+          yield missingTargetError;
           break;
         }
       } else {
@@ -132,6 +144,7 @@ export class SwarmMode implements ModeExecutor {
     agentId: string,
     input: string,
     ctx: ModeExecutionContext,
+    isExpectedAbort?: () => boolean,
   ): AsyncGenerator<SwarmEvent> {
     const active = ctx.agents.get(agentId);
     if (!active) return;
@@ -141,9 +154,24 @@ export class SwarmMode implements ModeExecutor {
     const initialMessageCount = agent.state.messages.length;
     let assistantHasStreamDelta = false;
     let assistantErrorEmitted = false;
+    let agentEnded = false;
+    let persisted = false;
+    let settled = false;
 
     let resolveDone: () => void;
     const donePromise = new Promise<void>((r) => { resolveDone = r; });
+
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      resolveDone();
+    };
+
+    const persistNewMessagesOnce = async () => {
+      if (persisted) return;
+      persisted = true;
+      await this.persistNewMessages(ctx, agentId, agent.state.messages.slice(initialMessageCount));
+    };
 
     const unsub = agent.subscribe((e: PiAgentEvent) => {
       if (e.type === "message_start" && e.message.role === "assistant") {
@@ -179,7 +207,7 @@ export class SwarmMode implements ModeExecutor {
           ctx.emit(textEvent);
         }
 
-        if (e.message.stopReason === "error" && !assistantErrorEmitted) {
+        if (e.message.stopReason === "error" && !assistantErrorEmitted && !isExpectedAbort?.()) {
           assistantErrorEmitted = true;
           const assistantErrorMessage = extractAssistantErrorMessage(e.message);
           const errorEvent: SwarmEvent = {
@@ -205,26 +233,67 @@ export class SwarmMode implements ModeExecutor {
         ctx.emit(swarmEvent);
       }
       if (e.type === "agent_end") {
-        void this.persistNewMessages(ctx, agentId, agent.state.messages.slice(initialMessageCount))
+        agentEnded = true;
+        void persistNewMessagesOnce()
           .catch((err) => {
             const persistenceError: SwarmEvent = { type: "error", agentId, error: err as Error };
             events.push(persistenceError);
             ctx.emit(persistenceError);
+          })
+          .finally(() => {
+            settle();
           });
-        resolveDone();
       }
     });
 
-    agent.prompt(input).catch((err) => {
-      events.push({ type: "error", agentId, error: err as Error });
-      resolveDone();
-    });
+    agent.prompt(input)
+      .then(() => {
+        if (agentEnded) {
+          settle();
+          return;
+        }
+
+        const syntheticAgentEnd: SwarmEvent = {
+          type: "agent_end",
+          agentId,
+          agentName: config.name,
+        };
+        events.push(syntheticAgentEnd);
+        ctx.emit(syntheticAgentEnd);
+
+        void persistNewMessagesOnce()
+          .catch((err) => {
+            const persistenceError: SwarmEvent = { type: "error", agentId, error: err as Error };
+            events.push(persistenceError);
+            ctx.emit(persistenceError);
+          })
+          .finally(() => {
+            settle();
+          });
+      })
+      .catch((err) => {
+        if (isExpectedAbort?.()) {
+          settle();
+          return;
+        }
+        events.push({ type: "error", agentId, error: err as Error });
+        settle();
+      });
 
     let yielded = 0;
     while (true) {
       if (ctx.isAborted()) break;
       await new Promise((r) => setTimeout(r, 10));
       while (yielded < events.length) yield events[yielded++];
+      if (isExpectedAbort?.()) {
+        void persistNewMessagesOnce()
+          .catch((err) => {
+            const persistenceError: SwarmEvent = { type: "error", agentId, error: err as Error };
+            events.push(persistenceError);
+            ctx.emit(persistenceError);
+          });
+        settle();
+      }
       const race = await Promise.race([
         donePromise.then(() => true),
         new Promise<boolean>((r) => setTimeout(() => r(false), 50)),
@@ -266,6 +335,22 @@ export class SwarmMode implements ModeExecutor {
       return content.filter((c: any) => c.type === "text").map((c: any) => c.text).join("\n");
     }
     return "";
+  }
+
+  private extractHandoffTarget(result: unknown): string | null {
+    if (!result || typeof result !== "object") {
+      return null;
+    }
+    const details = (result as { details?: unknown }).details;
+    if (!details || typeof details !== "object") {
+      return null;
+    }
+    const rawTarget = (details as { handoffTo?: unknown }).handoffTo;
+    if (typeof rawTarget !== "string") {
+      return null;
+    }
+    const target = rawTarget.trim();
+    return target.length > 0 ? target : null;
   }
 
   private mapAgentEvent(e: PiAgentEvent, agentId: string, agentName: string): SwarmEvent | null {
