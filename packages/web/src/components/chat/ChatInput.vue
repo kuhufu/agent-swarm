@@ -18,6 +18,8 @@ const {
   sendMessage,
   sendDirectMessage,
   abort,
+  canClearContext,
+  clearContext,
   directModel,
   currentTimeToolEnabled,
   jsExecutionToolEnabled,
@@ -44,6 +46,12 @@ const selectedModelLabel = computed(() => {
   );
   return sm ? sm.name : `${directModel.value.provider}/${directModel.value.modelId}`;
 });
+
+const clearContextTooltip = computed(() =>
+  canClearContext.value
+    ? "仅清空当前会话推理上下文，不删除历史消息"
+    : "会话运行中或未进入会话，暂时无法清空上下文",
+);
 
 function handleSend() {
   if (props.active) {
@@ -72,6 +80,13 @@ function selectSavedModel(sm: SavedModel) {
   selectedModelValue.value = sm.id;
   directModel.value = { provider: sm.provider, modelId: sm.modelId };
   showModelSelect.value = false;
+}
+
+async function handleClearContext() {
+  if (!canClearContext.value) {
+    return;
+  }
+  await clearContext();
 }
 
 // When entering direct mode, ensure settings are loaded
@@ -181,6 +196,20 @@ onMounted(() => {
           </svg>
           <span>Think</span>
         </button>
+        <button
+          class="tool-btn warn"
+          :class="{ disabled: !canClearContext }"
+          :title="clearContextTooltip"
+          @click="handleClearContext"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            <path d="M10 11v6M14 11v6" />
+            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+          </svg>
+          <span>清空上下文</span>
+        </button>
       </div>
     </div>
     <div class="input-wrapper">
@@ -269,6 +298,21 @@ onMounted(() => {
   background: rgba(99, 102, 241, 0.1);
   border-color: rgba(99, 102, 241, 0.2);
   color: var(--color-accent-light);
+}
+
+.tool-btn.warn {
+  color: #fbbf24;
+}
+
+.tool-btn.warn:hover:not(.disabled) {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.25);
+  color: #fcd34d;
+}
+
+.tool-btn.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .tool-btn svg {

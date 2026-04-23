@@ -1,6 +1,7 @@
 import type { SwarmConfig, AgentSwarmRootConfig, LLMBackendConfig, ApiProtocol } from "./types.js";
 import type { IStorage } from "../storage/interface.js";
 import type { Conversation as StoredConversation, ConversationPreferences } from "../storage/interface.js";
+import type { StoredMessage } from "../storage/interface.js";
 import type { InterventionHandler } from "../intervention/handler.js";
 import { SqliteStorage } from "../storage/sqlite.js";
 import { Conversation } from "./conversation.js";
@@ -55,6 +56,12 @@ export interface ModelInfo {
   reasoning: boolean;
   contextWindow: number;
   maxTokens: number;
+}
+
+export interface ConversationContextClearResult {
+  conversationId: string;
+  contextResetAt: number;
+  markerMessage: StoredMessage;
 }
 
 export class AgentSwarm {
@@ -227,16 +234,69 @@ export class AgentSwarm {
       throw new Error(`Swarm not found: ${conv.swarmId}`);
     }
 
+    const [storedMessages, contextClearEvents] = await Promise.all([
+      this.storage.getMessages(conversationId),
+      this.storage.getEvents(conversationId, "context_cleared"),
+    ]);
+    const lastContextClearEvent = contextClearEvents.length > 0
+      ? contextClearEvents[contextClearEvents.length - 1]
+      : undefined;
+    const restoredMessages = lastContextClearEvent
+      ? storedMessages.filter((message) => message.timestamp > lastContextClearEvent.timestamp)
+      : storedMessages;
+
     const conversation = new Conversation(
       conv.id,
       this.applyConversationDirectModel(swarmConfig, conv),
       this.storage,
       this.config.llm,
       this.interventionHandler,
-      await this.storage.getMessages(conversationId),
+      restoredMessages,
     );
 
     return conversation;
+  }
+
+  /**
+   * Clear runtime model context for a conversation without deleting persisted messages.
+   * Future runs will only restore messages created after this reset point.
+   */
+  async clearConversationContext(conversationId: string): Promise<ConversationContextClearResult> {
+    this.ensureInitialized();
+
+    const conversation = await this.storage.getConversation(conversationId);
+    if (!conversation) {
+      throw new Error(`Conversation not found: ${conversationId}`);
+    }
+
+    const contextResetAt = Date.now();
+    await this.storage.logEvent(conversationId, {
+      id: crypto.randomUUID(),
+      agentId: null,
+      eventType: "context_cleared",
+      eventData: JSON.stringify({ contextResetAt }),
+      timestamp: contextResetAt,
+    });
+
+    const markerMessage: StoredMessage = {
+      id: crypto.randomUUID(),
+      agentId: null,
+      role: "notification",
+      content: "已清空上下文，后续回复仅基于新消息。",
+      metadata: JSON.stringify({
+        type: "context_cleared",
+        contextResetAt,
+      }),
+      timestamp: contextResetAt,
+      createdAt: contextResetAt,
+    };
+    await this.storage.appendMessage(conversationId, markerMessage);
+
+    return {
+      conversationId,
+      contextResetAt,
+      markerMessage,
+    };
   }
 
   /**

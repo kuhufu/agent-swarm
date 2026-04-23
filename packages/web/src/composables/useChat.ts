@@ -2,6 +2,7 @@ import { computed, ref, watch } from "vue";
 import { useConversationStore } from "../stores/conversation.js";
 import { useWebSocket } from "./useWebSocket.js";
 import { buildClientToolDefinitions } from "../tools/client-tools.js";
+import { showError } from "../utils/ui-feedback.js";
 
 export interface DirectModelSelection {
   provider: string;
@@ -146,6 +147,25 @@ export function useChat() {
     sending.value = false;
   }
 
+  const canClearContext = computed(() =>
+    Boolean(conversationStore.currentConversationId) && !conversationStore.isActive && !sending.value,
+  );
+
+  async function clearContext() {
+    if (!canClearContext.value) {
+      return false;
+    }
+
+    try {
+      await conversationStore.clearCurrentConversationContext();
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "清空上下文失败";
+      showError(message);
+      return false;
+    }
+  }
+
   return {
     inputText,
     sending,
@@ -154,6 +174,8 @@ export function useChat() {
     sendMessage,
     sendDirectMessage,
     abort,
+    canClearContext,
+    clearContext,
     directModel,
     currentTimeToolEnabled,
     jsExecutionToolEnabled,

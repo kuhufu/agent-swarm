@@ -19,6 +19,25 @@ interface DeleteConversationResponse {
   };
 }
 
+interface ClearConversationContextResponse {
+  data: {
+    conversationId: string;
+    contextResetAt: number;
+    markerMessage: {
+      id: string;
+      agentId?: string | null;
+      role: string;
+      content?: string | null;
+      thinking?: string | null;
+      toolCalls?: string | null;
+      toolCallId?: string | null;
+      metadata?: string | null;
+      timestamp: number;
+      createdAt?: number;
+    };
+  };
+}
+
 export function listConversations(swarmId?: string) {
   const query = swarmId ? `?swarmId=${swarmId}` : "";
   return apiClient<ConversationListResponse>(`/conversations${query}`);
@@ -52,5 +71,11 @@ export function getMessages(conversationId: string) {
 export function deleteConversation(conversationId: string) {
   return apiClient<DeleteConversationResponse>(`/conversations/${conversationId}`, {
     method: "DELETE",
+  });
+}
+
+export function clearConversationContext(conversationId: string) {
+  return apiClient<ClearConversationContextResponse>(`/conversations/${conversationId}/context/clear`, {
+    method: "POST",
   });
 }

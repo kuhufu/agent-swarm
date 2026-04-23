@@ -84,6 +84,10 @@ function createMockSwarm(): AgentSwarm {
     listConversations: async () => [],
     createConversation: async () => ({ getId: () => "conv_test" }),
     getMessages: async () => [],
+    clearConversationContext: async (conversationId: string) => ({
+      conversationId,
+      contextResetAt: Date.now(),
+    }),
     resumeConversation: async () => ({ getId: () => "conv_test" }),
     deleteConversation: async () => undefined,
     getLLMConfig: () => JSON.parse(JSON.stringify(llmConfig)) as LLMBackendConfig,
@@ -220,6 +224,27 @@ test("GET /api/swarms hides virtual direct-chat swarms", async () => {
     assert.equal(response.status, 200);
     assert.ok(data.data.every((item) => !item.id.startsWith("__direct_")));
     assert.ok(data.data.some((item) => item.id === "router_swarm"));
+  } finally {
+    await server.close();
+  }
+});
+
+test("POST /api/conversations/:id/context/clear resets runtime context boundary", async () => {
+  const server = await startTestServer();
+  try {
+    const response = await fetch(`${server.baseUrl}/api/conversations/conv_test/context/clear`, {
+      method: "POST",
+    });
+    const data = await response.json() as {
+      data: {
+        conversationId: string;
+        contextResetAt: number;
+      };
+    };
+
+    assert.equal(response.status, 200);
+    assert.equal(data.data.conversationId, "conv_test");
+    assert.equal(typeof data.data.contextResetAt, "number");
   } finally {
     await server.close();
   }

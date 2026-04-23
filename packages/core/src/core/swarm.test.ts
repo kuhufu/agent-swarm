@@ -212,4 +212,81 @@ describe("AgentSwarm persistence", () => {
     await restarted.close();
     cleanupDb(dbPath);
   });
+
+  it("clears context without deleting history messages", async () => {
+    const dbPath = createTestDbPath("clear-context");
+    cleanupDb(dbPath);
+
+    const swarm = new AgentSwarm({
+      config: createRootConfig(dbPath, [createSwarmConfig("default_swarm")]),
+    });
+    await swarm.init();
+
+    const conversation = await swarm.createConversation("default_swarm");
+    const conversationId = conversation.getId();
+    const internalStorage = (swarm as unknown as { storage: {
+      appendMessage: (
+        conversationId: string,
+        message: {
+          id: string;
+          role: string;
+          content: string;
+          timestamp: number;
+          createdAt: number;
+        },
+      ) => Promise<void>;
+    } }).storage;
+
+    const baseTimestamp = Date.now();
+    await internalStorage.appendMessage(conversationId, {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: "before reset",
+      timestamp: baseTimestamp,
+      createdAt: baseTimestamp,
+    });
+    await internalStorage.appendMessage(conversationId, {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: "before reset reply",
+      timestamp: baseTimestamp + 1,
+      createdAt: baseTimestamp + 1,
+    });
+
+    const historyBeforeClear = await swarm.getMessages(conversationId);
+    expect(historyBeforeClear).toHaveLength(2);
+
+    const clearResult = await swarm.clearConversationContext(conversationId);
+    expect(clearResult.conversationId).toBe(conversationId);
+    expect(typeof clearResult.contextResetAt).toBe("number");
+    expect(clearResult.markerMessage.role).toBe("notification");
+    expect(clearResult.markerMessage.content).toContain("已清空上下文");
+    expect(typeof clearResult.markerMessage.metadata).toBe("string");
+
+    const resumedWithoutNewMessages = await swarm.resumeConversation(conversationId) as unknown as {
+      restoredMessages: Array<{ role: string }>;
+    };
+    expect(resumedWithoutNewMessages.restoredMessages).toHaveLength(0);
+
+    const postResetTimestamp = clearResult.contextResetAt + 1;
+    await internalStorage.appendMessage(conversationId, {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: "after reset",
+      timestamp: postResetTimestamp,
+      createdAt: postResetTimestamp,
+    });
+
+    const resumedWithNewMessage = await swarm.resumeConversation(conversationId) as unknown as {
+      restoredMessages: Array<{ role: string }>;
+    };
+    expect(resumedWithNewMessage.restoredMessages).toHaveLength(1);
+    expect(resumedWithNewMessage.restoredMessages[0]?.role).toBe("user");
+
+    const historyAfterClear = await swarm.getMessages(conversationId);
+    expect(historyAfterClear).toHaveLength(4);
+
+    await swarm.close();
+    cleanupDb(dbPath);
+  });
 });

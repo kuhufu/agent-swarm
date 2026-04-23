@@ -93,6 +93,15 @@ export function conversationRoutes(swarm: AgentSwarm): Router {
     }
   });
 
+  router.post("/:id/context/clear", async (req, res) => {
+    try {
+      const cleared = await swarm.clearConversationContext(req.params.id);
+      res.json({ data: cleared });
+    } catch (err: any) {
+      res.status(404).json({ error: err.message });
+    }
+  });
+
   router.post("/:id/resume", async (req, res) => {
     try {
       const conversation = await swarm.resumeConversation(req.params.id);

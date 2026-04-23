@@ -6,19 +6,50 @@ import ToolCallCard from "./ToolCallCard.vue";
 const props = defineProps<{
   message: ChatMessage;
   streaming?: boolean;
+  isDirectMode?: boolean;
 }>();
 
 const hasRenderableContent = computed(() => props.message.content.trim().length > 0);
 
-const displayAgentName = computed(() => {
-  if (props.message.agentName) {
-    return props.message.agentName;
+const isContextClearedMarker = computed(() => {
+  if (props.message.role !== "notification") {
+    return false;
   }
   const meta = props.message.metadata;
-  if (meta && typeof meta.provider === "string" && typeof meta.model === "string") {
-    return `${meta.provider}/${meta.model}`;
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) {
+    return false;
   }
-  return props.message.agentId || "Assistant";
+  return (meta as Record<string, unknown>).type === "context_cleared";
+});
+
+const metadataModelLabel = computed(() => {
+  const meta = props.message.metadata;
+  if (
+    !meta
+    || typeof meta.provider !== "string"
+    || meta.provider.trim().length === 0
+    || typeof meta.model !== "string"
+    || meta.model.trim().length === 0
+  ) {
+    return undefined;
+  }
+  return `${meta.provider}/${meta.model}`;
+});
+
+const displayAgentName = computed(() => {
+  if (props.message.role === "assistant") {
+    if (props.isDirectMode) {
+      return metadataModelLabel.value
+        ?? props.message.agentName
+        ?? props.message.agentId
+        ?? "Assistant";
+    }
+    return props.message.agentName
+      ?? props.message.agentId
+      ?? metadataModelLabel.value
+      ?? "Assistant";
+  }
+  return props.message.agentName ?? props.message.agentId ?? "Assistant";
 });
 
 function roleClass(role: string): string {
@@ -53,7 +84,13 @@ function formatTime(ts: number): string {
 </script>
 
 <template>
-  <div class="message-item" :class="[roleClass(message.role)]">
+  <div v-if="isContextClearedMarker" class="context-divider">
+    <span class="context-divider-line" />
+    <span class="context-divider-label">{{ message.content || "已清空上下文" }}</span>
+    <span class="context-divider-line" />
+  </div>
+
+  <div v-else class="message-item" :class="[roleClass(message.role)]">
     <div class="msg-body">
       <!-- Header row: agent name + dot for assistant; user label + avatar for user -->
       <div class="msg-header">
@@ -116,6 +153,28 @@ function formatTime(ts: number): string {
 </template>
 
 <style scoped>
+.context-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0 8px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.context-divider-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.45), transparent);
+}
+
+.context-divider-label {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.2px;
+}
+
 .message-item {
   display: flex;
   gap: 12px;

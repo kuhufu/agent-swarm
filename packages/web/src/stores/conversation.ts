@@ -671,10 +671,10 @@ export const useConversationStore = defineStore("conversation", () => {
     return new Map([
       ["direct-agent", {
         id: "direct-agent",
-        name: existing?.name ?? label,
+        name: label,
         status: existing?.status ?? "idle",
         model: directModel,
-        description: existing?.description ?? `Direct chat with ${label}`,
+        description: `Direct chat with ${label}`,
         systemPrompt: existing?.systemPrompt ?? "You are a helpful assistant.",
       }],
     ]);
@@ -876,6 +876,39 @@ export const useConversationStore = defineStore("conversation", () => {
     }
   }
 
+  async function clearCurrentConversationContext() {
+    const conversationId = currentConversationId.value;
+    if (!conversationId) {
+      throw new Error("当前没有可清空上下文的会话");
+    }
+
+    const res = await conversationsApi.clearConversationContext(conversationId);
+
+    if (streamingMessages.value.size > 0) {
+      finalizeStream(undefined, conversationId);
+    }
+
+    if (agentStates.value.size > 0) {
+      const next = new Map<string, AgentState>();
+      for (const [agentId, state] of agentStates.value.entries()) {
+        next.set(agentId, {
+          ...state,
+          status: "idle",
+        });
+      }
+      agentStates.value = next;
+    }
+
+    if (res.data.markerMessage) {
+      const marker = normalizeHistoryMessage(res.data.markerMessage);
+      addMessage(marker, conversationId);
+    }
+
+    isActive.value = false;
+    persistCurrentRuntimeState();
+    return res.data;
+  }
+
   async function persistCurrentConversationPreferences(
     patch: Partial<Pick<ConversationInfo, "enabledTools" | "thinkModeEnabled" | "directModel">>,
   ) {
@@ -1018,6 +1051,7 @@ export const useConversationStore = defineStore("conversation", () => {
     fetchAllConversations,
     updateConversationTitle,
     deleteConversation,
+    clearCurrentConversationContext,
     isToolEnabled,
     setEnabledTools,
     setClientToolEnabled,
