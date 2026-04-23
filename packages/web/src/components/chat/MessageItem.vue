@@ -5,6 +5,7 @@ import { agentColor } from "../../utils/agent-color.js";
 import { formatTimeShort } from "../../utils/format.js";
 import { renderMarkdown } from "../../composables/useMarkdown.js";
 import ToolCallCard from "./ToolCallCard.vue";
+import ThinkingIcon from "../common/ThinkingIcon.vue";
 
 const props = defineProps<{
   message: ChatMessage;
@@ -103,14 +104,11 @@ const formatTime = formatTimeShort;
       </div>
 
       <div v-if="message.thinking" class="msg-thinking">
-        <details>
+        <details open>
           <summary>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="16" x2="12" y2="12" />
-              <line x1="12" y1="8" x2="12.01" y2="8" />
-            </svg>
+            <ThinkingIcon />
             思考过程
+            <span class="chevron">&gt;</span>
           </summary>
           <div class="thinking-content markdown-content" v-html="renderedThinking" />
         </details>
@@ -426,10 +424,7 @@ const formatTime = formatTimeShort;
 }
 
 .msg-thinking details {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 10px;
-  padding: 10px 14px;
+  padding: 8px 0;
   font-size: 13px;
 }
 
@@ -447,11 +442,21 @@ const formatTime = formatTimeShort;
   display: none;
 }
 
+.msg-thinking summary .chevron {
+  transition: transform 0.2s;
+}
+
+.msg-thinking details[open] summary .chevron {
+  transform: rotate(90deg);
+}
+
 .msg-thinking .thinking-content {
-  margin: 10px 0 0;
   color: var(--color-text-secondary);
   font-size: 12px;
   line-height: 1.6;
+  margin-top: 8px;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* ── Tool calls ── */
