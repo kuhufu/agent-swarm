@@ -718,15 +718,18 @@ function clearModelSelection() {
   flex: 1;
   overflow-y: auto;
   padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Empty State */
 .empty-state {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   text-align: center;
-  padding: 80px 0;
   color: var(--color-text-muted);
 }
 
