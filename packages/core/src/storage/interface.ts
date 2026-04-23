@@ -28,6 +28,7 @@ export interface Conversation {
   enabledTools: string[];
   thinkModeEnabled: boolean;
   directModel?: ConversationDirectModel;
+  contextResetAt?: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -71,6 +72,7 @@ export interface IStorage {
     preferences: Partial<ConversationPreferences>,
   ): Promise<Conversation>;
   updateConversationTitle(id: string, title: string): Promise<void>;
+  updateConversationContextReset(id: string, contextResetAt: number): Promise<void>;
   deleteConversation(id: string): Promise<void>;
 
   // Message management

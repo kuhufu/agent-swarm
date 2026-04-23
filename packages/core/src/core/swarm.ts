@@ -1,4 +1,4 @@
-import type { SwarmConfig, AgentSwarmRootConfig, LLMBackendConfig, ApiProtocol } from "./types.js";
+import type { SwarmConfig, AgentSwarmRootConfig, LLMBackendConfig, ApiProtocol, EventLogLevel } from "./types.js";
 import type { IStorage } from "../storage/interface.js";
 import type { Conversation as StoredConversation, ConversationPreferences } from "../storage/interface.js";
 import type { StoredMessage } from "../storage/interface.js";
@@ -69,6 +69,7 @@ export class AgentSwarm {
   private static readonly DIRECT_SWARM_ID = "__direct_chat";
 
   private config: AgentSwarmRootConfig;
+  private readonly eventLogLevel: EventLogLevel;
   private storage: IStorage;
   private interventionHandler?: InterventionHandler;
   private swarmConfigs: Map<string, SwarmConfig> = new Map();
@@ -80,6 +81,8 @@ export class AgentSwarm {
     }
 
     this.config = options.config ?? this.loadConfigFromPath(options.configPath!);
+    this.eventLogLevel = this.normalizeEventLogLevel(this.config.eventLogLevel);
+    this.config.eventLogLevel = this.eventLogLevel;
     this.storage = options.storage ?? new SqliteStorage(this.config.storage.path);
     this.interventionHandler = options.interventionHandler;
 
@@ -161,6 +164,7 @@ export class AgentSwarm {
       this.config.llm,
       this.interventionHandler,
       [],
+      this.eventLogLevel,
     );
   }
 
@@ -215,6 +219,7 @@ export class AgentSwarm {
       this.config.llm,
       this.interventionHandler,
       [],
+      this.eventLogLevel,
     );
   }
 
@@ -234,17 +239,12 @@ export class AgentSwarm {
       throw new Error(`Swarm not found: ${conv.swarmId}`);
     }
 
-    const [storedMessages, contextClearEvents] = await Promise.all([
-      this.storage.getMessages(conversationId),
-      this.storage.getEvents(conversationId, "context_cleared"),
-    ]);
-    const lastContextClearEvent = contextClearEvents.length > 0
-      ? contextClearEvents[contextClearEvents.length - 1]
-      : undefined;
-    const restoredMessages = lastContextClearEvent
+    const storedMessages = await this.storage.getMessages(conversationId);
+    const contextResetAt = conv.contextResetAt;
+    const restoredMessages = typeof contextResetAt === "number"
       // Use storage creation time instead of logical message timestamp.
       // Message timestamps may come from model/user payloads and are not guaranteed monotonic.
-      ? storedMessages.filter((message) => (message.createdAt ?? message.timestamp) > lastContextClearEvent.timestamp)
+      ? storedMessages.filter((message) => (message.createdAt ?? message.timestamp) > contextResetAt)
       : storedMessages;
 
     const conversation = new Conversation(
@@ -254,6 +254,7 @@ export class AgentSwarm {
       this.config.llm,
       this.interventionHandler,
       restoredMessages,
+      this.eventLogLevel,
     );
 
     return conversation;
@@ -272,13 +273,7 @@ export class AgentSwarm {
     }
 
     const contextResetAt = Date.now();
-    await this.storage.logEvent(conversationId, {
-      id: crypto.randomUUID(),
-      agentId: null,
-      eventType: "context_cleared",
-      eventData: JSON.stringify({ contextResetAt }),
-      timestamp: contextResetAt,
-    });
+    await this.storage.updateConversationContextReset(conversationId, contextResetAt);
 
     const markerMessage: StoredMessage = {
       id: crypto.randomUUID(),
@@ -736,6 +731,13 @@ export class AgentSwarm {
     const raw = readFileSync(absPath, "utf-8");
     const parsed = JSON.parse(raw) as AgentSwarmRootConfig;
     return parsed;
+  }
+
+  private normalizeEventLogLevel(level: AgentSwarmRootConfig["eventLogLevel"]): EventLogLevel {
+    if (level === "none" || level === "key" || level === "full") {
+      return level;
+    }
+    return "key";
   }
 
   private validateSwarmConfig(config: SwarmConfig): void {

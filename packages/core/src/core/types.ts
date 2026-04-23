@@ -134,6 +134,8 @@ export interface StorageConfig {
   path: string;
 }
 
+export type EventLogLevel = "none" | "key" | "full";
+
 // ============================================================================
 // Root Config (for defineConfig)
 // ============================================================================
@@ -142,6 +144,8 @@ export interface AgentSwarmRootConfig {
   llm: LLMBackendConfig;
   storage: StorageConfig;
   swarms: SwarmConfig[];
+  /** Event persistence level for events table. Default: "key". */
+  eventLogLevel?: EventLogLevel;
   contextConfig?: ContextConfig;
 }
 

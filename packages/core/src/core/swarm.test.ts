@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { rmSync } from "node:fs";
 import { AgentSwarm } from "./swarm.js";
-import type { AgentSwarmRootConfig, SwarmConfig } from "./types.js";
+import type { AgentSwarmRootConfig, SwarmConfig, EventLogLevel, SwarmEvent } from "./types.js";
 
 function createTestDbPath(testName: string): string {
   return join(
@@ -38,7 +38,11 @@ function createSwarmConfig(id: string): SwarmConfig {
   };
 }
 
-function createRootConfig(dbPath: string, swarms: SwarmConfig[]): AgentSwarmRootConfig {
+function createRootConfig(
+  dbPath: string,
+  swarms: SwarmConfig[],
+  eventLogLevel?: EventLogLevel,
+): AgentSwarmRootConfig {
   return {
     llm: {
       apiKeys: {
@@ -51,7 +55,14 @@ function createRootConfig(dbPath: string, swarms: SwarmConfig[]): AgentSwarmRoot
       path: dbPath,
     },
     swarms,
+    eventLogLevel,
   };
+}
+
+async function flushAsync(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    setTimeout(() => resolve(), 0);
+  });
 }
 
 describe("AgentSwarm persistence", () => {
@@ -262,6 +273,8 @@ describe("AgentSwarm persistence", () => {
     expect(clearResult.markerMessage.role).toBe("notification");
     expect(clearResult.markerMessage.content).toContain("已清空上下文");
     expect(typeof clearResult.markerMessage.metadata).toBe("string");
+    const conversationAfterClear = await swarm.getConversation(conversationId);
+    expect(conversationAfterClear?.contextResetAt).toBe(clearResult.contextResetAt);
 
     const resumedWithoutNewMessages = await swarm.resumeConversation(conversationId) as unknown as {
       restoredMessages: Array<{ role: string }>;
@@ -285,6 +298,70 @@ describe("AgentSwarm persistence", () => {
 
     const historyAfterClear = await swarm.getMessages(conversationId);
     expect(historyAfterClear).toHaveLength(4);
+
+    await swarm.close();
+    cleanupDb(dbPath);
+  });
+
+  it("persists only key events when eventLogLevel is key", async () => {
+    const dbPath = createTestDbPath("event-log-key");
+    cleanupDb(dbPath);
+
+    const swarm = new AgentSwarm({
+      config: createRootConfig(dbPath, [createSwarmConfig("default_swarm")], "key"),
+    });
+    await swarm.init();
+
+    const conversation = await swarm.createConversation("default_swarm");
+    const internalConversation = conversation as unknown as { emit: (event: SwarmEvent) => void };
+    const internalStorage = (swarm as unknown as { storage: {
+      getEvents: (conversationId: string, eventType?: string) => Promise<Array<{ eventType: string }>>;
+    } }).storage;
+
+    internalConversation.emit({
+      type: "message_update",
+      agentId: "default_swarm_agent_1",
+      delta: "streaming",
+    });
+    internalConversation.emit({
+      type: "handoff",
+      fromAgentId: "default_swarm_agent_1",
+      toAgentId: "default_swarm_agent_2",
+    });
+
+    await flushAsync();
+
+    const events = await internalStorage.getEvents(conversation.getId());
+    expect(events.map((event) => event.eventType)).toEqual(["handoff"]);
+
+    await swarm.close();
+    cleanupDb(dbPath);
+  });
+
+  it("skips event persistence when eventLogLevel is none", async () => {
+    const dbPath = createTestDbPath("event-log-none");
+    cleanupDb(dbPath);
+
+    const swarm = new AgentSwarm({
+      config: createRootConfig(dbPath, [createSwarmConfig("default_swarm")], "none"),
+    });
+    await swarm.init();
+
+    const conversation = await swarm.createConversation("default_swarm");
+    const internalConversation = conversation as unknown as { emit: (event: SwarmEvent) => void };
+    const internalStorage = (swarm as unknown as { storage: {
+      getEvents: (conversationId: string, eventType?: string) => Promise<Array<{ eventType: string }>>;
+    } }).storage;
+
+    internalConversation.emit({
+      type: "error",
+      error: new Error("test error"),
+    });
+
+    await flushAsync();
+
+    const events = await internalStorage.getEvents(conversation.getId());
+    expect(events).toHaveLength(0);
 
     await swarm.close();
     cleanupDb(dbPath);

@@ -70,6 +70,7 @@ export class SqliteStorage implements IStorage {
         think_mode_enabled INTEGER NOT NULL DEFAULT 0,
         direct_provider TEXT,
         direct_model_id TEXT,
+        context_reset_at INTEGER,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       );
@@ -163,6 +164,7 @@ export class SqliteStorage implements IStorage {
     thinkModeEnabled: number | null;
     directProvider: string | null;
     directModelId: string | null;
+    contextResetAt: number | null;
     createdAt: number;
     updatedAt: number;
   }): Conversation {
@@ -177,6 +179,7 @@ export class SqliteStorage implements IStorage {
       directModel: (directProvider && directModelId)
         ? { provider: directProvider, modelId: directModelId }
         : undefined,
+      contextResetAt: row.contextResetAt ?? undefined,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -205,6 +208,10 @@ export class SqliteStorage implements IStorage {
     }
     if (!columns.has("direct_model_id")) {
       this.rawDb.exec("ALTER TABLE conversations ADD COLUMN direct_model_id TEXT;");
+      schemaChanged = true;
+    }
+    if (!columns.has("context_reset_at")) {
+      this.rawDb.exec("ALTER TABLE conversations ADD COLUMN context_reset_at INTEGER;");
       schemaChanged = true;
     }
 
@@ -340,6 +347,7 @@ export class SqliteStorage implements IStorage {
       enabledTools,
       thinkModeEnabled,
       directModel,
+      contextResetAt: undefined,
       createdAt: now,
       updatedAt: now,
     };
@@ -351,6 +359,7 @@ export class SqliteStorage implements IStorage {
       thinkModeEnabled: conv.thinkModeEnabled ? 1 : 0,
       directProvider: conv.directModel?.provider ?? null,
       directModelId: conv.directModel?.modelId ?? null,
+      contextResetAt: null,
       createdAt: conv.createdAt,
       updatedAt: conv.updatedAt,
     }).run();
@@ -421,6 +430,16 @@ export class SqliteStorage implements IStorage {
   async updateConversationTitle(id: string, title: string): Promise<void> {
     this.getDb().update(conversationsTable)
       .set({ title, updatedAt: Date.now() })
+      .where(eq(conversationsTable.id, id))
+      .run();
+  }
+
+  async updateConversationContextReset(id: string, contextResetAt: number): Promise<void> {
+    this.getDb().update(conversationsTable)
+      .set({
+        contextResetAt,
+        updatedAt: Date.now(),
+      })
       .where(eq(conversationsTable.id, id))
       .run();
   }

@@ -2,7 +2,7 @@ import { Agent } from "@mariozechner/pi-agent-core";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
 import type { BeforeToolCallResult, AfterToolCallResult } from "@mariozechner/pi-agent-core";
 import type { Message } from "@mariozechner/pi-ai";
-import type { SwarmConfig, SwarmEvent, InterventionPoint, LLMBackendConfig, SwarmAgentConfig } from "./types.js";
+import type { SwarmConfig, SwarmEvent, InterventionPoint, LLMBackendConfig, SwarmAgentConfig, EventLogLevel } from "./types.js";
 import type { IStorage } from "../storage/interface.js";
 import type { StoredMessage } from "../storage/interface.js";
 import type { InterventionHandler } from "../intervention/handler.js";
@@ -49,12 +49,27 @@ interface ConversationRuntimeOptions {
 }
 
 export class Conversation {
+  private static readonly KEY_EVENT_TYPES = new Set<SwarmEvent["type"]>([
+    "swarm_start",
+    "swarm_end",
+    "agent_start",
+    "agent_end",
+    "turn_start",
+    "turn_end",
+    "message_end",
+    "tool_execution_end",
+    "handoff",
+    "intervention_required",
+    "error",
+  ]);
+
   private id: string;
   private swarmConfig: SwarmConfig;
   private storage: IStorage;
   private interventionHandler?: InterventionHandler;
   private interventionCallback?: InterventionCallback;
   private llmConfig: LLMBackendConfig;
+  private readonly eventLogLevel: EventLogLevel;
   private agents: Map<string, ActiveAgent> = new Map();
   private restoredMessages: Message[];
   private runtimeOptions: ConversationRuntimeOptions = {
@@ -76,6 +91,7 @@ export class Conversation {
     llmConfig: LLMBackendConfig,
     interventionHandler?: InterventionHandler,
     restoredHistory: StoredMessage[] = [],
+    eventLogLevel: EventLogLevel = "key",
   ) {
     this.id = id;
     this.swarmConfig = swarmConfig;
@@ -83,6 +99,7 @@ export class Conversation {
     this.llmConfig = llmConfig;
     this.interventionHandler = interventionHandler;
     this.restoredMessages = restoredHistory.map((msg) => storedToMessage(msg));
+    this.eventLogLevel = eventLogLevel;
   }
 
   getId(): string { return this.id; }
@@ -193,13 +210,15 @@ export class Conversation {
   // ── Private ──
 
   private emit(event: SwarmEvent) {
-    void this.storage.logEvent(this.id, {
-      id: crypto.randomUUID(),
-      agentId: null,
-      eventType: event.type,
-      eventData: JSON.stringify(this.serializeEvent(event)),
-      timestamp: Date.now(),
-    }).catch(() => { /* ignore log write failures */ });
+    if (this.shouldPersistEvent(event)) {
+      void this.storage.logEvent(this.id, {
+        id: crypto.randomUUID(),
+        agentId: null,
+        eventType: event.type,
+        eventData: JSON.stringify(this.serializeEvent(event)),
+        timestamp: Date.now(),
+      }).catch(() => { /* ignore log write failures */ });
+    }
 
     if (event.type === "error") {
       const strategy = this.getInterventionStrategy("on_error");
@@ -462,5 +481,15 @@ export class Conversation {
       delete serialized.respond;
     }
     return serialized;
+  }
+
+  private shouldPersistEvent(event: SwarmEvent): boolean {
+    if (this.eventLogLevel === "none") {
+      return false;
+    }
+    if (this.eventLogLevel === "full") {
+      return true;
+    }
+    return Conversation.KEY_EVENT_TYPES.has(event.type);
   }
 }

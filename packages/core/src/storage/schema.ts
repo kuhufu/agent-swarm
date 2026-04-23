@@ -31,6 +31,7 @@ export const conversationsTable = sqliteTable("conversations", {
   thinkModeEnabled: integer("think_mode_enabled").notNull().default(0),
   directProvider: text("direct_provider"),
   directModelId: text("direct_model_id"),
+  contextResetAt: integer("context_reset_at"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 });
