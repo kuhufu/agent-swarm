@@ -1,88 +1,220 @@
 # Agent Swarm
 
-基于 `@mariozechner/pi-agent-core` 的多 Agent 协作框架，包含后端 SDK/服务 + Vue 前端 UI。
+基于 `@mariozechner/pi-agent-core` 的多 Agent 协作框架，提供：
 
-## 功能特性
+- `@agent-swarm/core`：协作编排与持久化 SDK
+- `@agent-swarm/server`：Express + WebSocket API 服务
+- `@agent-swarm/web`：Vue 3 可视化管理与对话界面
 
-- **多 Agent 协作**：Router / Sequential / Parallel / Swarm / Debate 五种协作模式
-- **用户介入机制**：7 个介入点、5 种策略，支持分级配置
-- **可配置 LLM 后端**：支持 Anthropic / OpenAI / Google / Bedrock / OpenRouter
-- **历史消息持久化**：SQLite 存储，支持对话恢复
-- **Web UI**：Vue 3 + Vite 构建的交互界面
+## 核心能力
 
-## 项目结构
+- 五种协作模式：`router` / `sequential` / `parallel` / `swarm` / `debate`
+- 直接对话模式：无需预建 swarm，可按会话选择 `provider + modelId`
+- 历史消息持久化：SQLite 存储，支持恢复会话上下文
+- 上下文清空：保留历史消息，仅重置后续模型上下文
+- 介入机制：支持工具调用/错误/handoff 等节点人工决策
+- 事件分级落库：`eventLogLevel = none | key | full`（默认 `key`）
 
-```
+## Monorepo 结构
+
+```text
 agent-swarm/
 ├── packages/
-│   ├── core/       # @agent-swarm/core — 后端 SDK
-│   ├── server/     # @agent-swarm/server — Express + WebSocket API
-│   └── web/        # @agent-swarm/web — Vue 3 前端
-├── agent-swarm.config.ts  # 示例配置
-└── spec.md                # 规格书
+│   ├── core/        # @agent-swarm/core
+│   ├── server/      # @agent-swarm/server
+│   └── web/         # @agent-swarm/web
+├── docs/
+│   └── context-recovery.md
+├── agent-swarm.config.ts     # SDK 配置示例（示例文件，不会被 server 自动读取）
+└── README.md
 ```
+
+## 环境要求
+
+- Node.js `>= 18`
+- pnpm `>= 8`
 
 ## 快速开始
 
-### 前置条件
-
-- Node.js >= 18
-- pnpm >= 9
-
-### 安装
+### 1. 安装依赖
 
 ```bash
 pnpm install
 ```
 
-### 配置
-
-1. 复制 `.env.example` 为 `.env` 并填入 API Key：
+### 2. 配置环境变量
 
 ```bash
 cp .env.example .env
 ```
 
-2. 编辑 `agent-swarm.config.ts` 配置 Swarm
+最小配置：
 
-### 开发
+```env
+DEEPSEEK_API_KEY=your_key
+PORT=3000
+DB_PATH=./data/agent-swarm.db
+```
+
+### 3. 启动开发环境
 
 ```bash
-# 启动所有服务（server + web）
 pnpm dev
-
-# 单独启动
-pnpm dev:core    # 仅 SDK
-pnpm dev:server  # 仅 API 服务
-pnpm dev:web     # 仅前端
 ```
 
-### 构建
+默认地址：
+
+- Web: `http://localhost:5173`
+- API: `http://localhost:3000`
+- WebSocket: `ws://localhost:3000/ws`
+
+## 常用命令
 
 ```bash
+# 开发
+pnpm dev
+pnpm dev:core
+pnpm dev:server
+pnpm dev:web
+
+# 构建
 pnpm build
+pnpm build:core
+pnpm build:server
+pnpm build:web
+
+# 测试
+pnpm test
+pnpm --filter @agent-swarm/core test
+pnpm --filter @agent-swarm/server test
 ```
 
-## 技术栈
+## REST API 概览
 
-| 层 | 技术 |
-|---|------|
-| 后端 SDK | TypeScript + pi-agent-core + pi-ai |
-| API 服务 | Express + WebSocket (ws) |
-| 数据存储 | better-sqlite3 + drizzle-orm |
-| 前端 | Vue 3 + Vite + Pinia + TDesign |
-| 样式 | Tailwind CSS v4 |
-| Monorepo | pnpm workspace |
+### 健康检查
 
-## 协作模式
+- `GET /api/health`
 
-| 模式 | 说明 |
-|------|------|
-| Router | 路由到专业 Agent |
-| Sequential | 顺序 Pipeline 处理 |
-| Parallel | 并行处理 + 聚合 |
-| Swarm | Handoff 自由协作 |
-| Debate | 多轮辩论 + Judge |
+### Swarm 管理
+
+- `GET /api/swarms`
+- `GET /api/swarms/:id`
+- `POST /api/swarms`
+- `PUT /api/swarms/:id`
+- `DELETE /api/swarms/:id`
+
+### 会话管理
+
+- `GET /api/conversations?swarmId=...`
+- `POST /api/conversations`
+- `GET /api/conversations/:id`
+- `PATCH /api/conversations/:id/preferences`
+- `POST /api/conversations/:id/context/clear`
+- `POST /api/conversations/:id/resume`
+- `DELETE /api/conversations/:id`
+
+### 消息查询
+
+- `GET /api/conversations/:id/messages`
+
+### LLM 配置
+
+- `GET /api/config`
+- `PUT /api/config`
+- `GET /api/config/providers`
+- `GET /api/config/providers/:providerId/models`
+- `POST /api/config/test-model`
+
+## WebSocket 协议（核心）
+
+连接：`ws://localhost:3000/ws`
+
+客户端 -> 服务端常用消息：
+
+- `send_message`
+- `subscribe_conversation`
+- `unsubscribe_conversation`
+- `abort`
+- `intervention_decision`
+- `client_tool_result`
+
+服务端 -> 客户端常用消息：
+
+- `connected`
+- `conversation_created`
+- `intervention_required`
+- `client_tool_execution_required`
+- `swarm_start` / `agent_start` / `message_update` / `handoff` / `swarm_end` 等事件流
+- `prompt_completed`
+- `error`
+
+### `send_message` 三种启动方式
+
+1. 指定 `swarmId`：走 swarm 模式会话。
+2. 指定 `conversationId`：续聊已有会话。
+3. 指定 `provider + modelId`：直接对话模式（不依赖预建 swarm）。
+
+## 上下文恢复机制
+
+当前实现的恢复逻辑：
+
+1. `resumeConversation(conversationId)` 读取会话与历史消息。
+2. 若会话存在 `context_reset_at`，仅恢复 `created_at > context_reset_at` 的消息。
+3. 恢复消息注入到 Agent 运行时 `messages`，用于继续推理。
+4. 历史消息不删除，仍可在消息列表查看。
+
+详细说明见：
+
+- [历史消息恢复上下文机制](./docs/context-recovery.md)
+
+## SDK 配置示例
+
+> 以下是 `@agent-swarm/core` 使用方式示例。  
+> 注意：`packages/server/src/index.ts` 当前默认直接在代码里构造配置。
+
+```ts
+import { defineConfig } from "@agent-swarm/core";
+
+export default defineConfig({
+  llm: {
+    apiKeys: {
+      deepseek: process.env.DEEPSEEK_API_KEY ?? "",
+    },
+  },
+  storage: {
+    type: "sqlite",
+    path: "./data/agent-swarm.db",
+  },
+  eventLogLevel: "key", // none | key | full，默认 key
+  swarms: [
+    {
+      id: "research-team",
+      name: "Research Team",
+      mode: "router",
+      orchestrator: {
+        id: "router",
+        name: "Router",
+        description: "Routes to specialist agents",
+        systemPrompt: "Route tasks to the right specialist.",
+        model: { provider: "deepseek", modelId: "deepseek-chat" },
+      },
+      agents: [
+        {
+          id: "researcher",
+          name: "Researcher",
+          description: "Information gathering",
+          systemPrompt: "You are a research specialist.",
+          model: { provider: "deepseek", modelId: "deepseek-chat" },
+        },
+      ],
+    },
+  ],
+});
+```
+
+## 文档索引
+
+- [历史消息恢复上下文机制](./docs/context-recovery.md)
 
 ## License
 
