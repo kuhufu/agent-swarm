@@ -9,9 +9,7 @@ async function main() {
   const swarm = new AgentSwarm({
     config: {
       llm: {
-        apiKeys: {
-          deepseek: process.env.DEEPSEEK_API_KEY ?? "",
-        },
+        apiKeys: {},
       },
       storage: {
         type: "sqlite",

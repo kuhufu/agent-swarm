@@ -56,7 +56,6 @@ cp .env.example .env
 最小配置：
 
 ```env
-DEEPSEEK_API_KEY=your_key
 PORT=3000
 DB_PATH=./data/agent-swarm.db
 ```
@@ -205,9 +204,7 @@ import { defineConfig } from "@agent-swarm/core";
 
 export default defineConfig({
   llm: {
-    apiKeys: {
-      deepseek: process.env.DEEPSEEK_API_KEY ?? "",
-    },
+    apiKeys: {},
   },
   storage: {
     type: "sqlite",

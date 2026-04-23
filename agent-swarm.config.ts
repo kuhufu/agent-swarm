@@ -2,9 +2,7 @@ import { defineConfig } from "@agent-swarm/core";
 
 export default defineConfig({
   llm: {
-    apiKeys: {
-      deepseek: process.env.DEEPSEEK_API_KEY ?? "",
-    },
+    apiKeys: {},
   },
   storage: {
     type: "sqlite",
