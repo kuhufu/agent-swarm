@@ -101,6 +101,7 @@ const renderEntries = computed<RenderEntry[]>(() => {
         :key="entry.message.id"
         :message="entry.message"
         :streaming="entry.streaming"
+        :is-direct-mode="isDirectMode"
       />
     </div>
   </div>

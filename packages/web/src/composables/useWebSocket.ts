@@ -146,17 +146,24 @@ export function useWebSocket() {
       // ── Message events ──
       case "message_start":
         if (msg.payload.role === "assistant") {
-          const fallbackName = msg.payload.agentName
-            ?? msg.payload.agentId;
-          if (msg.payload.agentId && fallbackName) {
-            conversationStore.setAgentName(msg.payload.agentId, fallbackName, targetConversationId);
+          const rawAgentName = typeof msg.payload.agentName === "string" ? msg.payload.agentName.trim() : "";
+          const explicitAgentName = rawAgentName.length > 0 ? rawAgentName : undefined;
+          if (msg.payload.agentId && explicitAgentName) {
+            conversationStore.setAgentName(msg.payload.agentId, explicitAgentName, targetConversationId);
           }
+          const streamAgentName = explicitAgentName
+            ?? (
+              typeof msg.payload.agentId === "string" && targetConversationId === conversationStore.currentConversationId
+                ? conversationStore.agentStates.get(msg.payload.agentId)?.name
+                : undefined
+            )
+            ?? msg.payload.agentId;
           conversationStore.startStreamingMessage({
             id: crypto.randomUUID(),
             role: "assistant",
             content: "",
             agentId: msg.payload.agentId,
-            agentName: fallbackName,
+            agentName: streamAgentName,
             timestamp: Date.now(),
           }, targetConversationId);
         }

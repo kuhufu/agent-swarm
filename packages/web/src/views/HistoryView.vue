@@ -135,6 +135,50 @@ function getRoleColor(role: string): string {
   };
   return map[role] ?? "#9ca3af";
 }
+
+function parseMessageMetadata(message: ChatMessage): Record<string, unknown> | null {
+  const raw = (message as { metadata?: unknown }).metadata;
+  if (!raw) {
+    return null;
+  }
+  if (typeof raw === "object" && !Array.isArray(raw)) {
+    return raw as Record<string, unknown>;
+  }
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function messageMetadataModelLabel(message: ChatMessage): string | null {
+  const metadata = parseMessageMetadata(message);
+  const provider = typeof metadata?.provider === "string" ? metadata.provider.trim() : "";
+  const model = typeof metadata?.model === "string" ? metadata.model.trim() : "";
+  if (!provider || !model) {
+    return null;
+  }
+  return `${provider}/${model}`;
+}
+
+function getMessageLabel(message: ChatMessage, conversation: ConversationInfo): string {
+  if (message.role !== "assistant") {
+    return getRoleLabel(message.role);
+  }
+
+  const metadataModelLabel = messageMetadataModelLabel(message);
+  const isDirectConversation = conversation.swarmId.startsWith("__direct_");
+  if (isDirectConversation) {
+    return metadataModelLabel ?? message.agentName ?? message.agentId ?? "助手";
+  }
+  return message.agentName ?? message.agentId ?? metadataModelLabel ?? "助手";
+}
 </script>
 
 <template>
@@ -255,7 +299,7 @@ function getRoleColor(role: string): string {
               >
                 <div class="msg-header">
                   <span class="msg-role-badge" :style="{ background: getRoleColor(msg.role) + '20', color: getRoleColor(msg.role) }">
-                    {{ msg.agentName ?? getRoleLabel(msg.role) }}
+                    {{ getMessageLabel(msg, selectedConv) }}
                   </span>
                 </div>
                 <div class="msg-body">{{ msg.content }}</div>
