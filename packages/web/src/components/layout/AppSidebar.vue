@@ -28,6 +28,63 @@ const recentConversations = computed(() =>
     .slice(0, 30),
 );
 
+interface ConversationDayGroup {
+  key: string;
+  label: string;
+  items: ConversationInfo[];
+}
+
+function startOfDay(timestamp: number): number {
+  const date = new Date(timestamp);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
+function dateKey(timestamp: number): string {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function dayLabel(timestamp: number): string {
+  const targetDay = startOfDay(timestamp);
+  const today = startOfDay(Date.now());
+  const diffDays = Math.round((today - targetDay) / 86_400_000);
+
+  if (diffDays === 0) {
+    return "今天";
+  }
+  if (diffDays === 1) {
+    return "昨天";
+  }
+
+  return new Date(timestamp).toLocaleDateString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
+
+const conversationGroups = computed<ConversationDayGroup[]>(() => {
+  const groups = new Map<string, ConversationDayGroup>();
+  for (const conversation of recentConversations.value) {
+    const key = dateKey(conversation.updatedAt);
+    const existing = groups.get(key);
+    if (existing) {
+      existing.items.push(conversation);
+      continue;
+    }
+    groups.set(key, {
+      key,
+      label: dayLabel(conversation.updatedAt),
+      items: [conversation],
+    });
+  }
+  return Array.from(groups.values());
+});
+
 /**
  * Resolve display label for a conversation's swarm context.
  * - Direct mode conversations have swarmId prefixed with "__direct_"
@@ -54,22 +111,10 @@ function navigateTo(path: string) {
 }
 
 function formatTime(ts: number): string {
-  const now = Date.now();
-  const diff = now - ts;
-  // Less than 1 minute
-  if (diff < 60_000) return "刚刚";
-  // Less than 1 hour
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}分钟前`;
-  // Less than 24 hours
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}小时前`;
-  // Less than 7 days
-  if (diff < 604_800_000) return `${Math.floor(diff / 86_400_000)}天前`;
-  // Otherwise date
-  return new Date(ts).toLocaleString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
+  return new Date(ts).toLocaleTimeString("zh-CN", {
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
 }
 
@@ -292,35 +337,38 @@ import { h } from "vue";
         </div>
       </div>
       <div class="conversation-list">
-        <div
-          v-for="conv in recentConversations"
-          :key="conv.id"
-          class="conversation-item"
-          :class="{ active: isConversationActive(conv.id) }"
-          @click="handleOpenConversation(conv)"
-        >
-          <div class="conversation-main">
-            <div class="conversation-title-row">
-              <span class="conversation-title">{{ conv.title ?? "新对话" }}</span>
-              <span
-                class="mode-tag"
-                :class="getConversationMode(conv).type"
-              >{{ getConversationMode(conv).label }}</span>
-            </div>
-            <span class="conversation-time">{{ formatTime(conv.updatedAt) }}</span>
-          </div>
-          <button
-            class="conversation-more"
-            title="更多操作"
-            @click.stop="toggleConversationMenu($event, conv.id)"
+        <template v-for="group in conversationGroups" :key="group.key">
+          <div class="conversation-day-divider">{{ group.label }}</div>
+          <div
+            v-for="conv in group.items"
+            :key="conv.id"
+            class="conversation-item"
+            :class="{ active: isConversationActive(conv.id) }"
+            @click="handleOpenConversation(conv)"
           >
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="5" cy="12" r="2" />
-              <circle cx="12" cy="12" r="2" />
-              <circle cx="19" cy="12" r="2" />
-            </svg>
-          </button>
-        </div>
+            <div class="conversation-main">
+              <div class="conversation-title-row">
+                <span class="conversation-title">{{ conv.title ?? "新对话" }}</span>
+                <span
+                  class="mode-tag"
+                  :class="getConversationMode(conv).type"
+                >{{ getConversationMode(conv).label }}</span>
+              </div>
+              <span class="conversation-time">{{ formatTime(conv.updatedAt) }}</span>
+            </div>
+            <button
+              class="conversation-more"
+              title="更多操作"
+              @click.stop="toggleConversationMenu($event, conv.id)"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="5" cy="12" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="19" cy="12" r="2" />
+              </svg>
+            </button>
+          </div>
+        </template>
         <div v-if="!recentConversations.length" class="conversation-empty">暂无会话</div>
       </div>
     </section>
@@ -528,6 +576,21 @@ import { h } from "vue";
   justify-content: space-between;
   gap: 8px;
   transition: all 0.2s;
+}
+
+.conversation-day-divider {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin-top: 8px;
+  margin-bottom: 4px;
+  padding: 4px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: rgba(10, 14, 26, 0.85);
+  backdrop-filter: blur(6px);
+  border-radius: 6px;
 }
 
 .conversation-item:hover {
