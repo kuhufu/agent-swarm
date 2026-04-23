@@ -85,7 +85,12 @@ export const useConversationStore = defineStore("conversation", () => {
     if (!conversationId) {
       return;
     }
-    runtimeStates.value.set(conversationId, {
+    runtimeStates.value.set(conversationId, snapshotCurrentRuntimeState());
+    runtimeStates.value = new Map(runtimeStates.value);
+  }
+
+  function snapshotCurrentRuntimeState(): ConversationRuntimeState {
+    return {
       messages: messages.value.map((message) => cloneMessage(message)),
       streamingMessages: new Map(
         Array.from(streamingMessages.value.entries()).map(([key, message]) => [key, cloneMessage(message)]),
@@ -94,8 +99,7 @@ export const useConversationStore = defineStore("conversation", () => {
         Array.from(agentStates.value.entries()).map(([key, state]) => [key, cloneAgentState(state)]),
       ),
       isActive: isActive.value,
-    });
-    runtimeStates.value = new Map(runtimeStates.value);
+    };
   }
 
   function restoreRuntimeState(conversationId: string): boolean {
@@ -416,6 +420,17 @@ export const useConversationStore = defineStore("conversation", () => {
     const previousConversationId = currentConversationId.value;
     if (previousConversationId && previousConversationId !== id) {
       persistCurrentRuntimeState();
+    }
+
+    const shouldMigrateDraftState = Boolean(
+      !previousConversationId
+      && id
+      && !runtimeStates.value.has(id)
+      && (messages.value.length > 0 || streamingMessages.value.size > 0 || isActive.value),
+    );
+    if (shouldMigrateDraftState && id) {
+      runtimeStates.value.set(id, snapshotCurrentRuntimeState());
+      runtimeStates.value = new Map(runtimeStates.value);
     }
 
     currentConversationId.value = id;

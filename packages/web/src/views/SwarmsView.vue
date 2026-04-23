@@ -13,6 +13,7 @@ const settingsStore = useSettingsStore();
 const showDialog = ref(false);
 const selectedSwarmId = ref<string | null>(null);
 const hasUnsavedChanges = ref(false);
+const orchestratorId = ref("");
 
 // Editable form state
 const editForm = reactive<{
@@ -48,6 +49,15 @@ const selectedSwarm = computed(() =>
 );
 
 const savedModels = computed<SavedModel[]>(() => settingsStore.config?.models ?? []);
+const routerOrchestratorOptions = computed(() => {
+  if (!editForm.agents.length) {
+    return [{ value: "", label: "请先添加 Agent" }];
+  }
+  return editForm.agents.map((agent) => ({
+    value: agent.id,
+    label: `${agent.name} (${agent.id})`,
+  }));
+});
 
 const modes: { value: CollaborationMode; label: string; desc: string; icon: string }[] = [
   { value: "router", label: "Router 路由", desc: "智能路由到最合适的 Agent", icon: "🔀" },
@@ -62,6 +72,17 @@ onMounted(() => {
   settingsStore.fetchConfig();
 });
 
+function syncRouterOrchestrator(preferredId?: string) {
+  if (preferredId && editForm.agents.some((agent) => agent.id === preferredId)) {
+    orchestratorId.value = preferredId;
+    return;
+  }
+  if (editForm.agents.some((agent) => agent.id === orchestratorId.value)) {
+    return;
+  }
+  orchestratorId.value = editForm.agents[0]?.id ?? "";
+}
+
 // Sync form with selected swarm
 watch(selectedSwarm, (swarm) => {
   if (swarm) {
@@ -71,9 +92,14 @@ watch(selectedSwarm, (swarm) => {
     editForm.debateConfig = swarm.debateConfig ? { ...swarm.debateConfig } : undefined;
     editForm.maxTotalTurns = swarm.maxTotalTurns;
     editForm.maxConcurrency = swarm.maxConcurrency;
+    syncRouterOrchestrator(swarm.orchestrator?.id);
     hasUnsavedChanges.value = false;
   }
 }, { immediate: true });
+
+watch(() => editForm.mode, () => {
+  syncRouterOrchestrator();
+});
 
 function markDirty() {
   hasUnsavedChanges.value = true;
@@ -130,7 +156,7 @@ async function handleDelete(swarm: SwarmConfig) {
 async function handleSave() {
   if (!selectedSwarmId.value || !editForm.name || !editForm.agents.length) return;
   const orchestrator = editForm.mode === "router"
-    ? editForm.agents.find((agent) => agent.id === selectedSwarm.value?.orchestrator?.id) ?? editForm.agents[0]
+    ? editForm.agents.find((agent) => agent.id === orchestratorId.value) ?? editForm.agents[0]
     : undefined;
   const updated: SwarmConfig = {
     id: selectedSwarmId.value,
@@ -200,12 +226,14 @@ function submitAgent() {
   } else {
     editForm.agents.push(agentData);
   }
+  syncRouterOrchestrator();
   resetAgentForm();
   markDirty();
 }
 
 function removeAgent(index: number) {
   editForm.agents.splice(index, 1);
+  syncRouterOrchestrator();
   if (editingAgentIndex.value === index) resetAgentForm();
   markDirty();
 }
@@ -354,6 +382,30 @@ function getModeConfig(mode: string) {
                   <span class="mode-desc">{{ m.desc }}</span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- Router Config -->
+          <div v-if="editForm.mode === 'router'" class="detail-section">
+            <h4 class="detail-section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M16 8l-8 8" />
+                <path d="M8 8h8v8" />
+              </svg>
+              路由配置
+            </h4>
+            <div class="router-config card">
+              <div class="form-row">
+                <label>Orchestrator</label>
+                <CustomSelect
+                  :model-value="orchestratorId"
+                  :options="routerOrchestratorOptions"
+                  placeholder="选择路由 Agent"
+                  @update:model-value="orchestratorId = $event; markDirty()"
+                />
+              </div>
+              <p class="router-config-hint">Router 模式会由该 Agent 先接收请求并决定路由目标。</p>
             </div>
           </div>
 
@@ -1131,6 +1183,16 @@ textarea.input-field {
 /* Debate Config */
 .debate-config {
   padding: 16px;
+}
+
+.router-config {
+  padding: 16px;
+}
+
+.router-config-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 
 .agent-empty {

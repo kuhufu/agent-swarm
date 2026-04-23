@@ -3,6 +3,7 @@ import { ref, reactive, computed } from "vue";
 import { useSettingsStore } from "../../stores/settings.js";
 import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel } from "../../types/index.js";
 import ModeIcon from "../common/ModeIcon.vue";
+import CustomSelect from "../common/CustomSelect.vue";
 
 const emit = defineEmits<{
   (e: "create", swarm: SwarmConfig): void;
@@ -20,6 +21,7 @@ const modes: { value: CollaborationMode; label: string; desc: string; icon: stri
 const name = ref("");
 const mode = ref<CollaborationMode>("router");
 const agents = reactive<SwarmAgentConfig[]>([]);
+const orchestratorId = ref("");
 
 const showAgentForm = ref(false);
 const agentForm = reactive<SwarmAgentConfig>({
@@ -33,6 +35,31 @@ const showCustomModel = ref(false);
 
 const settingsStore = useSettingsStore();
 const savedModels = computed<SavedModel[]>(() => settingsStore.config?.models ?? []);
+const orchestratorOptions = computed(() => {
+  if (!agents.length) {
+    return [{ value: "", label: "请先添加 Agent" }];
+  }
+  return agents.map((agent) => ({
+    value: agent.id,
+    label: `${agent.name} (${agent.id})`,
+  }));
+});
+
+function syncOrchestrator(preferredId?: string) {
+  if (preferredId && agents.some((agent) => agent.id === preferredId)) {
+    orchestratorId.value = preferredId;
+    return;
+  }
+  if (agents.some((agent) => agent.id === orchestratorId.value)) {
+    return;
+  }
+  orchestratorId.value = agents[0]?.id ?? "";
+}
+
+function setMode(nextMode: CollaborationMode) {
+  mode.value = nextMode;
+  syncOrchestrator();
+}
 
 function selectModelForAgent(model: SavedModel) {
   agentForm.model.provider = model.provider;
@@ -49,6 +76,7 @@ function clearModelSelection() {
 function addAgent() {
   if (!agentForm.id || !agentForm.name) return;
   agents.push({ ...agentForm, model: { ...agentForm.model } });
+  syncOrchestrator();
   agentForm.id = "";
   agentForm.name = "";
   agentForm.description = "";
@@ -60,22 +88,23 @@ function addAgent() {
 
 function removeAgent(index: number) {
   agents.splice(index, 1);
+  syncOrchestrator();
 }
 
 function submit() {
   if (!name.value || !agents.length) return;
   const swarmId = name.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
   const orchestrator = mode.value === "router"
-    ? agents[0]
+    ? agents.find((agent) => agent.id === orchestratorId.value) ?? agents[0]
     : undefined;
   const swarm: SwarmConfig = {
     id: swarmId,
     name: name.value,
     mode: mode.value,
-    agents: [...agents],
+    agents: agents.map((agent) => ({ ...agent, model: { ...agent.model } })),
   };
   if (orchestrator) {
-    swarm.orchestrator = { ...orchestrator };
+    swarm.orchestrator = { ...orchestrator, model: { ...orchestrator.model } };
   }
   if (mode.value === "debate") {
     swarm.debateConfig = {
@@ -119,7 +148,7 @@ function submit() {
               :key="m.value"
               class="mode-option"
               :class="{ active: mode === m.value }"
-              @click="mode = m.value"
+              @click="setMode(m.value)"
             >
               <span class="mode-icon"><ModeIcon :mode="m.value" /></span>
               <div class="mode-info">
@@ -128,6 +157,19 @@ function submit() {
               </div>
             </div>
           </div>
+        </div>
+
+        <div v-if="mode === 'router'" class="form-section">
+          <label class="form-label">Orchestrator</label>
+          <div class="form-row" style="margin-bottom: 0;">
+            <CustomSelect
+              :model-value="orchestratorId"
+              :options="orchestratorOptions"
+              placeholder="选择路由 Agent"
+              @update:model-value="orchestratorId = $event"
+            />
+          </div>
+          <p class="orchestrator-hint">Router 模式会由该 Agent 负责路由决策。</p>
         </div>
 
         <div class="form-section">
@@ -406,6 +448,12 @@ function submit() {
   color: var(--color-text-muted);
   font-size: 12px;
   font-weight: 500;
+}
+
+.orchestrator-hint {
+  margin: 8px 0 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
 }
 
 .model-selection {
