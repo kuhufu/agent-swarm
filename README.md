@@ -24,7 +24,8 @@ agent-swarm/
 │   ├── server/      # @agent-swarm/server
 │   └── web/         # @agent-swarm/web
 ├── docs/
-│   └── context-recovery.md
+│   ├── context-recovery.md
+│   └── frontend-conversation-runtime.md
 ├── agent-swarm.config.ts     # SDK 配置示例（示例文件，不会被 server 自动读取）
 └── README.md
 ```
@@ -167,6 +168,18 @@ pnpm --filter @agent-swarm/server test
 
 - [历史消息恢复上下文机制](./docs/context-recovery.md)
 
+## 前端会话运行态机制
+
+当前前端会话状态管理采用“按会话 ID 分桶缓存”的单一状态源模型：
+
+1. 所有运行态（消息、流式消息、Agent 状态、活动状态）都按 `conversationId` 存入 `runtimeStates`。
+2. UI 只读取当前会话对应 bucket，不再通过 `snapshot/restore` 切换会话。
+3. 新会话创建前的消息先写入草稿 bucket，收到 `conversation_created` 后归并到真实会话 bucket。
+
+详细说明见：
+
+- [前端会话运行态分桶机制](./docs/frontend-conversation-runtime.md)
+
 ## SDK 配置示例
 
 > 以下是 `@agent-swarm/core` 使用方式示例。  
@@ -215,6 +228,7 @@ export default defineConfig({
 ## 文档索引
 
 - [历史消息恢复上下文机制](./docs/context-recovery.md)
+- [前端会话运行态分桶机制](./docs/frontend-conversation-runtime.md)
 
 ## License
 

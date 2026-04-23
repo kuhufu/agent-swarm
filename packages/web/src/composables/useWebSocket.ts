@@ -125,6 +125,9 @@ export function useWebSocket() {
 
       case "conversation_created":
         if (targetConversationId) {
+          conversationStore.bindDraftToConversation(targetConversationId);
+        }
+        if (targetConversationId && targetConversationId !== conversationStore.currentConversationId) {
           conversationStore.setCurrentConversation(targetConversationId);
         }
         conversationStore.applyConversationSettingsFromServer(msg.payload);
