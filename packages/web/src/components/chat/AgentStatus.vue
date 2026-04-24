@@ -24,12 +24,16 @@ const swarmInfo = computed(() => {
 /** Configured agents from the current Swarm (shown before conversation starts) */
 const configuredAgents = computed(() => {
   const swarm = swarmStore.currentSwarm;
-  if (!swarm) return [];
-  const list = [...swarm.agents];
-  if (swarm.orchestrator) {
-    list.unshift(swarm.orchestrator);
+  return swarm?.agents ?? [];
+});
+
+const displayedAgents = computed(() => {
+  const swarm = swarmStore.currentSwarm;
+  if (!swarm) {
+    return props.agents;
   }
-  return list;
+  const allowedAgentIds = new Set(swarm.agents.map((agent) => agent.id));
+  return props.agents.filter((agent) => allowedAgentIds.has(agent.id));
 });
 
 function statusLabel(status: AgentState["status"]): string {
@@ -45,9 +49,7 @@ function statusLabel(status: AgentState["status"]): string {
 function getAgentConfig(agentId: string) {
   const swarm = swarmStore.currentSwarm;
   if (!swarm) return null;
-  return swarm.agents.find((a) => a.id === agentId)
-    ?? (swarm.orchestrator?.id === agentId ? swarm.orchestrator : undefined)
-    ?? null;
+  return swarm.agents.find((a) => a.id === agentId) ?? null;
 }
 
 function agentModelLabel(agent: AgentState): string {
@@ -100,9 +102,9 @@ function agentSystemPrompt(agent: AgentState): string {
       </div>
     </div>
 
-    <div v-if="agents.length > 0" class="agent-list">
+    <div v-if="displayedAgents.length > 0" class="agent-list">
       <div
-        v-for="agent in agents"
+        v-for="agent in displayedAgents"
         :key="agent.id"
         class="agent-card"
       >

@@ -56,6 +56,7 @@
 - 选择后自动回填 `name/description/systemPrompt/model`
 - 自动生成不与当前 Swarm 冲突的 Agent `id`
 - 仍可在回填后手动编辑
+- 已添加到 Swarm 的 Agent 列表支持拖动排序（创建弹窗与管理页编辑面板均支持）
 
 ## 6. 约束说明
 

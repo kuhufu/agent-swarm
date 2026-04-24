@@ -39,6 +39,9 @@ const editForm = reactive<{
 const showAgentForm = ref(false);
 const editingAgentIndex = ref<number | null>(null);
 const selectedPresetId = ref("");
+const draggingAgentIndex = ref<number | null>(null);
+const dragOverAgentIndex = ref<number | null>(null);
+const suppressAgentClick = ref(false);
 const agentForm = reactive<SwarmAgentConfig>({
   id: "",
   name: "",
@@ -170,6 +173,92 @@ function syncRouterOrchestrator(preferredId?: string) {
     return;
   }
   orchestratorId.value = editForm.agents[0]?.id ?? "";
+}
+
+function reorderAgents(fromIndex: number, toIndex: number): boolean {
+  if (
+    fromIndex === toIndex
+    || fromIndex < 0
+    || toIndex < 0
+    || fromIndex >= editForm.agents.length
+    || toIndex >= editForm.agents.length
+  ) {
+    return false;
+  }
+
+  const [moved] = editForm.agents.splice(fromIndex, 1);
+  if (!moved) {
+    return false;
+  }
+  editForm.agents.splice(toIndex, 0, moved);
+  return true;
+}
+
+function updateEditingIndexAfterReorder(fromIndex: number, toIndex: number) {
+  if (editingAgentIndex.value === null) {
+    return;
+  }
+  const currentEditingIndex = editingAgentIndex.value;
+  if (currentEditingIndex === fromIndex) {
+    editingAgentIndex.value = toIndex;
+    return;
+  }
+  if (fromIndex < currentEditingIndex && toIndex >= currentEditingIndex) {
+    editingAgentIndex.value = currentEditingIndex - 1;
+    return;
+  }
+  if (fromIndex > currentEditingIndex && toIndex <= currentEditingIndex) {
+    editingAgentIndex.value = currentEditingIndex + 1;
+  }
+}
+
+function handleAgentDragStart(index: number, event: DragEvent) {
+  draggingAgentIndex.value = index;
+  dragOverAgentIndex.value = index;
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(index));
+  }
+}
+
+function handleAgentDragOver(index: number, event: DragEvent) {
+  if (draggingAgentIndex.value === null) {
+    return;
+  }
+  event.preventDefault();
+  if (dragOverAgentIndex.value !== index) {
+    dragOverAgentIndex.value = index;
+  }
+}
+
+function handleAgentDrop(index: number, event: DragEvent) {
+  event.preventDefault();
+  const fromIndex = draggingAgentIndex.value;
+  if (fromIndex === null) {
+    return;
+  }
+
+  if (reorderAgents(fromIndex, index)) {
+    updateEditingIndexAfterReorder(fromIndex, index);
+    syncRouterOrchestrator(orchestratorId.value);
+    markDirty();
+    suppressAgentClick.value = true;
+  }
+  draggingAgentIndex.value = null;
+  dragOverAgentIndex.value = null;
+}
+
+function handleAgentDragEnd() {
+  draggingAgentIndex.value = null;
+  dragOverAgentIndex.value = null;
+}
+
+function handleAgentCardClick(index: number) {
+  if (suppressAgentClick.value) {
+    suppressAgentClick.value = false;
+    return;
+  }
+  startEditAgent(index);
 }
 
 // Sync form with selected swarm
@@ -560,73 +649,89 @@ function clearModelSelection() {
             </div>
 
             <!-- Agent Form Dialog -->
-            <div v-if="showAgentForm" class="dialog-overlay" @click.self="resetAgentForm">
-              <div class="agent-dialog">
-                <div class="dialog-header">
-                  <h3>{{ editingAgentIndex !== null ? '编辑 Agent' : '添加 Agent' }}</h3>
-                  <button class="close-btn" @click="resetAgentForm">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                  </button>
-                </div>
-                <div class="dialog-body">
-                  <div v-if="agentStore.sortedPresets.length > 0" class="form-row">
-                    <label>预设模板</label>
-                    <CustomSelect
-                      :model-value="selectedPresetId"
-                      :options="presetAgentOptions"
-                      placeholder="选择已有 Agent 模板"
-                      @update:model-value="handlePresetSelection"
-                    />
+            <Teleport to="body">
+              <div v-if="showAgentForm" class="dialog-overlay" @click.self="resetAgentForm">
+                <div class="agent-dialog">
+                  <div class="dialog-header">
+                    <h3>{{ editingAgentIndex !== null ? '编辑 Agent' : '添加 Agent' }}</h3>
+                    <button class="close-btn" @click="resetAgentForm">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </button>
                   </div>
-                  <div class="form-row">
-                    <label>ID</label>
-                    <input v-model="agentForm.id" class="input-field" placeholder="agent-1" :disabled="editingAgentIndex !== null" />
-                  </div>
-                  <div class="form-row">
-                    <label>名称</label>
-                    <input v-model="agentForm.name" class="input-field" placeholder="Agent 1" />
-                  </div>
-                  <div class="form-row">
-                    <label>描述</label>
-                    <input v-model="agentForm.description" class="input-field" placeholder="负责..." />
-                  </div>
-                  <div class="form-row">
-                    <label>System Prompt</label>
-                    <textarea v-model="agentForm.systemPrompt" class="input-field" placeholder="你是一个..." rows="3" />
-                  </div>
-                  <div v-if="savedModels.length > 0" class="model-selection">
-                    <label class="form-label" style="margin-bottom: 8px;">选择模型</label>
-                    <div class="model-chips">
-                      <button v-for="sm in savedModels" :key="sm.id" class="model-chip" :class="{ active: agentForm.model.provider === sm.provider && agentForm.model.modelId === sm.modelId }" @click="selectModelForAgent(sm)">{{ sm.name }}</button>
-                      <button class="model-chip" :class="{ active: showCustomModel }" @click="clearModelSelection">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-                        自定义
-                      </button>
-                    </div>
-                  </div>
-                  <div v-if="showCustomModel || savedModels.length === 0" class="custom-model-fields">
-                    <div class="form-row">
-                      <label>Provider</label>
-                      <input v-model="agentForm.model.provider" class="input-field" placeholder="anthropic" />
+                  <div class="dialog-body">
+                    <div v-if="agentStore.sortedPresets.length > 0" class="form-row">
+                      <label>预设模板</label>
+                      <CustomSelect
+                        :model-value="selectedPresetId"
+                        :options="presetAgentOptions"
+                        placeholder="选择已有 Agent 模板"
+                        @update:model-value="handlePresetSelection"
+                      />
                     </div>
                     <div class="form-row">
-                      <label>模型</label>
-                      <input v-model="agentForm.model.modelId" class="input-field" placeholder="claude-sonnet-4-20250514" />
+                      <label>ID</label>
+                      <input v-model="agentForm.id" class="input-field" placeholder="agent-1" :disabled="editingAgentIndex !== null" />
+                    </div>
+                    <div class="form-row">
+                      <label>名称</label>
+                      <input v-model="agentForm.name" class="input-field" placeholder="Agent 1" />
+                    </div>
+                    <div class="form-row">
+                      <label>描述</label>
+                      <input v-model="agentForm.description" class="input-field" placeholder="负责..." />
+                    </div>
+                    <div class="form-row">
+                      <label>System Prompt</label>
+                      <textarea v-model="agentForm.systemPrompt" class="input-field" placeholder="你是一个..." rows="3" />
+                    </div>
+                    <div v-if="savedModels.length > 0" class="model-selection">
+                      <label class="form-label" style="margin-bottom: 8px;">选择模型</label>
+                      <div class="model-chips">
+                        <button v-for="sm in savedModels" :key="sm.id" class="model-chip" :class="{ active: agentForm.model.provider === sm.provider && agentForm.model.modelId === sm.modelId }" @click="selectModelForAgent(sm)">{{ sm.name }}</button>
+                        <button class="model-chip" :class="{ active: showCustomModel }" @click="clearModelSelection">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                          自定义
+                        </button>
+                      </div>
+                    </div>
+                    <div v-if="showCustomModel || savedModels.length === 0" class="custom-model-fields">
+                      <div class="form-row">
+                        <label>Provider</label>
+                        <input v-model="agentForm.model.provider" class="input-field" placeholder="anthropic" />
+                      </div>
+                      <div class="form-row">
+                        <label>模型</label>
+                        <input v-model="agentForm.model.modelId" class="input-field" placeholder="claude-sonnet-4-20250514" />
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div class="dialog-footer">
-                  <button class="btn-secondary" @click="resetAgentForm">取消</button>
-                  <button class="btn-primary" :disabled="!agentForm.id || !agentForm.name" @click="submitAgent">
-                    {{ editingAgentIndex !== null ? '保存修改' : '确认添加' }}
-                  </button>
+                  <div class="dialog-footer">
+                    <button class="btn-secondary" @click="resetAgentForm">取消</button>
+                    <button class="btn-primary" :disabled="!agentForm.id || !agentForm.name" @click="submitAgent">
+                      {{ editingAgentIndex !== null ? '保存修改' : '确认添加' }}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            </Teleport>
 
             <!-- Agent List -->
             <div v-if="editForm.agents.length" class="agent-list">
-              <div v-for="(agent, i) in editForm.agents" :key="agent.id" class="agent-edit-card" @click="startEditAgent(i)">
+              <div
+                v-for="(agent, i) in editForm.agents"
+                :key="agent.id"
+                class="agent-edit-card"
+                :class="{
+                  dragging: draggingAgentIndex === i,
+                  'drag-over': dragOverAgentIndex === i && draggingAgentIndex !== i,
+                }"
+                draggable="true"
+                @click="handleAgentCardClick(i)"
+                @dragstart="handleAgentDragStart(i, $event)"
+                @dragover="handleAgentDragOver(i, $event)"
+                @drop="handleAgentDrop(i, $event)"
+                @dragend="handleAgentDragEnd"
+              >
                 <div class="agent-info">
                   <div class="agent-avatar">{{ agent.name.charAt(0).toUpperCase() }}</div>
                   <div>
@@ -1012,8 +1117,8 @@ function clearModelSelection() {
 .dialog-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
+  background: transparent;
+  backdrop-filter: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1030,7 +1135,10 @@ function clearModelSelection() {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.38),
+    0 8px 20px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(99, 102, 241, 0.16);
 }
 
 .agent-dialog .dialog-header {
@@ -1168,13 +1276,25 @@ textarea.input-field {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--color-border-subtle);
   border-radius: 12px;
-  cursor: pointer;
+  cursor: grab;
   transition: all 0.2s;
 }
 
 .agent-edit-card:hover {
   background: rgba(255, 255, 255, 0.05);
   border-color: var(--color-border-hover);
+}
+
+.agent-edit-card.dragging {
+  opacity: 0.58;
+  border-color: rgba(99, 102, 241, 0.45);
+  background: rgba(99, 102, 241, 0.08);
+  cursor: grabbing;
+}
+
+.agent-edit-card.drag-over {
+  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(99, 102, 241, 0.12);
 }
 
 .agent-info {

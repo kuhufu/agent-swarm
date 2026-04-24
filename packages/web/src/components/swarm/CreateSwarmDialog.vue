@@ -21,6 +21,8 @@ const orchestratorId = ref("");
 
 const showAgentForm = ref(false);
 const selectedPresetId = ref("");
+const draggingAgentIndex = ref<number | null>(null);
+const dragOverAgentIndex = ref<number | null>(null);
 const agentForm = reactive<SwarmAgentConfig>({
   id: "",
   name: "",
@@ -140,6 +142,61 @@ function addAgent() {
 function removeAgent(index: number) {
   agents.splice(index, 1);
   syncOrchestrator();
+}
+
+function reorderAgents(fromIndex: number, toIndex: number): boolean {
+  if (
+    fromIndex === toIndex
+    || fromIndex < 0
+    || toIndex < 0
+    || fromIndex >= agents.length
+    || toIndex >= agents.length
+  ) {
+    return false;
+  }
+  const [moved] = agents.splice(fromIndex, 1);
+  if (!moved) {
+    return false;
+  }
+  agents.splice(toIndex, 0, moved);
+  return true;
+}
+
+function handleAgentDragStart(index: number, event: DragEvent) {
+  draggingAgentIndex.value = index;
+  dragOverAgentIndex.value = index;
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(index));
+  }
+}
+
+function handleAgentDragOver(index: number, event: DragEvent) {
+  if (draggingAgentIndex.value === null) {
+    return;
+  }
+  event.preventDefault();
+  if (dragOverAgentIndex.value !== index) {
+    dragOverAgentIndex.value = index;
+  }
+}
+
+function handleAgentDrop(index: number, event: DragEvent) {
+  event.preventDefault();
+  const fromIndex = draggingAgentIndex.value;
+  if (fromIndex === null) {
+    return;
+  }
+  if (reorderAgents(fromIndex, index)) {
+    syncOrchestrator(orchestratorId.value);
+  }
+  draggingAgentIndex.value = null;
+  dragOverAgentIndex.value = null;
+}
+
+function handleAgentDragEnd() {
+  draggingAgentIndex.value = null;
+  dragOverAgentIndex.value = null;
 }
 
 function submit() {
@@ -312,7 +369,20 @@ onMounted(() => {
           </div>
 
           <div v-if="agents.length" class="agent-list">
-            <div v-for="(agent, i) in agents" :key="agent.id" class="agent-list-item">
+            <div
+              v-for="(agent, i) in agents"
+              :key="agent.id"
+              class="agent-list-item"
+              :class="{
+                dragging: draggingAgentIndex === i,
+                'drag-over': dragOverAgentIndex === i && draggingAgentIndex !== i,
+              }"
+              draggable="true"
+              @dragstart="handleAgentDragStart(i, $event)"
+              @dragover="handleAgentDragOver(i, $event)"
+              @drop="handleAgentDrop(i, $event)"
+              @dragend="handleAgentDragEnd"
+            >
               <div class="agent-info">
                 <div class="agent-avatar">{{ agent.name.charAt(0).toUpperCase() }}</div>
                 <div>
@@ -612,12 +682,25 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--color-border-subtle);
   border-radius: 10px;
+  cursor: grab;
   transition: all 0.2s;
 }
 
 .agent-list-item:hover {
   background: rgba(255, 255, 255, 0.05);
   border-color: var(--color-border-hover);
+}
+
+.agent-list-item.dragging {
+  opacity: 0.58;
+  border-color: rgba(99, 102, 241, 0.45);
+  background: rgba(99, 102, 241, 0.08);
+  cursor: grabbing;
+}
+
+.agent-list-item.drag-over {
+  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(99, 102, 241, 0.12);
 }
 
 .agent-info {
