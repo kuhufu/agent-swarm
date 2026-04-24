@@ -50,6 +50,20 @@ export const messagesTable = sqliteTable("messages", {
   createdAt: integer("created_at").notNull(),
 });
 
+export const presetAgentsTable = sqliteTable("preset_agents", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  systemPrompt: text("system_prompt").notNull().default(""),
+  provider: text("provider").notNull().default(""),
+  modelId: text("model_id").notNull().default(""),
+  category: text("category").notNull().default(""),
+  tags: text("tags").notNull().default("[]"),
+  builtIn: integer("built_in").notNull().default(0),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
 export const eventsTable = sqliteTable("events", {
   id: text("id").primaryKey(),
   conversationId: text("conversation_id").notNull().references(() => conversationsTable.id),

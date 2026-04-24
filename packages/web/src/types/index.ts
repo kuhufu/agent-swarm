@@ -30,6 +30,17 @@ export interface SwarmAgentConfig {
   model: ModelConfig;
 }
 
+export interface PresetAgent {
+  id: string;
+  name: string;
+  description: string;
+  systemPrompt: string;
+  model: ModelConfig;
+  category: string;
+  tags: string[];
+  builtIn: boolean;
+}
+
 export interface ModelConfig {
   provider: string;
   modelId: string;

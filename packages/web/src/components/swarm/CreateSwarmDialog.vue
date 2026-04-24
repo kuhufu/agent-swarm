@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from "vue";
+import { ref, reactive, computed, onMounted } from "vue";
 import { useSettingsStore } from "../../stores/settings.js";
+import { useAgentStore } from "../../stores/agents.js";
 import { MODE_OPTIONS } from "../../constants/swarm-modes.js";
-import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel } from "../../types/index.js";
+import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, PresetAgent } from "../../types/index.js";
 import ModeIcon from "../common/ModeIcon.vue";
 import CustomSelect from "../common/CustomSelect.vue";
 
@@ -19,6 +20,7 @@ const agents = reactive<SwarmAgentConfig[]>([]);
 const orchestratorId = ref("");
 
 const showAgentForm = ref(false);
+const selectedPresetId = ref("");
 const agentForm = reactive<SwarmAgentConfig>({
   id: "",
   name: "",
@@ -29,7 +31,15 @@ const agentForm = reactive<SwarmAgentConfig>({
 const showCustomModel = ref(false);
 
 const settingsStore = useSettingsStore();
+const agentStore = useAgentStore();
 const savedModels = computed<SavedModel[]>(() => settingsStore.config?.models ?? []);
+const presetAgentOptions = computed(() => [
+  { value: "", label: "不使用预设模板" },
+  ...agentStore.sortedPresets.map((preset) => ({
+    value: preset.id,
+    label: `${preset.name}${preset.category ? ` · ${preset.category}` : ""}${preset.builtIn ? " · 内置" : ""}`,
+  })),
+]);
 const orchestratorOptions = computed(() => {
   if (!agents.length) {
     return [{ value: "", label: "请先添加 Agent" }];
@@ -62,6 +72,50 @@ function selectModelForAgent(model: SavedModel) {
   showCustomModel.value = false;
 }
 
+function normalizeAgentId(input: string): string {
+  const normalized = input
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || "agent";
+}
+
+function buildUniqueAgentId(baseId: string): string {
+  const normalizedBase = normalizeAgentId(baseId);
+  let candidate = normalizedBase;
+  let suffix = 2;
+  while (agents.some((agent) => agent.id === candidate)) {
+    candidate = `${normalizedBase}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+
+function applyPresetToForm(preset: PresetAgent) {
+  agentForm.id = buildUniqueAgentId(preset.id);
+  agentForm.name = preset.name;
+  agentForm.description = preset.description;
+  agentForm.systemPrompt = preset.systemPrompt;
+  agentForm.model.provider = preset.model.provider;
+  agentForm.model.modelId = preset.model.modelId;
+  showCustomModel.value = savedModels.value.every(
+    (model) => !(model.provider === preset.model.provider && model.modelId === preset.model.modelId),
+  );
+}
+
+function handlePresetSelection(presetId: string) {
+  selectedPresetId.value = presetId;
+  if (!presetId) {
+    return;
+  }
+  const preset = agentStore.sortedPresets.find((item) => item.id === presetId);
+  if (!preset) {
+    return;
+  }
+  applyPresetToForm(preset);
+}
+
 function clearModelSelection() {
   agentForm.model.provider = "";
   agentForm.model.modelId = "";
@@ -70,6 +124,7 @@ function clearModelSelection() {
 
 function addAgent() {
   if (!agentForm.id || !agentForm.name) return;
+  if (agents.some((agent) => agent.id === agentForm.id)) return;
   agents.push({ ...agentForm, model: { ...agentForm.model } });
   syncOrchestrator();
   agentForm.id = "";
@@ -79,6 +134,7 @@ function addAgent() {
   agentForm.model = { provider: "", modelId: "" };
   showAgentForm.value = false;
   showCustomModel.value = false;
+  selectedPresetId.value = "";
 }
 
 function removeAgent(index: number) {
@@ -111,6 +167,15 @@ function submit() {
   }
   emit("create", swarm);
 }
+
+onMounted(() => {
+  if (!settingsStore.config) {
+    void settingsStore.fetchConfig();
+  }
+  if (!agentStore.loaded) {
+    void agentStore.fetchAgents();
+  }
+});
 </script>
 
 <template>
@@ -193,6 +258,15 @@ function submit() {
                 </button>
               </div>
               <div class="sub-dialog-body">
+                <div v-if="agentStore.sortedPresets.length > 0" class="form-row">
+                  <label>预设模板</label>
+                  <CustomSelect
+                    :model-value="selectedPresetId"
+                    :options="presetAgentOptions"
+                    placeholder="选择 Agent 预设模板"
+                    @update:model-value="handlePresetSelection"
+                  />
+                </div>
                 <div class="form-row">
                   <label>ID</label>
                   <input v-model="agentForm.id" class="input-field" placeholder="agent-1" />

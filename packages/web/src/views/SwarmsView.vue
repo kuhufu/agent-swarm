@@ -2,15 +2,17 @@
 import { onMounted, ref, reactive, computed, watch } from "vue";
 import { useSwarmStore } from "../stores/swarm.js";
 import { useSettingsStore } from "../stores/settings.js";
-import { getModeConfig, MODE_OPTIONS } from "../constants/swarm-modes.js";
+import { useAgentStore } from "../stores/agents.js";
+import { getModeConfig } from "../constants/swarm-modes.js";
 import CreateSwarmDialog from "../components/swarm/CreateSwarmDialog.vue";
 import ModeIcon from "../components/common/ModeIcon.vue";
 import CustomSelect from "../components/common/CustomSelect.vue";
-import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, DebateConfig } from "../types/index.js";
+import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, DebateConfig, PresetAgent } from "../types/index.js";
 import { confirmDialog, showError } from "../utils/ui-feedback.js";
 
 const swarmStore = useSwarmStore();
 const settingsStore = useSettingsStore();
+const agentStore = useAgentStore();
 const showDialog = ref(false);
 const selectedSwarmId = ref<string | null>(null);
 const hasUnsavedChanges = ref(false);
@@ -36,6 +38,7 @@ const editForm = reactive<{
 // Agent form state
 const showAgentForm = ref(false);
 const editingAgentIndex = ref<number | null>(null);
+const selectedPresetId = ref("");
 const agentForm = reactive<SwarmAgentConfig>({
   id: "",
   name: "",
@@ -50,6 +53,13 @@ const selectedSwarm = computed(() =>
 );
 
 const savedModels = computed<SavedModel[]>(() => settingsStore.config?.models ?? []);
+const presetAgentOptions = computed(() => [
+  { value: "", label: "不使用预设模板" },
+  ...agentStore.sortedPresets.map((preset) => ({
+    value: preset.id,
+    label: `${preset.name}${preset.category ? ` · ${preset.category}` : ""}${preset.builtIn ? " · 内置" : ""}`,
+  })),
+]);
 const routerOrchestratorOptions = computed(() => {
   if (!editForm.agents.length) {
     return [{ value: "", label: "请先添加 Agent" }];
@@ -71,7 +81,56 @@ const modes: { value: CollaborationMode; label: string; desc: string; icon: stri
 onMounted(() => {
   swarmStore.fetchSwarms();
   settingsStore.fetchConfig();
+  agentStore.fetchAgents();
 });
+
+function normalizeAgentId(input: string): string {
+  const normalized = input
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || "agent";
+}
+
+function buildUniqueAgentId(baseId: string, excludeIndex: number | null): string {
+  const normalizedBase = normalizeAgentId(baseId);
+  let candidate = normalizedBase;
+  let suffix = 2;
+  const conflict = (id: string) => editForm.agents.some((agent, index) => index !== excludeIndex && agent.id === id);
+  while (conflict(candidate)) {
+    candidate = `${normalizedBase}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+
+function applyPresetToAgentForm(preset: PresetAgent) {
+  const editingIndex = editingAgentIndex.value;
+  if (editingIndex === null) {
+    agentForm.id = buildUniqueAgentId(preset.id, null);
+  }
+  agentForm.name = preset.name;
+  agentForm.description = preset.description;
+  agentForm.systemPrompt = preset.systemPrompt;
+  agentForm.model.provider = preset.model.provider;
+  agentForm.model.modelId = preset.model.modelId;
+  showCustomModel.value = savedModels.value.every(
+    (sm) => !(sm.provider === preset.model.provider && sm.modelId === preset.model.modelId),
+  );
+}
+
+function handlePresetSelection(value: string) {
+  selectedPresetId.value = value;
+  if (!value) {
+    return;
+  }
+  const preset = agentStore.sortedPresets.find((item) => item.id === value);
+  if (!preset) {
+    return;
+  }
+  applyPresetToAgentForm(preset);
+}
 
 function syncRouterOrchestrator(preferredId?: string) {
   if (preferredId && editForm.agents.some((agent) => agent.id === preferredId)) {
@@ -191,6 +250,7 @@ async function handleSave() {
 function resetAgentForm() {
   showAgentForm.value = false;
   editingAgentIndex.value = null;
+  selectedPresetId.value = "";
   agentForm.id = "";
   agentForm.name = "";
   agentForm.description = "";
@@ -208,6 +268,7 @@ function startEditAgent(index: number) {
   const agent = editForm.agents[index];
   if (!agent) return;
   editingAgentIndex.value = index;
+  selectedPresetId.value = "";
   agentForm.id = agent.id;
   agentForm.name = agent.name;
   agentForm.description = agent.description;
@@ -262,43 +323,42 @@ function clearModelSelection() {
           <p>配置多 Agent 协作集群</p>
         </div>
 
-        <nav class="swarms-nav">
-          <div class="nav-divider">已配置</div>
+        <button class="btn-primary create-btn" @click="showDialog = true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          创建 Swarm
+        </button>
 
-          <button
-            v-for="swarm in swarmStore.swarms"
-            :key="swarm.id"
-            class="nav-item swarm-nav-item"
-            :class="{ active: selectedSwarmId === swarm.id }"
-            @click="handleSelect(swarm)"
-          >
-            <span class="swarm-nav-icon"><ModeIcon :mode="swarm.mode" /></span>
-            <div>
-              <span class="nav-label">{{ swarm.name }}</span>
-              <span class="nav-desc">{{ swarm.agents.length }} 个 Agent · {{ getModeConfig(swarm.mode).label }}</span>
+        <div class="swarm-section">
+          <div class="swarm-section-title">已配置 Swarm</div>
+          <nav class="swarms-nav">
+            <button
+              v-for="swarm in swarmStore.swarms"
+              :key="swarm.id"
+              class="swarm-item"
+              :class="{ active: selectedSwarmId === swarm.id }"
+              @click="handleSelect(swarm)"
+            >
+              <div class="swarm-item-top">
+                <span class="swarm-nav-icon"><ModeIcon :mode="swarm.mode" /></span>
+                <span class="swarm-name">{{ swarm.name }}</span>
+              </div>
+              <span class="swarm-meta">{{ swarm.agents.length }} 个 Agent · {{ getModeConfig(swarm.mode).label }}</span>
+            </button>
+
+            <div v-if="!swarmStore.swarms.length" class="nav-empty">
+              暂无 Swarm
             </div>
-          </button>
-
-          <div v-if="!swarmStore.swarms.length" class="nav-empty">
-            暂无 Swarm
-          </div>
-        </nav>
-
-        <div class="sidebar-footer">
-          <button class="btn-primary save-btn" @click="showDialog = true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            创建 Swarm
-          </button>
+          </nav>
         </div>
       </aside>
 
       <!-- Right Content -->
       <main class="swarms-content">
         <!-- No selection -->
-        <div v-if="!selectedSwarm" class="empty-state">
+        <div v-if="!selectedSwarm" class="detail-card empty-state">
           <div class="empty-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 2L2 7l10 5 10-5-10-5z" />
@@ -311,7 +371,7 @@ function clearModelSelection() {
         </div>
 
         <!-- Editable Detail -->
-        <div v-else class="detail-panel">
+        <div v-else class="detail-card detail-panel">
           <div class="detail-header">
             <div class="detail-title-row">
               <span class="detail-mode-icon"><ModeIcon :mode="editForm.mode" :size="22" /></span>
@@ -461,7 +521,7 @@ function clearModelSelection() {
                 </svg>
                 Agent 列表 ({{ editForm.agents.length }})
               </h4>
-              <button class="btn-secondary" style="padding: 6px 12px; font-size: 13px;" @click="startAddAgent">
+              <button class="btn-secondary compact-btn" @click="startAddAgent">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
                   <line x1="12" y1="5" x2="12" y2="19" />
                   <line x1="5" y1="12" x2="19" y2="12" />
@@ -480,6 +540,15 @@ function clearModelSelection() {
                   </button>
                 </div>
                 <div class="dialog-body">
+                  <div v-if="agentStore.sortedPresets.length > 0" class="form-row">
+                    <label>预设模板</label>
+                    <CustomSelect
+                      :model-value="selectedPresetId"
+                      :options="presetAgentOptions"
+                      placeholder="选择已有 Agent 模板"
+                      @update:model-value="handlePresetSelection"
+                    />
+                  </div>
                   <div class="form-row">
                     <label>ID</label>
                     <input v-model="agentForm.id" class="input-field" placeholder="agent-1" :disabled="editingAgentIndex !== null" />
@@ -575,7 +644,6 @@ function clearModelSelection() {
 <style scoped>
 .swarms-view {
   height: 100%;
-  overflow: hidden;
 }
 
 .swarms-layout {
@@ -583,140 +651,145 @@ function clearModelSelection() {
   height: 100%;
 }
 
-/* Left Sidebar */
 .swarms-sidebar {
   width: 280px;
+  border-right: 1px solid var(--color-border-subtle);
   background: rgba(255, 255, 255, 0.02);
   backdrop-filter: blur(16px);
-  border-right: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  padding: 20px 14px;
+  overflow-y: auto;
   flex-shrink: 0;
-  padding: 24px 16px;
-}
-
-.sidebar-header {
-  margin-bottom: 20px;
-  padding: 0 8px;
 }
 
 .sidebar-header h2 {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--color-text-primary);
   margin: 0 0 4px;
+  color: var(--color-text-primary);
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .sidebar-header p {
-  font-size: 13px;
-  color: var(--color-text-muted);
   margin: 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
 }
 
-.swarms-nav {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  overflow-y: auto;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 12px;
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  background: transparent;
-  text-align: left;
+.create-btn {
   width: 100%;
 }
 
-.nav-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--color-text-primary);
+.swarm-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
 }
 
-.nav-item.active {
-  background: rgba(99, 102, 241, 0.12);
-  color: var(--color-accent-light);
+.swarm-section-title {
+  margin-top: 6px;
+  padding: 0 4px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
 }
 
-.nav-item div {
+.swarms-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.swarm-item {
+  width: 100%;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.swarm-item:hover {
+  border-color: var(--color-border-hover);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.swarm-item.active {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: var(--color-accent-light);
+}
+
+.swarm-item-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
 }
 
-.nav-label {
-  font-weight: 600;
-  font-size: 14px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.nav-desc {
-  font-size: 12px;
-  color: var(--color-text-muted);
-}
-
-.nav-item.active .nav-desc {
-  color: rgba(129, 140, 248, 0.7);
-}
-
-.nav-divider {
-  padding: 12px 8px 6px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
 .swarm-nav-icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.nav-empty {
-  padding: 20px 8px;
+.swarm-name {
   font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.swarm-meta {
+  font-size: 11px;
   color: var(--color-text-muted);
-  text-align: center;
 }
 
-.sidebar-footer {
-  padding-top: 16px;
-  border-top: 1px solid var(--color-border-subtle);
+.swarm-item.active .swarm-meta {
+  color: rgba(129, 140, 248, 0.8);
 }
 
-.save-btn {
-  width: 100%;
+.nav-empty {
+  padding: 10px 12px;
+  color: var(--color-text-muted);
+  font-size: 12px;
 }
 
-/* Right Content */
 .swarms-content {
   flex: 1;
+  min-width: 0;
   overflow-y: auto;
-  padding: 28px 32px;
-  display: flex;
-  flex-direction: column;
+  padding: 24px 28px;
 }
 
-/* Empty State */
+.detail-card {
+  max-width: 960px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  padding: 20px;
+}
+
 .empty-state {
-  flex: 1;
+  min-height: 280px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -743,38 +816,40 @@ function clearModelSelection() {
 }
 
 .empty-title {
+  margin: 0 0 4px;
+  color: var(--color-text-secondary);
   font-size: 15px;
   font-weight: 600;
-  color: var(--color-text-secondary);
-  margin: 0 0 4px;
 }
 
 .empty-desc {
-  font-size: 13px;
   margin: 0;
+  font-size: 13px;
 }
 
-/* Detail Panel */
 .detail-panel {
-  max-width: 720px;
+  max-width: 100%;
 }
 
 .detail-header {
-  margin-bottom: 24px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--color-border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 18px;
 }
 
 .detail-title-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  flex: 1;
+  min-width: 0;
 }
 
 .detail-mode-icon {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -786,11 +861,12 @@ function clearModelSelection() {
 
 .detail-title-input-wrap {
   flex: 1;
+  min-width: 0;
 }
 
 .detail-title-input {
   width: 100%;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--color-text-primary);
   background: transparent;
@@ -814,75 +890,17 @@ function clearModelSelection() {
 
 .detail-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  background: rgba(99, 102, 241, 0.15);
-  color: #818cf8;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: rgba(99, 102, 241, 0.25);
-}
-
-.btn-primary:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border-subtle);
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--color-text-primary);
-}
-
-.btn-danger {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid rgba(248, 113, 113, 0.3);
-  background: rgba(248, 113, 113, 0.1);
-  color: #f87171;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-danger:hover {
-  background: rgba(248, 113, 113, 0.2);
-}
-
-/* Detail Section */
 .detail-section {
-  margin-bottom: 28px;
+  margin-bottom: 22px;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
 }
 
 .detail-section-title {
@@ -899,13 +917,18 @@ function clearModelSelection() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
-/* Mode Grid */
+.compact-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
 .mode-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -957,8 +980,6 @@ function clearModelSelection() {
   color: var(--color-text-muted);
 }
 
-/* Agent Form */
-/* Agent Form Dialog */
 .dialog-overlay {
   position: fixed;
   inset: 0;
@@ -1043,9 +1064,9 @@ function clearModelSelection() {
 }
 
 .form-row label {
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .form-label {
@@ -1056,28 +1077,6 @@ function clearModelSelection() {
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-}
-
-.input-field {
-  width: 100%;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  color: var(--color-text-primary);
-  font-size: 13px;
-  outline: none;
-  transition: all 0.2s;
-  box-sizing: border-box;
-}
-
-.input-field:focus {
-  border-color: rgba(99, 102, 241, 0.5);
-  background: rgba(99, 102, 241, 0.05);
-}
-
-.input-field::placeholder {
-  color: var(--color-text-muted);
 }
 
 .input-field:disabled {
@@ -1098,18 +1097,17 @@ textarea.input-field {
 .model-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 
 .model-chip {
-  padding: 5px 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
   border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  padding: 6px 10px;
   background: rgba(255, 255, 255, 0.03);
   color: var(--color-text-secondary);
   cursor: pointer;
+  font-size: 12px;
   transition: all 0.2s;
   display: inline-flex;
   align-items: center;
@@ -1122,12 +1120,11 @@ textarea.input-field {
 }
 
 .model-chip.active {
-  background: rgba(99, 102, 241, 0.15);
   border-color: rgba(99, 102, 241, 0.3);
+  background: rgba(99, 102, 241, 0.14);
   color: var(--color-accent-light);
 }
 
-/* Agent List */
 .agent-list {
   display: flex;
   flex-direction: column;
@@ -1230,13 +1227,12 @@ textarea.input-field {
   border-color: rgba(248, 113, 113, 0.3);
 }
 
-/* Debate Config */
 .debate-config {
-  padding: 16px;
+  padding: 14px;
 }
 
 .router-config {
-  padding: 16px;
+  padding: 14px;
 }
 
 .router-config-hint {
@@ -1252,7 +1248,6 @@ textarea.input-field {
   font-size: 13px;
 }
 
-/* Badge */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -1265,10 +1260,53 @@ textarea.input-field {
   flex-shrink: 0;
 }
 
-/* Card */
 .card {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--color-border-subtle);
   border-radius: 12px;
+}
+
+.card:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--color-border-subtle);
+  transform: none;
+  box-shadow: none;
+}
+
+@media (max-width: 1024px) {
+  .swarms-layout {
+    flex-direction: column;
+  }
+
+  .swarms-sidebar {
+    width: 100%;
+    max-height: 280px;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  .swarms-content {
+    padding: 16px;
+  }
+
+  .detail-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .detail-actions {
+    justify-content: flex-start;
+  }
+
+  .mode-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .agent-dialog {
+    width: 100%;
+    max-width: 520px;
+  }
 }
 </style>

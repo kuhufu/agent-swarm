@@ -1,10 +1,11 @@
-import type { SwarmConfig, AgentSwarmRootConfig, LLMBackendConfig, ApiProtocol, EventLogLevel } from "./types.js";
+import type { SwarmConfig, AgentSwarmRootConfig, LLMBackendConfig, ApiProtocol, EventLogLevel, AgentPreset } from "./types.js";
 import type { IStorage } from "../storage/interface.js";
 import type { Conversation as StoredConversation, ConversationPreferences } from "../storage/interface.js";
 import type { StoredMessage } from "../storage/interface.js";
 import type { InterventionHandler } from "../intervention/handler.js";
 import { SqliteStorage } from "../storage/sqlite.js";
 import { Conversation } from "./conversation.js";
+import { PRESET_AGENTS } from "./presets.js";
 import { readFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { complete, getProviders as piGetProviders, getModels as piGetModels } from "@mariozechner/pi-ai";
@@ -114,6 +115,14 @@ export class AgentSwarm {
     if (existingSwarms.length === 0 && this.config.swarms.length > 0) {
       for (const swarm of this.config.swarms) {
         await this.storage.saveSwarm(swarm);
+      }
+    }
+
+    // Seed built-in agent presets
+    const existingPresets = await this.storage.listAgentPresets();
+    if (existingPresets.length === 0) {
+      for (const preset of PRESET_AGENTS) {
+        await this.storage.saveAgentPreset(preset);
       }
     }
 
@@ -587,6 +596,53 @@ export class AgentSwarm {
       JSON.stringify(this.config.llm),
     );
     return this.cloneLLMConfig(this.config.llm);
+  }
+
+  // ── Agent preset management ──
+
+  async listAgentPresets(): Promise<AgentPreset[]> {
+    this.ensureInitialized();
+    return this.storage.listAgentPresets();
+  }
+
+  async getAgentPreset(id: string): Promise<AgentPreset | null> {
+    this.ensureInitialized();
+    return this.storage.loadAgentPreset(id);
+  }
+
+  async addAgentPreset(preset: AgentPreset): Promise<AgentPreset> {
+    this.ensureInitialized();
+    if (!preset.id || !preset.name) {
+      throw new Error("Agent preset id and name are required");
+    }
+    const existing = await this.storage.loadAgentPreset(preset.id);
+    if (existing) {
+      throw new Error(`Agent preset already exists: ${preset.id}`);
+    }
+    await this.storage.saveAgentPreset(preset);
+    return preset;
+  }
+
+  async updateAgentPreset(id: string, preset: AgentPreset): Promise<AgentPreset> {
+    this.ensureInitialized();
+    const existing = await this.storage.loadAgentPreset(id);
+    if (!existing) {
+      throw new Error(`Agent preset not found: ${id}`);
+    }
+    await this.storage.saveAgentPreset(preset);
+    return preset;
+  }
+
+  async deleteAgentPreset(id: string): Promise<void> {
+    this.ensureInitialized();
+    const existing = await this.storage.loadAgentPreset(id);
+    if (!existing) {
+      throw new Error(`Agent preset not found: ${id}`);
+    }
+    if (existing.builtIn) {
+      throw new Error(`Built-in agent preset is read-only: ${id}`);
+    }
+    await this.storage.deleteAgentPreset(id);
   }
 
   async close(): Promise<void> {

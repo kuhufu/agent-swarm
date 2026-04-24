@@ -1,5 +1,5 @@
 // Core types
-export type { SwarmConfig, SwarmAgentConfig, ModelConfig, ThinkingLevel, ThinkingBudgets, ApiProtocol, ProviderConfig } from "./core/types.js";
+export type { SwarmConfig, SwarmAgentConfig, ModelConfig, ThinkingLevel, ThinkingBudgets, ApiProtocol, ProviderConfig, AgentPreset } from "./core/types.js";
 export type { CollaborationMode, AggregationStrategy, DebateConfig, PipelineStep } from "./core/types.js";
 export type { ContextConfig, StorageConfig, EventLogLevel, AgentSwarmRootConfig, LLMBackendConfig } from "./core/types.js";
 export type {

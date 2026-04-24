@@ -15,9 +15,9 @@ Agent Swarm 是一个多 Agent 协作框架，基于 `@mariozechner/pi-agent-cor
 
 | 包 | 路径 | 职责 |
 |---|------|------|
-| `@agent-swarm/core` | `packages/core/` | 后端 SDK：协作模式、介入机制、存储、LLM 桥接、工具定义 |
+| `@agent-swarm/core` | `packages/core/` | 后端 SDK：协作模式、介入机制、存储、LLM 桥接、工具定义、Agent 预设管理 |
 | `@agent-swarm/server` | `packages/server/` | API 服务：Express REST + WebSocket，桥接 core 和前端 |
-| `@agent-swarm/web` | `packages/web/` | Vue 3 前端：对话 UI、Agent 状态可视化、Swarm 管理 |
+| `@agent-swarm/web` | `packages/web/` | Vue 3 前端：对话 UI、Agent 状态可视化、Swarm/Agent 预设管理 |
 
 详细规格见 `spec.md`。
 
@@ -40,7 +40,7 @@ agent-swarm/
 ├── packages/
 │   ├── core/                    # @agent-swarm/core
 │   │   ├── src/
-│   │   │   ├── core/            # AgentSwarm 主类、Conversation、类型、配置
+│   │   │   ├── core/            # AgentSwarm 主类、Conversation、类型、配置、内置预设
 │   │   │   ├── modes/           # 5种协作模式：router/sequential/parallel/swarm/debate
 │   │   │   ├── intervention/    # 介入处理器和内置策略
 │   │   │   ├── storage/         # IStorage 接口 + SQLite 实现
@@ -59,8 +59,8 @@ agent-swarm/
 │       ├── src/
 │       │   ├── api/             # HTTP 请求封装
 │       │   ├── composables/     # useWebSocket / useChat / useIntervention
-│       │   ├── stores/          # Pinia stores（swarm/conversation/intervention/settings）
-│       │   ├── views/           # 页面组件（Chat/Swarms/History/Settings）
+│       │   ├── stores/          # Pinia stores（swarm/agents/conversation/intervention/settings）
+│       │   ├── views/           # 页面组件（Chat/Swarms/Agents/History/Settings）
 │       │   ├── components/      # 通用组件（layout/chat/intervention/swarm）
 │       │   ├── router/          # Vue Router 配置
 │       │   ├── types/           # 前端本地类型
@@ -147,6 +147,12 @@ pnpm test                  # 运行 core 单元测试
 
 5 种策略：`auto` / `confirm` / `review` / `edit` / `reject`
 
+### AgentPreset（core/src/core/types.ts）
+
+独立可复用 Agent 模板，字段包含 `id/name/description/systemPrompt/model/category/tags/builtIn`。  
+内置预设在初始化时自动写入；所有预设均可更新，`id` 在创建后固定不可修改。  
+`builtIn=true` 的预设不允许删除。
+
 ---
 
 ## API 端点
@@ -156,6 +162,11 @@ pnpm test                  # 运行 core 单元测试
 | GET | `/api/health` | 健康检查 |
 | GET | `/api/swarms` | 列出所有 Swarm |
 | GET | `/api/swarms/:id` | 获取 Swarm 详情 |
+| GET | `/api/agents` | 列出所有 Agent 预设 |
+| GET | `/api/agents/:id` | 获取 Agent 预设详情 |
+| POST | `/api/agents` | 创建 Agent 预设 |
+| PUT | `/api/agents/:id` | 更新 Agent 预设（`id` 不可变） |
+| DELETE | `/api/agents/:id` | 删除 Agent 预设（内置预设只读） |
 | GET | `/api/conversations?swarmId=` | 列出对话 |
 | POST | `/api/conversations` | 创建对话 |
 | GET | `/api/conversations/:id/messages` | 获取消息 |

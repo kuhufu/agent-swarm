@@ -9,8 +9,8 @@ import type {
   ConversationPreferences,
   ConversationDirectModel,
 } from "./interface.js";
-import type { SwarmConfig } from "../core/types.js";
-import { settingsTable, swarmsTable, agentsTable, conversationsTable, messagesTable, eventsTable } from "./schema.js";
+import type { SwarmConfig, AgentPreset } from "../core/types.js";
+import { settingsTable, swarmsTable, agentsTable, conversationsTable, messagesTable, eventsTable, presetAgentsTable } from "./schema.js";
 
 const DEFAULT_CONVERSATION_PREFERENCES: ConversationPreferences = {
   enabledTools: [],
@@ -99,6 +99,19 @@ export class SqliteStorage implements IStorage {
       CREATE INDEX IF NOT EXISTS idx_messages_agent ON messages(agent_id);
       CREATE INDEX IF NOT EXISTS idx_events_conversation ON events(conversation_id, timestamp);
       CREATE INDEX IF NOT EXISTS idx_conversations_swarm ON conversations(swarm_id);
+      CREATE TABLE IF NOT EXISTS preset_agents (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        system_prompt TEXT NOT NULL DEFAULT '',
+        provider TEXT NOT NULL DEFAULT '',
+        model_id TEXT NOT NULL DEFAULT '',
+        category TEXT NOT NULL DEFAULT '',
+        tags TEXT NOT NULL DEFAULT '[]',
+        built_in INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
     `);
 
     this.ensureConversationColumns();
@@ -514,6 +527,84 @@ export class SqliteStorage implements IStorage {
 
   async clearMessages(conversationId: string): Promise<void> {
     this.getDb().delete(messagesTable).where(eq(messagesTable.conversationId, conversationId)).run();
+  }
+
+  // ── Agent preset management ──
+
+  async saveAgentPreset(preset: AgentPreset): Promise<void> {
+    const now = Date.now();
+    this.getDb().insert(presetAgentsTable).values({
+      id: preset.id,
+      name: preset.name,
+      description: preset.description,
+      systemPrompt: preset.systemPrompt,
+      provider: preset.model.provider,
+      modelId: preset.model.modelId,
+      category: preset.category,
+      tags: JSON.stringify(preset.tags),
+      builtIn: preset.builtIn ? 1 : 0,
+      createdAt: now,
+      updatedAt: now,
+    }).onConflictDoUpdate({
+      target: presetAgentsTable.id,
+      set: {
+        name: preset.name,
+        description: preset.description,
+        systemPrompt: preset.systemPrompt,
+        provider: preset.model.provider,
+        modelId: preset.model.modelId,
+        category: preset.category,
+        tags: JSON.stringify(preset.tags),
+        builtIn: preset.builtIn ? 1 : 0,
+        updatedAt: now,
+      },
+    }).run();
+  }
+
+  async loadAgentPreset(id: string): Promise<AgentPreset | null> {
+    const rows = this.getDb().select().from(presetAgentsTable).where(eq(presetAgentsTable.id, id)).all();
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      systemPrompt: r.systemPrompt,
+      model: { provider: r.provider, modelId: r.modelId },
+      category: r.category,
+      tags: this.parseTags(r.tags),
+      builtIn: r.builtIn === 1,
+    };
+  }
+
+  async listAgentPresets(): Promise<AgentPreset[]> {
+    const rows = this.getDb().select().from(presetAgentsTable).all();
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      systemPrompt: r.systemPrompt,
+      model: { provider: r.provider, modelId: r.modelId },
+      category: r.category,
+      tags: this.parseTags(r.tags),
+      builtIn: r.builtIn === 1,
+    }));
+  }
+
+  async deleteAgentPreset(id: string): Promise<void> {
+    this.getDb().delete(presetAgentsTable).where(eq(presetAgentsTable.id, id)).run();
+  }
+
+  private parseTags(input: string): string[] {
+    try {
+      const parsed = JSON.parse(input);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((t): t is string => typeof t === "string");
+      }
+    } catch {
+      // ignore
+    }
+    return [];
   }
 
   // ── Event log ──

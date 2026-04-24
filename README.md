@@ -10,6 +10,7 @@
 
 - 五种协作模式：`router` / `sequential` / `parallel` / `swarm` / `debate`
 - 直接对话模式：无需预建 swarm，可按会话选择 `provider + modelId`
+- Agent 预设库：内置模板 + 自定义模板 CRUD，支持创建 Swarm 时复用
 - 输入体验优化：重复点击“新对话/直接对话”、切换模型、启停工具、点击 `chat-input` 非交互区后会自动聚焦输入框且保持光标
 - 历史消息持久化：SQLite 存储，支持恢复会话上下文
 - 上下文清空：保留历史消息，仅重置后续模型上下文
@@ -27,6 +28,7 @@ agent-swarm/
 │   ├── server/      # @agent-swarm/server
 │   └── web/         # @agent-swarm/web
 ├── docs/
+│   ├── agent-presets.md
 │   ├── context-recovery.md
 │   ├── frontend-conversation-runtime.md
 │   ├── message-markdown-rendering.md
@@ -107,6 +109,14 @@ pnpm --filter @agent-swarm/server test
 - `POST /api/swarms`
 - `PUT /api/swarms/:id`
 - `DELETE /api/swarms/:id`
+
+### Agent 预设管理
+
+- `GET /api/agents`
+- `GET /api/agents/:id`
+- `POST /api/agents`
+- `PUT /api/agents/:id`
+- `DELETE /api/agents/:id`
 
 ### 会话管理
 
@@ -241,6 +251,7 @@ export default defineConfig({
 ## 文档索引
 
 - [历史消息恢复上下文机制](./docs/context-recovery.md)
+- [Agent 预设管理与复用](./docs/agent-presets.md)
 - [前端会话运行态分桶机制](./docs/frontend-conversation-runtime.md)
 - [消息 Markdown 渲染](./docs/message-markdown-rendering.md)
 - [Provider 兼容参数：enable_thinking](./docs/provider-compatibility.md)

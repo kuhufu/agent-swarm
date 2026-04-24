@@ -4,6 +4,7 @@ import type { AgentSwarm } from "@agent-swarm/core";
 import type { Express } from "express";
 import type { SwarmConversation } from "@agent-swarm/core";
 import { swarmRoutes } from "./routes/swarms.js";
+import { agentRoutes } from "./routes/agents.js";
 import { conversationRoutes } from "./routes/conversations.js";
 import { messageRoutes } from "./routes/messages.js";
 import { configRoutes } from "./routes/config.js";
@@ -23,6 +24,7 @@ export function createApp(swarm: AgentSwarm): Express {
 
   // Routes
   app.use("/api/swarms", swarmRoutes(swarm));
+  app.use("/api/agents", agentRoutes(swarm));
   app.use("/api/conversations", conversationRoutes(swarm));
   app.use("/api/config", configRoutes(swarm));
   app.use("/api", messageRoutes(swarm));

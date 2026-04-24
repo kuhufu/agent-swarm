@@ -92,6 +92,21 @@ export interface SwarmAgentConfig {
   thinkingBudgets?: ThinkingBudgets;
 }
 
+// ============================================================================
+// Agent Preset (standalone reusable agent)
+// ============================================================================
+
+export interface AgentPreset {
+  id: string;
+  name: string;
+  description: string;
+  systemPrompt: string;
+  model: ModelConfig;
+  category: string;
+  tags: string[];
+  builtIn: boolean;
+}
+
 // Re-export intervention types locally
 export type InterventionPoint =
   | "before_agent_start"
