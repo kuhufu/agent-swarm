@@ -35,6 +35,7 @@ export const useConversationStore = defineStore("conversation", () => {
   const enabledTools = ref<string[]>([]);
   const thinkModeEnabled = ref(false);
   const currentDirectModel = ref<ConversationInfo["directModel"] | null>(null);
+  const inputFocusRequestKey = ref(0);
   const runtimeStates = ref<Map<string, ConversationRuntimeState>>(
     new Map([[DRAFT_RUNTIME_ID, createEmptyRuntimeState()]]),
   );
@@ -406,6 +407,10 @@ export const useConversationStore = defineStore("conversation", () => {
     });
   }
 
+  function requestInputFocus() {
+    inputFocusRequestKey.value += 1;
+  }
+
   function setCurrentConversation(id: string | null) {
     const normalizedId = normalizeConversationId(id);
 
@@ -413,6 +418,7 @@ export const useConversationStore = defineStore("conversation", () => {
       currentConversationId.value = null;
       resetRuntimeStateById(DRAFT_RUNTIME_ID);
       applyConversationPreferences(null);
+      requestInputFocus();
       return;
     }
 
@@ -423,6 +429,7 @@ export const useConversationStore = defineStore("conversation", () => {
       if (conversation) {
         applyConversationPreferences(conversation);
       }
+      requestInputFocus();
       return;
     }
 
@@ -433,6 +440,7 @@ export const useConversationStore = defineStore("conversation", () => {
     } else {
       applyConversationPreferences(null);
     }
+    requestInputFocus();
   }
 
   function resolveAgentName(agentId?: string, conversationId?: string): string | undefined {
@@ -817,6 +825,7 @@ export const useConversationStore = defineStore("conversation", () => {
     enabledTools,
     thinkModeEnabled,
     currentDirectModel,
+    inputFocusRequestKey,
     addMessage,
     upsertToolCall,
     startStreamingMessage,
@@ -840,6 +849,7 @@ export const useConversationStore = defineStore("conversation", () => {
     setClientToolEnabled,
     setThinkModeEnabled,
     setDirectModel,
+    requestInputFocus,
     applyConversationSettingsFromServer,
   };
 });

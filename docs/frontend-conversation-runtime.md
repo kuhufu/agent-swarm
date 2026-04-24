@@ -88,6 +88,8 @@
 - 校验并创建目标 bucket（不存在则初始化为空）；
 - 更新 `currentConversationId`；
 - 应用会话偏好配置。
+- 递增 `inputFocusRequestKey`，通知 `ChatInput` 在“新对话/直接对话”重复点击时也重新聚焦输入框。
+- `ChatInput` 在模型切换、工具开关后调用 `requestTextareaFocus()`，并在输入框恢复可用时补偿聚焦。
 
 不再做：
 

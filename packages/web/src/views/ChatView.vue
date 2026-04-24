@@ -68,7 +68,7 @@ function handleNewConversation() {
         :is-direct-mode="isDirectMode"
       />
       <InterventionPanel />
-      <ChatInput :swarm-id="swarmId" :active="conversationStore.isActive" :is-direct-mode="isDirectMode" />
+      <ChatInput :key="conversationStore.currentConversationId ?? 'new'" :swarm-id="swarmId" :active="conversationStore.isActive" :is-direct-mode="isDirectMode" />
     </div>
     <aside class="chat-sidebar-right">
       <AgentStatus :agents="Array.from(conversationStore.agentStates.values())" />

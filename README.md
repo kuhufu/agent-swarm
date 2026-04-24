@@ -10,6 +10,7 @@
 
 - 五种协作模式：`router` / `sequential` / `parallel` / `swarm` / `debate`
 - 直接对话模式：无需预建 swarm，可按会话选择 `provider + modelId`
+- 输入体验优化：重复点击“新对话/直接对话”、切换模型、启停工具后会自动聚焦输入框
 - 历史消息持久化：SQLite 存储，支持恢复会话上下文
 - 上下文清空：保留历史消息，仅重置后续模型上下文
 - 消息 Markdown 渲染：基于 `marked + marked-highlight + highlight.js + dompurify`，支持代码高亮与安全净化
