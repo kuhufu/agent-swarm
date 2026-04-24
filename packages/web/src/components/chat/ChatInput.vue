@@ -271,6 +271,45 @@ onMounted(() => {
 
 <template>
   <div class="chat-input" @mousedown="handleContainerMouseDown">
+    <div class="input-wrapper">
+      <div class="textarea-wrapper">
+        <textarea
+          ref="textareaRef"
+          v-model="inputText"
+          placeholder="输入消息..."
+          rows="1"
+          autofocus
+          :disabled="sending || (isDirectMode ? !canSendDirect : !swarmId)"
+          @focus="captureTextareaSelection"
+          @click="captureTextareaSelection"
+          @keyup="captureTextareaSelection"
+          @select="captureTextareaSelection"
+          @keydown="handleKeydown"
+        />
+        <span v-if="isDirectMode && !canSendDirect" class="input-hint">请先选择模型</span>
+        <span v-else-if="!isDirectMode && !swarmId" class="input-hint">请先选择一个 Swarm</span>
+      </div>
+      <button
+        v-if="!active"
+        class="send-btn"
+        :disabled="(isDirectMode ? !canSendDirect : !swarmId) || sending || !inputText.trim()"
+        @click="handleSend"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13" />
+          <polygon points="22 2 15 22 11 13 2 9 22 2" />
+        </svg>
+      </button>
+      <button
+        v-else
+        class="send-btn stop"
+        @click="abort"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="6" y="6" width="12" height="12" rx="2" />
+        </svg>
+      </button>
+    </div>
     <div class="tool-options">
       <!-- Direct mode: model selector inline (left-aligned) -->
       <div v-if="isDirectMode" class="model-select-inline">
@@ -362,45 +401,6 @@ onMounted(() => {
         </button>
       </div>
     </div>
-    <div class="input-wrapper">
-      <div class="textarea-wrapper">
-        <textarea
-          ref="textareaRef"
-          v-model="inputText"
-          placeholder="输入消息..."
-          rows="1"
-          autofocus
-          :disabled="sending || (isDirectMode ? !canSendDirect : !swarmId)"
-          @focus="captureTextareaSelection"
-          @click="captureTextareaSelection"
-          @keyup="captureTextareaSelection"
-          @select="captureTextareaSelection"
-          @keydown="handleKeydown"
-        />
-        <span v-if="isDirectMode && !canSendDirect" class="input-hint">请先选择模型</span>
-        <span v-else-if="!isDirectMode && !swarmId" class="input-hint">请先选择一个 Swarm</span>
-      </div>
-      <button
-        v-if="!active"
-        class="send-btn"
-        :disabled="(isDirectMode ? !canSendDirect : !swarmId) || sending || !inputText.trim()"
-        @click="handleSend"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="22" y1="2" x2="11" y2="13" />
-          <polygon points="22 2 15 22 11 13 2 9 22 2" />
-        </svg>
-      </button>
-      <button
-        v-else
-        class="send-btn stop"
-        @click="abort"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="6" y="6" width="12" height="12" rx="2" />
-        </svg>
-      </button>
-    </div>
   </div>
 </template>
 
@@ -414,7 +414,7 @@ onMounted(() => {
 
 .tool-options {
   max-width: 900px;
-  margin: 0 auto 10px;
+  margin: 10px auto 0;
   display: flex;
   align-items: center;
   gap: 12px;
