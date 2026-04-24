@@ -78,11 +78,40 @@ const modes: { value: CollaborationMode; label: string; desc: string; icon: stri
   { value: "debate", label: "Debate 辩论", desc: "多 Agent 辩论模式", icon: "⚖️" },
 ];
 
-onMounted(() => {
-  swarmStore.fetchSwarms();
+function ensureSelectedSwarm() {
+  if (!swarmStore.swarms.length) {
+    selectedSwarmId.value = null;
+    swarmStore.clearSwarmSelection();
+    return;
+  }
+
+  if (selectedSwarmId.value && swarmStore.swarms.some((swarm) => swarm.id === selectedSwarmId.value)) {
+    return;
+  }
+
+  const firstSwarm = swarmStore.swarms[0];
+  if (!firstSwarm) {
+    return;
+  }
+
+  selectedSwarmId.value = firstSwarm.id;
+  swarmStore.selectSwarm(firstSwarm);
+}
+
+onMounted(async () => {
+  await swarmStore.fetchSwarms();
+  ensureSelectedSwarm();
   settingsStore.fetchConfig();
   agentStore.fetchAgents();
 });
+
+watch(
+  () => swarmStore.swarms.map((swarm) => swarm.id),
+  () => {
+    ensureSelectedSwarm();
+  },
+  { immediate: true },
+);
 
 function normalizeAgentId(input: string): string {
   const normalized = input
@@ -828,7 +857,7 @@ function clearModelSelection() {
 }
 
 .detail-panel {
-  max-width: 100%;
+  max-width: 960px;
 }
 
 .detail-header {
