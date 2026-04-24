@@ -2,12 +2,13 @@
 import { reactive, ref, computed } from "vue";
 import { MessagePlugin } from "tdesign-vue-next";
 import CustomSelect from "../common/CustomSelect.vue";
-import type { SavedModel, ModelInfo, ApiProtocol, ProviderConfig } from "../../types/index.js";
+import type { SavedModel, ModelInfo } from "../../types/index.js";
 import * as configApi from "../../api/config.js";
 
 const props = defineProps<{
   models: SavedModel[];
   providerIds: string[];
+  dialogHostSelector?: string;
 }>();
 
 const emit = defineEmits<{
@@ -15,9 +16,10 @@ const emit = defineEmits<{
   (e: "remove", index: number): void;
 }>();
 
-const showModelForm = ref(false);
+const showModelDialog = ref(false);
 const modelForm = reactive<SavedModel>({ id: "", name: "", provider: "", modelId: "" });
 const modelProviderOptions = computed(() => props.providerIds);
+const resolvedDialogHostSelector = computed(() => props.dialogHostSelector?.trim() || "body");
 const availableModels = ref<ModelInfo[]>([]);
 const loadingModels = ref(false);
 const testingMap = reactive<Record<string, boolean>>({});
@@ -50,20 +52,28 @@ function onModelSelect(m: ModelInfo) {
   if (!modelForm.id) modelForm.id = m.id;
 }
 
-function addModel() {
-  if (!modelForm.id || !modelForm.name || !modelForm.provider || !modelForm.modelId) return;
-  emit("add", { ...modelForm });
+function resetModelForm() {
   modelForm.id = "";
   modelForm.name = "";
   modelForm.provider = "";
   modelForm.modelId = "";
   availableModels.value = [];
-  showModelForm.value = false;
 }
 
-function getProviderOverride(providerId: string) {
-  // This is a simplified version — the parent SettingsView manages provider state
-  return undefined;
+function openModelDialog() {
+  resetModelForm();
+  showModelDialog.value = true;
+}
+
+function closeModelDialog() {
+  showModelDialog.value = false;
+  resetModelForm();
+}
+
+function addModel() {
+  if (!modelForm.id || !modelForm.name || !modelForm.provider || !modelForm.modelId) return;
+  emit("add", { ...modelForm });
+  closeModelDialog();
 }
 
 function modelTestKey(provider: string, modelId: string): string {
@@ -119,64 +129,81 @@ async function testModel(provider: string, modelId: string) {
     </div>
 
     <div class="models-toolbar">
-      <button class="btn-primary" @click="showModelForm = !showModelForm">
-        <svg v-if="!showModelForm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+      <button class="btn-primary compact-btn" @click="openModelDialog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
           <line x1="12" y1="5" x2="12" y2="19" />
           <line x1="5" y1="12" x2="19" y2="12" />
         </svg>
-        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-        {{ showModelForm ? '取消' : '添加模型' }}
+        添加模型
       </button>
     </div>
 
-    <div v-if="showModelForm" class="model-form card">
-      <div class="form-row">
-        <label>ID</label>
-        <input v-model="modelForm.id" class="input-field" placeholder="my-model" />
-      </div>
-      <div class="form-row">
-        <label>显示名称</label>
-        <input v-model="modelForm.name" class="input-field" placeholder="My Model" />
-      </div>
-      <div class="form-row">
-        <label>提供商</label>
-        <CustomSelect
-          :model-value="modelForm.provider"
-          :options="[{ value: '', label: '选择提供商' }, ...modelProviderOptions.map(p => ({ value: p, label: p }))]"
-          placeholder="选择提供商"
-          @update:model-value="modelForm.provider = $event; onModelFormProviderChange()"
-        />
-      </div>
-      <div class="form-row">
-        <label>模型 ID</label>
-        <input v-model="modelForm.modelId" class="input-field" placeholder="输入模型 ID 或从下方列表选择" />
-      </div>
-      <div v-if="loadingModels" class="model-list-hint">加载模型列表中...</div>
-      <div v-else-if="modelForm.provider && availableModels.length" class="model-picker">
-        <div class="model-picker-label">从 {{ modelForm.provider }} 选择模型：</div>
-        <div class="model-picker-list">
-          <button
-            v-for="m in availableModels"
-            :key="m.id"
-            class="model-pick-item"
-            :class="{ active: modelForm.modelId === m.id }"
-            @click="onModelSelect(m)"
-          >
-            <span class="model-pick-id">{{ m.id }}</span>
-            <span class="model-pick-meta">{{ m.contextWindow / 1000 }}k ctx</span>
-          </button>
+    <Teleport :to="resolvedDialogHostSelector">
+      <div v-if="showModelDialog" class="dialog-overlay" @click.self="closeModelDialog">
+        <div class="model-dialog">
+          <div class="dialog-header">
+            <h3>添加模型</h3>
+            <button class="close-btn" @click="closeModelDialog">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="model-dialog-body">
+            <div class="form-row">
+              <label>ID</label>
+              <input v-model="modelForm.id" class="input-field" placeholder="my-model" />
+            </div>
+            <div class="form-row">
+              <label>显示名称</label>
+              <input v-model="modelForm.name" class="input-field" placeholder="My Model" />
+            </div>
+            <div class="form-row">
+              <label>提供商</label>
+              <CustomSelect
+                :model-value="modelForm.provider"
+                :options="[{ value: '', label: '选择提供商' }, ...modelProviderOptions.map(p => ({ value: p, label: p }))]"
+                placeholder="选择提供商"
+                @update:model-value="modelForm.provider = $event; onModelFormProviderChange()"
+              />
+            </div>
+            <div class="form-row">
+              <label>模型 ID</label>
+              <input v-model="modelForm.modelId" class="input-field" placeholder="输入模型 ID 或从下方列表选择" />
+            </div>
+
+            <div v-if="loadingModels" class="model-list-hint">加载模型列表中...</div>
+            <div v-else-if="modelForm.provider && availableModels.length" class="model-picker">
+              <div class="model-picker-label">从 {{ modelForm.provider }} 选择模型：</div>
+              <div class="model-picker-list">
+                <button
+                  v-for="m in availableModels"
+                  :key="m.id"
+                  class="model-pick-item"
+                  :class="{ active: modelForm.modelId === m.id }"
+                  @click="onModelSelect(m)"
+                >
+                  <span class="model-pick-id">{{ m.id }}</span>
+                  <span class="model-pick-meta">{{ m.contextWindow / 1000 }}k ctx</span>
+                </button>
+              </div>
+            </div>
+            <div v-else-if="modelForm.provider && !loadingModels && availableModels.length === 0" class="model-list-hint">
+              该提供商暂无内置模型列表，请手动输入模型 ID
+            </div>
+          </div>
+
+          <div class="dialog-footer">
+            <button class="btn-secondary" @click="closeModelDialog">取消</button>
+            <button class="btn-primary" :disabled="!modelForm.id || !modelForm.name || !modelForm.provider || !modelForm.modelId" @click="addModel">
+              确认添加
+            </button>
+          </div>
         </div>
       </div>
-      <div v-else-if="modelForm.provider && !loadingModels && availableModels.length === 0" class="model-list-hint">
-        该提供商暂无内置模型列表，请手动输入模型 ID
-      </div>
-      <button class="btn-primary" :disabled="!modelForm.id || !modelForm.name || !modelForm.provider || !modelForm.modelId" @click="addModel">
-        确认添加
-      </button>
-    </div>
+    </Teleport>
 
     <div v-if="models.length" class="models-list">
       <div v-for="(model, i) in models" :key="model.id" class="model-item card">
@@ -244,20 +271,92 @@ async function testModel(provider: string, modelId: string) {
 .models-toolbar {
   margin-bottom: 16px;
 }
-.model-form {
-  padding: 20px;
-  margin-bottom: 16px;
+.compact-btn {
+  padding: 6px 12px;
+  font-size: 13px;
 }
-.model-form .form-row {
+.form-row {
   display: flex;
   flex-direction: column;
   gap: 6px;
   margin-bottom: 12px;
 }
-.model-form .form-row label {
+.form-row label {
   color: var(--color-text-muted);
   font-size: 12px;
   font-weight: 500;
+}
+.dialog-overlay {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  backdrop-filter: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  padding: 24px;
+  pointer-events: auto;
+}
+.model-dialog {
+  width: 560px;
+  max-width: min(560px, 100%);
+  max-height: calc(100% - 48px);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-default);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.38),
+    0 8px 20px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(99, 102, 241, 0.16);
+}
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px 0;
+}
+.dialog-header h3 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 18px;
+  font-weight: 700;
+}
+.close-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
+}
+.close-btn svg {
+  width: 16px;
+  height: 16px;
+}
+.model-dialog-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px 20px;
+  border-top: 1px solid var(--color-border-subtle);
 }
 .models-list {
   display: flex;

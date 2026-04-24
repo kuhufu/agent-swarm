@@ -6,6 +6,7 @@ import type { InterventionPoint, InterventionStrategy, ApiProtocol, ProviderConf
 import ProvidersTab from "../components/settings/ProvidersTab.vue";
 import ModelsTab from "../components/settings/ModelsTab.vue";
 import InterventionTab from "../components/settings/InterventionTab.vue";
+import CustomSelect from "../components/common/CustomSelect.vue";
 
 const settingsStore = useSettingsStore();
 type SettingsTab = "providers" | "models" | "intervention";
@@ -38,18 +39,65 @@ interface ProviderEntry {
 
 const providers = reactive<Record<string, ProviderEntry>>({});
 
-const newProviderId = ref("");
+const showProviderDialog = ref(false);
+const providerForm = reactive<{
+  id: string;
+  apiKey: string;
+  baseUrl: string;
+  apiProtocol: ApiProtocol | "";
+  enableThinkingCompat: boolean;
+}>({
+  id: "",
+  apiKey: "",
+  baseUrl: "",
+  apiProtocol: "openai-completions",
+  enableThinkingCompat: false,
+});
+
+const API_PROTOCOLS: { value: ApiProtocol; label: string }[] = [
+  { value: "openai-completions", label: "OpenAI Completions" },
+  { value: "openai-responses", label: "OpenAI Responses" },
+  { value: "anthropic-messages", label: "Anthropic Messages" },
+  { value: "google-generative-ai", label: "Google Generative AI" },
+  { value: "mistral-conversations", label: "Mistral Conversations" },
+  { value: "azure-openai-responses", label: "Azure OpenAI Responses" },
+];
 
 function addCustomProvider() {
-  const id = newProviderId.value.trim().toLowerCase();
-  if (!id || providers[id]) return;
+  const id = providerForm.id.trim().toLowerCase();
+  if (!id) {
+    MessagePlugin.warning("请输入提供商 ID");
+    return;
+  }
+  if (providers[id]) {
+    MessagePlugin.warning(`提供商 "${id}" 已存在`);
+    return;
+  }
   providers[id] = {
-    apiKey: "",
-    baseUrl: "",
-    apiProtocol: "openai-completions",
-    enableThinkingCompat: false,
+    apiKey: providerForm.apiKey,
+    baseUrl: providerForm.baseUrl,
+    apiProtocol: providerForm.apiProtocol,
+    enableThinkingCompat: providerForm.enableThinkingCompat,
   };
-  newProviderId.value = "";
+  closeProviderDialog();
+}
+
+function resetProviderForm() {
+  providerForm.id = "";
+  providerForm.apiKey = "";
+  providerForm.baseUrl = "";
+  providerForm.apiProtocol = "openai-completions";
+  providerForm.enableThinkingCompat = false;
+}
+
+function openProviderDialog() {
+  resetProviderForm();
+  showProviderDialog.value = true;
+}
+
+function closeProviderDialog() {
+  showProviderDialog.value = false;
+  resetProviderForm();
 }
 
 function removeProvider(id: string) {
@@ -274,32 +322,27 @@ async function saveSettings() {
           </div>
 
           <div v-if="activeTab === 'providers'" class="tab-panel">
+            <div class="providers-toolbar">
+              <button class="btn-primary compact-btn" @click="openProviderDialog">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                添加提供商
+              </button>
+            </div>
             <ProvidersTab
               :providers="providers"
               @remove="removeProvider"
               @update="updateProvider"
             />
-            <div class="add-provider">
-              <input
-                v-model="newProviderId"
-                class="input-field add-provider-input"
-                placeholder="自定义提供商 ID"
-                @keyup.enter="addCustomProvider"
-              />
-              <button class="btn-secondary compact-btn" @click="addCustomProvider">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                添加
-              </button>
-            </div>
           </div>
 
           <div v-if="activeTab === 'models'" class="tab-panel">
             <ModelsTab
               :models="models"
               :provider-ids="providerIds"
+              dialog-host-selector="#settings-detail-dialog-host"
               @add="addModel"
               @remove="removeModel"
             />
@@ -310,6 +353,72 @@ async function saveSettings() {
               :interventions="interventions"
               @update="updateIntervention"
             />
+          </div>
+
+          <div id="settings-detail-dialog-host" class="detail-dialog-host" />
+
+          <div v-if="showProviderDialog" class="dialog-overlay" @click.self="closeProviderDialog">
+            <div class="provider-dialog">
+              <div class="dialog-header">
+                <h3>添加提供商</h3>
+                <button class="close-btn" @click="closeProviderDialog">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+              <div class="dialog-body">
+                <div class="form-row">
+                  <label>提供商 ID</label>
+                  <input
+                    v-model="providerForm.id"
+                    class="input-field"
+                    placeholder="custom-provider"
+                  />
+                </div>
+                <div class="form-row">
+                  <label>API Key</label>
+                  <input
+                    v-model="providerForm.apiKey"
+                    class="input-field"
+                    type="password"
+                    placeholder="sk-..."
+                  />
+                </div>
+                <div class="form-row">
+                  <label>Base URL</label>
+                  <input
+                    v-model="providerForm.baseUrl"
+                    class="input-field"
+                    placeholder="https://api.example.com/v1"
+                  />
+                </div>
+                <div class="form-row">
+                  <label>API 协议</label>
+                  <CustomSelect
+                    :model-value="providerForm.apiProtocol"
+                    :options="[{ value: '', label: '默认 (openai-completions)' }, ...API_PROTOCOLS]"
+                    @update:model-value="providerForm.apiProtocol = $event as ApiProtocol | ''"
+                  />
+                </div>
+                <div class="form-row">
+                  <label>思考兼容</label>
+                  <label class="checkbox-inline">
+                    <input
+                      :checked="providerForm.enableThinkingCompat"
+                      type="checkbox"
+                      @change="providerForm.enableThinkingCompat = ($event.target as HTMLInputElement).checked"
+                    />
+                    <span>使用 `enable_thinking` 参数控制思考</span>
+                  </label>
+                </div>
+              </div>
+              <div class="dialog-footer">
+                <button class="btn-secondary" @click="closeProviderDialog">取消</button>
+                <button class="btn-primary" :disabled="!providerForm.id.trim()" @click="addCustomProvider">确认添加</button>
+              </div>
+            </div>
           </div>
         </div>
       </main>
@@ -462,17 +571,26 @@ async function saveSettings() {
 .settings-content {
   flex: 1;
   min-width: 0;
-  overflow-y: auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   padding: 24px 28px;
 }
 
 .detail-card {
-  max-width: 960px;
+  width: min(960px, 100%);
   border: 1px solid var(--color-border-subtle);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(12px);
   padding: 20px;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .detail-header {
@@ -481,6 +599,7 @@ async function saveSettings() {
   align-items: flex-start;
   gap: 20px;
   margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .detail-header h3 {
@@ -498,27 +617,142 @@ async function saveSettings() {
 
 .tab-panel {
   max-width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .tab-panel :deep(.content-header) {
   display: none;
 }
 
-.add-provider {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin-top: 14px;
-}
-
-.add-provider-input {
-  width: 220px;
-  max-width: 100%;
+.providers-toolbar {
+  margin-bottom: 12px;
 }
 
 .compact-btn {
   padding: 6px 12px;
   font-size: 13px;
+}
+
+.dialog-overlay {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  backdrop-filter: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+  padding: 24px;
+  pointer-events: auto;
+}
+
+.detail-dialog-host {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.provider-dialog {
+  width: 440px;
+  max-width: min(440px, 100%);
+  max-height: calc(100% - 48px);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-default);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.38),
+    0 8px 20px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(99, 102, 241, 0.16);
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px 0;
+}
+
+.dialog-header h3 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.close-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
+}
+
+.close-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.dialog-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-row label {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dialog-hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.checkbox-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.checkbox-inline input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #6366f1;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px 20px;
+  border-top: 1px solid var(--color-border-subtle);
 }
 
 @media (max-width: 1024px) {
@@ -542,8 +776,9 @@ async function saveSettings() {
     align-items: stretch;
   }
 
-  .add-provider {
-    flex-wrap: wrap;
+  .provider-dialog {
+    width: 100%;
+    max-width: 500px;
   }
 }
 </style>
