@@ -163,6 +163,12 @@ pnpm --filter @agent-swarm/server test
 - `prompt_completed`
 - `error`
 
+## 前端路由约定
+
+- `GET /chat`：进入新对话草稿态（无会话 ID）。
+- `GET /chat/:conversationId`：打开指定会话，并在切换会话时保持 URL 与当前会话一致。
+- `GET /swarms` / `GET /agents` / `GET /history` / `GET /settings`：管理页路由。
+
 ### `send_message` 三种启动方式
 
 1. 指定 `swarmId`：走 swarm 模式会话。

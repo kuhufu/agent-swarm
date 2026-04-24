@@ -19,8 +19,17 @@ const navItems = [
   { label: "设置", route: "/settings", icon: SettingsIcon },
 ];
 
-const isActive = (path: string) => route.path === path;
-const isConversationActive = (id: string) => route.path === "/chat" && conversationStore.currentConversationId === id;
+const isChatRoute = computed(() => route.name === "chat");
+const routeConversationId = computed(() => {
+  const rawConversationId = route.params.conversationId;
+  if (typeof rawConversationId !== "string") {
+    return null;
+  }
+  const normalizedConversationId = rawConversationId.trim();
+  return normalizedConversationId.length > 0 ? normalizedConversationId : null;
+});
+const isActive = (path: string) => (path === "/chat" ? isChatRoute.value : route.path === path);
+const isConversationActive = (id: string) => isChatRoute.value && routeConversationId.value === id;
 const openedMenuConversationId = ref<string | null>(null);
 const menuPosition = ref<{ left: number; top: number } | null>(null);
 
@@ -109,16 +118,21 @@ const openedMenuConversation = computed(() =>
 );
 
 function navigateTo(path: string) {
-  router.push(path);
+  if (path === "/chat") {
+    const currentConversationId = conversationStore.currentConversationId;
+    void router.push({
+      name: "chat",
+      params: currentConversationId ? { conversationId: currentConversationId } : {},
+    });
+    return;
+  }
+  void router.push(path);
 }
 
 const formatTime = formatTimeLocale;
 
 async function handleOpenConversation(conv: ConversationInfo) {
   closeConversationMenu();
-  if (route.path !== "/chat") {
-    await router.push("/chat");
-  }
   // For direct conversations, clear currentSwarm so ChatView enters direct mode
   if (conv.swarmId.startsWith("__direct_")) {
     swarmStore.clearSwarmSelection();
@@ -128,7 +142,7 @@ async function handleOpenConversation(conv: ConversationInfo) {
       swarmStore.selectSwarm(swarm);
     }
   }
-  await conversationStore.openConversation(conv.id);
+  await router.push({ name: "chat", params: { conversationId: conv.id } });
 }
 
 async function handleNewConversation() {
@@ -151,8 +165,8 @@ async function handleNewConversation() {
     swarmStore.selectSwarm(targetSwarm);
   }
 
-  if (route.path !== "/chat") {
-    await router.push("/chat");
+  if (!isChatRoute.value || routeConversationId.value) {
+    await router.push({ name: "chat", params: {} });
   }
   conversationStore.setCurrentConversation(null);
 }
@@ -161,8 +175,8 @@ function handleNewDirectConversation() {
   closeConversationMenu();
   // Clear current swarm to enter direct mode
   swarmStore.selectSwarm(null as any);
-  if (route.path !== "/chat") {
-    router.push("/chat");
+  if (!isChatRoute.value || routeConversationId.value) {
+    void router.push({ name: "chat", params: {} });
   }
   conversationStore.setCurrentConversation(null);
 }
@@ -298,7 +312,7 @@ import { h } from "vue";
 
 <template>
   <aside class="sidebar">
-    <div class="sidebar-brand" @click="router.push('/chat')">
+    <div class="sidebar-brand" @click="navigateTo('/chat')">
       <div class="brand-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2L2 7l10 5 10-5-10-5z" />

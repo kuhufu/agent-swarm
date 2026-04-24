@@ -54,12 +54,7 @@ async function selectConv(conv: ConversationInfo) {
 }
 
 async function resumeConversation(conv: ConversationInfo) {
-  const swarm = swarmStore.swarms.find((s: SwarmConfig) => s.id === conv.swarmId);
-  if (swarm) {
-    swarmStore.selectSwarm(swarm);
-  }
-  await conversationStore.openConversation(conv.id);
-  await router.push("/chat");
+  await router.push({ name: "chat", params: { conversationId: conv.id } });
 }
 
 async function deleteConversation(conv: ConversationInfo) {

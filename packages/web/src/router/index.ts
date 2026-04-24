@@ -8,7 +8,7 @@ const router = createRouter({
       redirect: "/chat",
     },
     {
-      path: "/chat",
+      path: "/chat/:conversationId?",
       name: "chat",
       component: () => import("../views/ChatView.vue"),
     },

@@ -122,6 +122,7 @@ pnpm test                  # 运行 core 单元测试
   - 卡片：`rgba(255,255,255,0.03)` + `backdrop-filter: blur(12px)` + `border: 1px solid rgba(255,255,255,0.08)`
   - 主色调：`#6366f1`（indigo），状态色用 green/amber/red
 - 虚拟滚动：消息列表大量消息时使用虚拟滚动
+- 会话路由：聊天页使用 `/chat/:conversationId?`；切换会话需同步更新 URL 中的 `conversationId`
 
 ---
 

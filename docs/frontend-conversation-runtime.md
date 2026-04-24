@@ -91,6 +91,7 @@
 - 递增 `inputFocusRequestKey`，通知 `ChatInput` 在“新对话/直接对话”重复点击时也重新聚焦输入框。
 - `ChatInput` 在模型切换、工具开关后调用 `requestTextareaFocus()`，并在输入框恢复可用时补偿聚焦。
 - `ChatInput` 在容器 `chat-input` 的非交互区域拦截 `mousedown`，避免 textarea 失焦，并恢复已有选区/光标位置。
+- 路由与会话 ID 双向同步：`/chat/:conversationId?`。切换会话会更新 URL；直接访问带 ID 的路由会自动打开对应会话。
 
 不再做：
 

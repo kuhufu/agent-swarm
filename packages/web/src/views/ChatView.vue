@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, computed } from "vue";
+import { onMounted, computed, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useSwarmStore } from "../stores/swarm.js";
 import { useConversationStore } from "../stores/conversation.js";
 import { useWebSocket } from "../composables/useWebSocket.js";
@@ -11,12 +12,22 @@ import InterventionPanel from "../components/intervention/InterventionPanel.vue"
 const swarmStore = useSwarmStore();
 const conversationStore = useConversationStore();
 const { connect, connected } = useWebSocket();
+const route = useRoute();
+const router = useRouter();
 
 const swarmId = computed(() => swarmStore.currentSwarm?.id ?? "");
 const isDirectMode = computed(() => !swarmStore.currentSwarm);
 const streamingMessages = computed(() =>
   Array.from(conversationStore.streamingMessages.values()),
 );
+const routeConversationId = computed(() => {
+  const rawConversationId = route.params.conversationId;
+  if (typeof rawConversationId !== "string") {
+    return null;
+  }
+  const normalizedConversationId = rawConversationId.trim();
+  return normalizedConversationId.length > 0 ? normalizedConversationId : null;
+});
 
 const currentConversationTitle = computed(() => {
   if (!conversationStore.currentConversationId) return null;
@@ -32,6 +43,48 @@ onMounted(() => {
     connect();
   }
 });
+
+watch(
+  routeConversationId,
+  (conversationId) => {
+    if (!conversationId) {
+      if (conversationStore.currentConversationId) {
+        conversationStore.setCurrentConversation(null);
+      }
+      return;
+    }
+
+    if (conversationStore.currentConversationId === conversationId) {
+      return;
+    }
+
+    void conversationStore.openConversation(conversationId).catch(() => {
+      if (routeConversationId.value === conversationId) {
+        void router.replace({ name: "chat", params: {} });
+      }
+    });
+  },
+  { immediate: true },
+);
+
+watch(
+  () => conversationStore.currentConversationId,
+  (conversationId) => {
+    const currentRouteConversationId = routeConversationId.value;
+    if (conversationId === currentRouteConversationId) {
+      return;
+    }
+
+    if (conversationId) {
+      void router.replace({ name: "chat", params: { conversationId } });
+      return;
+    }
+
+    if (currentRouteConversationId) {
+      void router.replace({ name: "chat", params: {} });
+    }
+  },
+);
 
 function handleNewConversation() {
   conversationStore.setCurrentConversation(null);
@@ -49,9 +102,6 @@ function handleNewConversation() {
           <template v-else>
             <h2>{{ isDirectMode ? '直接对话' : '对话' }}</h2>
           </template>
-          <span v-if="conversationStore.currentConversationId" class="conversation-id">
-            {{ conversationStore.currentConversationId.slice(0, 8) }}
-          </span>
           <span v-if="isDirectMode" class="mode-badge direct">直接对话模式</span>
         </div>
         <button class="new-chat-btn" @click="handleNewConversation">
@@ -111,15 +161,6 @@ function handleNewConversation() {
   font-weight: 600;
   color: var(--color-text-primary);
   margin: 0;
-}
-
-.conversation-id {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  font-family: var(--font-mono);
-  padding: 2px 8px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 6px;
 }
 
 .mode-badge {
