@@ -52,6 +52,9 @@ const selectedModelLabel = computed(() => {
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 let pendingFocusRequest = false;
 let focusTickScheduled = false;
+let pendingSelectionRestore = true;
+let lastSelectionStart = 0;
+let lastSelectionEnd = 0;
 
 const isTextareaEnabled = computed(() =>
   !sending.value && (props.isDirectMode ? canSendDirect.value : Boolean(props.swarmId)),
@@ -63,11 +66,18 @@ function tryFocusTextarea(): boolean {
     return false;
   }
   textarea.focus();
+  if (pendingSelectionRestore) {
+    const valueLength = textarea.value.length;
+    const nextStart = Math.min(lastSelectionStart, valueLength);
+    const nextEnd = Math.min(lastSelectionEnd, valueLength);
+    textarea.setSelectionRange(nextStart, nextEnd);
+  }
   return true;
 }
 
-function requestTextareaFocus() {
+function requestTextareaFocus(restoreSelection = true) {
   pendingFocusRequest = true;
+  pendingSelectionRestore = pendingSelectionRestore || restoreSelection;
   if (focusTickScheduled) {
     return;
   }
@@ -76,8 +86,50 @@ function requestTextareaFocus() {
     focusTickScheduled = false;
     if (tryFocusTextarea()) {
       pendingFocusRequest = false;
+      pendingSelectionRestore = true;
     }
   });
+}
+
+function captureTextareaSelection() {
+  const textarea = textareaRef.value;
+  if (!textarea) {
+    return;
+  }
+  lastSelectionStart = textarea.selectionStart ?? textarea.value.length;
+  lastSelectionEnd = textarea.selectionEnd ?? lastSelectionStart;
+}
+
+function handleContainerMouseDown(event: MouseEvent) {
+  const target = event.target;
+  if (!(target instanceof Element)) {
+    return;
+  }
+  if (
+    target.closest("textarea")
+    || target.closest("button")
+    || target.closest("input")
+    || target.closest("select")
+    || target.closest("a")
+    || target.closest("[role='button']")
+    || target.closest("[contenteditable='true']")
+  ) {
+    return;
+  }
+  if (!isTextareaEnabled.value) {
+    return;
+  }
+  captureTextareaSelection();
+  event.preventDefault();
+  requestTextareaFocus(true);
+}
+
+function handleKeepTextareaFocusMouseDown(event: MouseEvent) {
+  if (event.button !== 0) {
+    return;
+  }
+  captureTextareaSelection();
+  event.preventDefault();
 }
 
 watch(sending, (isSending) => {
@@ -136,6 +188,7 @@ function handleKeydown(e: KeyboardEvent) {
 }
 
 function selectSavedModel(sm: SavedModel) {
+  captureTextareaSelection();
   selectedModelValue.value = sm.id;
   directModel.value = { provider: sm.provider, modelId: sm.modelId };
   showModelSelect.value = false;
@@ -143,16 +196,19 @@ function selectSavedModel(sm: SavedModel) {
 }
 
 function handleToggleCurrentTimeTool() {
+  captureTextareaSelection();
   currentTimeToolEnabled.value = !currentTimeToolEnabled.value;
   requestTextareaFocus();
 }
 
 function handleToggleJsExecutionTool() {
+  captureTextareaSelection();
   jsExecutionToolEnabled.value = !jsExecutionToolEnabled.value;
   requestTextareaFocus();
 }
 
 function handleToggleThinkMode() {
+  captureTextareaSelection();
   thinkModeEnabled.value = !thinkModeEnabled.value;
   requestTextareaFocus();
 }
@@ -202,6 +258,7 @@ watch([directModel, savedModels], ([model, models]) => {
 }, { immediate: true });
 
 onMounted(() => {
+  captureTextareaSelection();
   requestTextareaFocus();
   if (!connected.value) {
     connect();
@@ -213,13 +270,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="chat-input">
+  <div class="chat-input" @mousedown="handleContainerMouseDown">
     <div class="tool-options">
       <!-- Direct mode: model selector inline (left-aligned) -->
       <div v-if="isDirectMode" class="model-select-inline">
         <button
           class="model-select-btn"
           :class="{ selected: canSendDirect }"
+          @mousedown="handleKeepTextareaFocusMouseDown"
           @click="showModelSelect = !showModelSelect"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
@@ -240,6 +298,7 @@ onMounted(() => {
             :key="sm.id"
             class="model-dropdown-item"
             :class="{ active: selectedModelValue === sm.id }"
+            @mousedown="handleKeepTextareaFocusMouseDown"
             @click="selectSavedModel(sm)"
           >
             <span class="dropdown-model-name">{{ sm.name }}</span>
@@ -255,6 +314,7 @@ onMounted(() => {
         <button
           class="tool-btn"
           :class="{ active: currentTimeToolEnabled }"
+          @mousedown="handleKeepTextareaFocusMouseDown"
           @click="handleToggleCurrentTimeTool"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -266,6 +326,7 @@ onMounted(() => {
         <button
           class="tool-btn"
           :class="{ active: jsExecutionToolEnabled }"
+          @mousedown="handleKeepTextareaFocusMouseDown"
           @click="handleToggleJsExecutionTool"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -277,6 +338,7 @@ onMounted(() => {
         <button
           class="tool-btn"
           :class="{ active: thinkModeEnabled }"
+          @mousedown="handleKeepTextareaFocusMouseDown"
           @click="handleToggleThinkMode"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -309,6 +371,10 @@ onMounted(() => {
           rows="1"
           autofocus
           :disabled="sending || (isDirectMode ? !canSendDirect : !swarmId)"
+          @focus="captureTextareaSelection"
+          @click="captureTextareaSelection"
+          @keyup="captureTextareaSelection"
+          @select="captureTextareaSelection"
           @keydown="handleKeydown"
         />
         <span v-if="isDirectMode && !canSendDirect" class="input-hint">请先选择模型</span>
