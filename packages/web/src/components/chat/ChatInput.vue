@@ -50,6 +50,7 @@ const selectedModelLabel = computed(() => {
 });
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
+const MAX_TEXTAREA_ROWS = 12;
 let pendingFocusRequest = false;
 let focusTickScheduled = false;
 let pendingSelectionRestore = true;
@@ -174,8 +175,35 @@ function handleSend() {
   }
 }
 
+function resizeTextarea() {
+  const textarea = textareaRef.value;
+  if (!textarea) {
+    return;
+  }
+  const styles = window.getComputedStyle(textarea);
+  const lineHeight = Number.parseFloat(styles.lineHeight) || 22;
+  const paddingTop = Number.parseFloat(styles.paddingTop) || 0;
+  const paddingBottom = Number.parseFloat(styles.paddingBottom) || 0;
+  const borderTop = Number.parseFloat(styles.borderTopWidth) || 0;
+  const borderBottom = Number.parseFloat(styles.borderBottomWidth) || 0;
+  const maxHeight = (lineHeight * MAX_TEXTAREA_ROWS) + paddingTop + paddingBottom + borderTop + borderBottom;
+
+  textarea.style.height = "auto";
+  const contentHeight = textarea.scrollHeight;
+  const nextHeight = Math.min(contentHeight, maxHeight);
+  textarea.style.height = `${nextHeight}px`;
+  // Keep vertical scrollbar policy stable to avoid content width jitter.
+  textarea.style.overflowY = "auto";
+}
+
 function handleKeydown(e: KeyboardEvent) {
-  if (e.key === "Enter" && !e.shiftKey) {
+  if (e.key !== "Enter") {
+    return;
+  }
+  if (e.ctrlKey) {
+    return;
+  }
+  if (!e.shiftKey) {
     e.preventDefault();
     if (!props.active) {
       if (props.isDirectMode) {
@@ -257,9 +285,18 @@ watch([directModel, savedModels], ([model, models]) => {
   selectedModelValue.value = matched?.id ?? "";
 }, { immediate: true });
 
+watch(inputText, () => {
+  nextTick(() => {
+    resizeTextarea();
+  });
+}, { flush: "post" });
+
 onMounted(() => {
   captureTextareaSelection();
   requestTextareaFocus();
+  nextTick(() => {
+    resizeTextarea();
+  });
   if (!connected.value) {
     connect();
   }
@@ -406,15 +443,27 @@ onMounted(() => {
 
 <style scoped>
 .chat-input {
-  padding: 12px 24px 20px;
-  border-top: 1px solid var(--color-border-subtle);
-  background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(12px);
+  width: min(980px, calc(100% - 32px));
+  margin: 10px auto 14px;
+  padding: 12px 16px 14px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 20px;
+  background: linear-gradient(
+    135deg,
+    rgba(17, 24, 39, 0.88) 0%,
+    rgba(26, 31, 53, 0.82) 100%
+  );
+  backdrop-filter: blur(16px) saturate(1.1);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  position: relative;
+  z-index: 3;
 }
 
 .tool-options {
-  max-width: 900px;
-  margin: 10px auto 0;
+  max-width: none;
+  margin: 10px 0 0;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -594,20 +643,32 @@ onMounted(() => {
   display: flex;
   gap: 10px;
   align-items: center;
-  max-width: 900px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
 }
 
 .textarea-wrapper {
   flex: 1;
   position: relative;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.textarea-wrapper:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 textarea {
   width: 100%;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 16px;
+  display: block;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  border-radius: 0;
   padding: 12px 16px;
   color: var(--color-text-primary);
   font-size: 14px;
@@ -615,14 +676,38 @@ textarea {
   outline: none;
   font-family: inherit;
   min-height: 48px;
-  max-height: 160px;
+  max-height: none;
   line-height: 1.6;
   transition: all 0.2s;
+  /* Keep content paddings fixed at 16px while reserving scrollbar slot. */
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+
+textarea::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+textarea::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+textarea::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+  background-clip: padding-box;
 }
 
 textarea:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  box-shadow: none;
 }
 
 textarea::placeholder {
@@ -685,5 +770,46 @@ textarea:disabled {
 .send-btn svg {
   width: 18px;
   height: 18px;
+}
+
+@media (max-width: 768px) {
+  .chat-input {
+    width: calc(100% - 16px);
+    margin: 8px auto 10px;
+    padding: 10px 12px 12px;
+    border-radius: 16px;
+  }
+
+  .input-wrapper {
+    gap: 8px;
+  }
+
+  textarea {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+
+  .send-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .tool-options {
+    margin-top: 8px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .tool-toggles-right {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .model-select-label {
+    max-width: 140px;
+  }
 }
 </style>
