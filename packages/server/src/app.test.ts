@@ -43,6 +43,8 @@ function createMockSwarm() {
     clearConversationContext: async (conversationId: string) => ({ conversationId, contextResetAt: Date.now() }),
     resumeConversation: async () => ({ getId: () => "conv_test" }),
     deleteConversation: async () => undefined,
+    getConversationUsage: async () => [],
+    getDailyUsage: async () => [],
     getMessages: async () => [],
     getLLMConfig: () => JSON.parse(JSON.stringify(llmConfig)) as LLMBackendConfig,
     updateLLMConfig: async (next: LLMBackendConfig) => { llmConfig = JSON.parse(JSON.stringify(next)) as LLMBackendConfig; return JSON.parse(JSON.stringify(llmConfig)) as LLMBackendConfig; },
@@ -191,6 +193,30 @@ describe("API routes", () => {
         body: JSON.stringify({ name: "Test Swarm", mode: "router", agents: [] }),
       });
       expect(response.status).toBe(400);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("GET /api/conversations/:id/usage returns usage data", async () => {
+    const server = await startTestServer();
+    try {
+      const response = await fetch(`${server.baseUrl}/api/conversations/test_conv/usage`);
+      const data = await response.json() as { data: any[] };
+      expect(response.status).toBe(200);
+      expect(Array.isArray(data.data)).toBe(true);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("GET /api/usage/daily returns daily usage data", async () => {
+    const server = await startTestServer();
+    try {
+      const response = await fetch(`${server.baseUrl}/api/usage/daily?days=7`);
+      const data = await response.json() as { data: any[] };
+      expect(response.status).toBe(200);
+      expect(Array.isArray(data.data)).toBe(true);
     } finally {
       await server.close();
     }

@@ -34,6 +34,8 @@ export type {
   Conversation,
   ConversationPreferences,
   ConversationDirectModel,
+  ConversationUsage,
+  DailyUsage,
 } from "./storage/interface.js";
 
 // LLM types — LLMBackendConfig is already exported from core/types.js above

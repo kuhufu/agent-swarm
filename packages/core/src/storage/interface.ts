@@ -44,6 +44,27 @@ export interface ConversationPreferences {
   directModel?: ConversationDirectModel;
 }
 
+export interface ConversationUsage {
+  conversationId: string;
+  conversationTitle?: string;
+  provider: string;
+  modelId: string;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalTokens: number;
+  totalCost: number;
+}
+
+export interface DailyUsage {
+  date: string;
+  provider: string;
+  modelId: string;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  cost: number;
+}
+
 export interface IStorage {
   init(): Promise<void>;
   close(): Promise<void>;
@@ -90,4 +111,8 @@ export interface IStorage {
   // Event log
   logEvent(conversationId: string, event: StoredEvent): Promise<void>;
   getEvents(conversationId: string, eventType?: string): Promise<StoredEvent[]>;
+
+  // Usage analytics
+  getConversationUsage(conversationId: string): Promise<ConversationUsage[]>;
+  getDailyUsage(days?: number): Promise<DailyUsage[]>;
 }

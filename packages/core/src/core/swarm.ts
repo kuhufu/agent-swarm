@@ -357,6 +357,16 @@ export class AgentSwarm {
     return this.storage.getMessages(conversationId);
   }
 
+  async getConversationUsage(conversationId: string) {
+    this.ensureInitialized();
+    return this.storage.getConversationUsage(conversationId);
+  }
+
+  async getDailyUsage(days?: number) {
+    this.ensureInitialized();
+    return this.storage.getDailyUsage(days);
+  }
+
   getSwarmConfig(swarmId: string): SwarmConfig | undefined {
     return this.swarmConfigs.get(swarmId);
   }

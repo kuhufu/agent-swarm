@@ -8,6 +8,7 @@ import { agentRoutes } from "./routes/agents.js";
 import { conversationRoutes } from "./routes/conversations.js";
 import { messageRoutes } from "./routes/messages.js";
 import { configRoutes } from "./routes/config.js";
+import { usageRoutes } from "./routes/usage.js";
 import { errorHandler } from "./middleware/error-handler.js";
 
 export function createApp(swarm: AgentSwarm): Express {
@@ -28,6 +29,7 @@ export function createApp(swarm: AgentSwarm): Express {
   app.use("/api/conversations", conversationRoutes(swarm));
   app.use("/api/config", configRoutes(swarm));
   app.use("/api", messageRoutes(swarm));
+  app.use("/api", usageRoutes(swarm));
 
   // Error handler
   app.use(errorHandler);

@@ -1,8 +1,10 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, gte } from "drizzle-orm";
 import type {
   IStorage,
+  ConversationUsage,
+  DailyUsage,
   StoredMessage,
   StoredEvent,
   Conversation,
@@ -631,5 +633,104 @@ export class SqliteStorage implements IStorage {
       eventData: r.eventData,
       timestamp: r.timestamp,
     }));
+  }
+
+  async getConversationUsage(conversationId: string): Promise<ConversationUsage[]> {
+    const rows = this.getDb().select({
+      metadata: messagesTable.metadata,
+    }).from(messagesTable)
+      .where(
+        and(
+          eq(messagesTable.conversationId, conversationId),
+          eq(messagesTable.role, "assistant"),
+        ),
+      )
+      .all();
+
+    const usageMap = new Map<string, ConversationUsage>();
+
+    for (const row of rows) {
+      if (!row.metadata) continue;
+      try {
+        const meta = JSON.parse(row.metadata) as Record<string, unknown>;
+        const provider = (meta.provider as string) ?? "unknown";
+        const modelId = (meta.model as string) ?? "unknown";
+        const usage = meta.usage as Record<string, unknown> | undefined;
+        if (!usage) continue;
+
+        const key = `${provider}:${modelId}`;
+        const existing = usageMap.get(key) ?? {
+          conversationId,
+          provider,
+          modelId,
+          totalInputTokens: 0,
+          totalOutputTokens: 0,
+          totalTokens: 0,
+          totalCost: 0,
+        };
+
+        existing.totalInputTokens += (usage.input as number) ?? 0;
+        existing.totalOutputTokens += (usage.output as number) ?? 0;
+        existing.totalTokens = existing.totalInputTokens + existing.totalOutputTokens;
+        const cost = usage.cost as Record<string, unknown> | undefined;
+        existing.totalCost += (cost?.total as number) ?? 0;
+        usageMap.set(key, existing);
+      } catch {
+        // skip malformed metadata
+      }
+    }
+
+    return Array.from(usageMap.values());
+  }
+
+  async getDailyUsage(days = 30): Promise<DailyUsage[]> {
+    const since = Date.now() - days * 86_400_000;
+    const rows = this.getDb().select({
+      metadata: messagesTable.metadata,
+      timestamp: messagesTable.timestamp,
+    }).from(messagesTable)
+      .where(
+        and(
+          eq(messagesTable.role, "assistant"),
+          gte(messagesTable.timestamp, since),
+        ),
+      )
+      .all();
+
+    const usageMap = new Map<string, DailyUsage>();
+
+    for (const row of rows) {
+      if (!row.metadata) continue;
+      try {
+        const meta = JSON.parse(row.metadata) as Record<string, unknown>;
+        const provider = (meta.provider as string) ?? "unknown";
+        const modelId = (meta.model as string) ?? "unknown";
+        const usage = meta.usage as Record<string, unknown> | undefined;
+        if (!usage) continue;
+
+        const date = new Date(row.timestamp).toISOString().slice(0, 10);
+        const key = `${date}:${provider}:${modelId}`;
+        const existing = usageMap.get(key) ?? {
+          date,
+          provider,
+          modelId,
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+          cost: 0,
+        };
+
+        existing.inputTokens += (usage.input as number) ?? 0;
+        existing.outputTokens += (usage.output as number) ?? 0;
+        existing.totalTokens = existing.inputTokens + existing.outputTokens;
+        const cost = usage.cost as Record<string, unknown> | undefined;
+        existing.cost += (cost?.total as number) ?? 0;
+        usageMap.set(key, existing);
+      } catch {
+        // skip malformed metadata
+      }
+    }
+
+    return Array.from(usageMap.values()).sort((a, b) => b.date.localeCompare(a.date));
   }
 }
