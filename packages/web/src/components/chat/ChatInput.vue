@@ -48,7 +48,7 @@ const THINKING_LEVELS = [
 
 const thinkLevelLabel = computed(() => {
   const found = THINKING_LEVELS.find((l) => l.value === thinkingLevel.value);
-  return found ? found.label : "中";
+  return found ? found.label : "关闭";
 });
 
 const savedModels = computed<SavedModel[]>(() => settingsStore.config?.models ?? []);

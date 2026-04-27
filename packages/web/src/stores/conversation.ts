@@ -33,7 +33,7 @@ export const useConversationStore = defineStore("conversation", () => {
   const loadingMessages = ref(false);
   const conversations = ref<ConversationInfo[]>([]);
   const enabledTools = ref<string[]>([]);
-  const thinkingLevel = ref<string>("medium");
+  const thinkingLevel = ref<string>("off");
   const thinkModeEnabled = computed(() => thinkingLevel.value !== "off");
   const currentDirectModel = ref<ConversationInfo["directModel"] | null>(null);
   const inputFocusRequestKey = ref(0);
@@ -243,7 +243,7 @@ export const useConversationStore = defineStore("conversation", () => {
     preferences?: Partial<Pick<ConversationInfo, "enabledTools" | "thinkingLevel" | "directModel">> | null,
   ) {
     enabledTools.value = normalizeEnabledTools(preferences?.enabledTools);
-    thinkingLevel.value = preferences?.thinkingLevel ?? "medium";
+    thinkingLevel.value = preferences?.thinkingLevel ?? "off";
     currentDirectModel.value = normalizeDirectModel(preferences?.directModel);
   }
 

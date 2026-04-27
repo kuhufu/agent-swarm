@@ -14,7 +14,7 @@ import { settingsTable, swarmsTable, agentsTable, conversationsTable, messagesTa
 
 const DEFAULT_CONVERSATION_PREFERENCES: ConversationPreferences = {
   enabledTools: [],
-  thinkingLevel: "medium",
+  thinkingLevel: "off",
 };
 
 export class SqliteStorage implements IStorage {
@@ -187,7 +187,7 @@ export class SqliteStorage implements IStorage {
       swarmId: row.swarmId,
       title: row.title ?? undefined,
       enabledTools: this.parseStoredEnabledTools(row.enabledTools),
-      thinkingLevel: row.thinkingLevel ?? "medium",
+      thinkingLevel: row.thinkingLevel ?? "off",
       directModel: (directProvider && directModelId)
         ? { provider: directProvider, modelId: directModelId }
         : undefined,
@@ -223,7 +223,7 @@ export class SqliteStorage implements IStorage {
       schemaChanged = true;
     }
     if (!columns.has("thinking_level")) {
-      this.rawDb.exec("ALTER TABLE conversations ADD COLUMN thinking_level TEXT NOT NULL DEFAULT 'medium';");
+      this.rawDb.exec("ALTER TABLE conversations ADD COLUMN thinking_level TEXT NOT NULL DEFAULT 'off';");
       schemaChanged = true;
     }
 
@@ -348,7 +348,7 @@ export class SqliteStorage implements IStorage {
     const enabledTools = this.normalizeEnabledTools(
       preferences?.enabledTools ?? DEFAULT_CONVERSATION_PREFERENCES.enabledTools,
     );
-    const thinkingLevel = preferences?.thinkingLevel ?? DEFAULT_CONVERSATION_PREFERENCES.thinkingLevel ?? "medium";
+    const thinkingLevel = preferences?.thinkingLevel ?? DEFAULT_CONVERSATION_PREFERENCES.thinkingLevel ?? "off";
     const directModel = this.normalizeDirectModel(preferences?.directModel);
     const conv: Conversation = {
       id: crypto.randomUUID(),

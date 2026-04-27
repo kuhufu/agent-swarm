@@ -28,7 +28,7 @@ export const conversationsTable = sqliteTable("conversations", {
   swarmId: text("swarm_id").notNull().references(() => swarmsTable.id),
   title: text("title"),
   enabledTools: text("enabled_tools").notNull().default("[]"),
-  thinkingLevel: text("thinking_level").notNull().default("medium"),
+  thinkingLevel: text("thinking_level").notNull().default("off"),
   directProvider: text("direct_provider"),
   directModelId: text("direct_model_id"),
   contextResetAt: integer("context_reset_at"),

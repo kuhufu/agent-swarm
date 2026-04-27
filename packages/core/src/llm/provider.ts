@@ -56,21 +56,22 @@ function resolveModelReasoning(
   options: NonNullable<ModelConfig["options"]>,
   reasoning?: boolean,
 ): boolean {
-  // reasoning param from caller (e.g. resolved thinking level) takes priority
-  if (typeof reasoning === "boolean") {
-    return reasoning;
-  }
-  // explicit options.reasoning flag
-  if (typeof options.reasoning === "boolean") {
-    return options.reasoning;
-  }
-  // explicit thinkingFormat implies reasoning support
+  // Explicit thinkingFormat in options always implies reasoning support.
+  // This allows users to configure thinking format per provider regardless of thinking level.
   const compat = options.compat;
   if (compat && typeof compat === "object" && !Array.isArray(compat)) {
     const thinkingFormat = (compat as Record<string, unknown>).thinkingFormat;
     if (typeof thinkingFormat === "string" && thinkingFormat.trim().length > 0) {
       return true;
     }
+  }
+  // Caller hint (e.g. resolved thinking level from agent-factory)
+  if (typeof reasoning === "boolean") {
+    return reasoning;
+  }
+  // explicit options.reasoning flag
+  if (typeof options.reasoning === "boolean") {
+    return options.reasoning;
   }
   return false;
 }
@@ -87,6 +88,18 @@ function resolveOpenAICompat(
   const rawCompat = options.compat;
   if (rawCompat && typeof rawCompat === "object" && !Array.isArray(rawCompat)) {
     Object.assign(nextCompat, rawCompat);
+  }
+
+  // When thinkingFormat is explicitly configured, the provider likely follows
+  // a non-standard OpenAI protocol. Default compat flags to false to avoid
+  // sending unsupported parameters (e.g. developer role, reasoning_effort).
+  if (nextCompat.thinkingFormat) {
+    if (nextCompat.supportsReasoningEffort === undefined) {
+      nextCompat.supportsReasoningEffort = false;
+    }
+    if (nextCompat.supportsDeveloperRole === undefined) {
+      nextCompat.supportsDeveloperRole = false;
+    }
   }
 
   return Object.keys(nextCompat).length > 0 ? nextCompat : undefined;
@@ -157,10 +170,11 @@ export function resolveModelFromProvider(
     return undefined;
   })();
 
-  const mergedOptions = {
-    ...overrideOptions,
-    ...(mergedCompat ? { compat: mergedCompat } : {}),
-  };
+  const modelOptions = normalizeModelOptions(perAgentOverride?.options);
+  const mergedOptions = { ...modelOptions };
+  if (providerConfig?.thinkingFormat && !modelOptions.compat?.thinkingFormat) {
+    mergedOptions.compat = { ...(mergedOptions.compat ?? {}), thinkingFormat: providerConfig.thinkingFormat };
+  }
   const options = Object.keys(mergedOptions).length > 0 ? mergedOptions : undefined;
 
   return resolveModel({
