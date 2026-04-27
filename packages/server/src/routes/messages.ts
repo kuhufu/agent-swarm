@@ -6,7 +6,7 @@ export function messageRoutes(swarm: AgentSwarm): Router {
 
   router.get("/conversations/:id/messages", async (req, res) => {
     try {
-      const messages = await swarm.getMessages(req.params.id);
+      const messages = await swarm.getMessages(req.params.id as string);
       res.json({ data: messages });
     } catch (err: any) {
       res.status(404).json({ error: err.message });

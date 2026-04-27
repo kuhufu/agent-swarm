@@ -1,5 +1,16 @@
 import { Router } from "express";
 import type { AgentSwarm, LLMBackendConfig, ApiProtocol } from "@agent-swarm/core";
+import { validateBody } from "../middleware/validate.js";
+import { updateConfigSchema, testModelSchema } from "../schemas/index.js";
+
+function isEmptyObject(v: unknown): boolean {
+  return typeof v !== "object" || v === null || Array.isArray(v) || Object.keys(v as object).length === 0;
+}
+
+function coalesce<T>(value: unknown, fallback: T | undefined): T | undefined {
+  if ((value as unknown) === undefined || isEmptyObject(value)) return fallback;
+  return value as T;
+}
 
 function maskApiKeys(apiKeys: Record<string, string>): Record<string, string> {
   const maskedApiKeys: Record<string, string> = {};
@@ -37,12 +48,9 @@ export function configRoutes(swarm: AgentSwarm): Router {
     res.json({ data: toResponse(config) });
   });
 
-  router.put("/", async (req, res) => {
+  router.put("/", validateBody(updateConfigSchema), async (req, res) => {
     try {
-      if (!req.body || typeof req.body !== "object") {
-        return res.status(400).json({ error: "Invalid request body" });
-      }
-
+      const body = req.body as Record<string, unknown>;
       const {
         apiKeys,
         providers,
@@ -50,30 +58,30 @@ export function configRoutes(swarm: AgentSwarm): Router {
         defaultThinkingLevel,
         defaultThinkingBudgets,
         models,
-      } = req.body;
+      } = body;
 
       const currentConfig = swarm.getLLMConfig();
-      const currentApiKeys = currentConfig.apiKeys && typeof currentConfig.apiKeys === "object"
+      const currentApiKeys = (currentConfig.apiKeys && typeof currentConfig.apiKeys === "object")
         ? currentConfig.apiKeys
-        : {};
-      const currentProviders = currentConfig.providers && typeof currentConfig.providers === "object"
+        : undefined;
+      const currentProviders = (currentConfig.providers && typeof currentConfig.providers === "object")
         ? currentConfig.providers
         : undefined;
-      const currentEndpoints = currentConfig.endpoints && typeof currentConfig.endpoints === "object"
+      const currentEndpoints = (currentConfig.endpoints && typeof currentConfig.endpoints === "object")
         ? currentConfig.endpoints
         : undefined;
       const currentModels = Array.isArray(currentConfig.models) ? currentConfig.models : undefined;
 
       const nextApiKeys: Record<string, string> = (() => {
         if (!apiKeys || typeof apiKeys !== "object") {
-          return { ...currentApiKeys };
+          return { ...(currentApiKeys ?? {}) };
         }
 
         const replaced: Record<string, string> = {};
         for (const [provider, key] of Object.entries(apiKeys as Record<string, unknown>)) {
           if (typeof key !== "string") continue;
-          if (key.includes("...") && currentApiKeys[provider]) {
-            replaced[provider] = currentApiKeys[provider];
+          if (key.includes("...") && currentApiKeys?.[provider]) {
+            replaced[provider] = currentApiKeys[provider]!;
             continue;
           }
           replaced[provider] = key;
@@ -84,11 +92,11 @@ export function configRoutes(swarm: AgentSwarm): Router {
       const nextConfig: LLMBackendConfig = {
         ...currentConfig,
         apiKeys: nextApiKeys,
-        providers: providers ?? currentProviders,
-        endpoints: endpoints ?? currentEndpoints,
-        defaultThinkingLevel: defaultThinkingLevel ?? currentConfig.defaultThinkingLevel,
-        defaultThinkingBudgets: defaultThinkingBudgets ?? currentConfig.defaultThinkingBudgets,
-        models: models ?? currentModels,
+        providers: coalesce<LLMBackendConfig["providers"]>(providers, currentProviders),
+        endpoints: coalesce<LLMBackendConfig["endpoints"]>(endpoints, currentEndpoints),
+        defaultThinkingLevel: coalesce<string>(defaultThinkingLevel, currentConfig.defaultThinkingLevel) as LLMBackendConfig["defaultThinkingLevel"],
+        defaultThinkingBudgets: coalesce<LLMBackendConfig["defaultThinkingBudgets"]>(defaultThinkingBudgets, currentConfig.defaultThinkingBudgets),
+        models: coalesce<LLMBackendConfig["models"]>(models, currentModels),
       };
 
       const updatedConfig = await swarm.updateLLMConfig(nextConfig);
@@ -105,9 +113,9 @@ export function configRoutes(swarm: AgentSwarm): Router {
 
   router.get("/providers/:providerId/models", async (req, res) => {
     try {
-      const providerId = req.params.providerId;
-      if (!providerId || typeof providerId !== "string") {
-        return res.status(400).json({ error: "providerId is required" });
+      const providerId = req.params.providerId as string;
+      if (!providerId) {
+        return res.status(400).json({ error: "providerId 不能为空" });
       }
       const modelList = await swarm.listModels(providerId);
       res.json({ data: modelList });
@@ -116,28 +124,15 @@ export function configRoutes(swarm: AgentSwarm): Router {
     }
   });
 
-  router.post("/test-model", async (req, res) => {
+  router.post("/test-model", validateBody(testModelSchema), async (req, res) => {
     try {
-      if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
-        return res.status(400).json({ error: "Invalid request body" });
-      }
-
       const body = req.body as Record<string, unknown>;
-      const provider = typeof body.provider === "string" ? body.provider.trim() : "";
-      const modelId = typeof body.modelId === "string" ? body.modelId.trim() : "";
-      if (!provider || !modelId) {
-        return res.status(400).json({ error: "provider and modelId are required" });
-      }
+      const provider = body.provider as string;
+      const modelId = body.modelId as string;
 
-      const prompt = typeof body.prompt === "string" ? body.prompt : undefined;
-      const timeoutMs = typeof body.timeoutMs === "number" ? body.timeoutMs : undefined;
-      const override = (
-        body.override
-        && typeof body.override === "object"
-        && !Array.isArray(body.override)
-      )
-        ? body.override as Record<string, unknown>
-        : undefined;
+      const prompt = body.prompt as string | undefined;
+      const timeoutMs = body.timeoutMs as number | undefined;
+      const override = body.override as Record<string, unknown> | undefined;
       const currentConfig = swarm.getLLMConfig();
       const currentApiKey = currentConfig.apiKeys?.[provider];
 

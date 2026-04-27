@@ -1,41 +1,39 @@
 import { Router } from "express";
-import type { AgentSwarm, SwarmConfig } from "@agent-swarm/core";
+import type { AgentSwarm, SwarmConfig, CollaborationMode } from "@agent-swarm/core";
 import { randomUUID } from "node:crypto";
+import { validateBody } from "../middleware/validate.js";
+import { createSwarmSchema, updateSwarmSchema } from "../schemas/index.js";
 
-interface BuildSwarmConfigOptions {
-  idOverride?: string;
-  autoGenerateId?: boolean;
+function normalizeMode(mode: unknown): CollaborationMode {
+  if (typeof mode === "string") return mode as CollaborationMode;
+  if (mode && typeof mode === "object" && "type" in mode) {
+    return (mode as Record<string, unknown>).type as CollaborationMode;
+  }
+  return "router";
 }
 
-function buildSwarmConfig(input: any, options: BuildSwarmConfigOptions = {}): SwarmConfig {
-  const incomingId = typeof input.id === "string" ? input.id.trim() : "";
-  const resolvedId = options.idOverride
-    ?? (incomingId || (options.autoGenerateId ? `swarm-${randomUUID()}` : ""));
+function buildSwarmConfig(input: Record<string, unknown>, options: { idOverride?: string; autoGenerateId?: boolean } = {}): SwarmConfig {
+  const fromInput = typeof input.id === "string" ? input.id.trim() : "";
+  const resolvedId = options.idOverride ?? (fromInput || (options.autoGenerateId ? `swarm-${randomUUID()}` : ""));
 
   const config: SwarmConfig = {
     id: resolvedId,
-    name: input.name,
-    mode: input.mode,
-    agents: input.agents,
-    orchestrator: input.orchestrator,
-    aggregator: input.aggregator,
-    debateConfig: input.debateConfig,
-    pipeline: input.pipeline,
-    interventions: input.interventions,
-    maxTotalTurns: input.maxTotalTurns,
-    maxConcurrency: input.maxConcurrency,
+    name: input.name as string,
+    mode: normalizeMode(input.mode),
+    agents: input.agents as SwarmConfig["agents"],
+    orchestrator: input.orchestrator as SwarmConfig["orchestrator"],
+    aggregator: input.aggregator as SwarmConfig["aggregator"],
+    debateConfig: input.debateConfig as SwarmConfig["debateConfig"],
+    pipeline: input.pipeline as SwarmConfig["pipeline"],
+    interventions: input.interventions as SwarmConfig["interventions"],
+    maxTotalTurns: input.maxTotalTurns as number | undefined,
+    maxConcurrency: input.maxConcurrency as number | undefined,
   };
 
-  if (config.mode === "router" && !config.orchestrator && Array.isArray(config.agents) && config.agents.length > 0) {
+  if (config.mode === "router" && !config.orchestrator) {
     config.orchestrator = config.agents[0];
   }
 
-  if (!config.id || !config.name || !config.mode || !Array.isArray(config.agents) || config.agents.length === 0) {
-    throw new Error("id, name, mode, and at least one agent are required");
-  }
-  if (config.mode === "router" && !config.orchestrator) {
-    throw new Error("orchestrator is required for router mode");
-  }
   if (config.mode === "debate" && !config.debateConfig) {
     config.debateConfig = {
       rounds: 3,
@@ -58,33 +56,31 @@ export function swarmRoutes(swarm: AgentSwarm): Router {
   });
 
   router.get("/:id", (req, res) => {
-    const config = swarm.getSwarmConfig(req.params.id);
-    if (!config) {
-      return res.status(404).json({ error: "Swarm not found" });
-    }
+    const id = req.params.id as string;
+    const config = swarm.getSwarmConfig(id);
+    if (!config) return res.status(404).json({ error: "Swarm 不存在" });
     res.json({ data: config });
   });
 
-  router.post("/", async (req, res) => {
+  router.post("/", validateBody(createSwarmSchema), async (req, res) => {
     try {
-      const config = await swarm.addSwarmConfig(buildSwarmConfig(req.body, { autoGenerateId: true }));
+      const config = await swarm.addSwarmConfig(buildSwarmConfig(req.body as Record<string, unknown>, { autoGenerateId: true }));
       res.status(201).json({ data: config });
     } catch (err: any) {
-      const message = err?.message ?? "Failed to create swarm";
+      const message = err?.message ?? "创建 Swarm 失败";
       const status = message.includes("already exists") ? 409 : 400;
       res.status(status).json({ error: message });
     }
   });
 
-  router.put("/:id", async (req, res) => {
+  router.put("/:id", validateBody(updateSwarmSchema), async (req, res) => {
     try {
-      const id = req.params.id;
+      const id = req.params.id as string;
+      if (!id) return res.status(400).json({ error: "缺少 Swarm ID" });
       const existing = swarm.getSwarmConfig(id);
-      if (!existing) {
-        return res.status(404).json({ error: "Swarm not found" });
-      }
+      if (!existing) return res.status(404).json({ error: "Swarm 不存在" });
 
-      const body = req.body ?? {};
+      const body = req.body as Record<string, unknown>;
       const mergedInput = {
         ...existing,
         ...body,
@@ -102,7 +98,7 @@ export function swarmRoutes(swarm: AgentSwarm): Router {
       const config = await swarm.updateSwarmConfig(id, buildSwarmConfig(mergedInput, { idOverride: id }));
       res.json({ data: config });
     } catch (err: any) {
-      const message = err?.message ?? "Failed to update swarm";
+      const message = err?.message ?? "更新 Swarm 失败";
       const status = message.includes("not found") ? 404 : 400;
       res.status(status).json({ error: message });
     }
@@ -110,10 +106,10 @@ export function swarmRoutes(swarm: AgentSwarm): Router {
 
   router.delete("/:id", async (req, res) => {
     try {
-      await swarm.deleteSwarmConfig(req.params.id);
+      await swarm.deleteSwarmConfig(req.params.id as string);
       res.json({ success: true });
     } catch (err: any) {
-      const message = err?.message ?? "Failed to delete swarm";
+      const message = err?.message ?? "删除 Swarm 失败";
       const status = message.includes("not found") ? 404 : 400;
       res.status(status).json({ error: message });
     }

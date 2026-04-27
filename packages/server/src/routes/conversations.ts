@@ -1,11 +1,15 @@
 import { Router } from "express";
 import type { AgentSwarm } from "@agent-swarm/core";
 import type { ConversationPreferences, ConversationDirectModel } from "@agent-swarm/core";
+import { validateBody, validateQuery } from "../middleware/validate.js";
+import {
+  createConversationSchema,
+  updateConversationPreferencesSchema,
+  listConversationsQuerySchema,
+} from "../schemas/index.js";
 
 function normalizeEnabledTools(input: unknown): string[] {
-  if (!Array.isArray(input)) {
-    return [];
-  }
+  if (!Array.isArray(input)) return [];
   const normalized = input
     .filter((tool): tool is string => typeof tool === "string")
     .map((tool) => tool.trim())
@@ -13,26 +17,17 @@ function normalizeEnabledTools(input: unknown): string[] {
   return Array.from(new Set(normalized));
 }
 
-function parseConversationPreferences(input: unknown): Partial<ConversationPreferences> {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
-    return {};
-  }
-  const raw = input as Record<string, unknown>;
+function parseConversationPreferences(input: Record<string, unknown>): Partial<ConversationPreferences> {
   const preferences: Partial<ConversationPreferences> = {};
 
-  if (Array.isArray(raw.enabledTools)) {
-    preferences.enabledTools = normalizeEnabledTools(raw.enabledTools);
+  if (input.enabledTools) {
+    preferences.enabledTools = normalizeEnabledTools(input.enabledTools);
   }
-  if (typeof raw.thinkingLevel === "string") {
-    preferences.thinkingLevel = raw.thinkingLevel;
+  if (typeof input.thinkingLevel === "string") {
+    preferences.thinkingLevel = input.thinkingLevel;
   }
-  if (raw.directModel && typeof raw.directModel === "object" && !Array.isArray(raw.directModel)) {
-    const directModelRaw = raw.directModel as Record<string, unknown>;
-    const provider = typeof directModelRaw.provider === "string" ? directModelRaw.provider.trim() : "";
-    const modelId = typeof directModelRaw.modelId === "string" ? directModelRaw.modelId.trim() : "";
-    if (provider && modelId) {
-      preferences.directModel = { provider, modelId } satisfies ConversationDirectModel;
-    }
+  if (input.directModel) {
+    preferences.directModel = input.directModel as ConversationDirectModel;
   }
 
   return preferences;
@@ -41,7 +36,7 @@ function parseConversationPreferences(input: unknown): Partial<ConversationPrefe
 export function conversationRoutes(swarm: AgentSwarm): Router {
   const router = Router();
 
-  router.get("/", async (req, res) => {
+  router.get("/", validateQuery(listConversationsQuerySchema), async (req, res) => {
     const swarmId = req.query.swarmId as string | undefined;
     try {
       const conversations = swarmId
@@ -53,17 +48,14 @@ export function conversationRoutes(swarm: AgentSwarm): Router {
     }
   });
 
-  router.post("/", async (req, res) => {
-    const { swarmId, title } = req.body ?? {};
-    if (!swarmId) {
-      return res.status(400).json({ error: "swarmId required" });
-    }
+  router.post("/", validateBody(createConversationSchema), async (req, res) => {
+    const { swarmId, title } = req.body;
     try {
-      const preferences = parseConversationPreferences(req.body);
+      const preferences = parseConversationPreferences(req.body as Record<string, unknown>);
       const conversation = await swarm.createConversation(swarmId, title, preferences);
       const conversationInfo = await swarm.getConversation(conversation.getId());
       if (!conversationInfo) {
-        return res.status(500).json({ error: "Failed to load created conversation" });
+        return res.status(500).json({ error: "无法加载已创建的会话" });
       }
       res.json({ data: conversationInfo });
     } catch (err: any) {
@@ -73,20 +65,18 @@ export function conversationRoutes(swarm: AgentSwarm): Router {
 
   router.get("/:id", async (req, res) => {
     try {
-      const conversation = await swarm.getConversation(req.params.id);
-      if (!conversation) {
-        return res.status(404).json({ error: "Conversation not found" });
-      }
+      const conversation = await swarm.getConversation(req.params.id as string);
+      if (!conversation) return res.status(404).json({ error: "会话不存在" });
       res.json({ data: conversation });
     } catch (err: any) {
       res.status(404).json({ error: err.message });
     }
   });
 
-  router.patch("/:id/preferences", async (req, res) => {
+  router.patch("/:id/preferences", validateBody(updateConversationPreferencesSchema), async (req, res) => {
     try {
-      const preferences = parseConversationPreferences(req.body);
-      const updated = await swarm.updateConversationPreferences(req.params.id, preferences);
+      const preferences = parseConversationPreferences(req.body as Record<string, unknown>);
+      const updated = await swarm.updateConversationPreferences(req.params.id as string, preferences);
       res.json({ data: updated });
     } catch (err: any) {
       res.status(400).json({ error: err.message });
@@ -95,7 +85,7 @@ export function conversationRoutes(swarm: AgentSwarm): Router {
 
   router.post("/:id/context/clear", async (req, res) => {
     try {
-      const cleared = await swarm.clearConversationContext(req.params.id);
+      const cleared = await swarm.clearConversationContext(req.params.id as string);
       res.json({ data: cleared });
     } catch (err: any) {
       res.status(404).json({ error: err.message });
@@ -104,7 +94,7 @@ export function conversationRoutes(swarm: AgentSwarm): Router {
 
   router.post("/:id/resume", async (req, res) => {
     try {
-      const conversation = await swarm.resumeConversation(req.params.id);
+      const conversation = await swarm.resumeConversation(req.params.id as string);
       res.json({ data: { id: conversation.getId() } });
     } catch (err: any) {
       res.status(404).json({ error: err.message });
@@ -113,7 +103,7 @@ export function conversationRoutes(swarm: AgentSwarm): Router {
 
   router.delete("/:id", async (req, res) => {
     try {
-      await swarm.deleteConversation(req.params.id);
+      await swarm.deleteConversation(req.params.id as string);
       res.json({ data: { deleted: true } });
     } catch (err: any) {
       res.status(400).json({ error: err.message });

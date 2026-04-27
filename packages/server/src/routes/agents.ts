@@ -1,5 +1,7 @@
 import { Router } from "express";
 import type { AgentSwarm } from "@agent-swarm/core";
+import { validateBody } from "../middleware/validate.js";
+import { createAgentPresetSchema, updateAgentPresetSchema } from "../schemas/index.js";
 
 export function agentRoutes(swarm: AgentSwarm): Router {
   const router = Router();
@@ -15,70 +17,60 @@ export function agentRoutes(swarm: AgentSwarm): Router {
 
   router.get("/:id", async (req, res) => {
     try {
-      const preset = await swarm.getAgentPreset(req.params.id);
-      if (!preset) {
-        return res.status(404).json({ error: "Agent preset not found" });
-      }
+      const preset = await swarm.getAgentPreset(req.params.id as string);
+      if (!preset) return res.status(404).json({ error: "Agent 预设不存在" });
       res.json({ data: preset });
     } catch (err: any) {
       res.status(500).json({ error: err?.message ?? "Failed to get agent preset" });
     }
   });
 
-  router.post("/", async (req, res) => {
+  router.post("/", validateBody(createAgentPresetSchema), async (req, res) => {
     try {
-      const input = req.body ?? {};
-      if (!input.id || !input.name) {
-        return res.status(400).json({ error: "id and name are required" });
-      }
+      const input = req.body;
       const preset = {
         id: input.id,
         name: input.name,
         description: input.description ?? "",
         systemPrompt: input.systemPrompt ?? "",
-        model: {
-          provider: input.model?.provider ?? "",
-          modelId: input.model?.modelId ?? "",
-        },
+        model: input.model ?? { provider: "", modelId: "" },
         category: input.category ?? "",
-        tags: Array.isArray(input.tags) ? input.tags : [],
+        tags: input.tags ?? [],
         builtIn: false,
       };
       const created = await swarm.addAgentPreset(preset);
       res.status(201).json({ data: created });
     } catch (err: any) {
-      const message = err?.message ?? "Failed to create agent preset";
+      const message = err?.message ?? "创建 Agent 预设失败";
       const status = message.includes("already exists") ? 409 : 400;
       res.status(status).json({ error: message });
     }
   });
 
-  router.put("/:id", async (req, res) => {
+  router.put("/:id", validateBody(updateAgentPresetSchema), async (req, res) => {
     try {
-      const id = req.params.id;
+      const id = req.params.id as string;
       const existing = await swarm.getAgentPreset(id);
-      if (!existing) {
-        return res.status(404).json({ error: "Agent preset not found" });
-      }
+      if (!existing) return res.status(404).json({ error: "Agent 预设不存在" });
 
-      const input = req.body ?? {};
+      const input = req.body;
       const preset = {
         id,
         name: input.name ?? existing.name,
         description: input.description ?? existing.description,
         systemPrompt: input.systemPrompt ?? existing.systemPrompt,
-        model: {
-          provider: input.model?.provider ?? existing.model.provider,
-          modelId: input.model?.modelId ?? existing.model.modelId,
-        },
+        model: input.model ? {
+          provider: input.model.provider ?? existing.model.provider,
+          modelId: input.model.modelId ?? existing.model.modelId,
+        } : existing.model,
         category: input.category ?? existing.category,
-        tags: Array.isArray(input.tags) ? input.tags : existing.tags,
+        tags: input.tags ?? existing.tags,
         builtIn: existing.builtIn,
       };
       const updated = await swarm.updateAgentPreset(id, preset);
       res.json({ data: updated });
     } catch (err: any) {
-      const message = err?.message ?? "Failed to update agent preset";
+      const message = err?.message ?? "更新 Agent 预设失败";
       const status = message.includes("not found") ? 404 : 400;
       res.status(status).json({ error: message });
     }
