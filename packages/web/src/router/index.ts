@@ -32,11 +32,6 @@ const router = createRouter({
       name: "settings",
       component: () => import("../views/SettingsView.vue"),
     },
-    {
-      path: "/usage",
-      name: "usage",
-      component: () => import("../views/UsageView.vue"),
-    },
   ],
 });
 
