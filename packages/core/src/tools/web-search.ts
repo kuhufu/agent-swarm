@@ -123,7 +123,19 @@ export function createWebSearchTool(config: WebSearchConfig): AgentTool<typeof S
     parameters: SearchParams,
     execute: async (toolCallId: string, params: SearchParams): Promise<AgentToolResult<SearchResult[]>> => {
       const maxResults = params.maxResults ?? config.maxResults ?? 5;
-      const results = await searchWeb(config, params.query, maxResults);
+      let results: SearchResult[];
+      try {
+        results = await searchWeb(config, params.query, maxResults);
+      } catch (err) {
+        const errorMsg = (err as Error).message;
+        const fallbackMsg = config.provider === "duckduckgo"
+          ? "DuckDuckGo 在当前网络不可用，请在服务端配置 webSearchConfig 改用 Tavily/Brave/SerpAPI。"
+          : `搜索失败: ${errorMsg}`;
+        return {
+          content: [{ type: "text", text: `❌ ${fallbackMsg}` }],
+          details: [],
+        };
+      }
       const output = results.length > 0
         ? results.map((r, i) => `${i + 1}. [${r.title}](${r.url})\n   ${r.snippet}`).join("\n\n")
         : "未找到相关结果。";
