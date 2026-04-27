@@ -1,7 +1,6 @@
 import { computed, ref, watch } from "vue";
 import { useConversationStore } from "../stores/conversation.js";
 import { useWebSocket } from "./useWebSocket.js";
-import { buildClientToolDefinitions } from "../tools/client-tools.js";
 import { showError } from "../utils/ui-feedback.js";
 
 export interface DirectModelSelection {
@@ -69,9 +68,6 @@ export function useChat() {
 
     // Send via WebSocket — create new conversation or use existing
     const conversationId = conversationStore.currentConversationId;
-    const clientTools = buildClientToolDefinitions({
-      enabledTools: conversationStore.enabledTools,
-    });
 
     if (conversationId) {
       send({
@@ -79,9 +75,7 @@ export function useChat() {
         payload: {
           conversationId,
           content: text,
-          clientTools,
           enabledTools: conversationStore.enabledTools,
-
           thinkingLevel: thinkingLevel.value,
         },
       });
@@ -91,9 +85,7 @@ export function useChat() {
         payload: {
           swarmId,
           content: text,
-          clientTools,
           enabledTools: conversationStore.enabledTools,
-
           thinkingLevel: thinkingLevel.value,
         },
       });
@@ -118,9 +110,6 @@ export function useChat() {
     });
 
     const conversationId = conversationStore.currentConversationId;
-    const clientTools = buildClientToolDefinitions({
-      enabledTools: conversationStore.enabledTools,
-    });
 
     send({
       type: "send_message",
@@ -129,7 +118,6 @@ export function useChat() {
         provider: directModel.value.provider,
         modelId: directModel.value.modelId,
         content: text,
-        clientTools,
         enabledTools: conversationStore.enabledTools,
         thinkingLevel: thinkingLevel.value,
       },

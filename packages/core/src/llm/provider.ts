@@ -43,14 +43,28 @@ function normalizeModelOptions(options: ModelConfig["options"] | undefined): Non
   return options;
 }
 
-function resolveModelReasoning(options: NonNullable<ModelConfig["options"]>): boolean {
+function normalizeCompatOptions(
+  compat: unknown,
+): Record<string, unknown> | undefined {
+  if (!compat || typeof compat !== "object" || Array.isArray(compat)) {
+    return undefined;
+  }
+  return { ...(compat as Record<string, unknown>) };
+}
+
+function resolveModelReasoning(
+  options: NonNullable<ModelConfig["options"]>,
+  reasoning?: boolean,
+): boolean {
+  // reasoning param from caller (e.g. resolved thinking level) takes priority
+  if (typeof reasoning === "boolean") {
+    return reasoning;
+  }
+  // explicit options.reasoning flag
   if (typeof options.reasoning === "boolean") {
     return options.reasoning;
   }
-  if (typeof options.enable_thinking === "boolean") {
-    return options.enable_thinking;
-  }
-
+  // explicit thinkingFormat implies reasoning support
   const compat = options.compat;
   if (compat && typeof compat === "object" && !Array.isArray(compat)) {
     const thinkingFormat = (compat as Record<string, unknown>).thinkingFormat;
@@ -58,7 +72,6 @@ function resolveModelReasoning(options: NonNullable<ModelConfig["options"]>): bo
       return true;
     }
   }
-
   return false;
 }
 
@@ -76,18 +89,6 @@ function resolveOpenAICompat(
     Object.assign(nextCompat, rawCompat);
   }
 
-  if (options.enable_thinking === true) {
-    if (!nextCompat.thinkingFormat) {
-      nextCompat.thinkingFormat = "qwen";
-    }
-    if (nextCompat.supportsReasoningEffort === undefined) {
-      nextCompat.supportsReasoningEffort = false;
-    }
-    if (nextCompat.supportsDeveloperRole === undefined) {
-      nextCompat.supportsDeveloperRole = false;
-    }
-  }
-
   return Object.keys(nextCompat).length > 0 ? nextCompat : undefined;
 }
 
@@ -95,11 +96,11 @@ function resolveOpenAICompat(
  * Resolve a ModelConfig to a pi-ai Model instance.
  * Uses apiProtocol and baseUrl.
  */
-export function resolveModel(config: ModelConfig): Model<any> {
+export function resolveModel(config: ModelConfig & { reasoning?: boolean }): Model<any> {
   const apiProtocol = config.apiProtocol ?? DEFAULT_PROTOCOL_MAP[config.provider] ?? "openai-completions";
   const normalizedBaseUrl = normalizeBaseUrl(config.baseUrl);
   const normalizedOptions = normalizeModelOptions(config.options);
-  const modelReasoning = resolveModelReasoning(normalizedOptions);
+  const modelReasoning = resolveModelReasoning(normalizedOptions, config.reasoning);
   const modelCompat = resolveOpenAICompat(apiProtocol as KnownApi, normalizedOptions);
 
   if (!normalizedBaseUrl) {
@@ -131,12 +132,34 @@ export function resolveModelFromProvider(
   modelId: string,
   llmConfig: LLMBackendConfig,
   perAgentOverride?: ModelConfig,
+  reasoning?: boolean,
 ): Model<any> {
   const providerConfig = llmConfig.providers?.[providerId];
   const apiKey = perAgentOverride?.apiKey ?? llmConfig.apiKeys[providerId] ?? "";
+  const overrideOptions = normalizeModelOptions(perAgentOverride?.options);
+  const overrideCompat = normalizeCompatOptions(overrideOptions.compat);
+  const mergedCompat = (() => {
+    if (overrideCompat) {
+      // Model-level compat.thinkingFormat should override provider default.
+      if (overrideCompat.thinkingFormat !== undefined) {
+        return overrideCompat;
+      }
+      if (providerConfig?.thinkingFormat) {
+        return { ...overrideCompat, thinkingFormat: providerConfig.thinkingFormat };
+      }
+      return overrideCompat;
+    }
+
+    if (providerConfig?.thinkingFormat) {
+      return { thinkingFormat: providerConfig.thinkingFormat };
+    }
+
+    return undefined;
+  })();
+
   const mergedOptions = {
-    ...(providerConfig?.enable_thinking !== undefined ? { enable_thinking: providerConfig.enable_thinking } : {}),
-    ...(normalizeModelOptions(perAgentOverride?.options)),
+    ...overrideOptions,
+    ...(mergedCompat ? { compat: mergedCompat } : {}),
   };
   const options = Object.keys(mergedOptions).length > 0 ? mergedOptions : undefined;
 
@@ -147,6 +170,7 @@ export function resolveModelFromProvider(
     baseUrl: perAgentOverride?.baseUrl ?? providerConfig?.baseUrl,
     apiProtocol: perAgentOverride?.apiProtocol ?? providerConfig?.apiProtocol,
     options,
+    reasoning,
   });
 }
 

@@ -51,14 +51,7 @@ export interface ModelConfig {
   baseUrl?: string;
   apiProtocol?: ApiProtocol;
   options?: Record<string, any> & {
-    /**
-     * Compatibility switch for models/providers that use top-level
-     * `enable_thinking` instead of `reasoning_effort`.
-     */
-    enable_thinking?: boolean;
-    /** Force model reasoning capability on/off. */
     reasoning?: boolean;
-    /** Forwarded to pi-ai model compatibility settings. */
     compat?: Record<string, unknown>;
   };
 }
@@ -201,10 +194,14 @@ export interface ProviderConfig {
   apiProtocol?: ApiProtocol;
   headers?: Record<string, string>;
   /**
-   * Compatibility switch for providers that require `enable_thinking`
-   * as the thinking toggle parameter.
+   * Thinking format override. Controls how reasoning parameters are sent.
+   * "openai" - uses reasoning_effort
+   * "deepseek" - uses thinking: { type }
+   * "openrouter" - uses reasoning: { effort }
+   * "zai" / "qwen" - uses enable_thinking boolean
+   * "qwen-chat-template" - uses chat_template_kwargs.enable_thinking
    */
-  enable_thinking?: boolean;
+  thinkingFormat?: string;
 }
 
 // ============================================================================

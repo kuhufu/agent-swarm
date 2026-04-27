@@ -2,7 +2,6 @@ import { createServer } from "http";
 import type { Express } from "express";
 import { WebSocketServer, WebSocket } from "ws";
 import type { AgentSwarm, SwarmEvent, ThinkingLevel, SwarmConversation } from "@agent-swarm/core";
-import type { ClientToolDefinition } from "@agent-swarm/core";
 
 interface WSClient {
   ws: WebSocket;
@@ -138,7 +137,6 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
     const swarmId = typeof payload.swarmId === "string" ? payload.swarmId : undefined;
     const content = typeof payload.content === "string" ? payload.content : undefined;
     const conversationId = typeof payload.conversationId === "string" ? payload.conversationId : undefined;
-    const clientTools = payload.clientTools;
     const provider = typeof payload.provider === "string" ? payload.provider : undefined;
     const modelId = typeof payload.modelId === "string" ? payload.modelId : undefined;
     const thinkingLevel = typeof payload.thinkingLevel === "string" ? payload.thinkingLevel as ThinkingLevel : undefined;
@@ -268,7 +266,6 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
 
       // Stream events from the conversation
       const stream = conversation.prompt(content, {
-        clientTools: normalizeClientTools(clientTools, effectivePreferences.enabledTools),
         enabledTools: effectivePreferences.enabledTools,
         thinkingLevel: (effectivePreferences.thinkingLevel ?? thinkingLevel) as ThinkingLevel | undefined,
         clientToolExecutor: async ({ toolName, toolCallId, params }) => {
@@ -311,75 +308,6 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
     } finally {
       client.activeConversation = undefined;
     }
-  }
-
-  function normalizeClientTools(input: unknown, enabledTools: string[]): ClientToolDefinition[] {
-    const enabledSet = new Set(enabledTools);
-
-    if (Array.isArray(input)) {
-      return input
-        .filter((tool): tool is Record<string, unknown> =>
-          Boolean(tool) && typeof tool === "object" && !Array.isArray(tool))
-        .map((tool) => ({
-          name: typeof tool.name === "string" ? tool.name.trim() : "",
-          label: typeof tool.label === "string" ? tool.label.trim() : "",
-          description: typeof tool.description === "string" ? tool.description.trim() : "",
-          parametersSchema: (tool.parametersSchema && typeof tool.parametersSchema === "object" && !Array.isArray(tool.parametersSchema))
-            ? tool.parametersSchema as Record<string, unknown>
-            : undefined,
-        }))
-        .filter((tool) => {
-          if (tool.name.length === 0 || tool.label.length === 0 || tool.description.length === 0) {
-            return false;
-          }
-          return enabledSet.has(tool.name);
-        });
-    }
-
-    // Fallback when frontend does not pass definitions for optional tools.
-    const fallbackTools: ClientToolDefinition[] = [];
-
-    if (enabledSet.has("current_time")) {
-      fallbackTools.push({
-        name: "current_time",
-        label: "Current Time",
-        description: "Get current local date and time from the user's browser.",
-        parametersSchema: {
-          type: "object",
-          properties: {
-            locale: {
-              type: "string",
-              description: "Optional BCP 47 locale, e.g. zh-CN or en-US.",
-            },
-          },
-          additionalProperties: false,
-        },
-      });
-    }
-
-    if (enabledSet.has("javascript_execute")) {
-      fallbackTools.push({
-        name: "javascript_execute",
-        label: "JavaScript Execute",
-        description: "Execute JavaScript snippets for calculation, transformation, and quick checks.",
-        parametersSchema: {
-          type: "object",
-          properties: {
-            code: { type: "string", description: "JavaScript code to execute." },
-            timeoutMs: {
-              type: "number",
-              description: "Execution timeout in milliseconds (50-5000). Default 2000.",
-              minimum: 50,
-              maximum: 5000,
-            },
-          },
-          required: ["code"],
-          additionalProperties: false,
-        },
-      });
-    }
-
-    return fallbackTools;
   }
 
   function handleInterventionDecision(client: WSClient, msg: any) {

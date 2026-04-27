@@ -66,11 +66,13 @@ export type ApiProtocol =
   | "azure-openai-responses"
   | (string & {});
 
+export type ThinkingFormat = "openai" | "openrouter" | "deepseek" | "zai" | "qwen" | "qwen-chat-template";
+
 export interface ProviderConfig {
   baseUrl?: string;
   apiProtocol?: ApiProtocol;
   headers?: Record<string, string>;
-  enable_thinking?: boolean;
+  thinkingFormat?: ThinkingFormat;
 }
 
 export interface SavedModel {
@@ -114,7 +116,7 @@ export interface ModelTestRequest {
     apiKey?: string;
     baseUrl?: string;
     apiProtocol?: ApiProtocol;
-    enable_thinking?: boolean;
+    thinkingFormat?: ThinkingFormat;
   };
 }
 

@@ -28,7 +28,7 @@ export interface ModelConnectionTestOptions {
     apiKey?: string;
     baseUrl?: string;
     apiProtocol?: ApiProtocol;
-    enable_thinking?: boolean;
+    thinkingFormat?: string;
   };
 }
 
@@ -678,7 +678,7 @@ export class AgentSwarm {
     if (
       options.override?.baseUrl !== undefined
       || options.override?.apiProtocol !== undefined
-      || options.override?.enable_thinking !== undefined
+      || options.override?.thinkingFormat !== undefined
     ) {
       llmConfig.providers = {
         ...(llmConfig.providers ?? {}),
@@ -686,7 +686,7 @@ export class AgentSwarm {
           ...(llmConfig.providers?.[provider] ?? {}),
           ...(options.override.baseUrl !== undefined ? { baseUrl: options.override.baseUrl } : {}),
           ...(options.override.apiProtocol !== undefined ? { apiProtocol: options.override.apiProtocol } : {}),
-          ...(options.override.enable_thinking !== undefined ? { enable_thinking: options.override.enable_thinking } : {}),
+          ...(options.override.thinkingFormat !== undefined ? { thinkingFormat: options.override.thinkingFormat } : {}),
         },
       };
     }

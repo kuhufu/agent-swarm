@@ -34,7 +34,7 @@ interface ProviderEntry {
   apiKey: string;
   baseUrl: string;
   apiProtocol: ApiProtocol | "";
-  enableThinkingCompat: boolean;
+  thinkingFormat: string;
 }
 
 const providers = reactive<Record<string, ProviderEntry>>({});
@@ -45,14 +45,24 @@ const providerForm = reactive<{
   apiKey: string;
   baseUrl: string;
   apiProtocol: ApiProtocol | "";
-  enableThinkingCompat: boolean;
+  thinkingFormat: string;
 }>({
   id: "",
   apiKey: "",
   baseUrl: "",
   apiProtocol: "openai-completions",
-  enableThinkingCompat: false,
+  thinkingFormat: "",
 });
+
+const THINKING_FORMATS = [
+  { value: "", label: "自动检测" },
+  { value: "openai", label: "OpenAI (reasoning_effort)" },
+  { value: "deepseek", label: "DeepSeek (thinking: { type })" },
+  { value: "openrouter", label: "OpenRouter (reasoning: { effort })" },
+  { value: "zai", label: "ZAI (enable_thinking)" },
+  { value: "qwen", label: "Qwen (enable_thinking)" },
+  { value: "qwen-chat-template", label: "Qwen Chat Template" },
+];
 
 const API_PROTOCOLS: { value: ApiProtocol; label: string }[] = [
   { value: "openai-completions", label: "OpenAI Completions" },
@@ -77,7 +87,7 @@ function addCustomProvider() {
     apiKey: providerForm.apiKey,
     baseUrl: providerForm.baseUrl,
     apiProtocol: providerForm.apiProtocol,
-    enableThinkingCompat: providerForm.enableThinkingCompat,
+    thinkingFormat: providerForm.thinkingFormat,
   };
   closeProviderDialog();
 }
@@ -87,7 +97,7 @@ function resetProviderForm() {
   providerForm.apiKey = "";
   providerForm.baseUrl = "";
   providerForm.apiProtocol = "openai-completions";
-  providerForm.enableThinkingCompat = false;
+  providerForm.thinkingFormat = "";
 }
 
 function openProviderDialog() {
@@ -110,7 +120,7 @@ function updateProvider(id: string, field: string, value: unknown) {
   if (field === "apiKey") entry.apiKey = value as string;
   else if (field === "baseUrl") entry.baseUrl = value as string;
   else if (field === "apiProtocol") entry.apiProtocol = value as ApiProtocol | "";
-  else if (field === "enableThinkingCompat") entry.enableThinkingCompat = value as boolean;
+  else if (field === "thinkingFormat") entry.thinkingFormat = value as string;
 }
 
 const models = reactive<SavedModel[]>([]);
@@ -163,7 +173,7 @@ onMounted(async () => {
             apiKey: "",
             baseUrl: "",
             apiProtocol: "openai-completions",
-            enableThinkingCompat: false,
+            thinkingFormat: "",
           };
         }
         if (key) providers[provider].apiKey = key;
@@ -175,12 +185,12 @@ onMounted(async () => {
               apiKey: "",
               baseUrl: "",
               apiProtocol: "openai-completions",
-              enableThinkingCompat: false,
+              thinkingFormat: "",
             };
           }
           providers[id].baseUrl = pc.baseUrl ?? "";
           providers[id].apiProtocol = pc.apiProtocol ?? "";
-          providers[id].enableThinkingCompat = pc.enable_thinking === true;
+          providers[id].thinkingFormat = pc.thinkingFormat ?? "";
         }
       }
       if (config.models) {
@@ -201,11 +211,11 @@ async function saveSettings() {
     const providerConfigs: Record<string, ProviderConfig> = {};
     for (const [id, entry] of Object.entries(providers)) {
       if (entry.apiKey.trim()) apiKeys[id] = entry.apiKey;
-      if (entry.baseUrl.trim() || entry.apiProtocol || entry.enableThinkingCompat) {
+      if (entry.baseUrl.trim() || entry.apiProtocol || entry.thinkingFormat) {
         providerConfigs[id] = {
           ...(entry.baseUrl.trim() ? { baseUrl: entry.baseUrl.trim() } : {}),
           ...(entry.apiProtocol ? { apiProtocol: entry.apiProtocol as ApiProtocol } : {}),
-          ...(entry.enableThinkingCompat ? { enable_thinking: true } : {}),
+          ...(entry.thinkingFormat ? { thinkingFormat: entry.thinkingFormat as any } : {}),
         };
       }
     }
@@ -403,15 +413,12 @@ async function saveSettings() {
                   />
                 </div>
                 <div class="form-row">
-                  <label>思考兼容</label>
-                  <label class="checkbox-inline">
-                    <input
-                      :checked="providerForm.enableThinkingCompat"
-                      type="checkbox"
-                      @change="providerForm.enableThinkingCompat = ($event.target as HTMLInputElement).checked"
-                    />
-                    <span>使用 `enable_thinking` 参数控制思考</span>
-                  </label>
+                  <label>思考格式</label>
+                  <CustomSelect
+                    :model-value="providerForm.thinkingFormat"
+                    :options="THINKING_FORMATS"
+                    @update:model-value="providerForm.thinkingFormat = $event as string"
+                  />
                 </div>
               </div>
               <div class="dialog-footer">

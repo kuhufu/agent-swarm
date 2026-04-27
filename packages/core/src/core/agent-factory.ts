@@ -24,13 +24,13 @@ export function createAgent(opts: CreateAgentOptions): Agent {
     apiKeys[config.model.provider] = config.model.apiKey;
   }
 
+  const thinkingLevel = mapThinkingLevel(config.thinkingLevel);
   const model = resolveModelFromProvider(
     config.model.provider,
     config.model.modelId,
     llmConfig,
     config.model,
   );
-  const thinkingLevel = mapThinkingLevel(config.thinkingLevel);
 
   // Build tools list — intervention hooks are handled at mode level, not agent level
   const tools = config.tools ?? [];

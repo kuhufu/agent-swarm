@@ -8,7 +8,7 @@ const props = defineProps<{
     apiKey: string;
     baseUrl: string;
     apiProtocol: ApiProtocol | "";
-    enableThinkingCompat: boolean;
+    thinkingFormat: string;
   }>;
 }>();
 
@@ -93,15 +93,12 @@ function getEffectiveProtocol(id: string): ApiProtocol {
             />
           </div>
           <div class="field-row">
-            <label>思考兼容</label>
-            <label class="checkbox-inline">
-              <input
-                :checked="providers[p.id].enableThinkingCompat"
-                type="checkbox"
-                @change="emit('update', p.id, 'enableThinkingCompat', ($event.target as HTMLInputElement).checked)"
-              />
-              <span>使用 `enable_thinking` 参数控制思考</span>
-            </label>
+            <label>思考格式</label>
+            <CustomSelect
+              :model-value="providers[p.id].thinkingFormat"
+              :options="[{ value: '', label: '自动检测' }, { value: 'openai', label: 'OpenAI (reasoning_effort)' }, { value: 'deepseek', label: 'DeepSeek (thinking: { type })' }, { value: 'openrouter', label: 'OpenRouter (reasoning: { effort })' }, { value: 'zai', label: 'ZAI (enable_thinking)' }, { value: 'qwen', label: 'Qwen (enable_thinking)' }, { value: 'qwen-chat-template', label: 'Qwen Chat Template' }]"
+              @update:model-value="emit('update', p.id, 'thinkingFormat', $event)"
+            />
           </div>
         </div>
       </div>

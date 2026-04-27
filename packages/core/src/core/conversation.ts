@@ -31,7 +31,6 @@ interface ActiveAgent {
 }
 
 export interface ConversationPromptOptions {
-  clientTools?: ClientToolDefinition[];
   enabledTools?: string[];
   thinkingEnabled?: boolean;
   thinkingLevel?: ThinkingLevel;
@@ -41,7 +40,6 @@ export interface ConversationPromptOptions {
 }
 
 interface ConversationRuntimeOptions {
-  clientTools: ClientToolDefinition[];
   enabledTools: string[];
   thinkingEnabled?: boolean;
   thinkingLevel?: ThinkingLevel;
@@ -75,7 +73,6 @@ export class Conversation {
   private agents: Map<string, ActiveAgent> = new Map();
   private restoredMessages: Message[];
   private runtimeOptions: ConversationRuntimeOptions = {
-    clientTools: [],
     enabledTools: [],
     thinkingEnabled: undefined,
     clientToolExecutor: async () => ({
@@ -112,16 +109,6 @@ export class Conversation {
   async *prompt(message: string, options: ConversationPromptOptions = {}): AsyncGenerator<SwarmEvent> {
     this._aborted = false;
     this.runtimeOptions = {
-      clientTools: Array.isArray(options.clientTools)
-        ? options.clientTools.filter((tool) =>
-          tool
-          && typeof tool.name === "string"
-          && tool.name.trim().length > 0
-          && typeof tool.label === "string"
-          && tool.label.trim().length > 0
-          && typeof tool.description === "string"
-          && tool.description.trim().length > 0)
-        : [],
       enabledTools: Array.isArray(options.enabledTools)
         ? Array.from(new Set(options.enabledTools
           .filter((tool): tool is string => typeof tool === "string")
@@ -382,7 +369,7 @@ export class Conversation {
       );
     }
 
-    for (const clientTool of this.runtimeOptions.clientTools) {
+    for (const clientTool of this.buildClientToolDefinitions()) {
       if (!this.runtimeOptions.enabledTools.includes(clientTool.name)) {
         continue;
       }
@@ -402,6 +389,48 @@ export class Conversation {
     return tools;
   }
 
+  private buildClientToolDefinitions(): ClientToolDefinition[] {
+    const tools: ClientToolDefinition[] = [];
+    tools.push({
+      name: "current_time",
+      label: "Current Time",
+      description: "Get current local date and time from the user's browser.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          locale: {
+            type: "string",
+            description: "Optional BCP 47 locale, e.g. zh-CN or en-US.",
+          },
+        },
+        additionalProperties: false,
+      },
+    });
+    tools.push({
+      name: "javascript_execute",
+      label: "JavaScript Execute",
+      description: "Execute runnable JavaScript code in the browser for calculation, transformation, and quick checks.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          code: {
+            type: "string",
+            description: "Must be runnable JavaScript statements (not plain text). Use executable code and preferably `return` the final value.",
+          },
+          timeoutMs: {
+            type: "number",
+            description: "Execution timeout in milliseconds (50-5000). Default 2000.",
+            minimum: 50,
+            maximum: 5000,
+          },
+        },
+        required: ["code"],
+        additionalProperties: false,
+      },
+    });
+    return tools;
+  }
+ 
   private syncActiveAgentTools() {
     for (const [agentId, active] of this.agents.entries()) {
       const baseConfig = this.resolveAgentConfig(agentId) ?? active.config;
