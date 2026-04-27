@@ -14,7 +14,46 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "add", model: SavedModel): void;
   (e: "remove", index: number): void;
+  (e: "reorder", fromIndex: number, toIndex: number): void;
 }>();
+
+const draggingIndex = ref<number | null>(null);
+const dragOverIndex = ref<number | null>(null);
+
+function handleDragStart(index: number, event: DragEvent) {
+  draggingIndex.value = index;
+  dragOverIndex.value = index;
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(index));
+  }
+}
+
+function handleDragOver(index: number, event: DragEvent) {
+  if (draggingIndex.value === null) return;
+  event.preventDefault();
+  if (dragOverIndex.value !== index) {
+    dragOverIndex.value = index;
+  }
+}
+
+function handleDrop(index: number, event: DragEvent) {
+  event.preventDefault();
+  const fromIndex = draggingIndex.value;
+  if (fromIndex === null || fromIndex === index) {
+    draggingIndex.value = null;
+    dragOverIndex.value = null;
+    return;
+  }
+  emit("reorder", fromIndex, index);
+  draggingIndex.value = null;
+  dragOverIndex.value = null;
+}
+
+function handleDragEnd() {
+  draggingIndex.value = null;
+  dragOverIndex.value = null;
+}
 
 const showModelDialog = ref(false);
 const modelForm = reactive<SavedModel>({ id: "", name: "", provider: "", modelId: "" });
@@ -206,7 +245,20 @@ async function testModel(provider: string, modelId: string) {
     </Teleport>
 
     <div v-if="models.length" class="models-list">
-      <div v-for="(model, i) in models" :key="model.id" class="model-item card">
+      <div
+        v-for="(model, i) in models"
+        :key="model.id"
+        class="model-item card"
+        :class="{
+          dragging: draggingIndex === i,
+          'drag-over': dragOverIndex === i && draggingIndex !== i,
+        }"
+        draggable="true"
+        @dragstart="handleDragStart(i, $event)"
+        @dragover="handleDragOver(i, $event)"
+        @drop="handleDrop(i, $event)"
+        @dragend="handleDragEnd"
+      >
         <div class="model-main">
           <div class="model-avatar">{{ model.name.charAt(0).toUpperCase() }}</div>
           <div class="model-info">
@@ -368,6 +420,17 @@ async function testModel(provider: string, modelId: string) {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
+  cursor: grab;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.model-item.dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+.model-item.drag-over {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+  transform: translateY(2px);
 }
 .model-main {
   display: flex;

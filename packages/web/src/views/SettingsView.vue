@@ -133,6 +133,12 @@ function removeModel(index: number) {
   models.splice(index, 1);
 }
 
+function reorderModels(fromIndex: number, toIndex: number) {
+  const [moved] = models.splice(fromIndex, 1);
+  if (!moved) return;
+  models.splice(toIndex, 0, moved);
+}
+
 const providerIds = computed(() => Object.keys(providers));
 
 const interventions = reactive<Partial<Record<InterventionPoint, InterventionStrategy>>>({
@@ -349,13 +355,14 @@ async function saveSettings() {
           </div>
 
           <div v-if="activeTab === 'models'" class="tab-panel">
-            <ModelsTab
-              :models="models"
-              :provider-ids="providerIds"
-              dialog-host-selector="#settings-detail-dialog-host"
-              @add="addModel"
-              @remove="removeModel"
-            />
+    <ModelsTab
+      :models="models"
+      :provider-ids="providerIds"
+      dialog-host-selector="#settings-detail-dialog-host"
+      @add="addModel"
+      @remove="removeModel"
+      @reorder="reorderModels"
+    />
           </div>
 
           <div v-if="activeTab === 'intervention'" class="tab-panel">
