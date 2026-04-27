@@ -14,7 +14,7 @@ import { settingsTable, swarmsTable, agentsTable, conversationsTable, messagesTa
 
 const DEFAULT_CONVERSATION_PREFERENCES: ConversationPreferences = {
   enabledTools: [],
-  thinkModeEnabled: false,
+  thinkingLevel: "medium",
 };
 
 export class SqliteStorage implements IStorage {
@@ -67,7 +67,6 @@ export class SqliteStorage implements IStorage {
         swarm_id TEXT NOT NULL REFERENCES swarms(id),
         title TEXT,
         enabled_tools TEXT NOT NULL DEFAULT '[]',
-        think_mode_enabled INTEGER NOT NULL DEFAULT 0,
         direct_provider TEXT,
         direct_model_id TEXT,
         context_reset_at INTEGER,
@@ -174,7 +173,7 @@ export class SqliteStorage implements IStorage {
     swarmId: string;
     title: string | null;
     enabledTools: string | null;
-    thinkModeEnabled: number | null;
+    thinkingLevel: string | null;
     directProvider: string | null;
     directModelId: string | null;
     contextResetAt: number | null;
@@ -188,7 +187,7 @@ export class SqliteStorage implements IStorage {
       swarmId: row.swarmId,
       title: row.title ?? undefined,
       enabledTools: this.parseStoredEnabledTools(row.enabledTools),
-      thinkModeEnabled: row.thinkModeEnabled === 1,
+      thinkingLevel: row.thinkingLevel ?? "medium",
       directModel: (directProvider && directModelId)
         ? { provider: directProvider, modelId: directModelId }
         : undefined,
@@ -211,10 +210,6 @@ export class SqliteStorage implements IStorage {
       this.rawDb.exec("ALTER TABLE conversations ADD COLUMN enabled_tools TEXT NOT NULL DEFAULT '[]';");
       schemaChanged = true;
     }
-    if (!columns.has("think_mode_enabled")) {
-      this.rawDb.exec("ALTER TABLE conversations ADD COLUMN think_mode_enabled INTEGER NOT NULL DEFAULT 0;");
-      schemaChanged = true;
-    }
     if (!columns.has("direct_provider")) {
       this.rawDb.exec("ALTER TABLE conversations ADD COLUMN direct_provider TEXT;");
       schemaChanged = true;
@@ -225,6 +220,10 @@ export class SqliteStorage implements IStorage {
     }
     if (!columns.has("context_reset_at")) {
       this.rawDb.exec("ALTER TABLE conversations ADD COLUMN context_reset_at INTEGER;");
+      schemaChanged = true;
+    }
+    if (!columns.has("thinking_level")) {
+      this.rawDb.exec("ALTER TABLE conversations ADD COLUMN thinking_level TEXT NOT NULL DEFAULT 'medium';");
       schemaChanged = true;
     }
 
@@ -349,16 +348,14 @@ export class SqliteStorage implements IStorage {
     const enabledTools = this.normalizeEnabledTools(
       preferences?.enabledTools ?? DEFAULT_CONVERSATION_PREFERENCES.enabledTools,
     );
-    const thinkModeEnabled = typeof preferences?.thinkModeEnabled === "boolean"
-      ? preferences.thinkModeEnabled
-      : DEFAULT_CONVERSATION_PREFERENCES.thinkModeEnabled;
+    const thinkingLevel = preferences?.thinkingLevel ?? DEFAULT_CONVERSATION_PREFERENCES.thinkingLevel ?? "medium";
     const directModel = this.normalizeDirectModel(preferences?.directModel);
     const conv: Conversation = {
       id: crypto.randomUUID(),
       swarmId,
       title: title ?? "新对话",
       enabledTools,
-      thinkModeEnabled,
+      thinkingLevel,
       directModel,
       contextResetAt: undefined,
       createdAt: now,
@@ -369,7 +366,7 @@ export class SqliteStorage implements IStorage {
       swarmId: conv.swarmId,
       title: conv.title,
       enabledTools: JSON.stringify(conv.enabledTools),
-      thinkModeEnabled: conv.thinkModeEnabled ? 1 : 0,
+      thinkingLevel: conv.thinkingLevel,
       directProvider: conv.directModel?.provider ?? null,
       directModelId: conv.directModel?.modelId ?? null,
       contextResetAt: null,
@@ -412,9 +409,7 @@ export class SqliteStorage implements IStorage {
     const enabledTools = preferences.enabledTools !== undefined
       ? this.normalizeEnabledTools(preferences.enabledTools)
       : current.enabledTools;
-    const thinkModeEnabled = typeof preferences.thinkModeEnabled === "boolean"
-      ? preferences.thinkModeEnabled
-      : current.thinkModeEnabled;
+    const thinkingLevel = preferences.thinkingLevel ?? current.thinkingLevel;
     const directModel = preferences.directModel !== undefined
       ? this.normalizeDirectModel(preferences.directModel)
       : current.directModel;
@@ -423,7 +418,7 @@ export class SqliteStorage implements IStorage {
     this.getDb().update(conversationsTable)
       .set({
         enabledTools: JSON.stringify(enabledTools),
-        thinkModeEnabled: thinkModeEnabled ? 1 : 0,
+        thinkingLevel,
         directProvider: directModel?.provider ?? null,
         directModelId: directModel?.modelId ?? null,
         updatedAt: now,
@@ -434,7 +429,7 @@ export class SqliteStorage implements IStorage {
     return {
       ...current,
       enabledTools,
-      thinkModeEnabled,
+      thinkingLevel,
       directModel,
       updatedAt: now,
     };

@@ -33,7 +33,8 @@ export const useConversationStore = defineStore("conversation", () => {
   const loadingMessages = ref(false);
   const conversations = ref<ConversationInfo[]>([]);
   const enabledTools = ref<string[]>([]);
-  const thinkModeEnabled = ref(false);
+  const thinkingLevel = ref<string>("medium");
+  const thinkModeEnabled = computed(() => thinkingLevel.value !== "off");
   const currentDirectModel = ref<ConversationInfo["directModel"] | null>(null);
   const inputFocusRequestKey = ref(0);
   const runtimeStates = ref<Map<string, ConversationRuntimeState>>(
@@ -239,10 +240,10 @@ export const useConversationStore = defineStore("conversation", () => {
   }
 
   function applyConversationPreferences(
-    preferences?: Partial<Pick<ConversationInfo, "enabledTools" | "thinkModeEnabled" | "directModel">> | null,
+    preferences?: Partial<Pick<ConversationInfo, "enabledTools" | "thinkingLevel" | "directModel">> | null,
   ) {
     enabledTools.value = normalizeEnabledTools(preferences?.enabledTools);
-    thinkModeEnabled.value = preferences?.thinkModeEnabled === true;
+    thinkingLevel.value = preferences?.thinkingLevel ?? "medium";
     currentDirectModel.value = normalizeDirectModel(preferences?.directModel);
   }
 
@@ -700,7 +701,7 @@ export const useConversationStore = defineStore("conversation", () => {
   }
 
   async function persistCurrentConversationPreferences(
-    patch: Partial<Pick<ConversationInfo, "enabledTools" | "thinkModeEnabled" | "directModel">>,
+    patch: Partial<Pick<ConversationInfo, "enabledTools" | "thinkingLevel" | "directModel">>,
   ) {
     const conversationId = currentConversationId.value;
     if (!conversationId) {
@@ -735,10 +736,10 @@ export const useConversationStore = defineStore("conversation", () => {
     setEnabledTools(Array.from(next), persist);
   }
 
-  function setThinkModeEnabled(enabled: boolean, persist = true) {
-    thinkModeEnabled.value = enabled;
+  function setThinkingLevel(level: string, persist = true) {
+    thinkingLevel.value = level;
     if (persist) {
-      void persistCurrentConversationPreferences({ thinkModeEnabled: enabled }).catch(() => {
+      void persistCurrentConversationPreferences({ thinkingLevel: level }).catch(() => {
         // ignore persistence failures; current UI state is still usable for this turn
       });
     }
@@ -785,10 +786,10 @@ export const useConversationStore = defineStore("conversation", () => {
         enabledTools.value = patch.enabledTools;
       }
     }
-    if (typeof raw.thinkModeEnabled === "boolean") {
-      patch.thinkModeEnabled = raw.thinkModeEnabled;
+    if (typeof raw.thinkingLevel === "string") {
+      patch.thinkingLevel = raw.thinkingLevel;
       if (isCurrentConversation) {
-        thinkModeEnabled.value = raw.thinkModeEnabled;
+        thinkingLevel.value = raw.thinkingLevel;
       }
     }
     if (raw.directModel && typeof raw.directModel === "object" && !Array.isArray(raw.directModel)) {
@@ -805,7 +806,7 @@ export const useConversationStore = defineStore("conversation", () => {
       conversationId
       && (
         patch.enabledTools !== undefined
-        || patch.thinkModeEnabled !== undefined
+        || patch.thinkingLevel !== undefined
         || patch.directModel !== undefined
       )
     ) {
@@ -824,6 +825,7 @@ export const useConversationStore = defineStore("conversation", () => {
     conversations,
     enabledTools,
     thinkModeEnabled,
+    thinkingLevel,
     currentDirectModel,
     inputFocusRequestKey,
     addMessage,
@@ -847,7 +849,7 @@ export const useConversationStore = defineStore("conversation", () => {
     isToolEnabled,
     setEnabledTools,
     setClientToolEnabled,
-    setThinkModeEnabled,
+    setThinkingLevel,
     setDirectModel,
     requestInputFocus,
     applyConversationSettingsFromServer,

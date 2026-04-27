@@ -7,6 +7,7 @@ const PI_THINKING_LEVEL_MAP: Record<string, import("@mariozechner/pi-agent-core"
   low: "low",
   medium: "medium",
   high: "high",
+  xhigh: "xhigh",
 };
 
 /** Default API protocol per known provider */

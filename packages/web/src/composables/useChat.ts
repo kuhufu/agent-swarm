@@ -37,9 +37,9 @@ export function useChat() {
     get: () => conversationStore.isToolEnabled("javascript_execute"),
     set: (value: boolean) => conversationStore.setClientToolEnabled("javascript_execute", value),
   });
-  const thinkModeEnabled = computed({
-    get: () => conversationStore.thinkModeEnabled,
-    set: (value: boolean) => conversationStore.setThinkModeEnabled(value),
+  const thinkingLevel = computed({
+    get: () => conversationStore.thinkingLevel,
+    set: (value: string) => conversationStore.setThinkingLevel(value),
   });
 
   // Sync sending state with isActive from the store.
@@ -81,7 +81,8 @@ export function useChat() {
           content: text,
           clientTools,
           enabledTools: conversationStore.enabledTools,
-          thinkModeEnabled: conversationStore.thinkModeEnabled,
+
+          thinkingLevel: thinkingLevel.value,
         },
       });
     } else {
@@ -92,7 +93,8 @@ export function useChat() {
           content: text,
           clientTools,
           enabledTools: conversationStore.enabledTools,
-          thinkModeEnabled: conversationStore.thinkModeEnabled,
+
+          thinkingLevel: thinkingLevel.value,
         },
       });
     }
@@ -129,7 +131,7 @@ export function useChat() {
         content: text,
         clientTools,
         enabledTools: conversationStore.enabledTools,
-        thinkModeEnabled: conversationStore.thinkModeEnabled,
+        thinkingLevel: thinkingLevel.value,
       },
     });
 
@@ -179,6 +181,6 @@ export function useChat() {
     directModel,
     currentTimeToolEnabled,
     jsExecutionToolEnabled,
-    thinkModeEnabled,
+    thinkingLevel,
   };
 }

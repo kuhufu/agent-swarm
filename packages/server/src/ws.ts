@@ -1,8 +1,7 @@
 import { createServer } from "http";
 import type { Express } from "express";
 import { WebSocketServer, WebSocket } from "ws";
-import type { AgentSwarm, SwarmEvent } from "@agent-swarm/core";
-import type { SwarmConversation } from "@agent-swarm/core";
+import type { AgentSwarm, SwarmEvent, ThinkingLevel, SwarmConversation } from "@agent-swarm/core";
 import type { ClientToolDefinition } from "@agent-swarm/core";
 
 interface WSClient {
@@ -17,7 +16,7 @@ interface WSClient {
 
 interface ConversationPreferencesPayload {
   enabledTools: string[];
-  thinkModeEnabled: boolean;
+  thinkingLevel?: string;
   directModel?: {
     provider: string;
     modelId: string;
@@ -26,7 +25,7 @@ interface ConversationPreferencesPayload {
 
 interface ConversationPreferencesPatch {
   enabledTools?: string[];
-  thinkModeEnabled?: boolean;
+  thinkingLevel?: string;
   directModel?: {
     provider: string;
     modelId: string;
@@ -35,7 +34,6 @@ interface ConversationPreferencesPatch {
 
 const DEFAULT_CONVERSATION_PREFERENCES: ConversationPreferencesPayload = {
   enabledTools: [],
-  thinkModeEnabled: false,
 };
 
 function normalizeEnabledTools(input: unknown): string[] {
@@ -54,8 +52,8 @@ function parseConversationPreferencesPatch(payload: Record<string, unknown>): Co
   if (Array.isArray(payload.enabledTools)) {
     patch.enabledTools = normalizeEnabledTools(payload.enabledTools);
   }
-  if (typeof payload.thinkModeEnabled === "boolean") {
-    patch.thinkModeEnabled = payload.thinkModeEnabled;
+  if (typeof payload.thinkingLevel === "string" && payload.thinkingLevel.trim().length > 0) {
+    patch.thinkingLevel = payload.thinkingLevel.trim();
   }
   if (payload.directModel && typeof payload.directModel === "object" && !Array.isArray(payload.directModel)) {
     const directModelRaw = payload.directModel as Record<string, unknown>;
@@ -143,6 +141,7 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
     const clientTools = payload.clientTools;
     const provider = typeof payload.provider === "string" ? payload.provider : undefined;
     const modelId = typeof payload.modelId === "string" ? payload.modelId : undefined;
+    const thinkingLevel = typeof payload.thinkingLevel === "string" ? payload.thinkingLevel as ThinkingLevel : undefined;
     const preferencesPatch = parseConversationPreferencesPatch(payload);
 
     if (typeof content !== "string" || content.trim().length === 0) {
@@ -169,7 +168,7 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
 
         if (
           mergedPatch.enabledTools !== undefined
-          || mergedPatch.thinkModeEnabled !== undefined
+          || mergedPatch.thinkingLevel !== undefined
           || mergedPatch.directModel !== undefined
         ) {
           storedConversation = await swarm.updateConversationPreferences(conversationId, mergedPatch);
@@ -177,33 +176,33 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
         conversation = await swarm.resumeConversation(conversationId);
         effectivePreferences = {
           enabledTools: storedConversation.enabledTools,
-          thinkModeEnabled: storedConversation.thinkModeEnabled,
+          thinkingLevel: storedConversation.thinkingLevel,
           ...(storedConversation.directModel ? { directModel: storedConversation.directModel } : {}),
         };
       } else if (swarmId) {
         const initialPreferences: ConversationPreferencesPatch = {
           enabledTools: preferencesPatch.enabledTools ?? DEFAULT_CONVERSATION_PREFERENCES.enabledTools,
-          thinkModeEnabled: preferencesPatch.thinkModeEnabled ?? DEFAULT_CONVERSATION_PREFERENCES.thinkModeEnabled,
+          thinkingLevel: preferencesPatch.thinkingLevel,
         };
         conversation = await swarm.createConversation(swarmId, undefined, initialPreferences);
         storedConversation = await swarm.getConversation(conversation.getId());
         if (storedConversation) {
           effectivePreferences = {
             enabledTools: storedConversation.enabledTools,
-            thinkModeEnabled: storedConversation.thinkModeEnabled,
+            thinkingLevel: storedConversation.thinkingLevel,
             ...(storedConversation.directModel ? { directModel: storedConversation.directModel } : {}),
           };
         } else {
           effectivePreferences = {
             enabledTools: initialPreferences.enabledTools ?? [],
-            thinkModeEnabled: initialPreferences.thinkModeEnabled ?? false,
+            thinkingLevel: initialPreferences.thinkingLevel,
           };
         }
       } else if (provider && modelId) {
         // Direct conversation mode (no swarm needed)
         const initialPreferences: ConversationPreferencesPatch = {
           enabledTools: preferencesPatch.enabledTools ?? DEFAULT_CONVERSATION_PREFERENCES.enabledTools,
-          thinkModeEnabled: preferencesPatch.thinkModeEnabled ?? DEFAULT_CONVERSATION_PREFERENCES.thinkModeEnabled,
+          thinkingLevel: preferencesPatch.thinkingLevel,
           directModel: { provider, modelId },
         };
         conversation = await swarm.createDirectConversation(provider, modelId, undefined, initialPreferences);
@@ -211,13 +210,13 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
         if (storedConversation) {
           effectivePreferences = {
             enabledTools: storedConversation.enabledTools,
-            thinkModeEnabled: storedConversation.thinkModeEnabled,
+            thinkingLevel: storedConversation.thinkingLevel,
             ...(storedConversation.directModel ? { directModel: storedConversation.directModel } : {}),
           };
         } else {
           effectivePreferences = {
             enabledTools: initialPreferences.enabledTools ?? [],
-            thinkModeEnabled: initialPreferences.thinkModeEnabled ?? false,
+            thinkingLevel: initialPreferences.thinkingLevel,
             directModel: initialPreferences.directModel,
           };
         }
@@ -260,7 +259,7 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
         payload: {
           conversationId: convId,
           enabledTools: effectivePreferences.enabledTools,
-          thinkModeEnabled: effectivePreferences.thinkModeEnabled,
+          thinkingLevel: effectivePreferences.thinkingLevel,
           ...(effectivePreferences.directModel ? { directModel: effectivePreferences.directModel } : {}),
         },
       };
@@ -271,7 +270,7 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
       const stream = conversation.prompt(content, {
         clientTools: normalizeClientTools(clientTools, effectivePreferences.enabledTools),
         enabledTools: effectivePreferences.enabledTools,
-        thinkingEnabled: effectivePreferences.thinkModeEnabled,
+        thinkingLevel: (effectivePreferences.thinkingLevel ?? thinkingLevel) as ThinkingLevel | undefined,
         clientToolExecutor: async ({ toolName, toolCallId, params }) => {
           const result = await requestClientToolExecution(
             client,

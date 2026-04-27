@@ -26,7 +26,7 @@ export interface Conversation {
   swarmId: string;
   title?: string;
   enabledTools: string[];
-  thinkModeEnabled: boolean;
+  thinkingLevel: string;
   directModel?: ConversationDirectModel;
   contextResetAt?: number;
   createdAt: number;
@@ -40,7 +40,7 @@ export interface ConversationDirectModel {
 
 export interface ConversationPreferences {
   enabledTools: string[];
-  thinkModeEnabled: boolean;
+  thinkingLevel?: string;
   directModel?: ConversationDirectModel;
 }
 

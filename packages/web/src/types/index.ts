@@ -51,7 +51,7 @@ export interface ConversationInfo {
   swarmId: string;
   title?: string;
   enabledTools: string[];
-  thinkModeEnabled: boolean;
+  thinkingLevel: string;
   directModel?: ModelConfig;
   createdAt: number;
   updatedAt: number;

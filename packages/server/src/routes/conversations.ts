@@ -23,8 +23,8 @@ function parseConversationPreferences(input: unknown): Partial<ConversationPrefe
   if (Array.isArray(raw.enabledTools)) {
     preferences.enabledTools = normalizeEnabledTools(raw.enabledTools);
   }
-  if (typeof raw.thinkModeEnabled === "boolean") {
-    preferences.thinkModeEnabled = raw.thinkModeEnabled;
+  if (typeof raw.thinkingLevel === "string") {
+    preferences.thinkingLevel = raw.thinkingLevel;
   }
   if (raw.directModel && typeof raw.directModel === "object" && !Array.isArray(raw.directModel)) {
     const directModelRaw = raw.directModel as Record<string, unknown>;

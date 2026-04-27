@@ -24,7 +24,7 @@ const {
   directModel,
   currentTimeToolEnabled,
   jsExecutionToolEnabled,
-  thinkModeEnabled,
+  thinkingLevel,
 } = useChat();
 
 const settingsStore = useSettingsStore();
@@ -33,6 +33,23 @@ const conversationStore = useConversationStore();
 // ── Model selector state ──
 const selectedModelValue = ref("");
 const showModelSelect = ref(false);
+
+// ── Thinking level state ──
+const showThinkLevelSelect = ref(false);
+
+const THINKING_LEVELS = [
+  { value: "off", label: "关闭" },
+  { value: "minimal", label: "最低" },
+  { value: "low", label: "低" },
+  { value: "medium", label: "中" },
+  { value: "high", label: "高" },
+  { value: "xhigh", label: "最高" },
+] as const;
+
+const thinkLevelLabel = computed(() => {
+  const found = THINKING_LEVELS.find((l) => l.value === thinkingLevel.value);
+  return found ? found.label : "中";
+});
 
 const savedModels = computed<SavedModel[]>(() => settingsStore.config?.models ?? []);
 
@@ -220,6 +237,7 @@ function selectSavedModel(sm: SavedModel) {
   selectedModelValue.value = sm.id;
   directModel.value = { provider: sm.provider, modelId: sm.modelId };
   showModelSelect.value = false;
+  showThinkLevelSelect.value = false;
   requestTextareaFocus();
 }
 
@@ -235,9 +253,23 @@ function handleToggleJsExecutionTool() {
   requestTextareaFocus();
 }
 
-function handleToggleThinkMode() {
+function handleToggleThinkLevel() {
   captureTextareaSelection();
-  thinkModeEnabled.value = !thinkModeEnabled.value;
+  showModelSelect.value = false;
+  showThinkLevelSelect.value = !showThinkLevelSelect.value;
+  requestTextareaFocus();
+}
+
+function toggleModelSelect() {
+  captureTextareaSelection();
+  showThinkLevelSelect.value = false;
+  showModelSelect.value = !showModelSelect.value;
+  requestTextareaFocus();
+}
+
+function selectThinkingLevel(level: string) {
+  thinkingLevel.value = level;
+  showThinkLevelSelect.value = false;
   requestTextareaFocus();
 }
 
@@ -354,7 +386,7 @@ onMounted(() => {
           class="model-select-btn"
           :class="{ selected: canSendDirect }"
           @mousedown="handleKeepTextareaFocusMouseDown"
-          @click="showModelSelect = !showModelSelect"
+          @click="toggleModelSelect"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
@@ -411,17 +443,35 @@ onMounted(() => {
           </svg>
           <span>JS 执行</span>
         </button>
-        <button
-          class="tool-btn"
-          :class="{ active: thinkModeEnabled }"
-          @mousedown="handleKeepTextareaFocusMouseDown"
-          @click="handleToggleThinkMode"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-          </svg>
-          <span>Think</span>
-        </button>
+        <div class="think-level-select-inline">
+          <button
+            class="tool-btn"
+            :class="{ active: thinkingLevel !== 'off' }"
+            @mousedown="handleKeepTextareaFocusMouseDown"
+            @click="handleToggleThinkLevel"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
+              <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            <span>{{ thinkLevelLabel }}</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; flex-shrink: 0;">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          <div v-if="showThinkLevelSelect" class="think-level-dropdown">
+            <button
+              v-for="lvl in THINKING_LEVELS"
+              :key="lvl.value"
+              class="think-level-dropdown-item"
+              :class="{ active: thinkingLevel === lvl.value }"
+              @mousedown="handleKeepTextareaFocusMouseDown"
+              @click="selectThinkingLevel(lvl.value)"
+            >
+              <span class="dropdown-level-label">{{ lvl.label }}</span>
+              <span class="dropdown-level-value">{{ lvl.value }}</span>
+            </button>
+          </div>
+        </div>
         <button
           class="tool-btn warn"
           :class="{ disabled: !canClearContext }"
@@ -636,6 +686,65 @@ onMounted(() => {
   font-size: 12px;
   color: var(--color-text-muted);
   text-align: center;
+}
+
+/* ── Thinking level selector ── */
+.think-level-select-inline {
+  position: relative;
+  display: inline-flex;
+}
+
+.think-level-dropdown {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-width: 140px;
+  z-index: 50;
+  background: rgba(20, 22, 35, 0.98);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  padding: 4px;
+}
+
+.think-level-dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+  font-size: 13px;
+  text-align: left;
+  color: var(--color-text-secondary);
+}
+
+.think-level-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.think-level-dropdown-item.active {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--color-accent-light);
+}
+
+.dropdown-level-label {
+  font-weight: 500;
+}
+
+.dropdown-level-value {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.think-level-dropdown-item.active .dropdown-level-value {
+  color: rgba(129, 140, 248, 0.6);
 }
 
 /* ── Input area ── */

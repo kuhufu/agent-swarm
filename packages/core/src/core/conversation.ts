@@ -2,7 +2,7 @@ import { Agent } from "@mariozechner/pi-agent-core";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
 import type { BeforeToolCallResult, AfterToolCallResult } from "@mariozechner/pi-agent-core";
 import type { Message } from "@mariozechner/pi-ai";
-import type { SwarmConfig, SwarmEvent, InterventionPoint, LLMBackendConfig, SwarmAgentConfig, EventLogLevel } from "./types.js";
+import type { SwarmConfig, SwarmEvent, InterventionPoint, LLMBackendConfig, SwarmAgentConfig, EventLogLevel, ThinkingLevel } from "./types.js";
 import type { IStorage } from "../storage/interface.js";
 import type { StoredMessage } from "../storage/interface.js";
 import type { InterventionHandler } from "../intervention/handler.js";
@@ -34,6 +34,7 @@ export interface ConversationPromptOptions {
   clientTools?: ClientToolDefinition[];
   enabledTools?: string[];
   thinkingEnabled?: boolean;
+  thinkingLevel?: ThinkingLevel;
   clientToolExecutor?: (
     request: { toolName: string; toolCallId: string; params: unknown },
   ) => Promise<ClientToolExecutionResult>;
@@ -43,6 +44,7 @@ interface ConversationRuntimeOptions {
   clientTools: ClientToolDefinition[];
   enabledTools: string[];
   thinkingEnabled?: boolean;
+  thinkingLevel?: ThinkingLevel;
   clientToolExecutor: (
     request: { toolName: string; toolCallId: string; params: unknown },
   ) => Promise<ClientToolExecutionResult>;
@@ -127,6 +129,7 @@ export class Conversation {
           .filter((tool) => tool.length > 0)))
         : [],
       thinkingEnabled: typeof options.thinkingEnabled === "boolean" ? options.thinkingEnabled : undefined,
+      thinkingLevel: options.thinkingLevel,
       clientToolExecutor: options.clientToolExecutor ?? (async () => ({
         content: "Client tool executor not configured",
         isError: true,
@@ -417,11 +420,18 @@ export class Conversation {
   }
 
   private resolveRuntimeThinkingLevel(config: SwarmAgentConfig): SwarmAgentConfig["thinkingLevel"] {
-    if (this.runtimeOptions.thinkingEnabled === undefined) {
-      return config.thinkingLevel;
-    }
+    // thinkingEnabled: false always takes highest priority (toggle off)
     if (this.runtimeOptions.thinkingEnabled === false) {
       return "off";
+    }
+
+    // Per-message thinkingLevel override
+    if (this.runtimeOptions.thinkingLevel) {
+      return this.runtimeOptions.thinkingLevel;
+    }
+
+    if (this.runtimeOptions.thinkingEnabled === undefined) {
+      return config.thinkingLevel;
     }
 
     // Keep explicit per-agent setting when already configured.

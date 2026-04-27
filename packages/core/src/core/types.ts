@@ -33,7 +33,7 @@ export interface PipelineStep {
 // Thinking
 // ============================================================================
 
-export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high";
+export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
 export interface ThinkingBudgets {
   maxTokens?: number;
