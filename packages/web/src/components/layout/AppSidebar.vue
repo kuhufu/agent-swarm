@@ -520,7 +520,7 @@ import { h } from "vue";
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--glass-hover-bg);
   color: var(--color-text-primary);
 }
 
@@ -636,13 +636,13 @@ import { h } from "vue";
   font-size: 11px;
   font-weight: 600;
   color: var(--color-text-muted);
-  background: rgba(10, 14, 26, 0.85);
+  background: var(--sidebar-bg);
   backdrop-filter: blur(6px);
   border-radius: 6px;
 }
 
 .conversation-item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--glass-hover-bg);
 }
 
 .conversation-item.active {
@@ -724,7 +724,7 @@ import { h } from "vue";
 }
 
 .conversation-more:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--glass-hover-bg);
   color: var(--color-text-secondary);
 }
 
@@ -737,7 +737,7 @@ import { h } from "vue";
   position: fixed;
   z-index: 3000;
   min-width: 128px;
-  background: rgba(20, 24, 36, 0.96);
+  background: var(--color-surface-2);
   border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
   padding: 4px;
@@ -758,15 +758,15 @@ import { h } from "vue";
 }
 
 .conversation-menu-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--glass-hover-bg);
 }
 
 .conversation-menu-item.danger {
-  color: #fca5a5;
+  color: var(--color-danger);
 }
 
 .conversation-menu-item.danger:hover {
-  background: rgba(239, 68, 68, 0.15);
+  background: var(--badge-danger-bg);
 }
 
 .conversation-empty {

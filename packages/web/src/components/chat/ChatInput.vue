@@ -562,7 +562,7 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
 .tool-btn:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--dropdown-hover);
   color: var(--color-text-secondary);
 }
 
@@ -647,7 +647,7 @@ function handleOutsideClick(event: MouseEvent) {
   max-height: 260px;
   overflow-y: auto;
   z-index: 50;
-  background: rgba(20, 22, 35, 0.98);
+  background: var(--dropdown-bg);
   border: 1px solid var(--color-border-subtle);
   border-radius: 10px;
   backdrop-filter: blur(16px);
@@ -673,7 +673,7 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
 .model-dropdown-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--dropdown-hover);
 }
 
 .model-dropdown-item.active {
@@ -726,7 +726,7 @@ function handleOutsideClick(event: MouseEvent) {
   left: 0;
   min-width: 140px;
   z-index: 50;
-  background: rgba(20, 22, 35, 0.98);
+  background: var(--dropdown-bg);
   border: 1px solid var(--color-border-subtle);
   border-radius: 10px;
   backdrop-filter: blur(16px);
@@ -752,7 +752,7 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
 .think-level-dropdown-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--dropdown-hover);
 }
 
 .think-level-dropdown-item.active {
@@ -787,7 +787,7 @@ function handleOutsideClick(event: MouseEvent) {
   position: relative;
   border: 1px solid var(--color-border-subtle);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--input-bg);
   overflow: hidden;
   transition: all 0.2s;
 }
