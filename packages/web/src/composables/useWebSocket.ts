@@ -140,6 +140,10 @@ export function useWebSocket() {
         if (msg.payload.agentName) {
           conversationStore.setAgentName(msg.payload.agentId, msg.payload.agentName, targetConversationId);
         }
+        // Direct conversation: populate agent model from conversation preferences
+        if (conversationStore.currentDirectModel && targetConversationId) {
+          conversationStore.setAgentModel(msg.payload.agentId, conversationStore.currentDirectModel, targetConversationId);
+        }
         break;
 
       case "agent_end":

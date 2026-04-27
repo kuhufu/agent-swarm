@@ -610,6 +610,20 @@ export const useConversationStore = defineStore("conversation", () => {
     });
   }
 
+  function setAgentModel(agentId: string, model: { provider: string; modelId: string }, conversationId?: string) {
+    mutateRuntimeState(conversationId, (state) => {
+      const current = state.agentStates.get(agentId);
+      state.agentStates.set(agentId, {
+        id: agentId,
+        name: current?.name ?? agentId,
+        status: current?.status ?? "idle",
+        model,
+        description: current?.description,
+        systemPrompt: current?.systemPrompt,
+      });
+    });
+  }
+
   function setActive(active: boolean, conversationId?: string) {
     mutateRuntimeState(conversationId, (state) => {
       state.isActive = active;
@@ -840,6 +854,7 @@ export const useConversationStore = defineStore("conversation", () => {
     openConversation,
     setAgentStatus,
     setAgentName,
+    setAgentModel,
     setActive,
     fetchConversations,
     fetchAllConversations,
