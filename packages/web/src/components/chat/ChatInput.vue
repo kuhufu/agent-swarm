@@ -69,10 +69,10 @@ const selectedModelLabel = computed(() => {
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const MAX_TEXTAREA_ROWS = 12;
 let pendingFocusRequest = false;
-let focusTickScheduled = false;
 let pendingSelectionRestore = true;
 let lastSelectionStart = 0;
 let lastSelectionEnd = 0;
+let focusDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 const isTextareaEnabled = computed(() =>
   !sending.value && (props.isDirectMode ? canSendDirect.value : Boolean(props.swarmId)),
@@ -96,17 +96,16 @@ function tryFocusTextarea(): boolean {
 function requestTextareaFocus(restoreSelection = true) {
   pendingFocusRequest = true;
   pendingSelectionRestore = pendingSelectionRestore || restoreSelection;
-  if (focusTickScheduled) {
-    return;
+  if (focusDebounceTimer) {
+    clearTimeout(focusDebounceTimer);
   }
-  focusTickScheduled = true;
-  nextTick(() => {
-    focusTickScheduled = false;
+  focusDebounceTimer = setTimeout(() => {
+    focusDebounceTimer = null;
     if (tryFocusTextarea()) {
       pendingFocusRequest = false;
       pendingSelectionRestore = true;
     }
-  });
+  }, 50);
 }
 
 function captureTextareaSelection() {
@@ -150,31 +149,13 @@ function handleKeepTextareaFocusMouseDown(event: MouseEvent) {
   event.preventDefault();
 }
 
-watch(sending, (isSending) => {
-  if (!isSending) {
+// Consolidate focus triggers — single watch to avoid multiple focus attempts
+watch(
+  () => [props.swarmId, props.isDirectMode, sending.value, conversationStore.inputFocusRequestKey],
+  () => {
     requestTextareaFocus();
-  }
-});
-
-watch(() => props.swarmId, () => {
-  requestTextareaFocus();
-});
-
-watch(() => props.isDirectMode, (isDirect) => {
-  if (isDirect) {
-    requestTextareaFocus();
-  }
-});
-
-watch(() => conversationStore.inputFocusRequestKey, () => {
-  requestTextareaFocus();
-});
-
-watch(isTextareaEnabled, (enabled) => {
-  if (enabled && pendingFocusRequest) {
-    requestTextareaFocus();
-  }
-});
+  },
+);
 
 const clearContextTooltip = computed(() =>
   canClearContext.value
@@ -341,6 +322,9 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener("mousedown", handleOutsideClick);
+  if (focusDebounceTimer) {
+    clearTimeout(focusDebounceTimer);
+  }
 });
 
 function handleOutsideClick(event: MouseEvent) {
