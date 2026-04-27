@@ -4,13 +4,173 @@
 
 阶段一补齐了基础短板（API 验证、测试、日志、主题、Docker、搜索工具）。阶段二聚焦于**差异化能力**——让 Agent Swarm 从"可用"变成"强大"。
 
-本阶段包含 6 个项目，覆盖工具生态（MCP）、知识检索（RAG）、可观测性（LLM 调用日志）、用户体验（对话分支）和基础设施（认证多租户）。
+本阶段包含 6 个项目。**用户认证与多租户是最高优先级**——所有数据隔离和 API 保护依赖它，后续功能（RAG、MCP 等）都受益于用户上下文。
 
 预计周期：8-10 周。
 
 ---
 
-## P0-1: MCP 协议客户端支持
+## P0-1: 用户认证与多租户
+
+### 现状
+
+- 无任何用户区分
+- 所有数据共享同一 SQLite 数据库
+- 无登录/注册功能
+
+### 目标
+
+添加 JWT 用户认证，实现多用户数据隔离。这是所有后续功能的安全基础。
+
+### 实施方案
+
+#### 依赖
+
+```bash
+pnpm add jsonwebtoken bcrypt --filter @agent-swarm/server
+pnpm add -D @types/jsonwebtoken @types/bcrypt --filter @agent-swarm/server
+```
+
+#### 数据库
+
+`packages/core/src/storage/schema.ts` 新增 `users` 表：
+
+```typescript
+export const usersTable = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: integer("created_at").notNull(),
+});
+```
+
+**多租户改造**——所有数据表新增 `userId` 字段：
+
+```typescript
+// swarms 表
+userId: text("user_id"),
+
+// conversations 表
+userId: text("user_id"),
+
+// messages 表（通过 conversations 间接隔离）
+// 无需直接加 userId
+
+// agents / preset_agents 表
+userId: text("user_id"),
+
+// events 表（通过 conversations 间接隔离）
+// 无需直接加 userId
+```
+
+所有新增 `userId` 字段为可空（兼容旧数据），查询时自动按当前用户过滤。
+
+`via ensureConversationColumns` 在 `SqliteStorage.init()` 中执行 `ALTER TABLE` 迁移。
+
+#### IStorage 接口变更
+
+所有查询方法新增可选的 `userId` 参数：
+
+```typescript
+listSwarms(userId?: string): Promise<SwarmConfig[]>;
+listConversations(swarmId: string, userId?: string): Promise<Conversation[]>;
+listAllConversations(userId?: string): Promise<Conversation[]>;
+```
+
+`AgentSwarm` 内部维护当前用户上下文，自动传递 `userId`。
+
+#### 中间件
+
+`packages/server/src/middleware/auth.ts`
+
+```typescript
+export function authMiddleware(req: Request, res: Response, next: NextFunction): void;
+
+// 验证 Authorization: Bearer <token>
+// 解析 JWT → 设置 req.user = { id, username }
+// 如果 token 无效/过期 → 返回 401
+// 如果 AUTH_ENABLED=false → 跳过验证
+```
+
+#### API 端点
+
+`packages/server/src/routes/auth.ts`
+
+```
+POST /api/auth/register   → { username, password } → { token, user }
+POST /api/auth/login      → { username, password } → { token, user }
+GET  /api/auth/me         → 当前用户信息（需认证）
+```
+
+#### 路由保护策略
+
+- `/api/auth/*` — 始终公开
+- `/api/*` — 需要认证（`AUTH_ENABLED=true` 时生效）
+- 环境变量 `AUTH_ENABLED=false`（默认关闭，兼容开发）
+
+`packages/server/src/app.ts`：
+
+```typescript
+if (process.env.AUTH_ENABLED === "true") {
+  app.use("/api", authMiddleware);
+  // 排除 /api/auth/*
+} else {
+  // 开发模式：设置默认用户上下文
+}
+```
+
+#### 前端
+
+**新增页面**：
+
+`packages/web/src/views/LoginView.vue` — 登录表单（用户名 + 密码）
+`packages/web/src/views/RegisterView.vue` — 注册表单
+
+**新增 store**：
+
+`packages/web/src/stores/auth.ts`
+
+```typescript
+export const useAuthStore = defineStore("auth", () => {
+  const token = ref<string | null>(localStorage.getItem("token"));
+  const user = ref<User | null>(null);
+
+  async function login(username: string, password: string): Promise<void>;
+  async function register(username: string, password: string): Promise<void>;
+  function logout(): void;  // 清除 token 并跳转登录页
+  async function fetchMe(): Promise<void>;  // 恢复会话
+});
+```
+
+**路由守卫**（`packages/web/src/router/index.ts`）：
+
+```typescript
+router.beforeEach((to) => {
+  if (to.name !== "login" && to.name !== "register" && !isAuthenticated) {
+    return "/login";
+  }
+});
+```
+
+**API 客户端**：
+
+`packages/web/src/api/client.ts`（或已有 axios/fetch 封装）自动附加 `Authorization: Bearer <token>` 头。
+
+**启动流程**：
+
+`App.vue` 中调用 `authStore.fetchMe()` 恢复登录态。
+
+### 验收标准
+
+- 用户可注册/登录
+- 登录后只能看到自己的对话、swarm、agent 预设
+- 未登录用户重定向到登录页
+- `AUTH_ENABLED=false` 时保持原有单用户行为
+- 现有测试不受影响
+
+---
+
+## P0-2: MCP 协议客户端支持
 
 ### 现状
 
@@ -110,7 +270,7 @@ GET    /api/mcp/servers/:id/tools  → 列出可用工具
 
 ---
 
-## P0-2: LLM 调用日志专用表
+## P0-3: LLM 调用日志专用表
 
 ### 现状
 
@@ -293,118 +453,15 @@ async forkConversation(
 
 ---
 
-## P2-1: 用户认证与多租户
-
-### 现状
-
-- 无任何用户区分
-- 所有数据共享同一 SQLite 数据库
-- 无登录/注册功能
-
-### 目标
-
-添加 JWT 用户认证，实现多用户数据隔离。
-
-### 实施方案
-
-#### 依赖
-
-```bash
-pnpm add jsonwebtoken bcrypt --filter @agent-swarm/server
-pnpm add -D @types/jsonwebtoken @types/bcrypt --filter @agent-swarm/server
-```
-
-#### 数据库
-
-`packages/core/src/storage/schema.ts` 新增 `users` 表：
-
-```typescript
-export const usersTable = sqliteTable("users", {
-  id: text("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
-  createdAt: integer("created_at").notNull(),
-});
-```
-
-所有现有表（conversations、swarms 等）新增 `userId` 列，创建时自动填充当前用户。
-
-**注意**：多租户改造需要向后兼容。现有数据 `userId` 可为 NULL，表示"旧数据"或"共享数据"。
-
-#### 中间件
-
-`packages/server/src/middleware/auth.ts`
-
-```typescript
-export function authMiddleware(req: Request, res: Response, next: NextFunction): void;
-// 验证 JWT token (Authorization: Bearer xxx)
-// 设置 req.user = { id, username }
-```
-
-#### API 端点
-
-`packages/server/src/routes/auth.ts`
-
-```
-POST /api/auth/register   → { username, password } → { token, user }
-POST /api/auth/login      → { username, password } → { token, user }
-GET  /api/auth/me         → 当前用户信息（需认证）
-POST /api/auth/logout     → 清除会话
-```
-
-#### 路由保护策略
-
-- `/api/auth/*` — 公开
-- `/api/*` — 需要认证（配置开关，默认关闭以兼容开发）
-- 环境变量 `AUTH_ENABLED=false` 控制是否开启认证
-
-#### 前端
-
-`packages/web/src/views/LoginView.vue`
-`packages/web/src/views/RegisterView.vue`
-
-- 登录/注册表单
-- Token 存储到 localStorage
-- 路由守卫：未登录时重定向到 /login
-
-`packages/web/src/stores/auth.ts`
-
-```typescript
-export const useAuthStore = defineStore("auth", () => {
-  const token = ref<string | null>(localStorage.getItem("token"));
-  const user = ref<User | null>(null);
-  async function login(username: string, password: string): Promise<void>;
-  async function register(username: string, password: string): Promise<void>;
-  function logout(): void;
-  async function fetchMe(): Promise<void>;
-});
-```
-
-**路由守卫**：在 `router/index.ts` 中添加 `beforeEach` 守卫。
-
-### 验收标准
-
-- 用户可注册/登录
-- 认证用户只能看到自己的对话和配置
-- 未登录用户重定向到登录页
-- `AUTH_ENABLED=false` 时保持原有单用户行为
-- 现有测试不受影响
-
----
-
 ## 实施顺序建议
 
 ```
-第1-2周:  P0-1 (MCP 协议)           — 最复杂，先做
-第3周:    P0-2 (LLM 调用日志表)      — 可并行依赖低
-第4周:    P1-1 (RAG 知识检索)        — 依赖 MCP 的工具注册机制
-第5周:    P1-2 (对话分支与对比)       — 新功能，独立
-第6-8周:  P2-1 (认证与多租户)        — 改动面最大，最后
+第1-2周:  P0-1 (用户认证与多租户) — 基础，先做，后续功能构建在用户上下文之上
+第3-4周:  P0-2 (MCP 协议)         — 工具生态
+第5周:    P0-3 (LLM 调用日志表)    — 可观测性
+第6周:    P1-1 (RAG 知识检索)      — 知识能力
+第7周:    P1-2 (对话分支与对比)     — 用户体验
 ```
-
-总工时：约 8-10 周。
-
----
 
 ## 环境变量新增
 
