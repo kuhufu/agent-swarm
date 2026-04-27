@@ -7,6 +7,7 @@ import { useWebSocket } from "../composables/useWebSocket.js";
 import MessageList from "../components/chat/MessageList.vue";
 import ChatInput from "../components/chat/ChatInput.vue";
 import AgentStatus from "../components/chat/AgentStatus.vue";
+import WorkflowGraph from "../components/chat/WorkflowGraph.vue";
 import InterventionPanel from "../components/intervention/InterventionPanel.vue";
 
 const swarmStore = useSwarmStore();
@@ -121,6 +122,7 @@ function handleNewConversation() {
       <ChatInput :key="conversationStore.currentConversationId ?? 'new'" :swarm-id="swarmId" :active="conversationStore.isActive" :is-direct-mode="isDirectMode" />
     </div>
     <aside class="chat-sidebar-right">
+      <WorkflowGraph :agents="Array.from(conversationStore.agentStates.values())" :mode="swarmStore.currentSwarm?.mode" />
       <AgentStatus :agents="Array.from(conversationStore.agentStates.values())" />
     </aside>
   </div>
