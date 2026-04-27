@@ -391,12 +391,11 @@ export class Conversation {
       }));
     }
 
-    // Server-side web search tool
-    if (
-      this.runtimeOptions.enabledTools.includes("web_search")
-      && this.runtimeOptions.webSearchConfig
-    ) {
-      tools.push(createWebSearchTool(this.runtimeOptions.webSearchConfig));
+    // Server-side web search tool (DuckDuckGo 免费，无需配置)
+    if (this.runtimeOptions.enabledTools.includes("web_search")) {
+      tools.push(createWebSearchTool(
+        this.runtimeOptions.webSearchConfig ?? { provider: "duckduckgo" },
+      ));
     }
 
     return tools;
