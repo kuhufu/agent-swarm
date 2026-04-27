@@ -741,7 +741,7 @@ import { h } from "vue";
   border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
   padding: 4px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-menu);
   backdrop-filter: blur(12px);
 }
 

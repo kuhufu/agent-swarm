@@ -59,6 +59,12 @@
   );
   --dropdown-bg: rgba(20, 22, 35, 0.98);
   --dropdown-hover: rgba(255, 255, 255, 0.06);
+
+  --shadow-card: 0 12px 40px rgba(0, 0, 0, 0.25);
+  --shadow-glass-hover: 0 8px 32px rgba(0, 0, 0, 0.2);
+  --shadow-dropdown: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-menu: 0 8px 30px rgba(0, 0, 0, 0.35);
+  --shadow-input: 0 18px 48px rgba(0, 0, 0, 0.28);
 }
 
 /* ── Light theme ── */
@@ -110,6 +116,12 @@
   );
   --dropdown-bg: rgba(255, 255, 255, 0.98);
   --dropdown-hover: rgba(0, 0, 0, 0.05);
+
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-glass-hover: 0 4px 12px rgba(0, 0, 0, 0.04);
+  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-menu: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-input: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
 @layer base {
@@ -170,7 +182,7 @@
     background: var(--glass-hover-bg);
     border-color: var(--color-border-hover);
     transform: translateY(-1px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-glass-hover);
   }
 
   .card {
@@ -185,7 +197,7 @@
     background: var(--glass-card-hover-bg);
     border-color: var(--color-border-hover);
     transform: translateY(-2px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--shadow-card);
   }
 
   .btn-primary {

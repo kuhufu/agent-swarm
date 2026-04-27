@@ -521,8 +521,7 @@ function handleOutsideClick(event: MouseEvent) {
   border-radius: 20px;
   background: var(--chat-input-bg);
   backdrop-filter: blur(16px) saturate(1.1);
-  box-shadow:
-    0 18px 48px rgba(0, 0, 0, 0.28),
+  box-shadow: var(--shadow-input),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
   position: relative;
   z-index: 3;
@@ -651,7 +650,7 @@ function handleOutsideClick(event: MouseEvent) {
   border: 1px solid var(--color-border-subtle);
   border-radius: 10px;
   backdrop-filter: blur(16px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-dropdown);
   padding: 4px;
 }
 
@@ -730,7 +729,7 @@ function handleOutsideClick(event: MouseEvent) {
   border: 1px solid var(--color-border-subtle);
   border-radius: 10px;
   backdrop-filter: blur(16px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-dropdown);
   padding: 4px;
 }
 
