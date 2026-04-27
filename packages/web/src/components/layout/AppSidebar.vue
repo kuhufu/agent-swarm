@@ -405,14 +405,6 @@ import { h } from "vue";
     </section>
 
     <div class="sidebar-footer">
-      <div v-if="swarmStore.currentSwarm" class="current-swarm" @click="swarmStore.clearSwarmSelection()" title="点击切换为直接对话模式">
-        <span class="swarm-label">当前 Swarm</span>
-        <span class="swarm-name">{{ swarmStore.currentSwarm.name }}</span>
-      </div>
-      <div v-else class="current-swarm direct" @click="handleNewDirectConversation" title="直接对话模式">
-        <span class="swarm-label">对话模式</span>
-        <span class="swarm-name direct-name">直接对话</span>
-      </div>
       <button class="theme-toggle" @click="themeStore.toggle()" :title="themeStore.current === 'dark' ? '切换亮色主题' : '切换暗色主题'">
         <svg v-if="themeStore.current === 'dark'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="5" />
