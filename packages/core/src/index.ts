@@ -69,6 +69,8 @@ export { createHandoffTool, handoffTool } from "./tools/handoff.js";
 export { createJavascriptExecuteTool, javascriptExecuteTool } from "./tools/javascript-execute.js";
 export { createClientBridgeTool } from "./tools/client-bridge.js";
 export type { ClientToolDefinition, ClientToolExecutionResult } from "./tools/client-bridge.js";
+export { createWebSearchTool } from "./tools/web-search.js";
+export type { WebSearchConfig, SearchProvider } from "./tools/web-search.js";
 // Modes
 export { RouterMode } from "./modes/router.js";
 export { SequentialMode } from "./modes/sequential.js";
