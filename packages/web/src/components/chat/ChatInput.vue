@@ -38,12 +38,11 @@ const showModelSelect = ref(false);
 const showThinkLevelSelect = ref(false);
 
 const THINKING_LEVELS = [
-  { value: "off", label: "关闭" },
-  { value: "minimal", label: "最低" },
-  { value: "low", label: "低" },
-  { value: "medium", label: "中" },
-  { value: "high", label: "高" },
   { value: "xhigh", label: "最高" },
+  { value: "high", label: "高" },
+  { value: "medium", label: "中" },
+  { value: "low", label: "低" },
+  { value: "off", label: "关闭" },
 ] as const;
 
 const thinkLevelLabel = computed(() => {
@@ -701,6 +700,15 @@ function handleOutsideClick(event: MouseEvent) {
 .think-level-select-inline {
   position: relative;
   display: inline-flex;
+}
+.think-level-select-inline .tool-btn {
+  width: 80px;
+  gap: 2px;
+}
+.think-level-select-inline .tool-btn span:nth-child(2) {
+  display: inline-block;
+  width: 28px;
+  text-align: center;
 }
 
 .think-level-dropdown {
