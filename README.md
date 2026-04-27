@@ -279,7 +279,8 @@ export default defineConfig({
 - [前端会话运行态分桶机制](./docs/architecture/frontend-conversation-runtime.md)
 - [消息 Markdown 渲染](./docs/features/message-markdown-rendering.md)
 - [项目路线图](./docs/planning/roadmap.md)
-- [阶段一实施计划](./docs/planning/phase1-plan.md)
+- [阶段一实施报告](./docs/planning/phase1-plan.md)
+- [阶段二实施计划](./docs/planning/phase2-plan.md)
 
 ## License
 
