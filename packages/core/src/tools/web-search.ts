@@ -1,5 +1,6 @@
 import { Type, Static } from "@sinclair/typebox";
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
+import { fetch as undiciFetch, ProxyAgent } from "undici";
 
 export type SearchProvider = "duckduckgo" | "tavily" | "brave" | "serpapi";
 
@@ -7,12 +8,49 @@ export interface WebSearchConfig {
   provider: SearchProvider;
   apiKey?: string;
   maxResults?: number;
+  /** HTTP/HTTPS 代理地址，如 http://127.0.0.1:7890 */
+  proxy?: string;
+  /** 不使用代理的地址列表，逗号分隔 */
+  noProxy?: string;
 }
 
 interface SearchResult {
   title: string;
   url: string;
   snippet: string;
+}
+
+/** 解析代理配置：优先用 config 指定的，其次读环境变量 */
+function resolveProxy(config: WebSearchConfig): { url?: string; noProxy?: string } {
+  if (config.proxy) return { url: config.proxy, noProxy: config.noProxy };
+  const env = typeof process !== "undefined" ? process.env as Record<string, string | undefined> : {};
+  return {
+    url: env.https_proxy ?? env.HTTPS_PROXY ?? env.http_proxy ?? env.HTTP_PROXY ?? env.ALL_PROXY,
+    noProxy: config.noProxy ?? env.no_proxy ?? env.NO_PROXY,
+  };
+}
+
+/** 判断 URL 是否应绕过代理 */
+function shouldBypassProxy(url: string, noProxy?: string): boolean {
+  if (!noProxy) return false;
+  const hostname = new URL(url).hostname;
+  return noProxy.split(",").some((rule) => {
+    const trimmed = rule.trim();
+    if (!trimmed) return false;
+    if (trimmed === "*") return true;
+    if (trimmed.startsWith(".")) return hostname.endsWith(trimmed) || hostname === trimmed.slice(1);
+    return hostname === trimmed || hostname.endsWith(`.${trimmed}`);
+  });
+}
+
+/** 代理感知的 fetch */
+async function proxyFetch(url: string, init?: RequestInit, config?: WebSearchConfig): Promise<Response> {
+  const proxy = resolveProxy(config ?? {} as WebSearchConfig);
+  if (proxy.url && !shouldBypassProxy(url, proxy.noProxy)) {
+    const agent = new ProxyAgent(proxy.url);
+    return undiciFetch(url, { ...init, dispatcher: agent } as any);
+  }
+  return fetch(url, init);
 }
 
 const SearchParams = Type.Object({
@@ -24,12 +62,12 @@ const SearchParams = Type.Object({
 
 type SearchParams = Static<typeof SearchParams>;
 
-async function searchDuckDuckGo(query: string, maxResults: number): Promise<SearchResult[]> {
-  const text = await fetch("https://html.duckduckgo.com/html/", {
+async function searchDuckDuckGo(query: string, maxResults: number, config: WebSearchConfig): Promise<SearchResult[]> {
+  const text = await proxyFetch("https://html.duckduckgo.com/html/", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ q: query }),
-  }).then((r) => r.text());
+  }, config).then((r) => r.text());
 
   const results: SearchResult[] = [];
   const linkMatches = text.matchAll(/<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/g);
@@ -50,8 +88,8 @@ async function searchDuckDuckGo(query: string, maxResults: number): Promise<Sear
   return results;
 }
 
-async function searchTavily(apiKey: string, query: string, maxResults: number): Promise<SearchResult[]> {
-  const response = await fetch("https://api.tavily.com/search", {
+async function searchTavily(apiKey: string, query: string, maxResults: number, config: WebSearchConfig): Promise<SearchResult[]> {
+  const response = await proxyFetch("https://api.tavily.com/search", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -62,7 +100,7 @@ async function searchTavily(apiKey: string, query: string, maxResults: number): 
       max_results: maxResults,
       include_answer: false,
     }),
-  });
+  }, config);
 
   if (!response.ok) {
     throw new Error(`Tavily API error: ${response.status}`);
@@ -79,16 +117,17 @@ async function searchTavily(apiKey: string, query: string, maxResults: number): 
 async function searchWeb(config: WebSearchConfig, query: string, maxResults: number): Promise<SearchResult[]> {
   switch (config.provider) {
     case "duckduckgo":
-      return searchDuckDuckGo(query, maxResults);
+      return searchDuckDuckGo(query, maxResults, config);
     case "tavily":
       if (!config.apiKey) throw new Error("Tavily 需要配置 apiKey");
-      return searchTavily(config.apiKey, query, maxResults);
+      return searchTavily(config.apiKey, query, maxResults, config);
     case "brave":
       if (!config.apiKey) throw new Error("Brave Search 需要配置 apiKey");
       // Brave Search API
-      const braveResp = await fetch(
+      const braveResp = await proxyFetch(
         `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${maxResults}`,
         { headers: { "Accept": "application/json", "Accept-Encoding": "gzip", "X-Subscription-Token": config.apiKey } },
+        config,
       );
       if (!braveResp.ok) throw new Error(`Brave API error: ${braveResp.status}`);
       const braveData = (await braveResp.json()) as { web?: { results: Array<{ title: string; url: string; description: string }> } };
@@ -97,8 +136,10 @@ async function searchWeb(config: WebSearchConfig, query: string, maxResults: num
       }));
     case "serpapi":
       if (!config.apiKey) throw new Error("SerpAPI 需要配置 apiKey");
-      const serpResp = await fetch(
+      const serpResp = await proxyFetch(
         `https://serpapi.com/search?q=${encodeURIComponent(query)}&api_key=${config.apiKey}&engine=google&num=${maxResults}`,
+        undefined,
+        config,
       );
       if (!serpResp.ok) throw new Error(`SerpAPI error: ${serpResp.status}`);
       const serpData = (await serpResp.json()) as { organic_results?: Array<{ title: string; link: string; snippet: string }> };

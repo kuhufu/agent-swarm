@@ -25,7 +25,8 @@
     "@mariozechner/pi-ai": "^0.70.2",
     "@sinclair/typebox": "^0.34.0",
     "better-sqlite3": "^12.9.0",
-    "drizzle-orm": "^0.38.0"
+    "drizzle-orm": "^0.38.0",
+    "undici": "^8.1.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
