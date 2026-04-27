@@ -30,11 +30,15 @@ agent-swarm/
 │   ├── server/      # @agent-swarm/server
 │   └── web/         # @agent-swarm/web
 ├── docs/
-│   ├── agent-presets.md
-│   ├── context-recovery.md
-│   ├── frontend-conversation-runtime.md
-│   ├── message-markdown-rendering.md
-│   └── provider-compatibility.md
+│   ├── architecture/
+│   │   ├── context-recovery.md
+│   │   └── frontend-conversation-runtime.md
+│   ├── features/
+│   │   ├── agent-presets.md
+│   │   └── message-markdown-rendering.md
+│   └── planning/
+│       ├── roadmap.md
+│       └── phase1-plan.md
 ├── agent-swarm.config.ts     # SDK 配置示例（示例文件，不会被 server 自动读取）
 └── README.md
 ```
@@ -177,16 +181,28 @@ pnpm --filter @agent-swarm/server test
 2. 指定 `conversationId`：续聊已有会话。
 3. 指定 `provider + modelId`：直接对话模式（不依赖预建 swarm）。
 
-## 提供商兼容参数
+## 提供商思考格式
 
-部分 OpenAI 兼容模型用 `enable_thinking` 控制思考开关，而不是 `reasoning_effort`。  
-可在 provider 配置中启用：
+不同提供商对"思考/推理"的控制参数不同。通过 `providers.<providerId>.thinkingFormat` 指定格式：
 
-- `providers.<providerId>.enable_thinking = true`
+| thinkingFormat | 说明 |
+|----------------|------|
+| `openai` | 使用 `reasoning_effort` |
+| `deepseek` | 使用 `thinking: { type }` |
+| `openrouter` | 使用 `reasoning: { effort }` |
+| `zai` / `qwen` | 使用 `enable_thinking` 布尔值 |
+| `qwen-chat-template` | 使用 `chat_template_kwargs.enable_thinking` |
 
-详细说明见：
-
-- [Provider 兼容参数：enable_thinking](./docs/provider-compatibility.md)
+```json
+{
+  "providers": {
+    "qwen": {
+      "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "thinkingFormat": "qwen"
+    }
+  }
+}
+```
 
 ## 上下文恢复机制
 
@@ -199,7 +215,7 @@ pnpm --filter @agent-swarm/server test
 
 详细说明见：
 
-- [历史消息恢复上下文机制](./docs/context-recovery.md)
+- [历史消息恢复上下文机制](./docs/architecture/context-recovery.md)
 
 ## 前端会话运行态机制
 
@@ -211,7 +227,7 @@ pnpm --filter @agent-swarm/server test
 
 详细说明见：
 
-- [前端会话运行态分桶机制](./docs/frontend-conversation-runtime.md)
+- [前端会话运行态分桶机制](./docs/architecture/frontend-conversation-runtime.md)
 
 ## SDK 配置示例
 
@@ -258,11 +274,12 @@ export default defineConfig({
 
 ## 文档索引
 
-- [历史消息恢复上下文机制](./docs/context-recovery.md)
-- [Agent 预设管理与复用](./docs/agent-presets.md)
-- [前端会话运行态分桶机制](./docs/frontend-conversation-runtime.md)
-- [消息 Markdown 渲染](./docs/message-markdown-rendering.md)
-- [Provider 兼容参数：enable_thinking](./docs/provider-compatibility.md)
+- [历史消息恢复上下文机制](./docs/architecture/context-recovery.md)
+- [Agent 预设管理与复用](./docs/features/agent-presets.md)
+- [前端会话运行态分桶机制](./docs/architecture/frontend-conversation-runtime.md)
+- [消息 Markdown 渲染](./docs/features/message-markdown-rendering.md)
+- [项目路线图](./docs/planning/roadmap.md)
+- [阶段一实施计划](./docs/planning/phase1-plan.md)
 
 ## License
 
