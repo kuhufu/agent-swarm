@@ -21,8 +21,8 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
-    "@mariozechner/pi-agent-core": "^0.67.6",
-    "@mariozechner/pi-ai": "^0.67.6",
+    "@mariozechner/pi-agent-core": "^0.70.2",
+    "@mariozechner/pi-ai": "^0.70.2",
     "@sinclair/typebox": "^0.34.0",
     "better-sqlite3": "^12.9.0",
     "drizzle-orm": "^0.38.0"
