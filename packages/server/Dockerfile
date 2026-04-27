@@ -43,6 +43,7 @@ RUN pnpm --filter @agent-swarm/server build
 # ── Stage 4: Production image ──
 FROM node:20-alpine
 RUN apk add --no-cache python3 make g++
+RUN npm install -g pnpm@8
 WORKDIR /app
 
 ENV NODE_ENV=production
