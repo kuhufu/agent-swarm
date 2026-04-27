@@ -1,0 +1,25 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: packages/server/Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - agent-swarm-data:/app/data
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: packages/web/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  agent-swarm-data:
