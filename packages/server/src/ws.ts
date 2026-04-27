@@ -280,6 +280,7 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
             isError: result?.isError === true,
           };
         },
+        webSearchConfig: swarm.webSearchConfig,
       });
 
       for await (const event of stream) {

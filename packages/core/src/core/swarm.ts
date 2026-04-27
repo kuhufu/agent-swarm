@@ -13,6 +13,7 @@ import type { Model as PiModel, KnownProvider } from "@mariozechner/pi-ai";
 import { resolveModelFromProvider } from "../llm/provider.js";
 import type { Logger } from "../logger/types.js";
 import { ConsoleLogger } from "../logger/console-logger.js";
+import type { WebSearchConfig } from "../tools/web-search.js";
 
 export interface AgentSwarmOptions {
   configPath?: string;
@@ -20,6 +21,7 @@ export interface AgentSwarmOptions {
   storage?: IStorage;
   interventionHandler?: InterventionHandler;
   logger?: Logger;
+  webSearchConfig?: WebSearchConfig;
 }
 
 export interface ModelConnectionTestOptions {
@@ -80,6 +82,7 @@ export class AgentSwarm {
   private swarmConfigs: Map<string, SwarmConfig> = new Map();
   private _initialized = false;
   public readonly logger: Logger;
+  public readonly webSearchConfig?: WebSearchConfig;
 
   constructor(options: AgentSwarmOptions) {
     if (!options.config && !options.configPath) {
@@ -92,6 +95,7 @@ export class AgentSwarm {
     this.storage = options.storage ?? new SqliteStorage(this.config.storage.path);
     this.interventionHandler = options.interventionHandler;
     this.logger = options.logger ?? new ConsoleLogger();
+    this.webSearchConfig = options.webSearchConfig;
 
     // Bootstrap in-memory index from startup config before init.
     for (const swarm of this.config.swarms) {

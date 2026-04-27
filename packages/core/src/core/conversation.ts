@@ -16,6 +16,8 @@ import { createRouteToAgentTool } from "../tools/route-to-agent.js";
 import { createHandoffTool } from "../tools/handoff.js";
 import { createClientBridgeTool } from "../tools/client-bridge.js";
 import type { ClientToolDefinition, ClientToolExecutionResult } from "../tools/client-bridge.js";
+import { createWebSearchTool } from "../tools/web-search.js";
+import type { WebSearchConfig } from "../tools/web-search.js";
 import { storedToMessage } from "../storage/message-mapper.js";
 import type { ModeExecutor, ModeExecutionContext } from "../modes/types.js";
 import { mapThinkingLevel, resolveModelFromProvider } from "../llm/provider.js";
@@ -37,6 +39,7 @@ export interface ConversationPromptOptions {
   clientToolExecutor?: (
     request: { toolName: string; toolCallId: string; params: unknown },
   ) => Promise<ClientToolExecutionResult>;
+  webSearchConfig?: WebSearchConfig;
 }
 
 interface ConversationRuntimeOptions {
@@ -46,6 +49,7 @@ interface ConversationRuntimeOptions {
   clientToolExecutor: (
     request: { toolName: string; toolCallId: string; params: unknown },
   ) => Promise<ClientToolExecutionResult>;
+  webSearchConfig?: WebSearchConfig;
 }
 
 export class Conversation {
@@ -121,6 +125,7 @@ export class Conversation {
         content: "Client tool executor not configured",
         isError: true,
       })),
+      webSearchConfig: options.webSearchConfig,
     };
     this.syncActiveAgentTools();
 
@@ -384,6 +389,14 @@ export class Conversation {
         tool: clientTool,
         execute: remoteExecutor,
       }));
+    }
+
+    // Server-side web search tool
+    if (
+      this.runtimeOptions.enabledTools.includes("web_search")
+      && this.runtimeOptions.webSearchConfig
+    ) {
+      tools.push(createWebSearchTool(this.runtimeOptions.webSearchConfig));
     }
 
     return tools;
