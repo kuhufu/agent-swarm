@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { RouterView } from "vue-router";
 import AppSidebar from "./components/layout/AppSidebar.vue";
+import { useThemeStore } from "./stores/theme.js";
+
+useThemeStore();
 </script>
 
 <template>

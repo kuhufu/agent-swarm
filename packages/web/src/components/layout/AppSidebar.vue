@@ -3,6 +3,7 @@ import { computed, watch, ref, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useSwarmStore } from "../../stores/swarm.js";
 import { useConversationStore } from "../../stores/conversation.js";
+import { useThemeStore } from "../../stores/theme.js";
 import { formatTimeLocale } from "../../utils/format.js";
 import type { ConversationInfo } from "../../types/index.js";
 import { showError } from "../../utils/ui-feedback.js";
@@ -11,6 +12,7 @@ const route = useRoute();
 const router = useRouter();
 const swarmStore = useSwarmStore();
 const conversationStore = useConversationStore();
+const themeStore = useThemeStore();
 
 const navItems = [
   { label: "对话", route: "/chat", icon: MessageIcon },
@@ -411,6 +413,22 @@ import { h } from "vue";
         <span class="swarm-label">对话模式</span>
         <span class="swarm-name direct-name">直接对话</span>
       </div>
+      <button class="theme-toggle" @click="themeStore.toggle()" :title="themeStore.current === 'dark' ? '切换亮色主题' : '切换暗色主题'">
+        <svg v-if="themeStore.current === 'dark'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5" />
+          <line x1="12" y1="1" x2="12" y2="3" />
+          <line x1="12" y1="21" x2="12" y2="23" />
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+          <line x1="1" y1="12" x2="3" y2="12" />
+          <line x1="21" y1="12" x2="23" y2="12" />
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+        </svg>
+        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      </button>
     </div>
   </aside>
 
@@ -434,12 +452,13 @@ import { h } from "vue";
 <style scoped>
 .sidebar {
   width: 260px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--sidebar-bg);
   backdrop-filter: blur(16px);
   border-right: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  transition: background 0.3s ease;
 }
 
 .sidebar-brand {
@@ -757,20 +776,52 @@ import { h } from "vue";
 }
 
 .sidebar-footer {
-  padding: 16px;
+  padding: 12px 16px;
   border-top: 1px solid var(--color-border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.theme-toggle {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--btn-secondary-bg);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.theme-toggle:hover {
+  background: var(--btn-secondary-hover-bg);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.theme-toggle svg {
+  width: 16px;
+  height: 16px;
 }
 
 .current-swarm {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   background: rgba(99, 102, 241, 0.08);
   border-radius: 10px;
   border: 1px solid rgba(99, 102, 241, 0.12);
   cursor: pointer;
   transition: all 0.15s;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .current-swarm:hover {

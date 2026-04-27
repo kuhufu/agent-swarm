@@ -1,6 +1,17 @@
 @import "tailwindcss";
 
 @theme {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+}
+
+/* ── Dark theme (default) ── */
+[data-theme="dark"] {
   --color-surface-0: #0a0e1a;
   --color-surface-1: #111827;
   --color-surface-2: #1a1f35;
@@ -24,13 +35,77 @@
   --color-danger: #ef4444;
   --color-info: #3b82f6;
 
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-hover-bg: rgba(255, 255, 255, 0.06);
+  --glass-card-hover-bg: rgba(255, 255, 255, 0.05);
+  --input-bg: rgba(255, 255, 255, 0.04);
+  --empty-icon-bg: rgba(255, 255, 255, 0.04);
+  --sidebar-bg: rgba(15, 23, 42, 0.75);
+  --btn-secondary-bg: rgba(255, 255, 255, 0.06);
+  --btn-secondary-hover-bg: rgba(255, 255, 255, 0.1);
+  --badge-bg: rgba(99, 102, 241, 0.15);
+  --badge-success-bg: rgba(34, 197, 94, 0.15);
+  --badge-warning-bg: rgba(245, 158, 11, 0.15);
+  --badge-danger-bg: rgba(239, 68, 68, 0.15);
+  --btn-danger-bg: rgba(248, 113, 113, 0.1);
+  --btn-danger-border: rgba(248, 113, 113, 0.3);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+  --bg-gradient: linear-gradient(135deg, #0a0e1a 0%, #1a1f35 50%, #0d1220 100%);
+  --chat-input-bg: linear-gradient(
+    135deg,
+    rgba(17, 24, 39, 0.88) 0%,
+    rgba(26, 31, 53, 0.82) 100%
+  );
+}
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+/* ── Light theme ── */
+[data-theme="light"] {
+  --color-surface-0: #f1f5f9;
+  --color-surface-1: #ffffff;
+  --color-surface-2: #f8fafc;
+  --color-surface-3: #e2e8f0;
+
+  --color-border-subtle: rgba(0, 0, 0, 0.08);
+  --color-border-default: rgba(0, 0, 0, 0.12);
+  --color-border-hover: rgba(0, 0, 0, 0.18);
+
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+
+  --color-accent: #6366f1;
+  --color-accent-light: #818cf8;
+  --color-accent-dark: #4f46e5;
+  --color-accent-glow: rgba(99, 102, 241, 0.2);
+
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+  --color-info: #2563eb;
+
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-hover-bg: rgba(255, 255, 255, 0.85);
+  --glass-card-hover-bg: rgba(255, 255, 255, 0.9);
+  --input-bg: rgba(255, 255, 255, 0.8);
+  --empty-icon-bg: rgba(0, 0, 0, 0.04);
+  --sidebar-bg: rgba(255, 255, 255, 0.85);
+  --btn-secondary-bg: rgba(0, 0, 0, 0.05);
+  --btn-secondary-hover-bg: rgba(0, 0, 0, 0.08);
+  --badge-bg: rgba(99, 102, 241, 0.1);
+  --badge-success-bg: rgba(22, 163, 74, 0.1);
+  --badge-warning-bg: rgba(217, 119, 6, 0.1);
+  --badge-danger-bg: rgba(220, 38, 38, 0.1);
+  --btn-danger-bg: rgba(220, 38, 38, 0.08);
+  --btn-danger-border: rgba(220, 38, 38, 0.25);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+  --bg-gradient: linear-gradient(135deg, #f1f5f9 0%, #ffffff 50%, #e2e8f0 100%);
+  --chat-input-bg: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(248, 250, 252, 0.9) 100%
+  );
 }
 
 @layer base {
@@ -41,9 +116,14 @@
   }
 
   body {
-    background: var(--color-surface-0);
+    background: var(--bg-gradient);
     color: var(--color-text-primary);
     overflow: hidden;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+
+  *, *::before, *::after {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
   }
 
   ::-webkit-scrollbar {
@@ -56,23 +136,23 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--scrollbar-thumb);
     border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--scrollbar-thumb-hover);
   }
 
   ::selection {
-    background: rgba(99, 102, 241, 0.3);
-    color: #fff;
+    background: var(--color-accent-glow);
+    color: var(--color-text-primary);
   }
 }
 
 @layer components {
   .glass {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--glass-bg);
     backdrop-filter: blur(16px) saturate(1.2);
     -webkit-backdrop-filter: blur(16px) saturate(1.2);
     border: 1px solid var(--color-border-subtle);
@@ -83,14 +163,14 @@
   }
 
   .glass-hover:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--glass-hover-bg);
     border-color: var(--color-border-hover);
     transform: translateY(-1px);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   }
 
   .card {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--glass-bg);
     backdrop-filter: blur(12px);
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-md);
@@ -98,7 +178,7 @@
   }
 
   .card:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--glass-card-hover-bg);
     border-color: var(--color-border-hover);
     transform: translateY(-2px);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
@@ -133,7 +213,7 @@
   }
 
   .btn-secondary {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--btn-secondary-bg);
     color: var(--color-text-secondary);
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-sm);
@@ -149,13 +229,13 @@
   }
 
   .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--btn-secondary-hover-bg);
     border-color: var(--color-border-hover);
     color: var(--color-text-primary);
   }
 
   .input-field {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--input-bg);
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-sm);
     padding: 10px 14px;
@@ -187,23 +267,23 @@
   }
 
   .badge-accent {
-    background: rgba(99, 102, 241, 0.15);
+    background: var(--badge-bg);
     color: var(--color-accent-light);
   }
 
   .badge-success {
-    background: rgba(34, 197, 94, 0.15);
-    color: #4ade80;
+    background: var(--badge-success-bg);
+    color: var(--color-success);
   }
 
   .badge-warning {
-    background: rgba(245, 158, 11, 0.15);
-    color: #fbbf24;
+    background: var(--badge-warning-bg);
+    color: var(--color-warning);
   }
 
   .badge-danger {
-    background: rgba(239, 68, 68, 0.15);
-    color: #f87171;
+    background: var(--badge-danger-bg);
+    color: var(--color-danger);
   }
 
   .btn-danger {
@@ -212,9 +292,9 @@
     gap: 6px;
     padding: 8px 16px;
     border-radius: var(--radius-sm);
-    border: 1px solid rgba(248, 113, 113, 0.3);
-    background: rgba(248, 113, 113, 0.1);
-    color: #f87171;
+    border: 1px solid var(--btn-danger-border);
+    background: var(--btn-danger-bg);
+    color: var(--color-danger);
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
@@ -222,7 +302,8 @@
   }
 
   .btn-danger:hover {
-    background: rgba(248, 113, 113, 0.2);
+    background: var(--btn-danger-bg);
+    filter: brightness(1.1);
   }
 
   .remove-btn {
@@ -259,7 +340,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--empty-icon-bg);
     border-radius: 14px;
     border: 1px solid var(--color-border-subtle);
     margin-bottom: 14px;

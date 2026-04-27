@@ -519,11 +519,7 @@ function handleOutsideClick(event: MouseEvent) {
   padding: 12px 16px 14px;
   border: 1px solid var(--color-border-subtle);
   border-radius: 20px;
-  background: linear-gradient(
-    135deg,
-    rgba(17, 24, 39, 0.88) 0%,
-    rgba(26, 31, 53, 0.82) 100%
-  );
+  background: var(--chat-input-bg);
   backdrop-filter: blur(16px) saturate(1.1);
   box-shadow:
     0 18px 48px rgba(0, 0, 0, 0.28),
