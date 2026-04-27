@@ -83,6 +83,9 @@ function tryFocusTextarea(): boolean {
   if (!textarea || textarea.disabled) {
     return false;
   }
+  if (document.activeElement === textarea) {
+    return true;
+  }
   textarea.focus();
   if (pendingSelectionRestore) {
     const valueLength = textarea.value.length;
