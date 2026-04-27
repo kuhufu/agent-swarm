@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, watch, nextTick } from "vue";
+import { onMounted, onUnmounted, ref, computed, watch, nextTick } from "vue";
 import { useChat } from "../../composables/useChat.js";
 import { useSettingsStore } from "../../stores/settings.js";
 import { useConversationStore } from "../../stores/conversation.js";
@@ -335,7 +335,29 @@ onMounted(() => {
   if (props.isDirectMode && !settingsStore.config) {
     settingsStore.fetchConfig();
   }
+
+  document.addEventListener("mousedown", handleOutsideClick);
 });
+
+onUnmounted(() => {
+  document.removeEventListener("mousedown", handleOutsideClick);
+});
+
+function handleOutsideClick(event: MouseEvent) {
+  const target = event.target as Node;
+  if (!target) return;
+  if (showThinkLevelSelect.value || showModelSelect.value) {
+    const thinkContainer = (document.querySelector(".think-level-select-inline") as HTMLElement);
+    const modelContainer = (document.querySelector(".model-select-inline") as HTMLElement);
+    if (
+      thinkContainer && !thinkContainer.contains(target)
+      && modelContainer && !modelContainer.contains(target)
+    ) {
+      showThinkLevelSelect.value = false;
+      showModelSelect.value = false;
+    }
+  }
+}
 </script>
 
 <template>
