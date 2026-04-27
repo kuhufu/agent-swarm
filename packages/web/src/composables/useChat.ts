@@ -36,6 +36,10 @@ export function useChat() {
     get: () => conversationStore.isToolEnabled("javascript_execute"),
     set: (value: boolean) => conversationStore.setClientToolEnabled("javascript_execute", value),
   });
+  const searchToolEnabled = computed({
+    get: () => conversationStore.isToolEnabled("web_search"),
+    set: (value: boolean) => conversationStore.setClientToolEnabled("web_search", value),
+  });
   const thinkingLevel = computed({
     get: () => conversationStore.thinkingLevel,
     set: (value: string) => conversationStore.setThinkingLevel(value),
@@ -169,6 +173,7 @@ export function useChat() {
     directModel,
     currentTimeToolEnabled,
     jsExecutionToolEnabled,
+    searchToolEnabled,
     thinkingLevel,
   };
 }

@@ -24,6 +24,7 @@ const {
   directModel,
   currentTimeToolEnabled,
   jsExecutionToolEnabled,
+  searchToolEnabled,
   thinkingLevel,
 } = useChat();
 
@@ -450,6 +451,18 @@ function handleOutsideClick(event: MouseEvent) {
             <polyline points="8 6 2 12 8 18" />
           </svg>
           <span>JS 执行</span>
+        </button>
+        <button
+          class="tool-btn"
+          :class="{ active: searchToolEnabled }"
+          @mousedown="handleKeepTextareaFocusMouseDown"
+          @click="searchToolEnabled = !searchToolEnabled"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <span>搜索</span>
         </button>
         <div class="think-level-select-inline">
           <button
