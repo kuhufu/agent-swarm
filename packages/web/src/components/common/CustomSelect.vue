@@ -147,7 +147,7 @@ function close() {
   border: 1px solid var(--color-border-subtle);
   border-radius: 10px;
   backdrop-filter: blur(16px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-select);
   padding: 4px;
   max-height: 260px;
   overflow-y: auto;
