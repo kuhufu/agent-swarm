@@ -24,9 +24,16 @@ interface SearchResult {
 function resolveProxy(config: WebSearchConfig): { url?: string; noProxy?: string } {
   if (config.proxy) return { url: config.proxy, noProxy: config.noProxy };
   const env = typeof process !== "undefined" ? process.env as Record<string, string | undefined> : {};
+  const get = (keys: string[]) => {
+    for (const key of keys) {
+      const v = env[key];
+      if (v) return v;
+    }
+    return undefined;
+  };
   return {
-    url: env.https_proxy ?? env.HTTPS_PROXY ?? env.http_proxy ?? env.HTTP_PROXY ?? env.ALL_PROXY,
-    noProxy: config.noProxy ?? env.no_proxy ?? env.NO_PROXY,
+    url: get(["https_proxy", "HTTPS_PROXY", "http_proxy", "HTTP_PROXY", "all_proxy", "ALL_PROXY"]),
+    noProxy: config.noProxy ?? get(["no_proxy", "NO_PROXY"]),
   };
 }
 
