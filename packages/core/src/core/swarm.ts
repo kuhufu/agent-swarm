@@ -11,12 +11,15 @@ import { resolve as resolvePath } from "node:path";
 import { complete, getProviders as piGetProviders, getModels as piGetModels } from "@mariozechner/pi-ai";
 import type { Model as PiModel, KnownProvider } from "@mariozechner/pi-ai";
 import { resolveModelFromProvider } from "../llm/provider.js";
+import type { Logger } from "../logger/types.js";
+import { ConsoleLogger } from "../logger/console-logger.js";
 
 export interface AgentSwarmOptions {
   configPath?: string;
   config?: AgentSwarmRootConfig;
   storage?: IStorage;
   interventionHandler?: InterventionHandler;
+  logger?: Logger;
 }
 
 export interface ModelConnectionTestOptions {
@@ -76,6 +79,7 @@ export class AgentSwarm {
   private interventionHandler?: InterventionHandler;
   private swarmConfigs: Map<string, SwarmConfig> = new Map();
   private _initialized = false;
+  public readonly logger: Logger;
 
   constructor(options: AgentSwarmOptions) {
     if (!options.config && !options.configPath) {
@@ -87,6 +91,7 @@ export class AgentSwarm {
     this.config.eventLogLevel = this.eventLogLevel;
     this.storage = options.storage ?? new SqliteStorage(this.config.storage.path);
     this.interventionHandler = options.interventionHandler;
+    this.logger = options.logger ?? new ConsoleLogger();
 
     // Bootstrap in-memory index from startup config before init.
     for (const swarm of this.config.swarms) {
@@ -98,6 +103,7 @@ export class AgentSwarm {
     if (this._initialized) return;
 
     await this.storage.init();
+    this.logger.info("storage_initialized", { type: this.config.storage.type });
 
     const storedLLMConfig = await this.storage.loadSetting(AgentSwarm.LLM_CONFIG_KEY);
     if (storedLLMConfig) {
@@ -548,6 +554,7 @@ export class AgentSwarm {
     await this.storage.saveSwarm(config);
     this.swarmConfigs.set(config.id, config);
     this.config.swarms.push(config);
+    this.logger.info("swarm_created", { swarmId: config.id, name: config.name, mode: config.mode });
     return config;
   }
 
@@ -575,13 +582,15 @@ export class AgentSwarm {
    */
   async deleteSwarmConfig(id: string): Promise<void> {
     this.ensureInitialized();
-    if (!this.swarmConfigs.has(id)) {
+    const config = this.swarmConfigs.get(id);
+    if (!config) {
       throw new Error(`Swarm not found: ${id}`);
     }
 
     await this.storage.deleteSwarm(id);
     this.swarmConfigs.delete(id);
     this.config.swarms = this.config.swarms.filter((s) => s.id !== id);
+    this.logger.info("swarm_deleted", { swarmId: id, name: config.name });
   }
 
   getLLMConfig(): LLMBackendConfig {
@@ -595,6 +604,7 @@ export class AgentSwarm {
       AgentSwarm.LLM_CONFIG_KEY,
       JSON.stringify(this.config.llm),
     );
+    this.logger.info("llm_config_updated", { providers: Object.keys(nextConfig.apiKeys) });
     return this.cloneLLMConfig(this.config.llm);
   }
 

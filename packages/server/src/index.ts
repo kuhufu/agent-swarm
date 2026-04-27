@@ -1,11 +1,12 @@
 import "dotenv/config";
 import { createApp } from "./app.js";
 import { createWSServer } from "./ws.js";
-import { AgentSwarm } from "@agent-swarm/core";
+import { AgentSwarm, ConsoleLogger } from "@agent-swarm/core";
 
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
 
 async function main() {
+  const logger = new ConsoleLogger();
   const swarm = new AgentSwarm({
     config: {
       llm: {
@@ -17,6 +18,7 @@ async function main() {
       },
       swarms: [],
     },
+    logger,
   });
 
   await swarm.init();
@@ -25,13 +27,13 @@ async function main() {
   const server = createWSServer(app, swarm);
 
   server.listen(PORT, () => {
-    console.log(`Agent Swarm server running on http://localhost:${PORT}`);
-    console.log(`WebSocket available on ws://localhost:${PORT}/ws`);
+    logger.info("server_started", { port: PORT });
+    logger.info("websocket_available", { path: "/ws" });
   });
 
   // Graceful shutdown
   process.on("SIGINT", async () => {
-    console.log("\nShutting down...");
+    logger.info("shutting_down");
     await swarm.close();
     server.close();
     process.exit(0);

@@ -79,3 +79,7 @@ export { resolveModel, resolveModelFromProvider, mapThinkingLevel } from "./llm/
 
 // Config helper
 export { defineConfig } from "./core/config.js";
+
+// Logger
+export type { Logger, LogLevel } from "./logger/types.js";
+export { ConsoleLogger } from "./logger/console-logger.js";
