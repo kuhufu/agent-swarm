@@ -1,19 +1,49 @@
 import { defineStore } from "pinia";
-import { ref, watch } from "vue";
+import { ref, computed, watch } from "vue";
+
+export type ThemeMode = "dark" | "light" | "auto";
+
+function getSystemTheme(): "dark" | "light" {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
 
 export const useThemeStore = defineStore("theme", () => {
-  const current = ref<"dark" | "light">(
-    (localStorage.getItem("theme") as "dark" | "light") ?? "dark",
+  const mode = ref<ThemeMode>(
+    (localStorage.getItem("theme-mode") as ThemeMode) ?? "auto",
   );
 
-  watch(current, (val) => {
-    localStorage.setItem("theme", val);
-    document.documentElement.setAttribute("data-theme", val);
-  }, { immediate: true });
+  const resolvedTheme = computed(() =>
+    mode.value === "auto" ? getSystemTheme() : mode.value,
+  );
 
-  function toggle() {
-    current.value = current.value === "dark" ? "light" : "dark";
+  function applyTheme(theme: "dark" | "light") {
+    document.documentElement.setAttribute("data-theme", theme);
   }
 
-  return { current, toggle };
+  // Watch for mode changes and apply
+  watch(resolvedTheme, (val) => {
+    localStorage.setItem("theme-mode", mode.value);
+    applyTheme(val);
+  }, { immediate: true });
+
+  // Listen for system theme changes when in auto mode
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  function onSystemThemeChange() {
+    if (mode.value === "auto") {
+      applyTheme(getSystemTheme());
+    }
+  }
+  mediaQuery.addEventListener("change", onSystemThemeChange);
+
+  function setMode(newMode: ThemeMode) {
+    mode.value = newMode;
+  }
+
+  function cycleMode() {
+    const order: ThemeMode[] = ["auto", "light", "dark"];
+    const idx = order.indexOf(mode.value);
+    mode.value = order[(idx + 1) % order.length];
+  }
+
+  return { mode, resolvedTheme, setMode, cycleMode };
 });

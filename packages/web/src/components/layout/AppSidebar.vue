@@ -15,6 +15,10 @@ const router = useRouter();
 const swarmStore = useSwarmStore();
 const conversationStore = useConversationStore();
 const themeStore = useThemeStore();
+const currentThemeLabel = computed(() => {
+  const labels: Record<string, string> = { auto: "自动", light: "浅色", dark: "深色" };
+  return labels[themeStore.mode] ?? "自动";
+});
 const authStore = useAuthStore();
 const { disconnect } = useWebSocket();
 
@@ -40,6 +44,8 @@ const isActive = (path: string) => (path === "/chat" ? isChatRoute.value : route
 const isConversationActive = (id: string) => isChatRoute.value && routeConversationId.value === id;
 const openedMenuConversationId = ref<string | null>(null);
 const menuPosition = ref<{ left: number; top: number } | null>(null);
+const showUserMenu = ref(false);
+const userMenuPosition = ref<{ left: number; top: number } | null>(null);
 
 const recentConversations = computed(() =>
   [...conversationStore.conversations]
@@ -138,6 +144,7 @@ function navigateTo(path: string) {
 }
 
 async function handleLogout() {
+  closeUserMenu();
   await authStore.logout();
   disconnect();
   conversationStore.setCurrentConversation(null);
@@ -242,17 +249,54 @@ function handleGlobalClick(event: MouseEvent) {
   const target = event.target;
   if (!(target instanceof Element)) {
     closeConversationMenu();
+    closeUserMenu();
     return;
   }
   if (target.closest(".conversation-more") || target.closest(".conversation-menu-floating")) {
     return;
   }
+  if (target.closest(".auth-user-trigger") || target.closest(".user-menu-floating")) {
+    return;
+  }
   closeConversationMenu();
+  closeUserMenu();
+}
+
+function closeUserMenu() {
+  showUserMenu.value = false;
+  userMenuPosition.value = null;
+}
+
+function toggleUserMenu(event: MouseEvent) {
+  const target = event.currentTarget;
+  if (!(target instanceof Element)) return;
+  if (showUserMenu.value) {
+    closeUserMenu();
+    return;
+  }
+  showUserMenu.value = true;
+  const rect = target.getBoundingClientRect();
+  const menuWidth = 160;
+  const menuHeight = 44;
+  const gap = 6;
+  const viewportPadding = 8;
+  const left = Math.min(
+    Math.max(rect.left, viewportPadding),
+    window.innerWidth - menuWidth - viewportPadding,
+  );
+  let top = rect.bottom + gap;
+  if (top + menuHeight > window.innerHeight - viewportPadding) {
+    top = Math.max(viewportPadding, rect.top - menuHeight - gap);
+  }
+  userMenuPosition.value = { left, top };
 }
 
 function handleWindowChange() {
   if (openedMenuConversationId.value) {
     closeConversationMenu();
+  }
+  if (showUserMenu.value) {
+    closeUserMenu();
   }
 }
 
@@ -412,12 +456,20 @@ import { h } from "vue";
     </section>
 
     <div class="sidebar-footer">
-      <div v-if="showAuthSection" class="auth-section">
-        <span class="auth-user">{{ authStore.user?.username }}</span>
-        <button class="logout-btn" @click="handleLogout">退出登录</button>
-      </div>
-      <button class="theme-toggle" @click="themeStore.toggle()" :title="themeStore.current === 'dark' ? '切换亮色主题' : '切换暗色主题'">
-        <svg v-if="themeStore.current === 'dark'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <div v-if="showAuthSection" class="footer-row">
+        <button class="auth-user-trigger" :class="{ active: showUserMenu }" @click="toggleUserMenu">
+          <div class="auth-avatar">{{ authStore.user?.username?.charAt(0)?.toUpperCase() }}</div>
+          <span class="auth-username">{{ authStore.user?.username }}</span>
+          <svg class="auth-chevron" :class="{ expanded: showUserMenu }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+        <button class="theme-toggle" @click="themeStore.cycleMode()" :title="currentThemeLabel">
+        <svg v-if="themeStore.mode === 'auto'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 2a10 10 0 0 0 0 20z" />
+        </svg>
+        <svg v-else-if="themeStore.mode === 'light'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon">
           <circle cx="12" cy="12" r="5" />
           <line x1="12" y1="1" x2="12" y2="3" />
           <line x1="12" y1="21" x2="12" y2="23" />
@@ -428,14 +480,25 @@ import { h } from "vue";
           <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
           <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
         </svg>
-        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
         </svg>
-      </button>
+        <span class="theme-label">{{ currentThemeLabel }}</span>
+        </button>
+      </div>
     </div>
   </aside>
 
   <teleport to="body">
+    <div
+      v-if="showUserMenu && userMenuPosition"
+      class="user-menu-floating"
+      :style="{ left: `${userMenuPosition.left}px`, top: `${userMenuPosition.top}px` }"
+      @click.stop
+    >
+      <button class="conversation-menu-item danger" @click="handleLogout">退出登录</button>
+    </div>
+
     <div
       v-if="openedMenuConversation && menuPosition"
       class="conversation-menu-floating"
@@ -796,51 +859,99 @@ import { h } from "vue";
   gap: 8px;
 }
 
-.auth-section {
+.footer-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
 }
 
-.auth-user {
+.auth-user-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
   min-width: 0;
-  font-size: 12px;
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: border-color 0.15s;
   color: var(--color-text-secondary);
+}
+
+.auth-user-trigger:hover {
+  border-color: var(--color-border-hover);
+}
+
+.auth-user-trigger.active {
+  border-color: var(--color-border-hover);
+  background: var(--glass-hover-bg);
+}
+
+.auth-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--color-accent), #8b5cf6);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.auth-username {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: left;
 }
 
-.logout-btn {
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  background: rgba(239, 68, 68, 0.08);
-  color: #fca5a5;
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 12px;
-  line-height: 1.4;
-  cursor: pointer;
-  white-space: nowrap;
+.auth-chevron {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: transform 0.15s;
 }
 
-.logout-btn:hover {
-  background: rgba(239, 68, 68, 0.16);
+.auth-chevron.expanded {
+  transform: rotate(180deg);
+}
+
+.user-menu-floating {
+  position: fixed;
+  z-index: 3000;
+  min-width: 140px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  padding: 4px;
+  box-shadow: var(--shadow-menu);
+  backdrop-filter: blur(12px);
 }
 
 .theme-toggle {
   flex-shrink: 0;
-  width: 100%;
   height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
+  padding: 0 8px;
   background: var(--btn-secondary-bg);
   border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: border-color 0.15s, color 0.15s;
 }
 
 .theme-toggle:hover {
@@ -850,8 +961,13 @@ import { h } from "vue";
 }
 
 .theme-toggle svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
+}
+
+.theme-label {
+  font-size: 12px;
+  line-height: 1;
 }
 
 .current-swarm {
