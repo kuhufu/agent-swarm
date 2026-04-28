@@ -80,7 +80,7 @@ listAllConversations(userId?: string): Promise<Conversation[]>;
 listAgentPresets(userId?: string): Promise<AgentPreset[]>;
 ```
 
-`userId` 为 `undefined` 时不加过滤（兼容旧数据和 `AUTH_ENABLED=false` 模式）。
+`userId` 为 `undefined` 时不加过滤（兼容旧数据迁移阶段）。
 
 #### AgentSwarm 变更
 
@@ -114,10 +114,6 @@ declare global {
 }
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
-  if (process.env.AUTH_ENABLED !== "true") {
-    return next();
-  }
-
   // 排除 auth 路由
   if (req.path.startsWith("/api/auth/")) return next();
 
@@ -162,15 +158,12 @@ GET  /api/auth/me       → 需认证
 ```typescript
 // 认证路由始终公开
 app.use("/api/auth", authRoutes);
-
-if (process.env.AUTH_ENABLED === "true") {
-  app.use("/api", authMiddleware);
-}
+app.use("/api", authMiddleware);
 
 // 其他路由...
 ```
 
-`AUTH_ENABLED=false` 时走开发模式：所有请求共享同一个默认用户（或无用户上下文查询全部数据）。
+系统固定要求认证，不再提供开发模式绕过。
 
 #### 前端
 
@@ -237,7 +230,7 @@ if (token) headers["Authorization"] = `Bearer ${token}`;
 |------|------|
 | JWT 过期 | 401 → 前端自动跳转登录页 |
 | 用户名已存在 | 注册返回 409 |
-| AUTH_ENABLED 从 true 切到 false | 旧数据 userId 为 NULL 时仍可见 |
+| 旧数据 userId 为空 | 迁移脚本补齐为指定已注册用户 |
 | Token 伪造/篡改 | `jwt.verify` 报错 → 401 |
 | 并发注册同名用户 | `INSERT ... unique(username)` 冲突 → 409 |
 
@@ -246,7 +239,7 @@ if (token) headers["Authorization"] = `Bearer ${token}`;
 - 用户可注册/登录
 - 登录后只能看到自己的对话、swarm、agent 预设
 - 未登录用户重定向到登录页
-- `AUTH_ENABLED=false` 时保持原有单用户行为
+- 固定开启认证后，所有业务请求必须携带有效 JWT
 - 现有 29 个测试不受影响
 
 ---
@@ -983,7 +976,6 @@ POST /api/conversations/:id/fork
 
 ```bash
 # ── 用户认证 ──
-AUTH_ENABLED=false                        # 默认关闭
 JWT_SECRET=change-me-to-random-string      # 修改为随机值
 JWT_EXPIRES_IN=7d
 
