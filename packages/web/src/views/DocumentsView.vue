@@ -27,9 +27,11 @@ const uploadTitle = ref("");
 const uploadContent = ref("");
 const selectedDoc = ref<Document | null>(null);
 const deletingId = ref<string | null>(null);
-const editingDocId = ref<string | null>(null);
 const loadingDetail = ref(false);
 const showPreview = ref(false);
+const isEditing = ref(false);
+const editTitle = ref("");
+const editContent = ref("");
 
 const displayDocuments = computed<Document[]>(() => {
   const q = searchQuery.value.trim();
@@ -104,25 +106,18 @@ async function handleUpload() {
   }
   loading.value = true;
   try {
-    const isEditing = Boolean(editingDocId.value);
-    const savedDocumentId = editingDocId.value;
-    await apiClient(isEditing ? `/documents/${savedDocumentId}` : "/documents/upload", {
-      method: isEditing ? "PUT" : "POST",
+    await apiClient("/documents/upload", {
+      method: "POST",
       body: JSON.stringify({
         filename: uploadTitle.value.trim(),
         content: uploadContent.value,
       }),
     });
-    await MessagePlugin.success(isEditing ? "文档已更新" : "文档已上传");
+    await MessagePlugin.success("文档已上传");
     uploadTitle.value = "";
     uploadContent.value = "";
-    editingDocId.value = null;
     showUpload.value = false;
     await loadDocuments();
-    if (isEditing && savedDocumentId) {
-      selectedDoc.value = await loadDocumentDetail(savedDocumentId);
-      showPreview.value = true;
-    }
   } catch (err: any) {
     await MessagePlugin.error(err.message);
   } finally {
@@ -134,8 +129,10 @@ async function selectDocument(doc: Document) {
   if (selectedDoc.value?.id === doc.id) {
     selectedDoc.value = null;
     showPreview.value = false;
+    isEditing.value = false;
     return;
   }
+  isEditing.value = false;
   loadingDetail.value = true;
   try {
     selectedDoc.value = await loadDocumentDetail(doc.id);
@@ -150,25 +147,66 @@ async function selectDocument(doc: Document) {
 function closePreview() {
   showPreview.value = false;
   selectedDoc.value = null;
+  isEditing.value = false;
 }
 
-async function startEdit(doc: Document) {
+async function startEdit() {
+  if (!selectedDoc.value) return;
+  editTitle.value = selectedDoc.value.title;
+  editContent.value = selectedDoc.value.content ?? "";
+  isEditing.value = true;
+}
+
+async function selectAndEdit(doc: Document) {
+  isEditing.value = false;
+  loadingDetail.value = true;
   try {
-    const detail = doc.content !== undefined ? doc : await loadDocumentDetail(doc.id);
-    editingDocId.value = detail.id;
-    uploadTitle.value = detail.title;
-    uploadContent.value = detail.content ?? "";
-    selectedDoc.value = detail;
-    showPreview.value = false;
-    showUpload.value = true;
+    selectedDoc.value = await loadDocumentDetail(doc.id);
+    showPreview.value = true;
+    editTitle.value = selectedDoc.value.title;
+    editContent.value = selectedDoc.value.content ?? "";
+    isEditing.value = true;
   } catch (err: any) {
     await MessagePlugin.error(err.message);
+  } finally {
+    loadingDetail.value = false;
+  }
+}
+
+function cancelEdit() {
+  isEditing.value = false;
+  editTitle.value = "";
+  editContent.value = "";
+}
+
+async function saveEdit() {
+  if (!selectedDoc.value) return;
+  if (!editTitle.value.trim() || !editContent.value.trim()) {
+    await MessagePlugin.warning("标题和内容不能为空");
+    return;
+  }
+  loading.value = true;
+  try {
+    await apiClient(`/documents/${selectedDoc.value.id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        filename: editTitle.value.trim(),
+        content: editContent.value,
+      }),
+    });
+    await MessagePlugin.success("文档已更新");
+    selectedDoc.value = await loadDocumentDetail(selectedDoc.value.id);
+    isEditing.value = false;
+    await loadDocuments();
+  } catch (err: any) {
+    await MessagePlugin.error(err.message);
+  } finally {
+    loading.value = false;
   }
 }
 
 function cancelUpload() {
   showUpload.value = false;
-  editingDocId.value = null;
   uploadTitle.value = "";
   uploadContent.value = "";
 }
@@ -181,6 +219,7 @@ async function handleDelete(id: string) {
     if (selectedDoc.value?.id === id) {
       selectedDoc.value = null;
       showPreview.value = false;
+      isEditing.value = false;
     }
     await loadDocuments();
   } catch (err: any) {
@@ -252,7 +291,7 @@ function highlightMatch(text: string, query: string): string {
       </div>
     </header>
 
-    <!-- Upload form -->
+    <!-- Upload form (new document only) -->
     <transition name="slide">
       <div v-if="showUpload" class="card upload-card">
         <div class="upload-header">
@@ -262,8 +301,8 @@ function highlightMatch(text: string, query: string): string {
             <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
           <div>
-            <h3>{{ editingDocId ? "编辑文档" : "上传新文档" }}</h3>
-            <p>{{ editingDocId ? "保存后会重新分块并更新知识库索引" : "添加文本或 Markdown 内容到知识库" }}</p>
+            <h3>上传新文档</h3>
+            <p>添加文本或 Markdown 内容到知识库</p>
           </div>
         </div>
         <div class="upload-body">
@@ -294,7 +333,7 @@ function highlightMatch(text: string, query: string): string {
                 <polyline points="17 8 12 3 7 8" />
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
-              {{ loading ? (editingDocId ? "保存中..." : "上传中...") : (editingDocId ? "保存修改" : "上传") }}
+              {{ loading ? "上传中..." : "上传" }}
             </button>
           </div>
         </div>
@@ -361,7 +400,7 @@ function highlightMatch(text: string, query: string): string {
             <div class="doc-actions">
               <button
                 class="btn-icon"
-                @click.stop="startEdit(doc)"
+                @click.stop="selectAndEdit(doc)"
                 :title="'编辑文档'"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -392,32 +431,58 @@ function highlightMatch(text: string, query: string): string {
       </div>
 
       <!-- Document preview panel -->
-      <transition name="preview-slide">
-        <div v-if="showPreview && selectedDoc" class="preview-panel card">
-          <div class="preview-header">
-            <div class="preview-title-area">
+      <transition name="doc-slide">
+        <div v-if="showPreview && selectedDoc" class="doc-panel card">
+          <div class="doc-header">
+            <div class="doc-title-area">
               <div class="doc-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                   <polyline points="14 2 14 8 20 8" />
                 </svg>
               </div>
-              <div>
-                <h2 class="preview-title">{{ selectedDoc.title }}</h2>
-                <span class="preview-meta">
+              <div v-if="!isEditing" class="doc-title-text">
+                <h2 class="doc-panel-title">{{ selectedDoc.title }}</h2>
+                <span class="doc-meta">
+                  <span class="badge badge-accent">{{ selectedDoc.source }}</span>
+                  <span class="doc-date">{{ formatDate(selectedDoc.createdAt) }}</span>
+                </span>
+              </div>
+              <div v-else class="doc-title-text">
+                <input
+                  v-model="editTitle"
+                  class="edit-title-input"
+                  placeholder="文档标题"
+                />
+                <span class="doc-meta">
                   <span class="badge badge-accent">{{ selectedDoc.source }}</span>
                   <span class="doc-date">{{ formatDate(selectedDoc.createdAt) }}</span>
                 </span>
               </div>
             </div>
-            <div class="preview-actions">
-              <button class="btn-icon" @click="startEdit(selectedDoc)" title="编辑">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                </svg>
-              </button>
-              <button class="btn-icon" @click="closePreview" title="关闭预览">
+            <div class="doc-actions">
+              <template v-if="isEditing">
+                <button class="btn-icon" @click="cancelEdit" title="取消编辑">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+                <button class="btn-icon save-btn" :disabled="loading" @click="saveEdit" title="保存">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </button>
+              </template>
+              <template v-else>
+                <button class="btn-icon" @click="startEdit" title="编辑">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                  </svg>
+                </button>
+              </template>
+              <button class="btn-icon" @click="closePreview" title="关闭">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
@@ -425,13 +490,25 @@ function highlightMatch(text: string, query: string): string {
               </button>
             </div>
           </div>
-          <div class="preview-body">
-            <div v-if="loadingDetail" class="preview-loading">
+          <div class="doc-body">
+            <div v-if="loadingDetail" class="doc-loading">
               <div class="loading-spinner" />
               <p>加载中...</p>
             </div>
-            <pre v-else-if="selectedDoc.content" class="preview-content">{{ selectedDoc.content }}</pre>
-            <div v-else class="preview-empty">
+            <textarea
+              v-else-if="isEditing"
+              v-model="editContent"
+              class="doc-textarea"
+              placeholder="文档内容"
+              :disabled="loading"
+            ></textarea>
+            <textarea
+              v-else-if="selectedDoc.content"
+              class="doc-textarea readonly"
+              :value="selectedDoc.content"
+              readonly
+            ></textarea>
+            <div v-else class="doc-empty">
               <p>暂无文档内容</p>
             </div>
           </div>
@@ -444,7 +521,9 @@ function highlightMatch(text: string, query: string): string {
 <style scoped>
 .documents-view {
   height: 100%;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 24px 32px;
 }
 
@@ -647,20 +726,17 @@ function highlightMatch(text: string, query: string): string {
 }
 
 .doc-list {
-  flex: 1;
+  flex: 0 0 420px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
   align-content: start;
   overflow-y: auto;
-  max-height: calc(100vh - 220px);
   padding-right: 4px;
 }
 
 .doc-list.with-preview {
-  flex: 0 0 45%;
   grid-template-columns: 1fr;
-  max-height: calc(100vh - 220px);
 }
 
 .doc-card {
@@ -748,9 +824,9 @@ function highlightMatch(text: string, query: string): string {
   padding: 0 1px;
 }
 
-/* ── Preview panel ── */
-.preview-panel {
-  flex: 0 0 55%;
+/* ── Doc panel ── */
+.doc-panel {
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -758,7 +834,7 @@ function highlightMatch(text: string, query: string): string {
   min-height: 0;
 }
 
-.preview-header {
+.doc-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -767,13 +843,19 @@ function highlightMatch(text: string, query: string): string {
   flex-shrink: 0;
 }
 
-.preview-title-area {
+.doc-title-area {
   display: flex;
   gap: 12px;
   min-width: 0;
+  flex: 1;
 }
 
-.preview-title {
+.doc-title-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.doc-panel-title {
   font-size: 16px;
   font-weight: 600;
   color: var(--color-text-primary);
@@ -783,13 +865,13 @@ function highlightMatch(text: string, query: string): string {
   text-overflow: ellipsis;
 }
 
-.preview-meta {
+.doc-meta {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.preview-actions {
+.doc-panel-actions {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -797,24 +879,72 @@ function highlightMatch(text: string, query: string): string {
   margin-left: 12px;
 }
 
-.preview-body {
+.doc-body {
   flex: 1;
   overflow-y: auto;
   padding: 20px 24px;
   min-height: 0;
 }
 
-.preview-content {
+.doc-textarea {
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
   margin: 0;
+  padding: 0;
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.7;
   color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.preview-loading {
+.doc-textarea.readonly {
+  cursor: default;
+  color: var(--color-text-secondary);
+}
+
+.doc-textarea:not(.readonly) {
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  min-height: 100%;
+}
+
+.edit-title-input {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  outline: none;
+  margin-bottom: 6px;
+}
+
+.edit-title-input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.save-btn {
+  color: var(--color-accent);
+}
+
+.save-btn:hover {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.doc-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -824,7 +954,7 @@ function highlightMatch(text: string, query: string): string {
   gap: 12px;
 }
 
-.preview-empty {
+.doc-empty {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -909,13 +1039,13 @@ function highlightMatch(text: string, query: string): string {
   transform: translateY(-8px);
 }
 
-.preview-slide-enter-active,
-.preview-slide-leave-active {
+.doc-slide-enter-active,
+.doc-slide-leave-active {
   transition: all 0.3s ease;
 }
 
-.preview-slide-enter-from,
-.preview-slide-leave-to {
+.doc-slide-enter-from,
+.doc-slide-leave-to {
   opacity: 0;
   transform: translateX(20px);
 }
@@ -945,16 +1075,17 @@ function highlightMatch(text: string, query: string): string {
   }
 
   .doc-list {
+    flex: none;
     grid-template-columns: 1fr;
     max-height: none;
+    width: 100%;
   }
 
   .doc-list.with-preview {
-    flex: none;
     max-height: 40vh;
   }
 
-  .preview-panel {
+  .doc-panel {
     flex: none;
     min-height: 40vh;
   }
