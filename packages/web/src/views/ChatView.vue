@@ -4,6 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useSwarmStore } from "../stores/swarm.js";
 import { useConversationStore } from "../stores/conversation.js";
 import { useWebSocket } from "../composables/useWebSocket.js";
+import { apiClient } from "../api/client.js";
 import MessageList from "../components/chat/MessageList.vue";
 import ChatInput from "../components/chat/ChatInput.vue";
 import AgentStatus from "../components/chat/AgentStatus.vue";
@@ -89,6 +90,21 @@ watch(
 function handleNewConversation() {
   conversationStore.setCurrentConversation(null);
 }
+
+async function handleForkConversation() {
+  const convId = conversationStore.currentConversationId;
+  if (!convId) return;
+  try {
+    const data = await apiClient<{ data: { id: string } }>(`/conversations/${convId}/fork`, { method: "POST" });
+    const newId = data.data.id;
+    const convs = conversationStore.conversations;
+    convs.unshift(data.data as any);
+    conversationStore.setCurrentConversation(newId);
+    router.push(`/chat/${newId}`);
+  } catch (err: any) {
+    console.error("Fork failed:", err.message);
+  }
+}
 </script>
 
 <template>
@@ -104,6 +120,21 @@ function handleNewConversation() {
           </template>
           <span v-if="isDirectMode" class="mode-badge direct">直接对话模式</span>
         </div>
+        <button
+          v-if="conversationStore.currentConversationId"
+          class="new-chat-btn fork-btn"
+          @click="handleForkConversation"
+          title="创建分支对话"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+            <line x1="6" y1="3" x2="6" y2="15" />
+            <circle cx="18" cy="6" r="3" />
+            <circle cx="18" cy="18" r="3" />
+            <line x1="8.21" y1="13.89" x2="15" y2="9" />
+            <line x1="8.21" y1="10.11" x2="15" y2="15" />
+          </svg>
+          分支
+        </button>
         <button class="new-chat-btn" @click="handleNewConversation">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
             <line x1="12" y1="5" x2="12" y2="19" />

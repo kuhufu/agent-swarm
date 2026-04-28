@@ -9,6 +9,9 @@ import { conversationRoutes } from "./routes/conversations.js";
 import { messageRoutes } from "./routes/messages.js";
 import { configRoutes } from "./routes/config.js";
 import { usageRoutes } from "./routes/usage.js";
+import { documentRoutes } from "./routes/documents.js";
+import { authRoutes } from "./routes/auth.js";
+import { authMiddleware } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/error-handler.js";
 
 export function createApp(swarm: AgentSwarm): Express {
@@ -17,6 +20,12 @@ export function createApp(swarm: AgentSwarm): Express {
   // Middleware
   app.use(cors());
   app.use(express.json({ limit: "1mb" }));
+
+  // Auth middleware (protects all /api routes except /api/auth/login and /api/auth/register)
+  app.use("/api", authMiddleware);
+
+  // Auth routes (login/register are public, /me needs token from middleware)
+  app.use("/api/auth", authRoutes(swarm));
 
   // Health check
   app.get("/api/health", (_req, res) => {
@@ -30,6 +39,7 @@ export function createApp(swarm: AgentSwarm): Express {
   app.use("/api/config", configRoutes(swarm));
   app.use("/api", messageRoutes(swarm));
   app.use("/api", usageRoutes(swarm));
+  app.use("/api", documentRoutes(swarm));
 
   // Error handler
   app.use(errorHandler);
