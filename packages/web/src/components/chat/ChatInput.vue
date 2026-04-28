@@ -535,9 +535,9 @@ function handleOutsideClick(event: MouseEvent) {
 
 <style scoped>
 .chat-input {
-  width: min(980px, calc(100% - 32px));
-  margin: 10px auto 14px;
-  padding: 12px 16px 14px;
+  width: min(860px, calc(100% - 32px));
+  margin: 6px auto 28px;
+  padding: 14px 16px 6px;
   border: 1px solid var(--color-border-subtle);
   border-radius: 20px;
   background: var(--chat-input-bg);
@@ -824,13 +824,13 @@ textarea {
   background: transparent;
   border: none;
   border-radius: 0;
-  padding: 12px 16px;
+  padding: 16px 16px;
   color: var(--color-text-primary);
   font-size: 14px;
   resize: none;
   outline: none;
   font-family: inherit;
-  min-height: 48px;
+  min-height: 60px;
   max-height: none;
   line-height: 1.6;
   transition: all 0.2s;
@@ -940,8 +940,8 @@ textarea:disabled {
   }
 
   textarea {
-    min-height: 44px;
-    padding: 10px 14px;
+    min-height: 52px;
+    padding: 14px 14px;
   }
 
   .send-btn {

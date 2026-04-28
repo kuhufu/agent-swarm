@@ -182,7 +182,7 @@ async function handleForkConversation() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 24px;
+  padding: 10px 24px;
   border-bottom: 1px solid var(--color-border-subtle);
   background: rgba(255, 255, 255, 0.02);
   backdrop-filter: blur(12px);

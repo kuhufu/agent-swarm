@@ -162,7 +162,7 @@ onMounted(async () => {
   flex: 1;
   overflow-y: auto;
   scrollbar-gutter: stable both-edges;
-  padding: 24px 32px;
+  padding: 16px 32px;
 }
 
 @supports not (scrollbar-gutter: stable) {
