@@ -17,7 +17,14 @@ const route = useRoute();
 const router = useRouter();
 
 const swarmId = computed(() => swarmStore.currentSwarm?.id ?? "");
-const isDirectMode = computed(() => !swarmStore.currentSwarm);
+const isDirectMode = computed(() => {
+  const conv = conversationStore.conversations.find(
+    (c) => c.id === conversationStore.currentConversationId,
+  );
+  if (conv) return conv.swarmId.startsWith("__direct_");
+  // No current conversation yet — keep consistent with swarm selection
+  return !swarmStore.currentSwarm;
+});
 const streamingMessages = computed(() =>
   Array.from(conversationStore.streamingMessages.values()),
 );

@@ -149,15 +149,6 @@ const formatTime = formatTimeLocale;
 
 async function handleOpenConversation(conv: ConversationInfo) {
   closeConversationMenu();
-  // For direct conversations, clear currentSwarm so ChatView enters direct mode
-  if (conv.swarmId.startsWith("__direct_")) {
-    swarmStore.clearSwarmSelection();
-  } else {
-    const swarm = swarmStore.swarms.find((s) => s.id === conv.swarmId);
-    if (swarm) {
-      swarmStore.selectSwarm(swarm);
-    }
-  }
   await router.push({ name: "chat", params: { conversationId: conv.id } });
 }
 
