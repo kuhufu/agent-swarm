@@ -22,14 +22,12 @@ const searchResults = ref<SearchResultItem[]>([]);
 const loading = ref(false);
 const searching = ref(false);
 const searchQuery = ref("");
-const showUpload = ref(false);
-const uploadTitle = ref("");
-const uploadContent = ref("");
 const selectedDoc = ref<Document | null>(null);
 const deletingId = ref<string | null>(null);
 const loadingDetail = ref(false);
 const showPreview = ref(false);
 const isEditing = ref(false);
+const isNewDoc = ref(false);
 const editTitle = ref("");
 const editContent = ref("");
 
@@ -99,40 +97,43 @@ async function doSearch(query: string) {
   }
 }
 
-async function handleUpload() {
-  if (!uploadTitle.value.trim() || !uploadContent.value.trim()) {
-    await MessagePlugin.warning("请填写文档标题和内容");
-    return;
-  }
-  loading.value = true;
-  try {
-    await apiClient("/documents/upload", {
-      method: "POST",
-      body: JSON.stringify({
-        filename: uploadTitle.value.trim(),
-        content: uploadContent.value,
-      }),
-    });
-    await MessagePlugin.success("文档已上传");
-    uploadTitle.value = "";
-    uploadContent.value = "";
-    showUpload.value = false;
-    await loadDocuments();
-  } catch (err: any) {
-    await MessagePlugin.error(err.message);
-  } finally {
-    loading.value = false;
-  }
+function createNewDoc() {
+  const tempDoc: Document = {
+    id: `__new__${Date.now()}`,
+    title: "未命名文档",
+    source: "manual",
+    content: "",
+    createdAt: Date.now(),
+  };
+  documents.value.unshift(tempDoc);
+  selectedDoc.value = tempDoc;
+  showPreview.value = true;
+  isNewDoc.value = true;
+  isEditing.value = true;
+  editTitle.value = tempDoc.title;
+  editContent.value = "";
 }
 
 async function selectDocument(doc: Document) {
   if (selectedDoc.value?.id === doc.id) {
+    if (isNewDoc.value) return;
     selectedDoc.value = null;
     showPreview.value = false;
     isEditing.value = false;
+    isNewDoc.value = false;
+    return;
+  }
+  if (doc.id.startsWith("__new__")) {
+    selectedDoc.value = doc;
+    showPreview.value = true;
+    isEditing.value = true;
+    isNewDoc.value = true;
+    editTitle.value = doc.title;
+    editContent.value = doc.content ?? "";
     return;
   }
   isEditing.value = false;
+  isNewDoc.value = false;
   loadingDetail.value = true;
   try {
     selectedDoc.value = await loadDocumentDetail(doc.id);
@@ -145,9 +146,13 @@ async function selectDocument(doc: Document) {
 }
 
 function closePreview() {
+  if (isNewDoc.value) {
+    documents.value = documents.value.filter(d => d.id !== selectedDoc.value?.id);
+  }
   showPreview.value = false;
   selectedDoc.value = null;
   isEditing.value = false;
+  isNewDoc.value = false;
 }
 
 async function startEdit() {
@@ -155,10 +160,21 @@ async function startEdit() {
   editTitle.value = selectedDoc.value.title;
   editContent.value = selectedDoc.value.content ?? "";
   isEditing.value = true;
+  isNewDoc.value = false;
 }
 
 async function selectAndEdit(doc: Document) {
+  if (doc.id.startsWith("__new__")) {
+    selectedDoc.value = doc;
+    showPreview.value = true;
+    isEditing.value = true;
+    isNewDoc.value = true;
+    editTitle.value = doc.title;
+    editContent.value = doc.content ?? "";
+    return;
+  }
   isEditing.value = false;
+  isNewDoc.value = false;
   loadingDetail.value = true;
   try {
     selectedDoc.value = await loadDocumentDetail(doc.id);
@@ -174,6 +190,12 @@ async function selectAndEdit(doc: Document) {
 }
 
 function cancelEdit() {
+  if (isNewDoc.value) {
+    documents.value = documents.value.filter(d => d.id !== selectedDoc.value?.id);
+    showPreview.value = false;
+    selectedDoc.value = null;
+    isNewDoc.value = false;
+  }
   isEditing.value = false;
   editTitle.value = "";
   editContent.value = "";
@@ -187,17 +209,35 @@ async function saveEdit() {
   }
   loading.value = true;
   try {
-    await apiClient(`/documents/${selectedDoc.value.id}`, {
-      method: "PUT",
-      body: JSON.stringify({
-        filename: editTitle.value.trim(),
-        content: editContent.value,
-      }),
-    });
-    await MessagePlugin.success("文档已更新");
-    selectedDoc.value = await loadDocumentDetail(selectedDoc.value.id);
+    if (isNewDoc.value) {
+      await apiClient("/documents/upload", {
+        method: "POST",
+        body: JSON.stringify({
+          filename: editTitle.value.trim(),
+          content: editContent.value,
+        }),
+      });
+      await MessagePlugin.success("文档已创建");
+      isNewDoc.value = false;
+      await loadDocuments();
+      // Select the newly created doc
+      const created = documents.value[0];
+      if (created) {
+        selectedDoc.value = await loadDocumentDetail(created.id);
+      }
+    } else {
+      await apiClient(`/documents/${selectedDoc.value.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          filename: editTitle.value.trim(),
+          content: editContent.value,
+        }),
+      });
+      await MessagePlugin.success("文档已更新");
+      selectedDoc.value = await loadDocumentDetail(selectedDoc.value.id);
+      await loadDocuments();
+    }
     isEditing.value = false;
-    await loadDocuments();
   } catch (err: any) {
     await MessagePlugin.error(err.message);
   } finally {
@@ -205,13 +245,17 @@ async function saveEdit() {
   }
 }
 
-function cancelUpload() {
-  showUpload.value = false;
-  uploadTitle.value = "";
-  uploadContent.value = "";
-}
-
 async function handleDelete(id: string) {
+  if (id.startsWith("__new__")) {
+    documents.value = documents.value.filter(d => d.id !== id);
+    if (selectedDoc.value?.id === id) {
+      selectedDoc.value = null;
+      showPreview.value = false;
+      isEditing.value = false;
+      isNewDoc.value = false;
+    }
+    return;
+  }
   deletingId.value = id;
   try {
     await apiClient(`/documents/${id}`, { method: "DELETE" });
@@ -220,6 +264,7 @@ async function handleDelete(id: string) {
       selectedDoc.value = null;
       showPreview.value = false;
       isEditing.value = false;
+      isNewDoc.value = false;
     }
     await loadDocuments();
   } catch (err: any) {
@@ -281,64 +326,15 @@ function highlightMatch(text: string, query: string): string {
           />
           <span v-if="searching" class="search-spinner" />
         </div>
-        <button class="btn-primary" @click="showUpload ? cancelUpload() : (showUpload = true)">
+        <button class="btn-primary" @click="createNewDoc">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          {{ showUpload ? "取消" : "上传文档" }}
+          新建文档
         </button>
       </div>
     </header>
-
-    <!-- Upload form (new document only) -->
-    <transition name="slide">
-      <div v-if="showUpload" class="card upload-card">
-        <div class="upload-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="upload-icon">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
-          <div>
-            <h3>上传新文档</h3>
-            <p>添加文本或 Markdown 内容到知识库</p>
-          </div>
-        </div>
-        <div class="upload-body">
-          <div class="form-row">
-            <label>标题</label>
-            <input
-              v-model="uploadTitle"
-              class="input-field"
-              placeholder="给文档起个名字"
-              :disabled="loading"
-            />
-          </div>
-          <div class="form-row">
-            <label>内容</label>
-            <textarea
-              v-model="uploadContent"
-              class="input-field"
-              rows="8"
-              placeholder="支持纯文本和 Markdown 格式"
-              :disabled="loading"
-            ></textarea>
-          </div>
-          <div class="upload-actions">
-            <button class="btn-secondary" @click="cancelUpload">取消</button>
-            <button class="btn-primary" :disabled="loading" @click="handleUpload">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-              {{ loading ? "上传中..." : "上传" }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </transition>
 
     <!-- Document list -->
     <div v-if="loading && !documents.length" class="loading-state">
@@ -357,13 +353,13 @@ function highlightMatch(text: string, query: string): string {
         </svg>
       </div>
       <p class="empty-title">知识库为空</p>
-      <p class="empty-desc">上传文档，为 Agent 提供领域知识</p>
-      <button class="btn-primary upload-cta" @click="showUpload = true">
+      <p class="empty-desc">新建文档，为 Agent 提供领域知识</p>
+      <button class="btn-primary upload-cta" @click="createNewDoc">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
           <line x1="12" y1="5" x2="12" y2="19" />
           <line x1="5" y1="12" x2="19" y2="12" />
         </svg>
-        上传第一篇文档
+        新建第一篇文档
       </button>
     </div>
 
@@ -611,68 +607,9 @@ function highlightMatch(text: string, query: string): string {
   animation: spin 0.6s linear infinite;
 }
 
-/* ── Upload card ── */
-.upload-card {
-  padding: 0;
-  margin-bottom: 24px;
-  overflow: hidden;
-}
-
-.upload-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--color-border-subtle);
-}
-
-.upload-icon {
-  width: 20px;
-  height: 20px;
-  color: var(--color-accent-light);
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.upload-header h3 {
-  margin: 0 0 4px;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.upload-header p {
-  margin: 0;
-  font-size: 12px;
-  color: var(--color-text-muted);
-}
-
-.upload-body {
-  padding: 20px 24px 24px;
-}
-
-.upload-body .form-row {
-  margin-bottom: 14px;
-}
-
-.upload-body label {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  margin-bottom: 6px;
-}
-
-.upload-body textarea.input-field {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  resize: vertical;
-}
-
-.upload-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+/* ── Upload CTA ── */
+.upload-cta {
+  margin-top: 8px;
 }
 
 /* ── Loading ── */
@@ -700,10 +637,6 @@ function highlightMatch(text: string, query: string): string {
 }
 
 /* ── Empty state ── */
-.upload-cta {
-  margin-top: 8px;
-}
-
 .empty-state.small {
   padding: 40px 0;
 }
@@ -1032,17 +965,6 @@ function highlightMatch(text: string, query: string): string {
 }
 
 /* ── Transitions ── */
-.slide-enter-active,
-.slide-leave-active {
-  transition: all 0.25s ease;
-}
-
-.slide-enter-from,
-.slide-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
-}
-
 .doc-slide-enter-active,
 .doc-slide-leave-active {
   transition: all 0.3s ease;
