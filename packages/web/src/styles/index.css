@@ -200,10 +200,7 @@
   }
 
   .card:hover {
-    background: var(--glass-card-hover-bg);
     border-color: var(--color-border-hover);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-card);
   }
 
   .btn-primary {
@@ -264,7 +261,7 @@
     color: var(--color-text-primary);
     font-size: 14px;
     outline: none;
-    transition: all 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s;
     width: 100%;
     font-family: inherit;
   }

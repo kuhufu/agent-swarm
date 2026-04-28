@@ -28,6 +28,8 @@ const uploadContent = ref("");
 const selectedDoc = ref<Document | null>(null);
 const deletingId = ref<string | null>(null);
 const editingDocId = ref<string | null>(null);
+const loadingDetail = ref(false);
+const showPreview = ref(false);
 
 const displayDocuments = computed<Document[]>(() => {
   const q = searchQuery.value.trim();
@@ -119,6 +121,7 @@ async function handleUpload() {
     await loadDocuments();
     if (isEditing && savedDocumentId) {
       selectedDoc.value = await loadDocumentDetail(savedDocumentId);
+      showPreview.value = true;
     }
   } catch (err: any) {
     await MessagePlugin.error(err.message);
@@ -130,13 +133,23 @@ async function handleUpload() {
 async function selectDocument(doc: Document) {
   if (selectedDoc.value?.id === doc.id) {
     selectedDoc.value = null;
+    showPreview.value = false;
     return;
   }
+  loadingDetail.value = true;
   try {
     selectedDoc.value = await loadDocumentDetail(doc.id);
+    showPreview.value = true;
   } catch (err: any) {
     await MessagePlugin.error(err.message);
+  } finally {
+    loadingDetail.value = false;
   }
+}
+
+function closePreview() {
+  showPreview.value = false;
+  selectedDoc.value = null;
 }
 
 async function startEdit(doc: Document) {
@@ -146,6 +159,7 @@ async function startEdit(doc: Document) {
     uploadTitle.value = detail.title;
     uploadContent.value = detail.content ?? "";
     selectedDoc.value = detail;
+    showPreview.value = false;
     showUpload.value = true;
   } catch (err: any) {
     await MessagePlugin.error(err.message);
@@ -166,6 +180,7 @@ async function handleDelete(id: string) {
     await MessagePlugin.success("文档已删除");
     if (selectedDoc.value?.id === id) {
       selectedDoc.value = null;
+      showPreview.value = false;
     }
     await loadDocuments();
   } catch (err: any) {
@@ -313,69 +328,115 @@ function highlightMatch(text: string, query: string): string {
       </button>
     </div>
 
-    <div v-else class="doc-grid">
-      <div
-        v-for="doc in displayDocuments"
-        :key="doc.id"
-        class="card doc-card"
-        :class="{ selected: selectedDoc?.id === doc.id }"
-        @click="selectDocument(doc)"
-      >
-        <div class="doc-card-header">
-          <div class="doc-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-            </svg>
+    <div v-else class="doc-layout">
+      <!-- Document list -->
+      <div class="doc-list" :class="{ 'with-preview': showPreview }">
+        <div
+          v-for="doc in displayDocuments"
+          :key="doc.id"
+          class="card doc-card"
+          :class="{ selected: selectedDoc?.id === doc.id }"
+          @click="selectDocument(doc)"
+        >
+          <div class="doc-card-header">
+            <div class="doc-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+            </div>
+            <div class="doc-title-row">
+              <h3 class="doc-title">{{ doc.title }}</h3>
+              <span class="badge badge-accent">{{ doc.source }}</span>
+            </div>
           </div>
-          <div class="doc-title-row">
-            <h3 class="doc-title">{{ doc.title }}</h3>
-            <span class="badge badge-accent">{{ doc.source }}</span>
+
+          <!-- Search result snippet -->
+          <div v-if="searchQuery && getMatchSnippet(doc.id)" class="doc-snippet">
+            <pre class="doc-content" v-html="highlightMatch(truncate(getMatchSnippet(doc.id)!, 300), searchQuery)" />
+          </div>
+
+          <div class="doc-card-footer">
+            <span class="doc-date">{{ formatDate(doc.createdAt) }}</span>
+            <div class="doc-actions">
+              <button
+                class="btn-icon"
+                @click.stop="startEdit(doc)"
+                :title="'编辑文档'"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+              </button>
+              <button
+                class="btn-icon danger"
+                :disabled="deletingId === doc.id"
+                @click.stop="handleDelete(doc.id)"
+                :title="'删除文档'"
+              >
+                <svg v-if="deletingId !== doc.id" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+                <span v-else class="spinner-mini" />
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- Search result snippet -->
-        <div v-if="searchQuery && getMatchSnippet(doc.id)" class="doc-preview">
-          <pre class="doc-content" v-html="highlightMatch(truncate(getMatchSnippet(doc.id)!, 300), searchQuery)" />
-        </div>
-        <!-- Full content preview when clicked (non-search mode) -->
-        <div v-else-if="selectedDoc?.id === doc.id && doc.content" class="doc-preview">
-          <pre class="doc-content">{{ truncate(doc.content, 500) }}</pre>
-        </div>
-
-        <div class="doc-card-footer">
-          <span class="doc-date">{{ formatDate(doc.createdAt) }}</span>
-          <div class="doc-actions">
-            <button
-              class="btn-icon"
-              @click.stop="startEdit(doc)"
-              :title="'编辑文档'"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-              </svg>
-            </button>
-            <button
-              class="btn-icon danger"
-              :disabled="deletingId === doc.id"
-              @click.stop="handleDelete(doc.id)"
-              :title="'删除文档'"
-            >
-              <svg v-if="deletingId !== doc.id" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
-              <span v-else class="spinner-mini" />
-            </button>
-          </div>
+        <div v-if="searchQuery && !displayDocuments.length" class="empty-state small">
+          <p class="empty-title">{{ searching ? "搜索中..." : "没有匹配的文档" }}</p>
+          <p class="empty-desc">试试换个关键词</p>
         </div>
       </div>
 
-      <div v-if="searchQuery && !displayDocuments.length" class="empty-state small">
-        <p class="empty-title">{{ searching ? "搜索中..." : "没有匹配的文档" }}</p>
-        <p class="empty-desc">试试换个关键词</p>
-      </div>
+      <!-- Document preview panel -->
+      <transition name="preview-slide">
+        <div v-if="showPreview && selectedDoc" class="preview-panel card">
+          <div class="preview-header">
+            <div class="preview-title-area">
+              <div class="doc-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+              </div>
+              <div>
+                <h2 class="preview-title">{{ selectedDoc.title }}</h2>
+                <span class="preview-meta">
+                  <span class="badge badge-accent">{{ selectedDoc.source }}</span>
+                  <span class="doc-date">{{ formatDate(selectedDoc.createdAt) }}</span>
+                </span>
+              </div>
+            </div>
+            <div class="preview-actions">
+              <button class="btn-icon" @click="startEdit(selectedDoc)" title="编辑">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+              </button>
+              <button class="btn-icon" @click="closePreview" title="关闭预览">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="preview-body">
+            <div v-if="loadingDetail" class="preview-loading">
+              <div class="loading-spinner" />
+              <p>加载中...</p>
+            </div>
+            <pre v-else-if="selectedDoc.content" class="preview-content">{{ selectedDoc.content }}</pre>
+            <div v-else class="preview-empty">
+              <p>暂无文档内容</p>
+            </div>
+          </div>
+        </div>
+      </transition>
     </div>
   </div>
 </template>
@@ -576,11 +637,30 @@ function highlightMatch(text: string, query: string): string {
   font-size: 12px;
 }
 
-/* ── Document grid ── */
-.doc-grid {
+/* ── Document layout ── */
+.doc-layout {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.doc-list {
+  flex: 1;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 12px;
+  align-content: start;
+  overflow-y: auto;
+  max-height: calc(100vh - 220px);
+  padding-right: 4px;
+}
+
+.doc-list.with-preview {
+  flex: 0 0 45%;
+  grid-template-columns: 1fr;
+  max-height: calc(100vh - 220px);
 }
 
 .doc-card {
@@ -591,7 +671,6 @@ function highlightMatch(text: string, query: string): string {
 
 .doc-card:hover {
   border-color: var(--color-border-hover);
-  background: var(--glass-card-hover-bg);
 }
 
 .doc-card.selected {
@@ -645,8 +724,8 @@ function highlightMatch(text: string, query: string): string {
   align-self: flex-start;
 }
 
-/* ── Document preview ── */
-.doc-preview {
+/* ── Document snippet (search) ── */
+.doc-snippet {
   margin-top: 14px;
   padding-top: 14px;
   border-top: 1px solid var(--color-border-subtle);
@@ -667,6 +746,91 @@ function highlightMatch(text: string, query: string): string {
   color: #fde68a;
   border-radius: 2px;
   padding: 0 1px;
+}
+
+/* ── Preview panel ── */
+.preview-panel {
+  flex: 0 0 55%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  min-height: 0;
+}
+
+.preview-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
+}
+
+.preview-title-area {
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+
+.preview-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preview-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.preview-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  min-height: 0;
+}
+
+.preview-content {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.preview-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80px 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  gap: 12px;
+}
+
+.preview-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
 }
 
 /* ── Card footer ── */
@@ -745,6 +909,17 @@ function highlightMatch(text: string, query: string): string {
   transform: translateY(-8px);
 }
 
+.preview-slide-enter-active,
+.preview-slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.preview-slide-enter-from,
+.preview-slide-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .documents-view {
@@ -765,8 +940,23 @@ function highlightMatch(text: string, query: string): string {
     flex: 1;
   }
 
-  .doc-grid {
+  .doc-layout {
+    flex-direction: column;
+  }
+
+  .doc-list {
     grid-template-columns: 1fr;
+    max-height: none;
+  }
+
+  .doc-list.with-preview {
+    flex: none;
+    max-height: 40vh;
+  }
+
+  .preview-panel {
+    flex: none;
+    min-height: 40vh;
   }
 }
 </style>

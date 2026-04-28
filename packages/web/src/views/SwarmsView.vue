@@ -1415,13 +1415,6 @@ textarea.input-field {
   border-radius: 12px;
 }
 
-.card:hover {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: var(--color-border-subtle);
-  transform: none;
-  box-shadow: none;
-}
-
 @media (max-width: 1024px) {
   .swarms-layout {
     flex-direction: column;
