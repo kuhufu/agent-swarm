@@ -140,6 +140,12 @@ export interface IStorage {
   listAgentPresets(userId: string): Promise<AgentPreset[]>;
   deleteAgentPreset(id: string, userId: string): Promise<void>;
 
+  // Agent template management (system-level, shared across users)
+  saveAgentTemplate(template: AgentPreset): Promise<void>;
+  loadAgentTemplate(id: string): Promise<AgentPreset | null>;
+  listAgentTemplates(): Promise<AgentPreset[]>;
+  deleteAgentTemplate(id: string): Promise<void>;
+
   // Event log
   logEvent(conversationId: string, event: StoredEvent): Promise<void>;
   getEvents(conversationId: string, eventType?: string): Promise<StoredEvent[]>;

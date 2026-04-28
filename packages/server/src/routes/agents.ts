@@ -12,10 +12,36 @@ export function agentRoutes(swarm: AgentSwarm): Router {
     if (!userId) return res.status(401).json({ error: "未登录" });
 
     try {
-      const presets = await swarm.listAgentPresets(userId);
-      res.json({ data: presets });
+      const [presets, templates] = await Promise.all([
+        swarm.listAgentPresets(userId),
+        swarm.listAgentTemplates(),
+      ]);
+      res.json({ data: { presets, templates } });
     } catch (err: any) {
       res.status(500).json({ error: err?.message ?? "Failed to list agent presets" });
+    }
+  });
+
+  // Import a system template as a user preset
+  router.post("/import-template/:templateId", async (req, res) => {
+    const userId = resolveRequestUserId(req);
+    if (!userId) return res.status(401).json({ error: "未登录" });
+
+    try {
+      const template = await swarm.listAgentTemplates().then(
+        (templates) => templates.find((t) => t.id === req.params.templateId),
+      );
+      if (!template) return res.status(404).json({ error: "模板不存在" });
+
+      // Check if user already has a preset with this ID
+      const existing = await swarm.getAgentPreset(req.params.templateId, userId);
+      if (existing) return res.json({ data: existing });
+
+      const preset = await swarm.addAgentPreset({ ...template, builtIn: false }, userId);
+      res.status(201).json({ data: preset });
+    } catch (err: any) {
+      const message = err?.message ?? "导入模板失败";
+      res.status(400).json({ error: message });
     }
   });
 

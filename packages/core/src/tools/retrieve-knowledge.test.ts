@@ -130,15 +130,17 @@ describe("createRetrieveKnowledgeTool", () => {
   it("returns matching chunks for a query", async () => {
     const tool = createRetrieveKnowledgeTool(store);
     const result = await tool.execute("call-1", { query: "TypeScript 类型系统", topK: 3 });
+    const text = (result.content[0] as { type: string; text: string }).text;
     expect(result.content[0].type).toBe("text");
-    expect(result.content[0].text).toContain("TypeScript");
-    expect(result.content[0].text).toContain("JavaScript 的超集");
+    expect(text).toContain("TypeScript");
+    expect(text).toContain("JavaScript 的超集");
   });
 
   it("returns empty message when nothing matches", async () => {
     const tool = createRetrieveKnowledgeTool(store);
     const result = await tool.execute("call-2", { query: "xyz不存在的内容abc" });
+    const text = (result.content[0] as { type: string; text: string }).text;
     expect(result.content[0].type).toBe("text");
-    expect(result.content[0].text).toBe("知识库中没有找到相关内容。");
+    expect(text).toBe("知识库中没有找到相关内容。");
   });
 });

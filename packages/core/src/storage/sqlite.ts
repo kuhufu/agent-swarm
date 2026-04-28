@@ -14,7 +14,7 @@ import type {
   ConversationDirectModel,
 } from "./interface.js";
 import type { SwarmConfig, AgentPreset } from "../core/types.js";
-import { settingsTable, swarmsTable, agentsTable, conversationsTable, messagesTable, eventsTable, presetAgentsTable, usersTable, llmCallsTable } from "./schema.js";
+import { settingsTable, swarmsTable, agentsTable, conversationsTable, messagesTable, eventsTable, presetAgentsTable, agentTemplatesTable, usersTable, llmCallsTable } from "./schema.js";
 
 const DEFAULT_CONVERSATION_PREFERENCES: ConversationPreferences = {
   enabledTools: [],
@@ -115,6 +115,18 @@ export class SqliteStorage implements IStorage {
         category TEXT NOT NULL DEFAULT '',
         tags TEXT NOT NULL DEFAULT '[]',
         built_in INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS agent_templates (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        system_prompt TEXT NOT NULL DEFAULT '',
+        provider TEXT NOT NULL DEFAULT '',
+        model_id TEXT NOT NULL DEFAULT '',
+        category TEXT NOT NULL DEFAULT '',
+        tags TEXT NOT NULL DEFAULT '[]',
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       );
@@ -748,12 +760,6 @@ export class SqliteStorage implements IStorage {
 
   async saveAgentPreset(preset: AgentPreset, userId: string): Promise<void> {
     const now = Date.now();
-    const existing = this.getDb().select({
-      userId: presetAgentsTable.userId,
-    }).from(presetAgentsTable).where(eq(presetAgentsTable.id, preset.id)).all();
-    if (existing.length > 0 && existing[0].userId !== userId) {
-      throw new Error(`Agent preset id already exists for another user: ${preset.id}`);
-    }
 
     this.getDb().insert(presetAgentsTable).values({
       id: preset.id,
@@ -823,6 +829,72 @@ export class SqliteStorage implements IStorage {
     this.getDb().delete(presetAgentsTable).where(
       and(eq(presetAgentsTable.id, id), eq(presetAgentsTable.userId, userId)),
     ).run();
+  }
+
+  // ── Agent template management (system-level) ──
+
+  async saveAgentTemplate(template: AgentPreset): Promise<void> {
+    const now = Date.now();
+    this.getDb().insert(agentTemplatesTable).values({
+      id: template.id,
+      name: template.name,
+      description: template.description,
+      systemPrompt: template.systemPrompt,
+      provider: template.model.provider,
+      modelId: template.model.modelId,
+      category: template.category,
+      tags: JSON.stringify(template.tags),
+      createdAt: now,
+      updatedAt: now,
+    }).onConflictDoUpdate({
+      target: agentTemplatesTable.id,
+      set: {
+        name: template.name,
+        description: template.description,
+        systemPrompt: template.systemPrompt,
+        provider: template.model.provider,
+        modelId: template.model.modelId,
+        category: template.category,
+        tags: JSON.stringify(template.tags),
+        updatedAt: now,
+      },
+    }).run();
+  }
+
+  async loadAgentTemplate(id: string): Promise<AgentPreset | null> {
+    const rows = this.getDb().select().from(agentTemplatesTable)
+      .where(eq(agentTemplatesTable.id, id)).all();
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      systemPrompt: r.systemPrompt,
+      model: { provider: r.provider, modelId: r.modelId },
+      category: r.category,
+      tags: this.parseTags(r.tags),
+      builtIn: true,
+    };
+  }
+
+  async listAgentTemplates(): Promise<AgentPreset[]> {
+    const rows = this.getDb().select().from(agentTemplatesTable).all();
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      systemPrompt: r.systemPrompt,
+      model: { provider: r.provider, modelId: r.modelId },
+      category: r.category,
+      tags: this.parseTags(r.tags),
+      builtIn: true,
+    }));
+  }
+
+  async deleteAgentTemplate(id: string): Promise<void> {
+    this.getDb().delete(agentTemplatesTable)
+      .where(eq(agentTemplatesTable.id, id)).run();
   }
 
   private parseTags(input: string): string[] {

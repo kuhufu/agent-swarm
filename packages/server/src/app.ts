@@ -11,6 +11,7 @@ import { configRoutes } from "./routes/config.js";
 import { usageRoutes } from "./routes/usage.js";
 import { documentRoutes } from "./routes/documents.js";
 import { authRoutes } from "./routes/auth.js";
+import { templateRoutes } from "./routes/templates.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/error-handler.js";
 
@@ -40,6 +41,7 @@ export function createApp(swarm: AgentSwarm): Express {
   app.use("/api", messageRoutes(swarm));
   app.use("/api", usageRoutes(swarm));
   app.use("/api", documentRoutes(swarm));
+  app.use("/api/templates", templateRoutes(swarm));
 
   // Error handler
   app.use(errorHandler);

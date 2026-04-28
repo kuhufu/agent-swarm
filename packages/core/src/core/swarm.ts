@@ -84,6 +84,7 @@ export class AgentSwarm {
   private interventionHandler?: InterventionHandler;
   private swarmConfigs: Map<string, SwarmConfig> = new Map();
   private seededUserIds: Set<string> = new Set();
+  private templatesSeeded = false;
   private _initialized = false;
   public readonly logger: Logger;
   public readonly webSearchConfig?: WebSearchConfig;
@@ -119,14 +120,18 @@ export class AgentSwarm {
       }
     }
 
-    const presets = await this.storage.listAgentPresets(userId);
-    if (presets.length === 0) {
+    this.seededUserIds.add(userId);
+  }
+
+  private async ensureTemplatesSeeded(): Promise<void> {
+    if (this.templatesSeeded) return;
+    const templates = await this.storage.listAgentTemplates();
+    if (templates.length === 0) {
       for (const preset of PRESET_AGENTS) {
-        await this.storage.saveAgentPreset(preset, userId);
+        await this.storage.saveAgentTemplate(preset);
       }
     }
-
-    this.seededUserIds.add(userId);
+    this.templatesSeeded = true;
   }
 
   constructor(options: AgentSwarmOptions) {
@@ -168,6 +173,9 @@ export class AgentSwarm {
     }
 
     this._initialized = true;
+
+    // Seed system agent templates (once globally)
+    await this.ensureTemplatesSeeded();
 
     // Connect MCP servers (non-blocking)
     if (this.mcpServerConfigs) {
@@ -816,6 +824,42 @@ export class AgentSwarm {
       throw new Error(`Built-in agent preset is read-only: ${id}`);
     }
     await this.storage.deleteAgentPreset(id, normalizedUserId);
+  }
+
+  // ── Agent template management (system-level, shared across users) ──
+
+  async listAgentTemplates(): Promise<AgentPreset[]> {
+    this.ensureInitialized();
+    await this.ensureTemplatesSeeded();
+    return this.storage.listAgentTemplates();
+  }
+
+  async addAgentTemplate(preset: AgentPreset): Promise<AgentPreset> {
+    this.ensureInitialized();
+    if (!preset.id || !preset.name) {
+      throw new Error("Agent template id and name are required");
+    }
+    await this.storage.saveAgentTemplate(preset);
+    return preset;
+  }
+
+  async updateAgentTemplate(id: string, preset: AgentPreset): Promise<AgentPreset> {
+    this.ensureInitialized();
+    const existing = await this.storage.loadAgentTemplate(id);
+    if (!existing) {
+      throw new Error(`Agent template not found: ${id}`);
+    }
+    await this.storage.saveAgentTemplate(preset);
+    return preset;
+  }
+
+  async deleteAgentTemplate(id: string): Promise<void> {
+    this.ensureInitialized();
+    const existing = await this.storage.loadAgentTemplate(id);
+    if (!existing) {
+      throw new Error(`Agent template not found: ${id}`);
+    }
+    await this.storage.deleteAgentTemplate(id);
   }
 
   // ── User management ──

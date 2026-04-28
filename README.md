@@ -133,6 +133,14 @@ pnpm --filter @agent-swarm/server test
 - `POST /api/agents`
 - `PUT /api/agents/:id`
 - `DELETE /api/agents/:id`
+- `POST /api/agents/import-template/:templateId`
+
+### 系统 Agent 模板管理
+
+- `GET /api/templates`
+- `POST /api/templates`
+- `PUT /api/templates/:id`
+- `DELETE /api/templates/:id`
 
 ### 会话管理
 

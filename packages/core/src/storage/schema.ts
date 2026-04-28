@@ -76,6 +76,19 @@ export const eventsTable = sqliteTable("events", {
   timestamp: integer("timestamp").notNull(),
 });
 
+export const agentTemplatesTable = sqliteTable("agent_templates", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  systemPrompt: text("system_prompt").notNull().default(""),
+  provider: text("provider").notNull().default(""),
+  modelId: text("model_id").notNull().default(""),
+  category: text("category").notNull().default(""),
+  tags: text("tags").notNull().default("[]"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
 export const usersTable = sqliteTable("users", {
   id: text("id").primaryKey(),
   username: text("username").notNull().unique(),

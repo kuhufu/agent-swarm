@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useAgentStore } from "../stores/agents.js";
 import { useSettingsStore } from "../stores/settings.js";
 import type { PresetAgent, SavedModel } from "../types/index.js";
-import { confirmDialog, showError } from "../utils/ui-feedback.js";
+import { showError } from "../utils/ui-feedback.js";
 
 interface AgentFormState {
   id: string;
@@ -19,8 +19,18 @@ interface AgentFormState {
 const agentStore = useAgentStore();
 const settingsStore = useSettingsStore();
 
-const selectedPresetId = ref<string | null>(null);
+type SelectionKind = "preset" | "template";
+
+interface SelectedAgentRef {
+  kind: SelectionKind;
+  id: string;
+}
+
+const selectedRef = ref<SelectedAgentRef | null>(null);
 const submitting = ref(false);
+const showSystemTemplates = ref(false);
+const openPresetActionMenuId = ref<string | null>(null);
+const presetActionMenuPosition = ref<{ left: number; top: number } | null>(null);
 
 const form = reactive<AgentFormState>({
   id: "",
@@ -33,14 +43,65 @@ const form = reactive<AgentFormState>({
   modelId: "",
 });
 
+const showTemplateSelect = ref(false);
 const savedModels = computed<SavedModel[]>(() => settingsStore.config?.models ?? []);
-const selectedPreset = computed<PresetAgent | null>(() =>
-  selectedPresetId.value
-    ? agentStore.sortedPresets.find((item) => item.id === selectedPresetId.value) ?? null
-    : null
+
+const selectedItem = computed<PresetAgent | null>(() => {
+  if (!selectedRef.value) return null;
+  const source = selectedRef.value.kind === "preset"
+    ? agentStore.sortedPresets
+    : agentStore.sortedTemplates;
+  return source.find((item) => item.id === selectedRef.value?.id) ?? null;
+});
+const openPresetActionItem = computed(() =>
+  openPresetActionMenuId.value
+    ? agentStore.sortedPresets.find((item) => item.id === openPresetActionMenuId.value) ?? null
+    : null,
 );
-const isEditing = computed(() => Boolean(selectedPreset.value));
-const canDelete = computed(() => isEditing.value && selectedPreset.value?.builtIn !== true);
+const isTemplate = computed(() => selectedRef.value?.kind === "template");
+const isEditing = computed(() => Boolean(selectedItem.value) && !isTemplate.value);
+const formPayload = computed(() => ({
+  name: form.name.trim(),
+  description: form.description.trim(),
+  systemPrompt: form.systemPrompt.trim(),
+  model: {
+    provider: form.modelProvider.trim(),
+    modelId: form.modelId.trim(),
+  },
+  category: form.category.trim(),
+  tags: parseTags(form.tagsText),
+}));
+const hasPresetChanges = computed(() => {
+  if (!selectedItem.value || isTemplate.value) return true;
+  const payload = formPayload.value;
+  const preset = selectedItem.value;
+  return payload.name !== preset.name
+    || payload.description !== preset.description
+    || payload.systemPrompt !== preset.systemPrompt
+    || payload.category !== preset.category
+    || payload.model.provider !== preset.model.provider
+    || payload.model.modelId !== preset.model.modelId
+    || payload.tags.join("\u0000") !== preset.tags.join("\u0000");
+});
+const canSubmit = computed(() => {
+  if (submitting.value || isTemplate.value || !form.name.trim()) return false;
+  if (!isEditing.value) return Boolean(form.id.trim());
+  return hasPresetChanges.value;
+});
+
+function fillFromTemplate(template: PresetAgent) {
+  form.id = "";
+  form.name = template.name;
+  form.description = template.description;
+  form.systemPrompt = template.systemPrompt;
+  form.category = template.category;
+  form.tagsText = template.tags.join(", ");
+  form.modelProvider = template.model.provider;
+  form.modelId = template.model.modelId;
+  showTemplateSelect.value = false;
+  closePresetActionMenu();
+  selectedRef.value = null; // switch to create mode
+}
 
 function resetForm() {
   form.id = "";
@@ -90,8 +151,26 @@ function selectSavedModel(model: SavedModel) {
 }
 
 function startCreatePreset() {
-  selectedPresetId.value = null;
+  selectedRef.value = null;
+  closePresetActionMenu();
   resetForm();
+}
+
+function copyPreset(preset: PresetAgent) {
+  selectedRef.value = null;
+  closePresetActionMenu();
+  fillFormFromPreset(preset);
+  form.id = "";
+}
+
+function selectPreset(id: string) {
+  selectedRef.value = { kind: "preset", id };
+  closePresetActionMenu();
+}
+
+function selectTemplate(id: string) {
+  selectedRef.value = { kind: "template", id };
+  closePresetActionMenu();
 }
 
 async function submitForm() {
@@ -103,24 +182,15 @@ async function submitForm() {
     return;
   }
 
-  const tags = parseTags(form.tagsText);
-  const payload = {
-    name: form.name.trim(),
-    description: form.description.trim(),
-    systemPrompt: form.systemPrompt.trim(),
-    model: {
-      provider: form.modelProvider.trim(),
-      modelId: form.modelId.trim(),
-    },
-    category: form.category.trim(),
-    tags,
-  };
+  if (isEditing.value && !hasPresetChanges.value) return;
+
+  const payload = formPayload.value;
 
   submitting.value = true;
   try {
-    if (selectedPreset.value) {
-      const updated = await agentStore.updateAgent(selectedPreset.value.id, payload);
-      selectedPresetId.value = updated.id;
+    if (isEditing.value && selectedItem.value) {
+      const updated = await agentStore.updateAgent(selectedItem.value.id, payload);
+      selectedRef.value = { kind: "preset", id: updated.id };
       fillFormFromPreset(updated);
       return;
     }
@@ -135,7 +205,7 @@ async function submitForm() {
       id: normalizedId,
       ...payload,
     });
-    selectedPresetId.value = created.id;
+    selectedRef.value = { kind: "preset", id: created.id };
     fillFormFromPreset(created);
   } catch (error) {
     const message = error instanceof Error ? error.message : "保存失败";
@@ -145,55 +215,119 @@ async function submitForm() {
   }
 }
 
-async function handleDeletePreset() {
-  if (!selectedPreset.value || selectedPreset.value.builtIn) {
-    return;
-  }
-  const confirmed = await confirmDialog({
-    header: "删除 Agent 预设",
-    body: `确认删除预设 "${selectedPreset.value.name}" 吗？`,
-    confirmText: "删除",
-    cancelText: "取消",
-    theme: "danger",
-  });
-  if (!confirmed) {
-    return;
-  }
-
+async function handleDeletePreset(preset: PresetAgent) {
+  if (submitting.value) return;
+  closePresetActionMenu();
+  submitting.value = true;
   try {
-    const deletedId = selectedPreset.value.id;
+    const deletedId = preset.id;
     await agentStore.deleteAgent(deletedId);
-    const next = agentStore.sortedPresets.find((item) => item.id !== deletedId) ?? null;
-    if (next) {
-      selectedPresetId.value = next.id;
-      fillFormFromPreset(next);
-    } else {
-      startCreatePreset();
+    if (selectedRef.value?.kind === "preset" && selectedRef.value.id === deletedId) {
+      const next = agentStore.sortedPresets.find((item) => item.id !== deletedId) ?? null;
+      if (next) {
+        selectedRef.value = { kind: "preset", id: next.id };
+        fillFormFromPreset(next);
+      } else {
+        startCreatePreset();
+      }
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "删除失败";
     showError(message);
+  } finally {
+    submitting.value = false;
   }
 }
 
-watch(selectedPreset, (preset) => {
-  if (!preset) {
-    if (selectedPresetId.value) {
-      startCreatePreset();
-    }
+function closePresetActionMenu() {
+  openPresetActionMenuId.value = null;
+  presetActionMenuPosition.value = null;
+}
+
+function computePresetActionMenuPosition(anchor: Element): { left: number; top: number } {
+  const rect = anchor.getBoundingClientRect();
+  const menuWidth = 128;
+  const menuHeight = 72;
+  const gap = 6;
+  const viewportPadding = 8;
+  const left = Math.min(
+    Math.max(rect.left, viewportPadding),
+    window.innerWidth - menuWidth - viewportPadding,
+  );
+  let top = rect.bottom + gap;
+  if (top + menuHeight > window.innerHeight - viewportPadding) {
+    top = Math.max(viewportPadding, rect.top - menuHeight - gap);
+  }
+  return { left, top };
+}
+
+function togglePresetActionMenu(event: MouseEvent, presetId: string) {
+  const target = event.currentTarget;
+  if (!(target instanceof Element)) return;
+  if (openPresetActionMenuId.value === presetId) {
+    closePresetActionMenu();
     return;
   }
-  fillFormFromPreset(preset);
+  openPresetActionMenuId.value = presetId;
+  presetActionMenuPosition.value = computePresetActionMenuPosition(target);
+}
+
+function handleGlobalClick(event: MouseEvent) {
+  const target = event.target;
+  if (!(target instanceof Element)) {
+    closePresetActionMenu();
+    return;
+  }
+  if (target.closest(".preset-action-trigger") || target.closest(".preset-action-menu-floating")) {
+    return;
+  }
+  closePresetActionMenu();
+}
+
+function handleWindowChange() {
+  if (openPresetActionMenuId.value) closePresetActionMenu();
+}
+
+async function handleImportTemplate() {
+  if (!selectedItem.value || !isTemplate.value || submitting.value) return;
+  submitting.value = true;
+  try {
+    const imported = await agentStore.importTemplate(selectedItem.value.id);
+    selectedRef.value = { kind: "preset", id: imported.id };
+    fillFormFromPreset(imported);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "导入模板失败";
+    showError(message);
+  } finally {
+    submitting.value = false;
+  }
+}
+
+watch(selectedItem, (item) => {
+  if (!item) {
+    if (selectedRef.value) startCreatePreset();
+    return;
+  }
+  fillFormFromPreset(item);
 }, { immediate: true });
 
 onMounted(async () => {
+  window.addEventListener("click", handleGlobalClick);
+  window.addEventListener("resize", handleWindowChange);
+  window.addEventListener("scroll", handleWindowChange, true);
   await Promise.all([
     agentStore.fetchAgents(),
     settingsStore.fetchConfig().catch(() => {}),
   ]);
-  if (!selectedPresetId.value && agentStore.sortedPresets.length > 0) {
-    selectedPresetId.value = agentStore.sortedPresets[0].id;
+  if (!selectedRef.value && agentStore.sortedPresets.length > 0) {
+    selectedRef.value = { kind: "preset", id: agentStore.sortedPresets[0].id };
   }
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("click", handleGlobalClick);
+  window.removeEventListener("resize", handleWindowChange);
+  window.removeEventListener("scroll", handleWindowChange, true);
 });
 </script>
 
@@ -215,33 +349,71 @@ onMounted(async () => {
         </button>
 
         <div class="preset-section">
-          <div class="preset-section-title">内置预设</div>
           <button
-            v-for="preset in agentStore.builtInPresets"
-            :key="preset.id"
-            class="preset-item"
-            :class="{ active: selectedPresetId === preset.id }"
-            @click="selectedPresetId = preset.id"
+            class="preset-section-toggle"
+            @click="showSystemTemplates = !showSystemTemplates"
           >
-            <span class="preset-name">{{ preset.name }}</span>
-            <span class="preset-meta">{{ preset.category || "未分类" }}</span>
+            <span class="preset-section-title">系统模板</span>
+            <span class="preset-section-toggle-meta">
+              {{ agentStore.sortedTemplates.length }} 个
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                :class="{ expanded: showSystemTemplates }"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </span>
           </button>
-          <div v-if="!agentStore.builtInPresets.length" class="preset-empty">暂无内置预设</div>
+          <template v-if="showSystemTemplates">
+            <button
+              v-for="template in agentStore.sortedTemplates"
+              :key="template.id"
+              class="preset-item template-item"
+              :class="{ active: selectedRef?.kind === 'template' && selectedRef.id === template.id }"
+              @click="selectTemplate(template.id)"
+            >
+              <span class="preset-name">{{ template.name }}</span>
+              <span class="preset-meta">{{ template.category || "未分类" }}</span>
+            </button>
+            <div v-if="!agentStore.sortedTemplates.length" class="preset-empty">暂无系统模板</div>
+          </template>
         </div>
 
         <div class="preset-section">
-          <div class="preset-section-title">自定义预设</div>
-          <button
-            v-for="preset in agentStore.customPresets"
+          <div class="preset-section-title">我的预设</div>
+          <div
+            v-for="preset in agentStore.sortedPresets"
             :key="preset.id"
-            class="preset-item"
-            :class="{ active: selectedPresetId === preset.id }"
-            @click="selectedPresetId = preset.id"
+            class="preset-item-row"
+            :class="{
+              active: selectedRef?.kind === 'preset' && selectedRef.id === preset.id,
+              'menu-open': openPresetActionMenuId === preset.id,
+            }"
           >
-            <span class="preset-name">{{ preset.name }}</span>
-            <span class="preset-meta">{{ preset.category || "未分类" }}</span>
-          </button>
-          <div v-if="!agentStore.customPresets.length" class="preset-empty">暂无自定义预设</div>
+            <button class="preset-item" @click="selectPreset(preset.id)">
+              <span class="preset-name">{{ preset.name }}</span>
+              <span class="preset-meta">{{ preset.category || "未分类" }}</span>
+            </button>
+            <div class="preset-actions">
+              <button
+                class="preset-action-trigger"
+                aria-label="打开预设操作"
+                @click.stop="togglePresetActionMenu($event, preset.id)"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="5" cy="12" r="1.8" />
+                  <circle cx="12" cy="12" r="1.8" />
+                  <circle cx="19" cy="12" r="1.8" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div v-if="!agentStore.sortedPresets.length" class="preset-empty">暂无自定义预设</div>
         </div>
       </aside>
 
@@ -249,25 +421,56 @@ onMounted(async () => {
         <div class="detail-card">
           <div class="detail-header">
             <div>
-              <h3>{{ isEditing ? "编辑 Agent 预设" : "创建 Agent 预设" }}</h3>
-              <p v-if="isEditing" class="detail-hint">已创建预设的 ID 固定不可修改。</p>
+              <h3 v-if="isTemplate">系统模板：{{ selectedItem?.name }}</h3>
+              <h3 v-else>{{ isEditing ? "编辑 Agent 预设" : "创建 Agent 预设" }}</h3>
+              <p class="detail-hint" :class="{ info: isTemplate, muted: !isTemplate && !isEditing }">
+                <template v-if="isTemplate">系统模板为只读，请点击“导入为我的预设”后编辑。</template>
+                <template v-else-if="isEditing">已创建预设的 ID 固定不可修改。</template>
+                <template v-else>填写基本信息后创建可复用的个人 Agent 预设。</template>
+              </p>
             </div>
             <div class="header-actions">
-              <button
-                v-if="canDelete"
-                class="btn-danger"
-                :disabled="submitting"
-                @click="handleDeletePreset"
-              >
-                删除
-              </button>
-              <button
-                class="btn-primary"
-                :disabled="submitting || !form.name.trim() || (!isEditing && !form.id.trim())"
-                @click="submitForm"
-              >
-                {{ isEditing ? "保存修改" : "创建预设" }}
-              </button>
+              <div v-if="!isEditing && agentStore.sortedTemplates.length" class="template-select-inline">
+                <button
+                  class="btn-secondary"
+                  :disabled="submitting"
+                  @click="showTemplateSelect = !showTemplateSelect"
+                >
+                  从模板填充
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+                <div v-if="showTemplateSelect" class="template-dropdown">
+                  <button
+                    v-for="t in agentStore.sortedTemplates"
+                    :key="t.id"
+                    class="template-dropdown-item"
+                    @click="fillFromTemplate(t)"
+                  >
+                    <span class="dropdown-t-name">{{ t.name }}</span>
+                    <span class="dropdown-t-cat">{{ t.category }}</span>
+                  </button>
+                </div>
+              </div>
+              <template v-if="isTemplate">
+                <button
+                  class="btn-primary"
+                  :disabled="submitting"
+                  @click="handleImportTemplate"
+                >
+                  导入为我的预设
+                </button>
+              </template>
+              <template v-else>
+                <button
+                  class="btn-primary"
+                  :disabled="!canSubmit"
+                  @click="submitForm"
+                >
+                  {{ isEditing ? "保存修改" : "创建预设" }}
+                </button>
+              </template>
             </div>
           </div>
 
@@ -278,7 +481,7 @@ onMounted(async () => {
                 v-model="form.id"
                 class="input-field"
                 placeholder="example-agent"
-                :disabled="isEditing"
+                :disabled="isEditing || isTemplate"
               />
             </div>
             <div class="form-row">
@@ -287,6 +490,7 @@ onMounted(async () => {
                 v-model="form.name"
                 class="input-field"
                 placeholder="示例 Agent"
+                :disabled="isTemplate"
               />
             </div>
             <div class="form-row">
@@ -295,6 +499,7 @@ onMounted(async () => {
                 v-model="form.category"
                 class="input-field"
                 placeholder="开发 / 数据 / 安全"
+                :disabled="isTemplate"
               />
             </div>
             <div class="form-row">
@@ -303,6 +508,7 @@ onMounted(async () => {
                 v-model="form.tagsText"
                 class="input-field"
                 placeholder="代码审查, 质量, 最佳实践"
+                :disabled="isTemplate"
               />
             </div>
           </div>
@@ -313,6 +519,7 @@ onMounted(async () => {
               v-model="form.description"
               class="input-field"
               placeholder="这个预设适合做什么"
+              :disabled="isTemplate"
             />
           </div>
 
@@ -323,6 +530,7 @@ onMounted(async () => {
               class="input-field"
               rows="8"
               placeholder="你是一位..."
+              :disabled="isTemplate"
             />
           </div>
 
@@ -334,6 +542,7 @@ onMounted(async () => {
                 :key="model.id"
                 class="model-chip"
                 :class="{ active: form.modelProvider === model.provider && form.modelId === model.modelId }"
+                :disabled="isTemplate"
                 @click="selectSavedModel(model)"
               >
                 {{ model.name }}
@@ -348,6 +557,7 @@ onMounted(async () => {
                 v-model="form.modelProvider"
                 class="input-field"
                 placeholder="openai"
+                :disabled="isTemplate"
               />
             </div>
             <div class="form-row">
@@ -356,12 +566,36 @@ onMounted(async () => {
                 v-model="form.modelId"
                 class="input-field"
                 placeholder="gpt-4o-mini"
+                :disabled="isTemplate"
               />
             </div>
           </div>
         </div>
       </main>
     </div>
+
+    <teleport to="body">
+      <div
+        v-if="openPresetActionItem && presetActionMenuPosition"
+        class="preset-action-menu-floating"
+        :style="{ left: `${presetActionMenuPosition.left}px`, top: `${presetActionMenuPosition.top}px` }"
+        @click.stop
+      >
+        <button
+          class="preset-action-item"
+          @click="copyPreset(openPresetActionItem)"
+        >
+          复制预设
+        </button>
+        <button
+          class="preset-action-danger"
+          :disabled="submitting"
+          @click="handleDeletePreset(openPresetActionItem)"
+        >
+          删除
+        </button>
+      </div>
+    </teleport>
   </div>
 </template>
 
@@ -421,6 +655,40 @@ onMounted(async () => {
   font-weight: 600;
 }
 
+.preset-section-toggle {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.preset-section-toggle .preset-section-title {
+  margin-top: 6px;
+}
+
+.preset-section-toggle-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.preset-section-toggle-meta svg {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.2s;
+}
+
+.preset-section-toggle-meta svg.expanded {
+  transform: rotate(180deg);
+}
+
 .preset-item {
   width: 100%;
   border: 1px solid var(--color-border-subtle);
@@ -447,6 +715,128 @@ onMounted(async () => {
   color: var(--color-accent-light);
 }
 
+.preset-item-row {
+  position: relative;
+  width: 100%;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--color-text-secondary);
+  transition: all 0.2s;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 4px;
+}
+
+.preset-item-row .preset-item {
+  min-width: 0;
+  border: none;
+  padding: 10px 8px 10px 12px;
+  background: transparent;
+  color: inherit;
+}
+
+.preset-item-row:hover {
+  border-color: var(--color-border-hover);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.preset-item-row.active {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: var(--color-accent-light);
+}
+
+.preset-actions {
+  position: relative;
+  padding-right: 6px;
+  display: flex;
+  justify-content: center;
+}
+
+.preset-action-trigger {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.preset-item-row:hover .preset-action-trigger,
+.preset-item-row.active .preset-action-trigger,
+.preset-item-row.menu-open .preset-action-trigger {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.preset-action-trigger:hover {
+  background: var(--btn-secondary-bg);
+  color: var(--color-text-primary);
+}
+
+.preset-action-trigger svg {
+  width: 16px;
+  height: 16px;
+}
+
+.preset-action-menu-floating {
+  position: fixed;
+  z-index: 3000;
+  min-width: 128px;
+  padding: 4px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  background: var(--color-surface-2);
+  box-shadow: var(--shadow-menu);
+  backdrop-filter: blur(12px);
+}
+
+.preset-action-danger {
+  width: 100%;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 10px;
+  background: transparent;
+  color: var(--color-danger);
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+}
+
+.preset-action-item {
+  width: 100%;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 10px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+}
+
+.preset-action-item:hover {
+  background: var(--dropdown-hover);
+  color: var(--color-text-primary);
+}
+
+.preset-action-danger:hover {
+  background: var(--btn-danger-bg);
+}
+
+.preset-action-danger:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .preset-name {
   font-size: 13px;
   font-weight: 600;
@@ -461,10 +851,77 @@ onMounted(async () => {
   color: rgba(129, 140, 248, 0.8);
 }
 
+.preset-item-row.active .preset-meta {
+  color: rgba(129, 140, 248, 0.8);
+}
+
+.template-item {
+  border-left: 3px solid rgba(99, 102, 241, 0.3);
+}
+
 .preset-empty {
   padding: 10px 12px;
   color: var(--color-text-muted);
   font-size: 12px;
+}
+
+/* ── Template selector ── */
+.template-select-inline {
+  position: relative;
+}
+
+.template-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 200px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 50;
+  background: var(--dropdown-bg);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-dropdown);
+  padding: 4px;
+}
+
+.template-dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+  color: var(--color-text-secondary);
+}
+
+.template-dropdown-item:hover {
+  background: var(--dropdown-hover);
+}
+
+.dropdown-t-name {
+  font-weight: 500;
+}
+
+.dropdown-t-cat {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.detail-hint.info {
+  color: var(--color-info);
+}
+
+.detail-hint.muted {
+  color: var(--color-text-muted);
 }
 
 .agents-content {
@@ -529,6 +986,27 @@ onMounted(async () => {
   font-weight: 600;
 }
 
+.form-row :deep(.input-field:disabled),
+.input-field:disabled {
+  border-color: var(--color-border-subtle);
+  border-style: dashed;
+  background: var(--btn-secondary-bg);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.78;
+}
+
+.form-row :deep(.input-field:disabled)::placeholder,
+.input-field:disabled::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.7;
+}
+
+.form-row:has(.input-field:disabled) label {
+  color: var(--color-text-muted);
+}
+
 .model-chips {
   display: flex;
   flex-wrap: wrap;
@@ -558,8 +1036,18 @@ onMounted(async () => {
 }
 
 .model-chip:disabled {
-  opacity: 0.55;
+  border-color: var(--color-border-subtle);
+  border-style: dashed;
+  background: var(--btn-secondary-bg);
+  color: var(--color-text-muted);
   cursor: not-allowed;
+  opacity: 0.78;
+}
+
+.model-chip:disabled.active {
+  border-color: var(--color-accent);
+  background: var(--badge-bg);
+  color: var(--color-accent-light);
 }
 
 @media (max-width: 1024px) {

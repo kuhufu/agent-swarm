@@ -195,13 +195,13 @@ function closeConversationMenu() {
 
 function computeMenuPosition(anchor: Element): { left: number; top: number } {
   const rect = anchor.getBoundingClientRect();
-  const menuWidth = 136;
+  const menuWidth = 128;
   const menuHeight = 88;
   const gap = 6;
   const viewportPadding = 8;
 
   const left = Math.min(
-    Math.max(rect.right - menuWidth, viewportPadding),
+    Math.max(rect.left, viewportPadding),
     window.innerWidth - menuWidth - viewportPadding,
   );
 
@@ -378,7 +378,10 @@ import { h } from "vue";
             v-for="conv in group.items"
             :key="conv.id"
             class="conversation-item"
-            :class="{ active: isConversationActive(conv.id) }"
+            :class="{
+              active: isConversationActive(conv.id),
+              'menu-open': openedMenuConversationId === conv.id,
+            }"
             @click="handleOpenConversation(conv)"
           >
             <div class="conversation-main">
@@ -721,6 +724,15 @@ import { h } from "vue";
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.conversation-item:hover .conversation-more,
+.conversation-item.active .conversation-more,
+.conversation-item.menu-open .conversation-more {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .conversation-more:hover {
@@ -739,7 +751,7 @@ import { h } from "vue";
   min-width: 128px;
   background: var(--color-surface-2);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 4px;
   box-shadow: var(--shadow-menu);
   backdrop-filter: blur(12px);

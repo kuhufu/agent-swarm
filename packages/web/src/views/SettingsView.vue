@@ -6,10 +6,11 @@ import type { InterventionPoint, InterventionStrategy, ApiProtocol, ProviderConf
 import ProvidersTab from "../components/settings/ProvidersTab.vue";
 import ModelsTab from "../components/settings/ModelsTab.vue";
 import InterventionTab from "../components/settings/InterventionTab.vue";
+import AgentTemplatesTab from "../components/settings/AgentTemplatesTab.vue";
 import CustomSelect from "../components/common/CustomSelect.vue";
 
 const settingsStore = useSettingsStore();
-type SettingsTab = "providers" | "models" | "intervention";
+type SettingsTab = "providers" | "models" | "templates" | "intervention";
 
 const activeTab = ref<SettingsTab>("providers");
 const activeTabMeta = computed(() => {
@@ -21,6 +22,10 @@ const activeTabMeta = computed(() => {
     models: {
       title: "模型管理",
       description: "维护可在 Swarm/Agent 中复用的模型列表",
+    },
+    templates: {
+      title: "系统 Agent 模版",
+      description: "维护跨用户共享、可导入为个人预设的 Agent 模版",
     },
     intervention: {
       title: "介入策略",
@@ -304,6 +309,24 @@ async function saveSettings() {
               </div>
               <span class="settings-meta">全局审批规则</span>
             </button>
+            <button
+              class="settings-item"
+              :class="{ active: activeTab === 'templates' }"
+              @click="activeTab = 'templates'"
+            >
+              <div class="settings-item-top">
+                <span class="settings-nav-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 7h-9" />
+                    <path d="M14 17H5" />
+                    <circle cx="17" cy="17" r="3" />
+                    <circle cx="7" cy="7" r="3" />
+                  </svg>
+                </span>
+                <span class="settings-name">系统 Agent 模版</span>
+              </div>
+              <span class="settings-meta">共享 Agent 模板库</span>
+            </button>
           </nav>
         </div>
 
@@ -321,6 +344,7 @@ async function saveSettings() {
               <p class="detail-hint">{{ activeTabMeta.description }}</p>
             </div>
             <button
+              v-if="activeTab !== 'templates'"
               class="btn-primary"
               :disabled="saving"
               @click="saveSettings"
@@ -370,6 +394,10 @@ async function saveSettings() {
               :interventions="interventions"
               @update="updateIntervention"
             />
+          </div>
+
+          <div v-if="activeTab === 'templates'" class="tab-panel">
+            <AgentTemplatesTab :saved-models="models" />
           </div>
 
           <div id="settings-detail-dialog-host" class="detail-dialog-host" />

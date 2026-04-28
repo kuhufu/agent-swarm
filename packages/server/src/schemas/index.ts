@@ -87,12 +87,16 @@ export const updateAgentPresetSchema = z.object({
   description: z.string().optional(),
   systemPrompt: z.string().optional(),
   model: z.object({
-    provider: z.string().min(1),
-    modelId: z.string().min(1),
+    provider: z.string().default(""),
+    modelId: z.string().default(""),
   }).optional(),
   category: z.string().optional(),
   tags: z.array(z.string()).optional(),
 });
+
+export const createAgentTemplateSchema = createAgentPresetSchema;
+
+export const updateAgentTemplateSchema = updateAgentPresetSchema;
 
 export const createConversationSchema = z.object({
   swarmId: z.string().min(1, "swarmId 不能为空"),
