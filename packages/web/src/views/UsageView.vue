@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from "vue";
+import { apiClient } from "../api/client.js";
 
 interface UsageRow {
   conversationId: string;
@@ -35,8 +36,7 @@ onMounted(async () => {
 async function loadDailyUsage() {
   loading.value = true;
   try {
-    const resp = await fetch(`/api/usage/daily?days=${selectedDays.value}`);
-    const json = await resp.json() as { data: DailyUsageRow[] };
+    const json = await apiClient<{ data: DailyUsageRow[] }>(`/usage/daily?days=${selectedDays.value}`);
     dailyUsage.value = json.data;
   } catch {
     dailyUsage.value = [];

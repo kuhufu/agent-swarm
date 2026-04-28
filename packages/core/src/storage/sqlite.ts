@@ -5,6 +5,8 @@ import type {
   IStorage,
   ConversationUsage,
   DailyUsage,
+  LLMCallRecord,
+  LLMCallQuery,
   StoredMessage,
   StoredEvent,
   Conversation,
@@ -12,7 +14,7 @@ import type {
   ConversationDirectModel,
 } from "./interface.js";
 import type { SwarmConfig, AgentPreset } from "../core/types.js";
-import { settingsTable, swarmsTable, agentsTable, conversationsTable, messagesTable, eventsTable, presetAgentsTable } from "./schema.js";
+import { settingsTable, swarmsTable, agentsTable, conversationsTable, messagesTable, eventsTable, presetAgentsTable, usersTable, llmCallsTable } from "./schema.js";
 
 const DEFAULT_CONVERSATION_PREFERENCES: ConversationPreferences = {
   enabledTools: [],
@@ -46,6 +48,7 @@ export class SqliteStorage implements IStorage {
     this.rawDb.exec(`
       CREATE TABLE IF NOT EXISTS swarms (
         id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
         name TEXT NOT NULL,
         config TEXT NOT NULL,
         created_at INTEGER NOT NULL,
@@ -66,6 +69,7 @@ export class SqliteStorage implements IStorage {
       );
       CREATE TABLE IF NOT EXISTS conversations (
         id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
         swarm_id TEXT NOT NULL REFERENCES swarms(id),
         title TEXT,
         enabled_tools TEXT NOT NULL DEFAULT '[]',
@@ -102,6 +106,7 @@ export class SqliteStorage implements IStorage {
       CREATE INDEX IF NOT EXISTS idx_conversations_swarm ON conversations(swarm_id);
       CREATE TABLE IF NOT EXISTS preset_agents (
         id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
         name TEXT NOT NULL,
         description TEXT NOT NULL DEFAULT '',
         system_prompt TEXT NOT NULL DEFAULT '',
@@ -113,6 +118,31 @@ export class SqliteStorage implements IStorage {
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS llm_calls (
+        id TEXT PRIMARY KEY,
+        conversation_id TEXT NOT NULL,
+        agent_id TEXT,
+        provider_id TEXT NOT NULL,
+        model_id TEXT NOT NULL,
+        prompt_tokens INTEGER NOT NULL DEFAULT 0,
+        completion_tokens INTEGER NOT NULL DEFAULT 0,
+        cache_read_tokens INTEGER NOT NULL DEFAULT 0,
+        cache_write_tokens INTEGER NOT NULL DEFAULT 0,
+        cost REAL NOT NULL DEFAULT 0,
+        latency_ms INTEGER,
+        status TEXT NOT NULL DEFAULT 'ok',
+        error_message TEXT,
+        timestamp INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_llm_calls_conversation ON llm_calls(conversation_id, timestamp);
+      CREATE INDEX IF NOT EXISTS idx_llm_calls_provider ON llm_calls(provider_id, timestamp);
+      CREATE INDEX IF NOT EXISTS idx_llm_calls_status ON llm_calls(status, timestamp);
     `);
 
     this.ensureConversationColumns();
@@ -228,6 +258,24 @@ export class SqliteStorage implements IStorage {
       this.rawDb.exec("ALTER TABLE conversations ADD COLUMN thinking_level TEXT NOT NULL DEFAULT 'off';");
       schemaChanged = true;
     }
+    if (!columns.has("user_id")) {
+      this.rawDb.exec("ALTER TABLE conversations ADD COLUMN user_id TEXT;");
+      schemaChanged = true;
+    }
+
+    // swarms table
+    const swarmTableInfo = this.rawDb.prepare("PRAGMA table_info(swarms)").all() as Array<{ name?: string }>;
+    if (!swarmTableInfo.find((c) => c.name === "user_id")) {
+      this.rawDb.exec("ALTER TABLE swarms ADD COLUMN user_id TEXT;");
+      schemaChanged = true;
+    }
+
+    // preset_agents table
+    const presetTableInfo = this.rawDb.prepare("PRAGMA table_info(preset_agents)").all() as Array<{ name?: string }>;
+    if (!presetTableInfo.find((c) => c.name === "user_id")) {
+      this.rawDb.exec("ALTER TABLE preset_agents ADD COLUMN user_id TEXT;");
+      schemaChanged = true;
+    }
 
     // 开发阶段：字段变更后直接清理历史会话，避免历史脏数据影响渲染和运行时行为。
     if (schemaChanged) {
@@ -259,19 +307,161 @@ export class SqliteStorage implements IStorage {
     return rows[0].value;
   }
 
+  // ── User management ──
+
+  async createUser(user: { id: string; username: string; passwordHash: string; createdAt: number }): Promise<void> {
+    this.getDb().insert(usersTable).values({
+      id: user.id,
+      username: user.username,
+      passwordHash: user.passwordHash,
+      createdAt: user.createdAt,
+    }).run();
+  }
+
+  async getUserByUsername(username: string): Promise<{ id: string; username: string; passwordHash: string } | null> {
+    const rows = this.getDb().select().from(usersTable).where(eq(usersTable.username, username)).all();
+    if (rows.length === 0) return null;
+    return rows[0];
+  }
+
+  async getUserById(id: string): Promise<{ id: string; username: string } | null> {
+    const rows = this.getDb().select({
+      id: usersTable.id,
+      username: usersTable.username,
+    }).from(usersTable).where(eq(usersTable.id, id)).all();
+    if (rows.length === 0) return null;
+    return rows[0];
+  }
+
+  // ── LLM call log ──
+
+  async logLLMCall(call: LLMCallRecord): Promise<void> {
+    this.getDb().insert(llmCallsTable).values({
+      id: call.id,
+      conversationId: call.conversationId,
+      agentId: call.agentId ?? null,
+      providerId: call.providerId,
+      modelId: call.modelId,
+      promptTokens: call.promptTokens,
+      completionTokens: call.completionTokens,
+      cacheReadTokens: call.cacheReadTokens,
+      cacheWriteTokens: call.cacheWriteTokens,
+      cost: call.cost,
+      latencyMs: call.latencyMs ?? null,
+      status: call.status,
+      errorMessage: call.errorMessage ?? null,
+      timestamp: call.timestamp,
+    }).run();
+  }
+
+  async queryLLMCalls(filter: LLMCallQuery, userId: string): Promise<LLMCallRecord[]> {
+    if (!this.rawDb) {
+      throw new Error("Storage not initialized");
+    }
+
+    const whereClauses: string[] = ["c.user_id = ?"];
+    const params: Array<string | number> = [userId];
+
+    if (filter.conversationId) {
+      whereClauses.push("l.conversation_id = ?");
+      params.push(filter.conversationId);
+    }
+    if (filter.providerId) {
+      whereClauses.push("l.provider_id = ?");
+      params.push(filter.providerId);
+    }
+    if (filter.modelId) {
+      whereClauses.push("l.model_id = ?");
+      params.push(filter.modelId);
+    }
+    if (filter.days) {
+      whereClauses.push("l.timestamp >= ?");
+      params.push(Date.now() - filter.days * 86_400_000);
+    }
+
+    let sql = `
+      SELECT
+        l.id as id,
+        l.conversation_id as conversationId,
+        l.agent_id as agentId,
+        l.provider_id as providerId,
+        l.model_id as modelId,
+        l.prompt_tokens as promptTokens,
+        l.completion_tokens as completionTokens,
+        l.cache_read_tokens as cacheReadTokens,
+        l.cache_write_tokens as cacheWriteTokens,
+        l.cost as cost,
+        l.latency_ms as latencyMs,
+        l.status as status,
+        l.error_message as errorMessage,
+        l.timestamp as timestamp
+      FROM llm_calls l
+      INNER JOIN conversations c ON c.id = l.conversation_id
+      WHERE ${whereClauses.join(" AND ")}
+      ORDER BY l.timestamp DESC
+    `;
+
+    if (filter.limit && Number.isFinite(filter.limit) && filter.limit > 0) {
+      sql += " LIMIT ?";
+      params.push(Math.floor(filter.limit));
+    }
+
+    const rows = this.rawDb.prepare(sql).all(...params) as Array<{
+      id: string;
+      conversationId: string;
+      agentId: string | null;
+      providerId: string;
+      modelId: string;
+      promptTokens: number | null;
+      completionTokens: number | null;
+      cacheReadTokens: number | null;
+      cacheWriteTokens: number | null;
+      cost: number | null;
+      latencyMs: number | null;
+      status: string | null;
+      errorMessage: string | null;
+      timestamp: number;
+    }>;
+
+    return rows.map((r) => ({
+      id: r.id,
+      conversationId: r.conversationId,
+      agentId: r.agentId ?? undefined,
+      providerId: r.providerId,
+      modelId: r.modelId,
+      promptTokens: r.promptTokens ?? 0,
+      completionTokens: r.completionTokens ?? 0,
+      cacheReadTokens: r.cacheReadTokens ?? 0,
+      cacheWriteTokens: r.cacheWriteTokens ?? 0,
+      cost: r.cost ?? 0,
+      latencyMs: r.latencyMs ?? undefined,
+      status: (r.status ?? "ok") as "ok" | "error",
+      errorMessage: r.errorMessage ?? undefined,
+      timestamp: r.timestamp,
+    }));
+  }
+
   // ── Swarm management ──
 
-  async saveSwarm(config: SwarmConfig): Promise<void> {
+  async saveSwarm(config: SwarmConfig, userId: string): Promise<void> {
     const now = Date.now();
+    const existing = this.getDb().select({
+      userId: swarmsTable.userId,
+    }).from(swarmsTable).where(eq(swarmsTable.id, config.id)).all();
+    if (existing.length > 0 && existing[0].userId !== userId) {
+      throw new Error(`Swarm id already exists for another user: ${config.id}`);
+    }
+
     this.getDb().insert(swarmsTable).values({
       id: config.id,
+      userId,
       name: config.name,
       config: JSON.stringify(config),
       createdAt: now,
       updatedAt: now,
     }).onConflictDoUpdate({
       target: swarmsTable.id,
-      set: { name: config.name, config: JSON.stringify(config), updatedAt: now },
+      set: { userId, name: config.name, config: JSON.stringify(config), updatedAt: now },
     }).run();
 
     const agents = [...config.agents];
@@ -300,49 +490,61 @@ export class SqliteStorage implements IStorage {
     }
   }
 
-  async loadSwarm(id: string): Promise<SwarmConfig | null> {
-    const rows = this.getDb().select().from(swarmsTable).where(eq(swarmsTable.id, id)).all();
+  async loadSwarm(id: string, userId: string): Promise<SwarmConfig | null> {
+    const rows = this.getDb().select().from(swarmsTable).where(
+      and(eq(swarmsTable.id, id), eq(swarmsTable.userId, userId)),
+    ).all();
     if (rows.length === 0) return null;
     return JSON.parse(rows[0].config);
   }
 
-  async listSwarms(): Promise<SwarmConfig[]> {
-    const rows = this.getDb().select().from(swarmsTable).all();
+  async listSwarms(userId: string): Promise<SwarmConfig[]> {
+    const rows = this.getDb().select().from(swarmsTable).where(eq(swarmsTable.userId, userId)).all();
     return rows.map((r) => JSON.parse(r.config));
   }
 
-  async deleteSwarm(id: string): Promise<void> {
+  async deleteSwarm(id: string, userId: string): Promise<void> {
     if (!this.rawDb) {
       throw new Error("Storage not initialized");
     }
 
-    const deleteTx = this.rawDb.transaction((swarmId: string) => {
+    const existing = this.getDb().select({
+      id: swarmsTable.id,
+    }).from(swarmsTable).where(
+      and(eq(swarmsTable.id, id), eq(swarmsTable.userId, userId)),
+    ).all();
+    if (existing.length === 0) {
+      throw new Error(`Swarm not found: ${id}`);
+    }
+
+    const deleteTx = this.rawDb.transaction((swarmId: string, ownerId: string) => {
       this.rawDb!.prepare(`
         DELETE FROM messages
         WHERE conversation_id IN (
-          SELECT id FROM conversations WHERE swarm_id = ?
+          SELECT id FROM conversations WHERE swarm_id = ? AND user_id = ?
         )
-      `).run(swarmId);
+      `).run(swarmId, ownerId);
 
       this.rawDb!.prepare(`
         DELETE FROM events
         WHERE conversation_id IN (
-          SELECT id FROM conversations WHERE swarm_id = ?
+          SELECT id FROM conversations WHERE swarm_id = ? AND user_id = ?
         )
-      `).run(swarmId);
+      `).run(swarmId, ownerId);
 
-      this.rawDb!.prepare("DELETE FROM conversations WHERE swarm_id = ?").run(swarmId);
+      this.rawDb!.prepare("DELETE FROM conversations WHERE swarm_id = ? AND user_id = ?").run(swarmId, ownerId);
       this.rawDb!.prepare("DELETE FROM agents WHERE swarm_id = ?").run(swarmId);
-      this.rawDb!.prepare("DELETE FROM swarms WHERE id = ?").run(swarmId);
+      this.rawDb!.prepare("DELETE FROM swarms WHERE id = ? AND user_id = ?").run(swarmId, ownerId);
     });
 
-    deleteTx(id);
+    deleteTx(id, userId);
   }
 
   // ── Conversation management ──
 
   async createConversation(
     swarmId: string,
+    userId: string,
     title?: string,
     preferences?: Partial<ConversationPreferences>,
   ): Promise<Conversation> {
@@ -365,6 +567,7 @@ export class SqliteStorage implements IStorage {
     };
     this.getDb().insert(conversationsTable).values({
       id: conv.id,
+      userId,
       swarmId: conv.swarmId,
       title: conv.title,
       enabledTools: JSON.stringify(conv.enabledTools),
@@ -378,22 +581,25 @@ export class SqliteStorage implements IStorage {
     return conv;
   }
 
-  async getConversation(id: string): Promise<Conversation | null> {
-    const rows = this.getDb().select().from(conversationsTable).where(eq(conversationsTable.id, id)).all();
+  async getConversation(id: string, userId: string): Promise<Conversation | null> {
+    const rows = this.getDb().select().from(conversationsTable).where(
+      and(eq(conversationsTable.id, id), eq(conversationsTable.userId, userId)),
+    ).all();
     if (rows.length === 0) return null;
     return this.mapConversationRow(rows[0]);
   }
 
-  async listConversations(swarmId: string): Promise<Conversation[]> {
+  async listConversations(swarmId: string, userId: string): Promise<Conversation[]> {
     const rows = this.getDb().select().from(conversationsTable)
-      .where(eq(conversationsTable.swarmId, swarmId))
+      .where(and(eq(conversationsTable.swarmId, swarmId), eq(conversationsTable.userId, userId)))
       .orderBy(desc(conversationsTable.updatedAt))
       .all();
     return rows.map((row) => this.mapConversationRow(row));
   }
 
-  async listAllConversations(): Promise<Conversation[]> {
+  async listAllConversations(userId: string): Promise<Conversation[]> {
     const rows = this.getDb().select().from(conversationsTable)
+      .where(eq(conversationsTable.userId, userId))
       .orderBy(desc(conversationsTable.updatedAt))
       .all();
     return rows.map((row) => this.mapConversationRow(row));
@@ -402,8 +608,9 @@ export class SqliteStorage implements IStorage {
   async updateConversationPreferences(
     id: string,
     preferences: Partial<ConversationPreferences>,
+    userId: string,
   ): Promise<Conversation> {
-    const current = await this.getConversation(id);
+    const current = await this.getConversation(id, userId);
     if (!current) {
       throw new Error(`Conversation not found: ${id}`);
     }
@@ -425,7 +632,7 @@ export class SqliteStorage implements IStorage {
         directModelId: directModel?.modelId ?? null,
         updatedAt: now,
       })
-      .where(eq(conversationsTable.id, id))
+      .where(and(eq(conversationsTable.id, id), eq(conversationsTable.userId, userId)))
       .run();
 
     return {
@@ -437,27 +644,38 @@ export class SqliteStorage implements IStorage {
     };
   }
 
-  async updateConversationTitle(id: string, title: string): Promise<void> {
+  async updateConversationTitle(id: string, title: string, userId?: string): Promise<void> {
     this.getDb().update(conversationsTable)
       .set({ title, updatedAt: Date.now() })
-      .where(eq(conversationsTable.id, id))
+      .where(userId
+        ? and(eq(conversationsTable.id, id), eq(conversationsTable.userId, userId))
+        : eq(conversationsTable.id, id))
       .run();
   }
 
-  async updateConversationContextReset(id: string, contextResetAt: number): Promise<void> {
+  async updateConversationContextReset(id: string, contextResetAt: number, userId?: string): Promise<void> {
     this.getDb().update(conversationsTable)
       .set({
         contextResetAt,
         updatedAt: Date.now(),
       })
-      .where(eq(conversationsTable.id, id))
+      .where(userId
+        ? and(eq(conversationsTable.id, id), eq(conversationsTable.userId, userId))
+        : eq(conversationsTable.id, id))
       .run();
   }
 
-  async deleteConversation(id: string): Promise<void> {
+  async deleteConversation(id: string, userId: string): Promise<void> {
+    const conversation = await this.getConversation(id, userId);
+    if (!conversation) {
+      throw new Error(`Conversation not found: ${id}`);
+    }
+
     this.getDb().delete(messagesTable).where(eq(messagesTable.conversationId, id)).run();
     this.getDb().delete(eventsTable).where(eq(eventsTable.conversationId, id)).run();
-    this.getDb().delete(conversationsTable).where(eq(conversationsTable.id, id)).run();
+    this.getDb().delete(conversationsTable).where(
+      and(eq(conversationsTable.id, id), eq(conversationsTable.userId, userId)),
+    ).run();
   }
 
   // ── Message management ──
@@ -528,10 +746,18 @@ export class SqliteStorage implements IStorage {
 
   // ── Agent preset management ──
 
-  async saveAgentPreset(preset: AgentPreset): Promise<void> {
+  async saveAgentPreset(preset: AgentPreset, userId: string): Promise<void> {
     const now = Date.now();
+    const existing = this.getDb().select({
+      userId: presetAgentsTable.userId,
+    }).from(presetAgentsTable).where(eq(presetAgentsTable.id, preset.id)).all();
+    if (existing.length > 0 && existing[0].userId !== userId) {
+      throw new Error(`Agent preset id already exists for another user: ${preset.id}`);
+    }
+
     this.getDb().insert(presetAgentsTable).values({
       id: preset.id,
+      userId,
       name: preset.name,
       description: preset.description,
       systemPrompt: preset.systemPrompt,
@@ -545,6 +771,7 @@ export class SqliteStorage implements IStorage {
     }).onConflictDoUpdate({
       target: presetAgentsTable.id,
       set: {
+        userId,
         name: preset.name,
         description: preset.description,
         systemPrompt: preset.systemPrompt,
@@ -558,8 +785,10 @@ export class SqliteStorage implements IStorage {
     }).run();
   }
 
-  async loadAgentPreset(id: string): Promise<AgentPreset | null> {
-    const rows = this.getDb().select().from(presetAgentsTable).where(eq(presetAgentsTable.id, id)).all();
+  async loadAgentPreset(id: string, userId: string): Promise<AgentPreset | null> {
+    const rows = this.getDb().select().from(presetAgentsTable).where(
+      and(eq(presetAgentsTable.id, id), eq(presetAgentsTable.userId, userId)),
+    ).all();
     if (rows.length === 0) return null;
     const r = rows[0];
     return {
@@ -574,8 +803,10 @@ export class SqliteStorage implements IStorage {
     };
   }
 
-  async listAgentPresets(): Promise<AgentPreset[]> {
-    const rows = this.getDb().select().from(presetAgentsTable).all();
+  async listAgentPresets(userId: string): Promise<AgentPreset[]> {
+    const rows = this.getDb().select().from(presetAgentsTable)
+      .where(eq(presetAgentsTable.userId, userId))
+      .all();
     return rows.map((r) => ({
       id: r.id,
       name: r.name,
@@ -588,8 +819,10 @@ export class SqliteStorage implements IStorage {
     }));
   }
 
-  async deleteAgentPreset(id: string): Promise<void> {
-    this.getDb().delete(presetAgentsTable).where(eq(presetAgentsTable.id, id)).run();
+  async deleteAgentPreset(id: string, userId: string): Promise<void> {
+    this.getDb().delete(presetAgentsTable).where(
+      and(eq(presetAgentsTable.id, id), eq(presetAgentsTable.userId, userId)),
+    ).run();
   }
 
   private parseTags(input: string): string[] {
@@ -635,17 +868,19 @@ export class SqliteStorage implements IStorage {
     }));
   }
 
-  async getConversationUsage(conversationId: string): Promise<ConversationUsage[]> {
-    const rows = this.getDb().select({
-      metadata: messagesTable.metadata,
-    }).from(messagesTable)
-      .where(
-        and(
-          eq(messagesTable.conversationId, conversationId),
-          eq(messagesTable.role, "assistant"),
-        ),
-      )
-      .all();
+  async getConversationUsage(conversationId: string, userId: string): Promise<ConversationUsage[]> {
+    if (!this.rawDb) {
+      throw new Error("Storage not initialized");
+    }
+
+    const rows = this.rawDb.prepare(`
+      SELECT m.metadata AS metadata
+      FROM messages m
+      INNER JOIN conversations c ON c.id = m.conversation_id
+      WHERE m.conversation_id = ?
+        AND m.role = 'assistant'
+        AND c.user_id = ?
+    `).all(conversationId, userId) as Array<{ metadata: string | null }>;
 
     const usageMap = new Map<string, ConversationUsage>();
 
@@ -683,19 +918,22 @@ export class SqliteStorage implements IStorage {
     return Array.from(usageMap.values());
   }
 
-  async getDailyUsage(days = 30): Promise<DailyUsage[]> {
+  async getDailyUsage(userId: string, days = 30): Promise<DailyUsage[]> {
+    if (!this.rawDb) {
+      throw new Error("Storage not initialized");
+    }
+
     const since = Date.now() - days * 86_400_000;
-    const rows = this.getDb().select({
-      metadata: messagesTable.metadata,
-      timestamp: messagesTable.timestamp,
-    }).from(messagesTable)
-      .where(
-        and(
-          eq(messagesTable.role, "assistant"),
-          gte(messagesTable.timestamp, since),
-        ),
-      )
-      .all();
+    const rows = this.rawDb.prepare(`
+      SELECT
+        m.metadata AS metadata,
+        m.timestamp AS timestamp
+      FROM messages m
+      INNER JOIN conversations c ON c.id = m.conversation_id
+      WHERE m.role = 'assistant'
+        AND m.timestamp >= ?
+        AND c.user_id = ?
+    `).all(since, userId) as Array<{ metadata: string | null; timestamp: number }>;
 
     const usageMap = new Map<string, DailyUsage>();
 

@@ -1,10 +1,14 @@
 import { createServer } from "http";
+import type { IncomingMessage } from "http";
 import type { Express } from "express";
 import { WebSocketServer, WebSocket } from "ws";
 import type { AgentSwarm, SwarmEvent, ThinkingLevel, SwarmConversation } from "@agent-swarm/core";
+import { createAllMCPTools } from "@agent-swarm/core";
+import { verifyAccessToken } from "./middleware/auth.js";
 
 interface WSClient {
   ws: WebSocket;
+  userId: string;
   conversationId?: string;
   activeConversation?: SwarmConversation;
   /** Pending intervention decisions — maps requestId → resolve function */
@@ -34,6 +38,34 @@ interface ConversationPreferencesPatch {
 const DEFAULT_CONVERSATION_PREFERENCES: ConversationPreferencesPayload = {
   enabledTools: [],
 };
+
+function parseBearerToken(header: string | undefined): string | null {
+  if (!header || !header.startsWith("Bearer ")) {
+    return null;
+  }
+  const token = header.slice(7).trim();
+  return token.length > 0 ? token : null;
+}
+
+function resolveWsUserId(request: IncomingMessage): string | null {
+  const authHeader = Array.isArray(request.headers.authorization)
+    ? request.headers.authorization[0]
+    : request.headers.authorization;
+
+  let token = parseBearerToken(authHeader);
+  if (!token) {
+    const url = new URL(request.url ?? "/", "ws://localhost");
+    const queryToken = url.searchParams.get("token");
+    token = queryToken && queryToken.trim().length > 0 ? queryToken.trim() : null;
+  }
+
+  if (!token) {
+    return null;
+  }
+
+  const payload = verifyAccessToken(token);
+  return payload?.id ?? null;
+}
 
 function normalizeEnabledTools(input: unknown): string[] {
   if (!Array.isArray(input)) {
@@ -72,8 +104,14 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
 
   const clients = new Set<WSClient>();
 
-  wss.on("connection", (ws) => {
-    const client: WSClient = { ws, pendingDecisions: new Map(), pendingToolExecutions: new Map() };
+  wss.on("connection", (ws, request) => {
+    const userId = resolveWsUserId(request);
+    if (!userId) {
+      ws.close(4401, "Unauthorized");
+      return;
+    }
+
+    const client: WSClient = { ws, userId, pendingDecisions: new Map(), pendingToolExecutions: new Map() };
     clients.add(client);
 
     ws.on("message", async (data) => {
@@ -154,7 +192,7 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
       let storedConversation: Awaited<ReturnType<typeof swarm.getConversation>> = null;
 
       if (conversationId) {
-        storedConversation = await swarm.getConversation(conversationId);
+        storedConversation = await swarm.getConversation(conversationId, client.userId);
         if (!storedConversation) {
           throw new Error(`Conversation not found: ${conversationId}`);
         }
@@ -169,9 +207,9 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
           || mergedPatch.thinkingLevel !== undefined
           || mergedPatch.directModel !== undefined
         ) {
-          storedConversation = await swarm.updateConversationPreferences(conversationId, mergedPatch);
+          storedConversation = await swarm.updateConversationPreferences(conversationId, mergedPatch, client.userId);
         }
-        conversation = await swarm.resumeConversation(conversationId);
+        conversation = await swarm.resumeConversation(conversationId, client.userId);
         effectivePreferences = {
           enabledTools: storedConversation.enabledTools,
           thinkingLevel: storedConversation.thinkingLevel,
@@ -182,8 +220,8 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
           enabledTools: preferencesPatch.enabledTools ?? DEFAULT_CONVERSATION_PREFERENCES.enabledTools,
           thinkingLevel: preferencesPatch.thinkingLevel,
         };
-        conversation = await swarm.createConversation(swarmId, undefined, initialPreferences);
-        storedConversation = await swarm.getConversation(conversation.getId());
+        conversation = await swarm.createConversation(client.userId, swarmId, undefined, initialPreferences);
+        storedConversation = await swarm.getConversation(conversation.getId(), client.userId);
         if (storedConversation) {
           effectivePreferences = {
             enabledTools: storedConversation.enabledTools,
@@ -203,8 +241,8 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
           thinkingLevel: preferencesPatch.thinkingLevel,
           directModel: { provider, modelId },
         };
-        conversation = await swarm.createDirectConversation(provider, modelId, undefined, initialPreferences);
-        storedConversation = await swarm.getConversation(conversation.getId());
+        conversation = await swarm.createDirectConversation(client.userId, provider, modelId, undefined, initialPreferences);
+        storedConversation = await swarm.getConversation(conversation.getId(), client.userId);
         if (storedConversation) {
           effectivePreferences = {
             enabledTools: storedConversation.enabledTools,
@@ -281,6 +319,7 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
           };
         },
         webSearchConfig: swarm.webSearchConfig,
+        mcpTools: swarm.mcpClient ? createAllMCPTools(swarm.mcpClient) : undefined,
       });
 
       for await (const event of stream) {

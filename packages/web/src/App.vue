@@ -1,9 +1,16 @@
 <script setup lang="ts">
+import { onMounted } from "vue";
 import { RouterView } from "vue-router";
 import AppSidebar from "./components/layout/AppSidebar.vue";
 import { useThemeStore } from "./stores/theme.js";
+import { useAuthStore } from "./stores/auth.js";
 
 useThemeStore();
+
+const authStore = useAuthStore();
+onMounted(() => {
+  authStore.fetchMe();
+});
 </script>
 
 <template>

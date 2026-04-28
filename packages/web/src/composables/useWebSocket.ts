@@ -48,7 +48,13 @@ export function useWebSocket() {
 
     manualClose = false;
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const url = `${protocol}//${window.location.host}/ws`;
+    const token = localStorage.getItem("token")?.trim() || null;
+    if (!token) {
+      connected.value = false;
+      return;
+    }
+    const query = token ? `?token=${encodeURIComponent(token)}` : "";
+    const url = `${protocol}//${window.location.host}/ws${query}`;
 
     ws.value = new WebSocket(url);
 
@@ -57,9 +63,16 @@ export function useWebSocket() {
       reconnectAttempts.value = 0;
     };
 
-    ws.value.onclose = () => {
+    ws.value.onclose = (event) => {
       connected.value = false;
       ws.value = null;
+      if (event.code === 4401) {
+        localStorage.removeItem("token");
+        if (window.location.pathname !== "/login") {
+          window.location.href = "/login";
+        }
+        return;
+      }
       if (!manualClose) {
         scheduleReconnect();
       }

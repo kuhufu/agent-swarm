@@ -1,5 +1,5 @@
 import type { SwarmConfig, AgentSwarmRootConfig, LLMBackendConfig, ApiProtocol, EventLogLevel, AgentPreset } from "./types.js";
-import type { IStorage } from "../storage/interface.js";
+import type { IStorage, LLMCallRecord, LLMCallQuery } from "../storage/interface.js";
 import type { Conversation as StoredConversation, ConversationPreferences } from "../storage/interface.js";
 import type { StoredMessage } from "../storage/interface.js";
 import type { InterventionHandler } from "../intervention/handler.js";
@@ -14,6 +14,8 @@ import { resolveModelFromProvider } from "../llm/provider.js";
 import type { Logger } from "../logger/types.js";
 import { ConsoleLogger } from "../logger/console-logger.js";
 import type { WebSearchConfig } from "../tools/web-search.js";
+import { MCPClient } from "../tools/mcp/client.js";
+import type { MCPServerConfig } from "../tools/mcp/client.js";
 
 export interface AgentSwarmOptions {
   configPath?: string;
@@ -22,6 +24,7 @@ export interface AgentSwarmOptions {
   interventionHandler?: InterventionHandler;
   logger?: Logger;
   webSearchConfig?: WebSearchConfig;
+  mcpServers?: MCPServerConfig[];
 }
 
 export interface ModelConnectionTestOptions {
@@ -80,9 +83,51 @@ export class AgentSwarm {
   private storage: IStorage;
   private interventionHandler?: InterventionHandler;
   private swarmConfigs: Map<string, SwarmConfig> = new Map();
+  private seededUserIds: Set<string> = new Set();
   private _initialized = false;
   public readonly logger: Logger;
   public readonly webSearchConfig?: WebSearchConfig;
+  public readonly mcpClient: MCPClient;
+  private readonly mcpServerConfigs?: MCPServerConfig[];
+
+  private normalizeUserId(userId: string): string {
+    const normalized = userId.trim();
+    if (!normalized) {
+      throw new Error("userId is required");
+    }
+    return normalized;
+  }
+
+  private getDirectSwarmId(userId: string): string {
+    return `${AgentSwarm.DIRECT_SWARM_ID}_${userId}`;
+  }
+
+  private async ensureUserSeedData(userId: string): Promise<void> {
+    if (this.seededUserIds.has(userId)) {
+      return;
+    }
+
+    const swarms = await this.storage.listSwarms(userId);
+    if (swarms.length === 0 && this.config.swarms.length > 0) {
+      for (const swarm of this.config.swarms) {
+        try {
+          this.validateSwarmConfig(swarm);
+          await this.storage.saveSwarm(swarm, userId);
+        } catch {
+          // ignore invalid bootstrap swarm config
+        }
+      }
+    }
+
+    const presets = await this.storage.listAgentPresets(userId);
+    if (presets.length === 0) {
+      for (const preset of PRESET_AGENTS) {
+        await this.storage.saveAgentPreset(preset, userId);
+      }
+    }
+
+    this.seededUserIds.add(userId);
+  }
 
   constructor(options: AgentSwarmOptions) {
     if (!options.config && !options.configPath) {
@@ -96,6 +141,8 @@ export class AgentSwarm {
     this.interventionHandler = options.interventionHandler;
     this.logger = options.logger ?? new ConsoleLogger();
     this.webSearchConfig = options.webSearchConfig;
+    this.mcpClient = new MCPClient();
+    this.mcpServerConfigs = options.mcpServers;
 
     // Bootstrap in-memory index from startup config before init.
     for (const swarm of this.config.swarms) {
@@ -120,65 +167,94 @@ export class AgentSwarm {
       await this.storage.saveSetting(AgentSwarm.LLM_CONFIG_KEY, JSON.stringify(this.config.llm));
     }
 
-    // DB is source of truth. If DB is empty, seed it from bootstrap config once.
-    const existingSwarms = await this.storage.listSwarms();
-    if (existingSwarms.length === 0 && this.config.swarms.length > 0) {
-      for (const swarm of this.config.swarms) {
-        await this.storage.saveSwarm(swarm);
-      }
-    }
-
-    // Seed built-in agent presets
-    const existingPresets = await this.storage.listAgentPresets();
-    if (existingPresets.length === 0) {
-      for (const preset of PRESET_AGENTS) {
-        await this.storage.saveAgentPreset(preset);
-      }
-    }
-
-    const persistedSwarms = await this.storage.listSwarms();
-    const invalidSwarmIds: string[] = [];
-    for (const swarm of persistedSwarms) {
-      try {
-        this.validateSwarmConfig(swarm);
-      } catch {
-        invalidSwarmIds.push(swarm.id);
-      }
-    }
-    for (const invalidSwarmId of invalidSwarmIds) {
-      await this.storage.deleteSwarm(invalidSwarmId);
-    }
-
-    const validPersistedSwarms = invalidSwarmIds.length > 0
-      ? await this.storage.listSwarms()
-      : persistedSwarms;
-    this.swarmConfigs.clear();
-    for (const swarm of validPersistedSwarms) {
-      this.swarmConfigs.set(swarm.id, swarm);
-    }
-    this.config.swarms = [...validPersistedSwarms];
-
     this._initialized = true;
+
+    // Connect MCP servers (non-blocking)
+    if (this.mcpServerConfigs) {
+      for (const server of this.mcpServerConfigs) {
+        this.mcpClient.connect(server.id, server).catch((err) => {
+          this.logger.warn("mcp_connect_failed", { serverId: server.id, error: err.message });
+        });
+      }
+    }
   }
 
   /**
    * Create a new conversation for a swarm.
    */
   async createConversation(
+    userId: string,
     swarmId: string,
     title?: string,
     preferences?: Partial<ConversationPreferences>,
   ): Promise<Conversation> {
     this.ensureInitialized();
-    const swarmConfig = this.swarmConfigs.get(swarmId);
+    const normalizedUserId = this.normalizeUserId(userId);
+    await this.ensureUserSeedData(normalizedUserId);
+    const swarmConfig = await this.storage.loadSwarm(swarmId, normalizedUserId);
     if (!swarmConfig) {
       throw new Error(`Swarm not found: ${swarmId}`);
     }
 
-    const conv = await this.storage.createConversation(swarmId, title, preferences);
+    const conv = await this.storage.createConversation(swarmId, normalizedUserId, title, preferences);
 
     return new Conversation(
       conv.id,
+      swarmConfig,
+      this.storage,
+      this.config.llm,
+      this.interventionHandler,
+      [],
+      this.eventLogLevel,
+    );
+  }
+
+  /**
+   * Fork an existing conversation — replicate its message history into a new
+   * conversation, optionally bound to a different swarm config.
+   */
+  async forkConversation(
+    sourceConversationId: string,
+    options: { swarmId?: string; title?: string },
+    userId: string,
+  ): Promise<Conversation> {
+    this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
+    const source = await this.storage.getConversation(sourceConversationId, normalizedUserId);
+    if (!source) throw new Error(`Source conversation not found: ${sourceConversationId}`);
+
+    const swarmId = options.swarmId ?? source.swarmId;
+    const swarmConfig = await this.storage.loadSwarm(swarmId, normalizedUserId);
+    if (!swarmConfig) throw new Error(`Target swarm not found: ${swarmId}`);
+
+    const sourceMessages = await this.storage.getMessages(sourceConversationId);
+
+    const newConv = await this.storage.createConversation(
+      swarmId,
+      normalizedUserId,
+      options.title ?? `${source.title ?? "对话"} (分支)`,
+      {
+        enabledTools: source.enabledTools,
+        thinkingLevel: source.thinkingLevel,
+        directModel: source.directModel,
+      },
+    );
+
+    // Replicate messages with new IDs
+    for (const msg of sourceMessages) {
+      await this.storage.appendMessage(newConv.id, {
+        ...msg,
+        id: crypto.randomUUID(),
+      });
+    }
+
+    // Preserve context reset boundary
+    if (source.contextResetAt) {
+      await this.storage.updateConversationContextReset(newConv.id, source.contextResetAt, normalizedUserId);
+    }
+
+    return new Conversation(
+      newConv.id,
       swarmConfig,
       this.storage,
       this.config.llm,
@@ -193,14 +269,16 @@ export class AgentSwarm {
    * Internally creates a virtual SwarmConfig with one agent for the given model.
    */
   async createDirectConversation(
+    userId: string,
     provider: string,
     modelId: string,
     title?: string,
     preferences?: Partial<ConversationPreferences>,
   ): Promise<Conversation> {
     this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
 
-    const swarmId = AgentSwarm.DIRECT_SWARM_ID;
+    const swarmId = this.getDirectSwarmId(normalizedUserId);
     const agentId = `direct-agent`;
 
     // Create a virtual swarm config for direct chat
@@ -222,12 +300,12 @@ export class AgentSwarm {
 
     // Persist virtual swarm so conversations.swarm_id FK is always valid.
     try {
-      await this.storage.saveSwarm(directSwarm);
+      await this.storage.saveSwarm(directSwarm, normalizedUserId);
     } catch {
       // If saveSwarm fails (e.g. transient DB issue), keep in-memory config available.
     }
 
-    const conv = await this.storage.createConversation(swarmId, title, {
+    const conv = await this.storage.createConversation(swarmId, normalizedUserId, title, {
       ...preferences,
       directModel: { provider, modelId },
     });
@@ -246,15 +324,19 @@ export class AgentSwarm {
   /**
    * Resume an existing conversation.
    */
-  async resumeConversation(conversationId: string): Promise<Conversation> {
+  async resumeConversation(
+    conversationId: string,
+    userId: string,
+  ): Promise<Conversation> {
     this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
 
-    const conv = await this.storage.getConversation(conversationId);
+    const conv = await this.storage.getConversation(conversationId, normalizedUserId);
     if (!conv) {
       throw new Error(`Conversation not found: ${conversationId}`);
     }
 
-    const swarmConfig = this.swarmConfigs.get(conv.swarmId);
+    const swarmConfig = await this.storage.loadSwarm(conv.swarmId, normalizedUserId);
     if (!swarmConfig) {
       throw new Error(`Swarm not found: ${conv.swarmId}`);
     }
@@ -284,16 +366,20 @@ export class AgentSwarm {
    * Clear runtime model context for a conversation without deleting persisted messages.
    * Future runs will only restore messages created after this reset point.
    */
-  async clearConversationContext(conversationId: string): Promise<ConversationContextClearResult> {
+  async clearConversationContext(
+    conversationId: string,
+    userId: string,
+  ): Promise<ConversationContextClearResult> {
     this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
 
-    const conversation = await this.storage.getConversation(conversationId);
+    const conversation = await this.storage.getConversation(conversationId, normalizedUserId);
     if (!conversation) {
       throw new Error(`Conversation not found: ${conversationId}`);
     }
 
     const contextResetAt = Date.now();
-    await this.storage.updateConversationContextReset(conversationId, contextResetAt);
+    await this.storage.updateConversationContextReset(conversationId, contextResetAt, normalizedUserId);
 
     const markerMessage: StoredMessage = {
       id: crypto.randomUUID(),
@@ -319,64 +405,98 @@ export class AgentSwarm {
   /**
    * List conversations for a swarm.
    */
-  async listConversations(swarmId: string) {
+  async listConversations(swarmId: string, userId: string) {
     this.ensureInitialized();
-    return this.storage.listConversations(swarmId);
+    const normalizedUserId = this.normalizeUserId(userId);
+    return this.storage.listConversations(swarmId, normalizedUserId);
   }
 
   /**
    * List all conversations across all swarms.
    */
-  async listAllConversations() {
+  async listAllConversations(userId: string) {
     this.ensureInitialized();
-    return this.storage.listAllConversations();
+    const normalizedUserId = this.normalizeUserId(userId);
+    return this.storage.listAllConversations(normalizedUserId);
   }
 
-  async getConversation(conversationId: string) {
+  async getConversation(conversationId: string, userId: string) {
     this.ensureInitialized();
-    return this.storage.getConversation(conversationId);
+    const normalizedUserId = this.normalizeUserId(userId);
+    return this.storage.getConversation(conversationId, normalizedUserId);
   }
 
   async updateConversationPreferences(
     conversationId: string,
     preferences: Partial<ConversationPreferences>,
+    userId: string,
   ) {
     this.ensureInitialized();
-    return this.storage.updateConversationPreferences(conversationId, preferences);
+    const normalizedUserId = this.normalizeUserId(userId);
+    return this.storage.updateConversationPreferences(conversationId, preferences, normalizedUserId);
   }
 
   /**
    * Delete a conversation.
    */
-  async deleteConversation(id: string) {
+  async deleteConversation(id: string, userId: string) {
     this.ensureInitialized();
-    await this.storage.deleteConversation(id);
+    const normalizedUserId = this.normalizeUserId(userId);
+    await this.storage.deleteConversation(id, normalizedUserId);
   }
 
   /**
    * Get messages for a conversation.
    */
-  async getMessages(conversationId: string) {
+  async getMessages(conversationId: string, userId: string) {
     this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
+    const conversation = await this.storage.getConversation(conversationId, normalizedUserId);
+    if (!conversation) {
+      throw new Error(`Conversation not found: ${conversationId}`);
+    }
     return this.storage.getMessages(conversationId);
   }
 
-  async getConversationUsage(conversationId: string) {
+  async getConversationUsage(conversationId: string, userId: string) {
     this.ensureInitialized();
-    return this.storage.getConversationUsage(conversationId);
+    const normalizedUserId = this.normalizeUserId(userId);
+    return this.storage.getConversationUsage(conversationId, normalizedUserId);
   }
 
-  async getDailyUsage(days?: number) {
+  async getDailyUsage(userId: string, days?: number) {
     this.ensureInitialized();
-    return this.storage.getDailyUsage(days);
+    const normalizedUserId = this.normalizeUserId(userId);
+    return this.storage.getDailyUsage(normalizedUserId, days);
   }
 
-  getSwarmConfig(swarmId: string): SwarmConfig | undefined {
-    return this.swarmConfigs.get(swarmId);
+  async logLLMCall(call: LLMCallRecord): Promise<void> {
+    this.ensureInitialized();
+    await this.storage.logLLMCall(call);
   }
 
-  listSwarms(): SwarmConfig[] {
-    return Array.from(this.swarmConfigs.values());
+  async queryLLMCalls(filter: LLMCallQuery, userId: string): Promise<LLMCallRecord[]> {
+    this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
+    return this.storage.queryLLMCalls(filter, normalizedUserId);
+  }
+
+  async getSwarmConfig(
+    swarmId: string,
+    userId: string,
+  ): Promise<SwarmConfig | undefined> {
+    this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
+    await this.ensureUserSeedData(normalizedUserId);
+    const config = await this.storage.loadSwarm(swarmId, normalizedUserId);
+    return config ?? undefined;
+  }
+
+  async listSwarms(userId: string): Promise<SwarmConfig[]> {
+    this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
+    await this.ensureUserSeedData(normalizedUserId);
+    return this.storage.listSwarms(normalizedUserId);
   }
 
   /**
@@ -558,16 +678,20 @@ export class AgentSwarm {
   /**
    * Add a new swarm config at runtime.
    */
-  async addSwarmConfig(config: SwarmConfig): Promise<SwarmConfig> {
+  async addSwarmConfig(
+    config: SwarmConfig,
+    userId: string,
+  ): Promise<SwarmConfig> {
     this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
     this.validateSwarmConfig(config);
-    if (this.swarmConfigs.has(config.id)) {
+    const existing = await this.storage.loadSwarm(config.id, normalizedUserId);
+    if (existing) {
       throw new Error(`Swarm already exists: ${config.id}`);
     }
 
-    await this.storage.saveSwarm(config);
+    await this.storage.saveSwarm(config, normalizedUserId);
     this.swarmConfigs.set(config.id, config);
-    this.config.swarms.push(config);
     this.logger.info("swarm_created", { swarmId: config.id, name: config.name, mode: config.mode });
     return config;
   }
@@ -575,35 +699,40 @@ export class AgentSwarm {
   /**
    * Update an existing swarm config.
    */
-  async updateSwarmConfig(id: string, config: SwarmConfig): Promise<SwarmConfig> {
+  async updateSwarmConfig(
+    id: string,
+    config: SwarmConfig,
+    userId: string,
+  ): Promise<SwarmConfig> {
     this.ensureInitialized();
-    if (!this.swarmConfigs.has(id)) {
+    const normalizedUserId = this.normalizeUserId(userId);
+    const existing = await this.storage.loadSwarm(id, normalizedUserId);
+    if (!existing) {
       throw new Error(`Swarm not found: ${id}`);
     }
     this.validateSwarmConfig(config);
 
-    await this.storage.saveSwarm(config);
+    await this.storage.saveSwarm(config, normalizedUserId);
     this.swarmConfigs.set(id, config);
-    const index = this.config.swarms.findIndex((s) => s.id === id);
-    if (index >= 0) {
-      this.config.swarms[index] = config;
-    }
     return config;
   }
 
   /**
    * Delete a swarm config.
    */
-  async deleteSwarmConfig(id: string): Promise<void> {
+  async deleteSwarmConfig(
+    id: string,
+    userId: string,
+  ): Promise<void> {
     this.ensureInitialized();
-    const config = this.swarmConfigs.get(id);
+    const normalizedUserId = this.normalizeUserId(userId);
+    const config = await this.storage.loadSwarm(id, normalizedUserId);
     if (!config) {
       throw new Error(`Swarm not found: ${id}`);
     }
 
-    await this.storage.deleteSwarm(id);
+    await this.storage.deleteSwarm(id, normalizedUserId);
     this.swarmConfigs.delete(id);
-    this.config.swarms = this.config.swarms.filter((s) => s.id !== id);
     this.logger.info("swarm_deleted", { swarmId: id, name: config.name });
   }
 
@@ -624,55 +753,93 @@ export class AgentSwarm {
 
   // ── Agent preset management ──
 
-  async listAgentPresets(): Promise<AgentPreset[]> {
+  async listAgentPresets(userId: string): Promise<AgentPreset[]> {
     this.ensureInitialized();
-    return this.storage.listAgentPresets();
+    const normalizedUserId = this.normalizeUserId(userId);
+    await this.ensureUserSeedData(normalizedUserId);
+    return this.storage.listAgentPresets(normalizedUserId);
   }
 
-  async getAgentPreset(id: string): Promise<AgentPreset | null> {
+  async getAgentPreset(
+    id: string,
+    userId: string,
+  ): Promise<AgentPreset | null> {
     this.ensureInitialized();
-    return this.storage.loadAgentPreset(id);
+    const normalizedUserId = this.normalizeUserId(userId);
+    await this.ensureUserSeedData(normalizedUserId);
+    return this.storage.loadAgentPreset(id, normalizedUserId);
   }
 
-  async addAgentPreset(preset: AgentPreset): Promise<AgentPreset> {
+  async addAgentPreset(
+    preset: AgentPreset,
+    userId: string,
+  ): Promise<AgentPreset> {
     this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
     if (!preset.id || !preset.name) {
       throw new Error("Agent preset id and name are required");
     }
-    const existing = await this.storage.loadAgentPreset(preset.id);
+    const existing = await this.storage.loadAgentPreset(preset.id, normalizedUserId);
     if (existing) {
       throw new Error(`Agent preset already exists: ${preset.id}`);
     }
-    await this.storage.saveAgentPreset(preset);
+    await this.storage.saveAgentPreset(preset, normalizedUserId);
     return preset;
   }
 
-  async updateAgentPreset(id: string, preset: AgentPreset): Promise<AgentPreset> {
+  async updateAgentPreset(
+    id: string,
+    preset: AgentPreset,
+    userId: string,
+  ): Promise<AgentPreset> {
     this.ensureInitialized();
-    const existing = await this.storage.loadAgentPreset(id);
+    const normalizedUserId = this.normalizeUserId(userId);
+    const existing = await this.storage.loadAgentPreset(id, normalizedUserId);
     if (!existing) {
       throw new Error(`Agent preset not found: ${id}`);
     }
-    await this.storage.saveAgentPreset(preset);
+    await this.storage.saveAgentPreset(preset, normalizedUserId);
     return preset;
   }
 
-  async deleteAgentPreset(id: string): Promise<void> {
+  async deleteAgentPreset(
+    id: string,
+    userId: string,
+  ): Promise<void> {
     this.ensureInitialized();
-    const existing = await this.storage.loadAgentPreset(id);
+    const normalizedUserId = this.normalizeUserId(userId);
+    const existing = await this.storage.loadAgentPreset(id, normalizedUserId);
     if (!existing) {
       throw new Error(`Agent preset not found: ${id}`);
     }
     if (existing.builtIn) {
       throw new Error(`Built-in agent preset is read-only: ${id}`);
     }
-    await this.storage.deleteAgentPreset(id);
+    await this.storage.deleteAgentPreset(id, normalizedUserId);
+  }
+
+  // ── User management ──
+
+  async createUser(user: { id: string; username: string; passwordHash: string; createdAt: number }): Promise<void> {
+    this.ensureInitialized();
+    await this.storage.createUser(user);
+  }
+
+  async getUserByUsername(username: string): Promise<{ id: string; username: string; passwordHash: string } | null> {
+    this.ensureInitialized();
+    return this.storage.getUserByUsername(username);
+  }
+
+  async getUserById(id: string): Promise<{ id: string; username: string } | null> {
+    this.ensureInitialized();
+    return this.storage.getUserById(id);
   }
 
   async close(): Promise<void> {
     if (this.storage) {
       await this.storage.close();
     }
+    this.seededUserIds.clear();
     this._initialized = false;
   }
 

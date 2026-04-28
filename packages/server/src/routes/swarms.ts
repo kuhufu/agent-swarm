@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { AgentSwarm, SwarmConfig, CollaborationMode } from "@agent-swarm/core";
 import { randomUUID } from "node:crypto";
 import { validateBody } from "../middleware/validate.js";
+import { resolveRequestUserId } from "../middleware/auth.js";
 import { createSwarmSchema, updateSwarmSchema } from "../schemas/index.js";
 
 function normalizeMode(mode: unknown): CollaborationMode {
@@ -49,22 +50,34 @@ function buildSwarmConfig(input: Record<string, unknown>, options: { idOverride?
 export function swarmRoutes(swarm: AgentSwarm): Router {
   const router = Router();
 
-  router.get("/", (_req, res) => {
+  router.get("/", async (req, res) => {
+    const userId = resolveRequestUserId(req);
+    if (!userId) return res.status(401).json({ error: "未登录" });
+
     // Hide virtual direct-chat swarms from swarm management.
-    const swarms = swarm.listSwarms().filter((item) => !item.id.startsWith("__direct_"));
+    const swarms = (await swarm.listSwarms(userId)).filter((item) => !item.id.startsWith("__direct_"));
     res.json({ data: swarms });
   });
 
-  router.get("/:id", (req, res) => {
+  router.get("/:id", async (req, res) => {
+    const userId = resolveRequestUserId(req);
+    if (!userId) return res.status(401).json({ error: "未登录" });
+
     const id = req.params.id as string;
-    const config = swarm.getSwarmConfig(id);
+    const config = await swarm.getSwarmConfig(id, userId);
     if (!config) return res.status(404).json({ error: "Swarm 不存在" });
     res.json({ data: config });
   });
 
   router.post("/", validateBody(createSwarmSchema), async (req, res) => {
+    const userId = resolveRequestUserId(req);
+    if (!userId) return res.status(401).json({ error: "未登录" });
+
     try {
-      const config = await swarm.addSwarmConfig(buildSwarmConfig(req.body as Record<string, unknown>, { autoGenerateId: true }));
+      const config = await swarm.addSwarmConfig(
+        buildSwarmConfig(req.body as Record<string, unknown>, { autoGenerateId: true }),
+        userId,
+      );
       res.status(201).json({ data: config });
     } catch (err: any) {
       const message = err?.message ?? "创建 Swarm 失败";
@@ -74,10 +87,13 @@ export function swarmRoutes(swarm: AgentSwarm): Router {
   });
 
   router.put("/:id", validateBody(updateSwarmSchema), async (req, res) => {
+    const userId = resolveRequestUserId(req);
+    if (!userId) return res.status(401).json({ error: "未登录" });
+
     try {
       const id = req.params.id as string;
       if (!id) return res.status(400).json({ error: "缺少 Swarm ID" });
-      const existing = swarm.getSwarmConfig(id);
+      const existing = await swarm.getSwarmConfig(id, userId);
       if (!existing) return res.status(404).json({ error: "Swarm 不存在" });
 
       const body = req.body as Record<string, unknown>;
@@ -95,7 +111,7 @@ export function swarmRoutes(swarm: AgentSwarm): Router {
         maxConcurrency: body.maxConcurrency ?? existing.maxConcurrency,
       };
 
-      const config = await swarm.updateSwarmConfig(id, buildSwarmConfig(mergedInput, { idOverride: id }));
+      const config = await swarm.updateSwarmConfig(id, buildSwarmConfig(mergedInput, { idOverride: id }), userId);
       res.json({ data: config });
     } catch (err: any) {
       const message = err?.message ?? "更新 Swarm 失败";
@@ -105,8 +121,11 @@ export function swarmRoutes(swarm: AgentSwarm): Router {
   });
 
   router.delete("/:id", async (req, res) => {
+    const userId = resolveRequestUserId(req);
+    if (!userId) return res.status(401).json({ error: "未登录" });
+
     try {
-      await swarm.deleteSwarmConfig(req.params.id as string);
+      await swarm.deleteSwarmConfig(req.params.id as string, userId);
       res.json({ success: true });
     } catch (err: any) {
       const message = err?.message ?? "删除 Swarm 失败";

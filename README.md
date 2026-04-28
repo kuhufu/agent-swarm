@@ -16,6 +16,7 @@
 - 输入体验优化：重复点击“新对话/直接对话”、切换模型、启停工具、点击 `chat-input` 非交互区后会自动聚焦输入框且保持光标
 - 历史消息持久化：SQLite 存储，支持恢复会话上下文
 - 上下文清空：保留历史消息，仅重置后续模型上下文
+- 多租户隔离：`swarms / conversations / agent presets / documents / usage analytics` 按 `userId` 严格隔离
 - 消息 Markdown 渲染：基于 `marked + marked-highlight + highlight.js + dompurify`，支持代码高亮与安全净化
 - 介入机制：支持工具调用/错误/handoff 等节点人工决策
 - 事件分级落库：`eventLogLevel = none | key | full`（默认 `key`）
@@ -35,6 +36,7 @@ agent-swarm/
 │   │   └── frontend-conversation-runtime.md
 │   ├── features/
 │   │   ├── agent-presets.md
+│   │   ├── auth-multi-tenant-isolation.md
 │   │   └── message-markdown-rendering.md
 │   └── planning/
 │       ├── roadmap.md
@@ -67,6 +69,7 @@ cp .env.example .env
 ```env
 PORT=3000
 DB_PATH=./data/agent-swarm.db
+JWT_SECRET=change-me-to-random-string
 ```
 
 ### 3. 启动开发环境
@@ -108,6 +111,13 @@ pnpm --filter @agent-swarm/server test
 
 - `GET /api/health`
 
+### 认证
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/auth/me`（需要认证）
+- `POST /api/auth/logout`（需要认证）
+
 ### Swarm 管理
 
 - `GET /api/swarms`
@@ -138,6 +148,13 @@ pnpm --filter @agent-swarm/server test
 
 - `GET /api/conversations/:id/messages`
 
+### 文档知识库
+
+- `GET /api/documents`
+- `POST /api/documents/upload`
+- `POST /api/documents/search`
+- `DELETE /api/documents/:id`
+
 ### LLM 配置
 
 - `GET /api/config`
@@ -149,6 +166,10 @@ pnpm --filter @agent-swarm/server test
 ## WebSocket 协议（核心）
 
 连接：`ws://localhost:3000/ws`
+
+- WebSocket 连接必须携带 token：
+  - 查询参数：`ws://localhost:3000/ws?token=<JWT>`
+  - 或请求头：`Authorization: Bearer <JWT>`
 
 客户端 -> 服务端常用消息：
 
@@ -180,6 +201,22 @@ pnpm --filter @agent-swarm/server test
 1. 指定 `swarmId`：走 swarm 模式会话。
 2. 指定 `conversationId`：续聊已有会话。
 3. 指定 `provider + modelId`：直接对话模式（不依赖预建 swarm）。
+
+### 多租户数据边界
+
+认证开启且为强制要求，以下资源均按当前登录用户隔离，默认不会跨用户可见：
+
+- Swarm 配置
+- 会话与消息入口（会话查询/恢复/分支/删除）
+- Agent 预设
+- 文档知识库（列表、上传、检索、删除）
+- 用量统计（会话用量、每日汇总、LLM 调用明细）
+
+历史公共用户数据迁移（`__public__` -> `ec33ff27-cc7e-4e4c-aba8-c4599d494286`）可执行：
+
+```bash
+./scripts/migrate-public-user-id.sh ./packages/server/data/agent-swarm.db ec33ff27-cc7e-4e4c-aba8-c4599d494286
+```
 
 ## 提供商思考格式
 
@@ -276,6 +313,7 @@ export default defineConfig({
 
 - [历史消息恢复上下文机制](./docs/architecture/context-recovery.md)
 - [Agent 预设管理与复用](./docs/features/agent-presets.md)
+- [认证与多租户隔离](./docs/features/auth-multi-tenant-isolation.md)
 - [前端会话运行态分桶机制](./docs/architecture/frontend-conversation-runtime.md)
 - [消息 Markdown 渲染](./docs/features/message-markdown-rendering.md)
 - [项目路线图](./docs/planning/roadmap.md)

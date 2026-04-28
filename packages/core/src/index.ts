@@ -36,6 +36,8 @@ export type {
   ConversationDirectModel,
   ConversationUsage,
   DailyUsage,
+  LLMCallRecord,
+  LLMCallQuery,
 } from "./storage/interface.js";
 
 // LLM types — LLMBackendConfig is already exported from core/types.js above
@@ -62,6 +64,8 @@ export { AutoStrategy, ConfirmStrategy, ReviewStrategy, EditStrategy, RejectStra
 
 // Storage
 export { SqliteStorage } from "./storage/sqlite.js";
+export { SQLiteVectorStore } from "./storage/vector-store-sqlite.js";
+export type { IVectorStore, Document, DocumentChunk, SearchResult } from "./storage/vector-store.js";
 
 // Tools
 export { createRouteToAgentTool, routeToAgentTool } from "./tools/route-to-agent.js";
@@ -71,6 +75,10 @@ export { createClientBridgeTool } from "./tools/client-bridge.js";
 export type { ClientToolDefinition, ClientToolExecutionResult } from "./tools/client-bridge.js";
 export { createWebSearchTool } from "./tools/web-search.js";
 export type { WebSearchConfig, SearchProvider } from "./tools/web-search.js";
+export { createRetrieveKnowledgeTool } from "./tools/retrieve-knowledge.js";
+export { MCPClient } from "./tools/mcp/client.js";
+export type { MCPServerConfig, MCPTransport, MCPTool, MCPServerStatus } from "./tools/mcp/client.js";
+export { createMCPToolProvider, createAllMCPTools } from "./tools/mcp/tool-provider.js";
 // Modes
 export { RouterMode } from "./modes/router.js";
 export { SequentialMode } from "./modes/sequential.js";

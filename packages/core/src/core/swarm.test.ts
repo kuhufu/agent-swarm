@@ -5,6 +5,8 @@ import { rmSync } from "node:fs";
 import { AgentSwarm } from "./swarm.js";
 import type { AgentSwarmRootConfig, SwarmConfig, EventLogLevel, SwarmEvent } from "./types.js";
 
+const TEST_USER_ID = "user-test";
+
 function createTestDbPath(testName: string): string {
   return join(
     tmpdir(),
@@ -75,7 +77,7 @@ describe("AgentSwarm persistence", () => {
     });
 
     await first.init();
-    await first.addSwarmConfig(createSwarmConfig("persisted_swarm"));
+    await first.addSwarmConfig(createSwarmConfig("persisted_swarm"), TEST_USER_ID);
     await first.close();
 
     const second = new AgentSwarm({
@@ -83,7 +85,7 @@ describe("AgentSwarm persistence", () => {
     });
 
     await second.init();
-    const swarms = second.listSwarms();
+    const swarms = await second.listSwarms(TEST_USER_ID);
 
     expect(swarms).toHaveLength(1);
     expect(swarms[0].id).toBe("persisted_swarm");
@@ -148,7 +150,7 @@ describe("AgentSwarm persistence", () => {
     });
 
     await swarm.init();
-    expect(swarm.listSwarms()).toHaveLength(0);
+    expect(await swarm.listSwarms(TEST_USER_ID)).toHaveLength(0);
     await swarm.close();
     cleanupDb(dbPath);
   });
@@ -162,10 +164,10 @@ describe("AgentSwarm persistence", () => {
     });
 
     await swarm.init();
-    await swarm.createConversation("delete_target", "to be deleted");
+    await swarm.createConversation(TEST_USER_ID, "delete_target", "to be deleted", undefined);
 
-    await expect(swarm.deleteSwarmConfig("delete_target")).resolves.toBeUndefined();
-    expect(swarm.listSwarms()).toHaveLength(0);
+    await expect(swarm.deleteSwarmConfig("delete_target", TEST_USER_ID)).resolves.toBeUndefined();
+    expect(await swarm.listSwarms(TEST_USER_ID)).toHaveLength(0);
 
     await swarm.close();
     cleanupDb(dbPath);
@@ -181,29 +183,29 @@ describe("AgentSwarm persistence", () => {
 
     await swarm.init();
 
-    const first = await swarm.createDirectConversation("openai", "gpt-4o-mini");
-    const firstConversation = await swarm.getConversation(first.getId());
-    expect(firstConversation?.swarmId).toBe("__direct_chat");
+    const first = await swarm.createDirectConversation(TEST_USER_ID, "openai", "gpt-4o-mini", undefined, undefined);
+    const firstConversation = await swarm.getConversation(first.getId(), TEST_USER_ID);
+    expect(firstConversation?.swarmId).toBe(`__direct_chat_${TEST_USER_ID}`);
     expect(firstConversation?.directModel).toEqual({
       provider: "openai",
       modelId: "gpt-4o-mini",
     });
 
-    const second = await swarm.createDirectConversation("anthropic", "claude-3-5-sonnet");
-    const secondConversation = await swarm.getConversation(second.getId());
-    expect(secondConversation?.swarmId).toBe("__direct_chat");
+    const second = await swarm.createDirectConversation(TEST_USER_ID, "anthropic", "claude-3-5-sonnet", undefined, undefined);
+    const secondConversation = await swarm.getConversation(second.getId(), TEST_USER_ID);
+    expect(secondConversation?.swarmId).toBe(`__direct_chat_${TEST_USER_ID}`);
     expect(secondConversation?.directModel).toEqual({
       provider: "anthropic",
       modelId: "claude-3-5-sonnet",
     });
 
-    const resumedFirst = await swarm.resumeConversation(first.getId()) as unknown as { swarmConfig: SwarmConfig };
+    const resumedFirst = await swarm.resumeConversation(first.getId(), TEST_USER_ID) as unknown as { swarmConfig: SwarmConfig };
     expect(resumedFirst.swarmConfig.agents[0]?.model).toEqual({
       provider: "openai",
       modelId: "gpt-4o-mini",
     });
 
-    const resumedSecond = await swarm.resumeConversation(second.getId()) as unknown as { swarmConfig: SwarmConfig };
+    const resumedSecond = await swarm.resumeConversation(second.getId(), TEST_USER_ID) as unknown as { swarmConfig: SwarmConfig };
     expect(resumedSecond.swarmConfig.agents[0]?.model).toEqual({
       provider: "anthropic",
       modelId: "claude-3-5-sonnet",
@@ -216,11 +218,149 @@ describe("AgentSwarm persistence", () => {
     });
     await restarted.init();
 
-    const persistedDirectSwarms = restarted.listSwarms().filter((item) => item.id.startsWith("__direct_"));
+    const persistedDirectSwarms = (await restarted.listSwarms(TEST_USER_ID)).filter((item) => item.id.startsWith("__direct_"));
     expect(persistedDirectSwarms).toHaveLength(1);
-    expect(persistedDirectSwarms[0].id).toBe("__direct_chat");
+    expect(persistedDirectSwarms[0].id).toBe(`__direct_chat_${TEST_USER_ID}`);
 
     await restarted.close();
+    cleanupDb(dbPath);
+  });
+
+  it("preserves conversation preferences when forking", async () => {
+    const dbPath = createTestDbPath("fork-preferences");
+    cleanupDb(dbPath);
+
+    const swarm = new AgentSwarm({
+      config: createRootConfig(dbPath, [createSwarmConfig("default_swarm")]),
+    });
+    await swarm.init();
+
+    const source = await swarm.createConversation(TEST_USER_ID, "default_swarm", "source", {
+      enabledTools: ["web_search", "mcp"],
+      thinkingLevel: "high",
+      directModel: { provider: "openai", modelId: "gpt-4o-mini" },
+    });
+
+    const forked = await swarm.forkConversation(source.getId(), {}, TEST_USER_ID);
+    const sourceInfo = await swarm.getConversation(source.getId(), TEST_USER_ID);
+    const forkedInfo = await swarm.getConversation(forked.getId(), TEST_USER_ID);
+
+    expect(sourceInfo?.enabledTools).toEqual(["web_search", "mcp"]);
+    expect(forkedInfo?.enabledTools).toEqual(sourceInfo?.enabledTools);
+    expect(forkedInfo?.thinkingLevel).toBe(sourceInfo?.thinkingLevel);
+    expect(forkedInfo?.directModel).toEqual(sourceInfo?.directModel);
+
+    await swarm.close();
+    cleanupDb(dbPath);
+  });
+
+  it("isolates usage and llm-call analytics by user", async () => {
+    const dbPath = createTestDbPath("usage-isolation");
+    cleanupDb(dbPath);
+
+    const swarm = new AgentSwarm({
+      config: createRootConfig(dbPath, [createSwarmConfig("default_swarm")]),
+    });
+    await swarm.init();
+
+    const privateUserId = "user_a";
+    const privateConversation = await swarm.createDirectConversation(privateUserId, "openai", "gpt-4o-mini", undefined, undefined);
+    const otherConversation = await swarm.createDirectConversation("user_b", "openai", "gpt-4o-mini", undefined, undefined);
+
+    const internalStorage = (swarm as unknown as { storage: {
+      appendMessage: (
+        conversationId: string,
+        message: {
+          id: string;
+          role: string;
+          content: string;
+          metadata: string;
+          timestamp: number;
+          createdAt: number;
+        },
+      ) => Promise<void>;
+    } }).storage;
+
+    const timestamp = Date.now();
+    await internalStorage.appendMessage(privateConversation.getId(), {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: "private",
+      metadata: JSON.stringify({
+        provider: "openai",
+        model: "gpt-4o-mini",
+        usage: {
+          input: 11,
+          output: 7,
+          cost: { total: 0.12 },
+        },
+      }),
+      timestamp,
+      createdAt: timestamp,
+    });
+    await internalStorage.appendMessage(otherConversation.getId(), {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: "public",
+      metadata: JSON.stringify({
+        provider: "openai",
+        model: "gpt-4o-mini",
+        usage: {
+          input: 999,
+          output: 888,
+          cost: { total: 9.99 },
+        },
+      }),
+      timestamp,
+      createdAt: timestamp,
+    });
+
+    await swarm.logLLMCall({
+      id: crypto.randomUUID(),
+      conversationId: privateConversation.getId(),
+      providerId: "openai",
+      modelId: "gpt-4o-mini",
+      promptTokens: 11,
+      completionTokens: 7,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      cost: 0.12,
+      latencyMs: 100,
+      status: "ok",
+      timestamp,
+    });
+    await swarm.logLLMCall({
+      id: crypto.randomUUID(),
+      conversationId: otherConversation.getId(),
+      providerId: "openai",
+      modelId: "gpt-4o-mini",
+      promptTokens: 999,
+      completionTokens: 888,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      cost: 9.99,
+      latencyMs: 100,
+      status: "ok",
+      timestamp,
+    });
+
+    const privateDailyUsage = await swarm.getDailyUsage(privateUserId, 7);
+    expect(privateDailyUsage).toHaveLength(1);
+    expect(privateDailyUsage[0].inputTokens).toBe(11);
+    expect(privateDailyUsage[0].outputTokens).toBe(7);
+
+    const privateConversationUsage = await swarm.getConversationUsage(privateConversation.getId(), privateUserId);
+    expect(privateConversationUsage).toHaveLength(1);
+    expect(privateConversationUsage[0].totalInputTokens).toBe(11);
+
+    const deniedConversationUsage = await swarm.getConversationUsage(otherConversation.getId(), privateUserId);
+    expect(deniedConversationUsage).toHaveLength(0);
+
+    const privateCalls = await swarm.queryLLMCalls({}, privateUserId);
+    expect(privateCalls).toHaveLength(1);
+    expect(privateCalls[0].conversationId).toBe(privateConversation.getId());
+
+    await swarm.close();
     cleanupDb(dbPath);
   });
 
@@ -233,7 +373,7 @@ describe("AgentSwarm persistence", () => {
     });
     await swarm.init();
 
-    const conversation = await swarm.createConversation("default_swarm");
+    const conversation = await swarm.createConversation(TEST_USER_ID, "default_swarm", undefined, undefined);
     const conversationId = conversation.getId();
     const internalStorage = (swarm as unknown as { storage: {
       appendMessage: (
@@ -248,7 +388,7 @@ describe("AgentSwarm persistence", () => {
       ) => Promise<void>;
     } }).storage;
 
-    const baseTimestamp = Date.now();
+    const baseTimestamp = Date.now() - 10_000;
     await internalStorage.appendMessage(conversationId, {
       id: crypto.randomUUID(),
       role: "user",
@@ -264,19 +404,19 @@ describe("AgentSwarm persistence", () => {
       createdAt: baseTimestamp + 1,
     });
 
-    const historyBeforeClear = await swarm.getMessages(conversationId);
+    const historyBeforeClear = await swarm.getMessages(conversationId, TEST_USER_ID);
     expect(historyBeforeClear).toHaveLength(2);
 
-    const clearResult = await swarm.clearConversationContext(conversationId);
+    const clearResult = await swarm.clearConversationContext(conversationId, TEST_USER_ID);
     expect(clearResult.conversationId).toBe(conversationId);
     expect(typeof clearResult.contextResetAt).toBe("number");
     expect(clearResult.markerMessage.role).toBe("notification");
     expect(clearResult.markerMessage.content).toContain("已清空上下文");
     expect(typeof clearResult.markerMessage.metadata).toBe("string");
-    const conversationAfterClear = await swarm.getConversation(conversationId);
+    const conversationAfterClear = await swarm.getConversation(conversationId, TEST_USER_ID);
     expect(conversationAfterClear?.contextResetAt).toBe(clearResult.contextResetAt);
 
-    const resumedWithoutNewMessages = await swarm.resumeConversation(conversationId) as unknown as {
+    const resumedWithoutNewMessages = await swarm.resumeConversation(conversationId, TEST_USER_ID) as unknown as {
       restoredMessages: Array<{ role: string }>;
     };
     expect(resumedWithoutNewMessages.restoredMessages).toHaveLength(0);
@@ -290,13 +430,13 @@ describe("AgentSwarm persistence", () => {
       createdAt: postResetTimestamp,
     });
 
-    const resumedWithNewMessage = await swarm.resumeConversation(conversationId) as unknown as {
+    const resumedWithNewMessage = await swarm.resumeConversation(conversationId, TEST_USER_ID) as unknown as {
       restoredMessages: Array<{ role: string }>;
     };
     expect(resumedWithNewMessage.restoredMessages).toHaveLength(1);
     expect(resumedWithNewMessage.restoredMessages[0]?.role).toBe("user");
 
-    const historyAfterClear = await swarm.getMessages(conversationId);
+    const historyAfterClear = await swarm.getMessages(conversationId, TEST_USER_ID);
     expect(historyAfterClear).toHaveLength(4);
 
     await swarm.close();
@@ -312,7 +452,7 @@ describe("AgentSwarm persistence", () => {
     });
     await swarm.init();
 
-    const conversation = await swarm.createConversation("default_swarm");
+    const conversation = await swarm.createConversation(TEST_USER_ID, "default_swarm", undefined, undefined);
     const internalConversation = conversation as unknown as { emit: (event: SwarmEvent) => void };
     const internalStorage = (swarm as unknown as { storage: {
       getEvents: (conversationId: string, eventType?: string) => Promise<Array<{ eventType: string }>>;
@@ -347,7 +487,7 @@ describe("AgentSwarm persistence", () => {
     });
     await swarm.init();
 
-    const conversation = await swarm.createConversation("default_swarm");
+    const conversation = await swarm.createConversation(TEST_USER_ID, "default_swarm", undefined, undefined);
     const internalConversation = conversation as unknown as { emit: (event: SwarmEvent) => void };
     const internalStorage = (swarm as unknown as { storage: {
       getEvents: (conversationId: string, eventType?: string) => Promise<Array<{ eventType: string }>>;

@@ -40,6 +40,7 @@ export interface ConversationPromptOptions {
     request: { toolName: string; toolCallId: string; params: unknown },
   ) => Promise<ClientToolExecutionResult>;
   webSearchConfig?: WebSearchConfig;
+  mcpTools?: AgentTool<any>[];
 }
 
 interface ConversationRuntimeOptions {
@@ -50,6 +51,7 @@ interface ConversationRuntimeOptions {
     request: { toolName: string; toolCallId: string; params: unknown },
   ) => Promise<ClientToolExecutionResult>;
   webSearchConfig?: WebSearchConfig;
+  mcpTools?: AgentTool<any>[];
 }
 
 export class Conversation {
@@ -126,6 +128,7 @@ export class Conversation {
         isError: true,
       })),
       webSearchConfig: options.webSearchConfig,
+      mcpTools: options.mcpTools,
     };
     this.syncActiveAgentTools();
 
@@ -396,6 +399,15 @@ export class Conversation {
       tools.push(createWebSearchTool(
         this.runtimeOptions.webSearchConfig ?? { provider: "duckduckgo" },
       ));
+    }
+
+    // MCP tools (from connected MCP servers)
+    if (this.runtimeOptions.enabledTools.includes("mcp") && this.runtimeOptions.mcpTools) {
+      for (const mcpTool of this.runtimeOptions.mcpTools) {
+        if (!tools.some((t) => t.name === mcpTool.name)) {
+          tools.push(mcpTool);
+        }
+      }
     }
 
     return tools;

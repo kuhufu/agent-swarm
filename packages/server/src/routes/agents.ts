@@ -1,14 +1,18 @@
 import { Router } from "express";
 import type { AgentSwarm } from "@agent-swarm/core";
 import { validateBody } from "../middleware/validate.js";
+import { resolveRequestUserId } from "../middleware/auth.js";
 import { createAgentPresetSchema, updateAgentPresetSchema } from "../schemas/index.js";
 
 export function agentRoutes(swarm: AgentSwarm): Router {
   const router = Router();
 
-  router.get("/", async (_req, res) => {
+  router.get("/", async (req, res) => {
+    const userId = resolveRequestUserId(req);
+    if (!userId) return res.status(401).json({ error: "未登录" });
+
     try {
-      const presets = await swarm.listAgentPresets();
+      const presets = await swarm.listAgentPresets(userId);
       res.json({ data: presets });
     } catch (err: any) {
       res.status(500).json({ error: err?.message ?? "Failed to list agent presets" });
@@ -16,8 +20,11 @@ export function agentRoutes(swarm: AgentSwarm): Router {
   });
 
   router.get("/:id", async (req, res) => {
+    const userId = resolveRequestUserId(req);
+    if (!userId) return res.status(401).json({ error: "未登录" });
+
     try {
-      const preset = await swarm.getAgentPreset(req.params.id as string);
+      const preset = await swarm.getAgentPreset(req.params.id as string, userId);
       if (!preset) return res.status(404).json({ error: "Agent 预设不存在" });
       res.json({ data: preset });
     } catch (err: any) {
@@ -26,6 +33,9 @@ export function agentRoutes(swarm: AgentSwarm): Router {
   });
 
   router.post("/", validateBody(createAgentPresetSchema), async (req, res) => {
+    const userId = resolveRequestUserId(req);
+    if (!userId) return res.status(401).json({ error: "未登录" });
+
     try {
       const input = req.body;
       const preset = {
@@ -38,7 +48,7 @@ export function agentRoutes(swarm: AgentSwarm): Router {
         tags: input.tags ?? [],
         builtIn: false,
       };
-      const created = await swarm.addAgentPreset(preset);
+      const created = await swarm.addAgentPreset(preset, userId);
       res.status(201).json({ data: created });
     } catch (err: any) {
       const message = err?.message ?? "创建 Agent 预设失败";
@@ -48,9 +58,12 @@ export function agentRoutes(swarm: AgentSwarm): Router {
   });
 
   router.put("/:id", validateBody(updateAgentPresetSchema), async (req, res) => {
+    const userId = resolveRequestUserId(req);
+    if (!userId) return res.status(401).json({ error: "未登录" });
+
     try {
       const id = req.params.id as string;
-      const existing = await swarm.getAgentPreset(id);
+      const existing = await swarm.getAgentPreset(id, userId);
       if (!existing) return res.status(404).json({ error: "Agent 预设不存在" });
 
       const input = req.body;
@@ -67,7 +80,7 @@ export function agentRoutes(swarm: AgentSwarm): Router {
         tags: input.tags ?? existing.tags,
         builtIn: existing.builtIn,
       };
-      const updated = await swarm.updateAgentPreset(id, preset);
+      const updated = await swarm.updateAgentPreset(id, preset, userId);
       res.json({ data: updated });
     } catch (err: any) {
       const message = err?.message ?? "更新 Agent 预设失败";
@@ -77,8 +90,11 @@ export function agentRoutes(swarm: AgentSwarm): Router {
   });
 
   router.delete("/:id", async (req, res) => {
+    const userId = resolveRequestUserId(req);
+    if (!userId) return res.status(401).json({ error: "未登录" });
+
     try {
-      await swarm.deleteAgentPreset(req.params.id);
+      await swarm.deleteAgentPreset(req.params.id, userId);
       res.json({ success: true });
     } catch (err: any) {
       const message = err?.message ?? "Failed to delete agent preset";

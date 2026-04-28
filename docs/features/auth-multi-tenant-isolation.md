@@ -1,0 +1,73 @@
+# 认证与多租户隔离
+
+本文记录服务端当前认证与租户隔离行为。
+
+## 认证入口
+
+- 公开接口：
+  - `POST /api/auth/register`
+  - `POST /api/auth/login`
+- 受保护接口：
+  - `GET /api/auth/me`
+  - `POST /api/auth/logout`
+  - 其他 `/api/*` 业务接口（`/api/health` 除外）
+
+`authMiddleware` 仅放行登录/注册，不再放行整个 `/auth/*` 前缀，因此 `/api/auth/me` 会执行 JWT 校验并写入 `req.user`。
+
+`/api/auth/logout` 为无状态退出接口：服务端返回成功，客户端负责清理本地 token 与会话状态。
+
+## 租户隔离范围
+
+服务端默认并且始终按 `req.user.id` 进行数据隔离：
+
+- `swarms`
+- `conversations`
+- `agent presets`
+- `documents`（知识库）
+- `usage analytics`（用量统计）
+
+对应列表/查询/创建/更新/删除操作均传递用户上下文，避免跨用户可见或误操作。
+
+## 文档知识库隔离
+
+文档上传会写入 `userId`，以下接口均按当前用户过滤：
+
+- `GET /api/documents`
+- `POST /api/documents/upload`
+- `POST /api/documents/search`
+- `DELETE /api/documents/:id`
+
+## 用量统计隔离
+
+以下接口会按当前 `req.user.id` 聚合/查询，不会返回历史公共用户（`__public__`）或其他用户数据：
+
+- `GET /api/conversations/:id/usage`
+- `GET /api/usage/daily`
+- `GET /api/llm/calls`
+
+## 历史公共用户迁移
+
+如需将历史 `__public__` 数据迁移到已注册用户 `ec33ff27-cc7e-4e4c-aba8-c4599d494286`，执行：
+
+```bash
+./scripts/migrate-public-user-id.sh ./packages/server/data/agent-swarm.db ec33ff27-cc7e-4e4c-aba8-c4599d494286
+```
+
+## WebSocket 认证
+
+WebSocket 连接需要携带 JWT：
+
+- 查询参数：`/ws?token=<JWT>`
+- 或请求头：`Authorization: Bearer <JWT>`
+
+连接后会将用户身份绑定到会话创建/恢复/偏好更新流程。
+
+## 会话分支偏好继承
+
+`forkConversation` 在创建分支会话时会复制源会话偏好：
+
+- `enabledTools`
+- `thinkingLevel`
+- `directModel`
+
+分支对话将保持与源会话一致的运行配置。

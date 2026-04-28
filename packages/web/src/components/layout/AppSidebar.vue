@@ -4,6 +4,8 @@ import { useRoute, useRouter } from "vue-router";
 import { useSwarmStore } from "../../stores/swarm.js";
 import { useConversationStore } from "../../stores/conversation.js";
 import { useThemeStore } from "../../stores/theme.js";
+import { useAuthStore } from "../../stores/auth.js";
+import { useWebSocket } from "../../composables/useWebSocket.js";
 import { formatTimeLocale } from "../../utils/format.js";
 import type { ConversationInfo } from "../../types/index.js";
 import { showError } from "../../utils/ui-feedback.js";
@@ -13,15 +15,19 @@ const router = useRouter();
 const swarmStore = useSwarmStore();
 const conversationStore = useConversationStore();
 const themeStore = useThemeStore();
+const authStore = useAuthStore();
+const { disconnect } = useWebSocket();
 
 const navItems = [
   { label: "对话", route: "/chat", icon: MessageIcon },
   { label: "Swarm", route: "/swarms", icon: SwarmIcon },
   { label: "Agents", route: "/agents", icon: AgentsIcon },
+  { label: "知识库", route: "/documents", icon: KnowledgeIcon },
   { label: "设置", route: "/settings", icon: SettingsIcon },
 ];
 
 const isChatRoute = computed(() => route.name === "chat");
+const showAuthSection = computed(() => authStore.isAuthenticated);
 const routeConversationId = computed(() => {
   const rawConversationId = route.params.conversationId;
   if (typeof rawConversationId !== "string") {
@@ -129,6 +135,14 @@ function navigateTo(path: string) {
     return;
   }
   void router.push(path);
+}
+
+async function handleLogout() {
+  await authStore.logout();
+  disconnect();
+  conversationStore.setCurrentConversation(null);
+  swarmStore.clearSwarmSelection();
+  await router.replace("/login");
 }
 
 const formatTime = formatTimeLocale;
@@ -309,6 +323,15 @@ function SettingsIcon() {
   ]);
 }
 
+function KnowledgeIcon() {
+  return h("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", class: "nav-icon" }, [
+    h("path", { d: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20" }),
+    h("path", { d: "M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" }),
+    h("line", { x1: "8", y1: "7", x2: "16", y2: "7" }),
+    h("line", { x1: "8", y1: "11", x2: "14", y2: "11" }),
+  ]);
+}
+
 import { h } from "vue";
 </script>
 
@@ -395,6 +418,10 @@ import { h } from "vue";
     </section>
 
     <div class="sidebar-footer">
+      <div v-if="showAuthSection" class="auth-section">
+        <span class="auth-user">{{ authStore.user?.username }}</span>
+        <button class="logout-btn" @click="handleLogout">退出登录</button>
+      </div>
       <button class="theme-toggle" @click="themeStore.toggle()" :title="themeStore.current === 'dark' ? '切换亮色主题' : '切换暗色主题'">
         <svg v-if="themeStore.current === 'dark'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="5" />
@@ -761,13 +788,46 @@ import { h } from "vue";
   padding: 12px 16px;
   border-top: 1px solid var(--color-border-subtle);
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
+}
+
+.auth-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.auth-user {
+  min-width: 0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.logout-btn {
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.08);
+  color: #fca5a5;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.16);
 }
 
 .theme-toggle {
   flex-shrink: 0;
-  width: 34px;
+  width: 100%;
   height: 34px;
   display: flex;
   align-items: center;

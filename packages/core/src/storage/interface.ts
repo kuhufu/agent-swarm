@@ -65,6 +65,31 @@ export interface DailyUsage {
   cost: number;
 }
 
+export interface LLMCallRecord {
+  id: string;
+  conversationId: string;
+  agentId?: string;
+  providerId: string;
+  modelId: string;
+  promptTokens: number;
+  completionTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  cost: number;
+  latencyMs?: number;
+  status: "ok" | "error";
+  errorMessage?: string;
+  timestamp: number;
+}
+
+export interface LLMCallQuery {
+  conversationId?: string;
+  providerId?: string;
+  modelId?: string;
+  days?: number;
+  limit?: number;
+}
+
 export interface IStorage {
   init(): Promise<void>;
   close(): Promise<void>;
@@ -73,28 +98,35 @@ export interface IStorage {
   saveSetting(key: string, value: string): Promise<void>;
   loadSetting(key: string): Promise<string | null>;
 
+  // User management
+  createUser(user: { id: string; username: string; passwordHash: string; createdAt: number }): Promise<void>;
+  getUserByUsername(username: string): Promise<{ id: string; username: string; passwordHash: string } | null>;
+  getUserById(id: string): Promise<{ id: string; username: string } | null>;
+
   // Swarm management
-  saveSwarm(config: SwarmConfig): Promise<void>;
-  loadSwarm(id: string): Promise<SwarmConfig | null>;
-  listSwarms(): Promise<SwarmConfig[]>;
-  deleteSwarm(id: string): Promise<void>;
+  saveSwarm(config: SwarmConfig, userId: string): Promise<void>;
+  loadSwarm(id: string, userId: string): Promise<SwarmConfig | null>;
+  listSwarms(userId: string): Promise<SwarmConfig[]>;
+  deleteSwarm(id: string, userId: string): Promise<void>;
 
   // Conversation management
   createConversation(
     swarmId: string,
+    userId: string,
     title?: string,
     preferences?: Partial<ConversationPreferences>,
   ): Promise<Conversation>;
-  getConversation(id: string): Promise<Conversation | null>;
-  listConversations(swarmId: string): Promise<Conversation[]>;
-  listAllConversations(): Promise<Conversation[]>;
+  getConversation(id: string, userId: string): Promise<Conversation | null>;
+  listConversations(swarmId: string, userId: string): Promise<Conversation[]>;
+  listAllConversations(userId: string): Promise<Conversation[]>;
   updateConversationPreferences(
     id: string,
     preferences: Partial<ConversationPreferences>,
+    userId: string,
   ): Promise<Conversation>;
-  updateConversationTitle(id: string, title: string): Promise<void>;
-  updateConversationContextReset(id: string, contextResetAt: number): Promise<void>;
-  deleteConversation(id: string): Promise<void>;
+  updateConversationTitle(id: string, title: string, userId?: string): Promise<void>;
+  updateConversationContextReset(id: string, contextResetAt: number, userId?: string): Promise<void>;
+  deleteConversation(id: string, userId: string): Promise<void>;
 
   // Message management
   appendMessage(conversationId: string, message: StoredMessage): Promise<void>;
@@ -103,16 +135,20 @@ export interface IStorage {
   clearMessages(conversationId: string): Promise<void>;
 
   // Agent preset management
-  saveAgentPreset(preset: AgentPreset): Promise<void>;
-  loadAgentPreset(id: string): Promise<AgentPreset | null>;
-  listAgentPresets(): Promise<AgentPreset[]>;
-  deleteAgentPreset(id: string): Promise<void>;
+  saveAgentPreset(preset: AgentPreset, userId: string): Promise<void>;
+  loadAgentPreset(id: string, userId: string): Promise<AgentPreset | null>;
+  listAgentPresets(userId: string): Promise<AgentPreset[]>;
+  deleteAgentPreset(id: string, userId: string): Promise<void>;
 
   // Event log
   logEvent(conversationId: string, event: StoredEvent): Promise<void>;
   getEvents(conversationId: string, eventType?: string): Promise<StoredEvent[]>;
 
   // Usage analytics
-  getConversationUsage(conversationId: string): Promise<ConversationUsage[]>;
-  getDailyUsage(days?: number): Promise<DailyUsage[]>;
+  getConversationUsage(conversationId: string, userId: string): Promise<ConversationUsage[]>;
+  getDailyUsage(userId: string, days?: number): Promise<DailyUsage[]>;
+
+  // LLM call log
+  logLLMCall(call: LLMCallRecord): Promise<void>;
+  queryLLMCalls(filter: LLMCallQuery, userId: string): Promise<LLMCallRecord[]>;
 }
