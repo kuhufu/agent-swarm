@@ -41,6 +41,7 @@ export interface ConversationPromptOptions {
   ) => Promise<ClientToolExecutionResult>;
   webSearchConfig?: WebSearchConfig;
   mcpTools?: AgentTool<any>[];
+  serverTools?: AgentTool<any>[];
 }
 
 interface ConversationRuntimeOptions {
@@ -52,6 +53,7 @@ interface ConversationRuntimeOptions {
   ) => Promise<ClientToolExecutionResult>;
   webSearchConfig?: WebSearchConfig;
   mcpTools?: AgentTool<any>[];
+  serverTools?: AgentTool<any>[];
 }
 
 export class Conversation {
@@ -129,6 +131,7 @@ export class Conversation {
       })),
       webSearchConfig: options.webSearchConfig,
       mcpTools: options.mcpTools,
+      serverTools: options.serverTools,
     };
     this.syncActiveAgentTools();
 
@@ -407,6 +410,15 @@ export class Conversation {
         if (!tools.some((t) => t.name === mcpTool.name)) {
           tools.push(mcpTool);
         }
+      }
+    }
+
+    for (const serverTool of this.runtimeOptions.serverTools ?? []) {
+      if (!this.runtimeOptions.enabledTools.includes(serverTool.name)) {
+        continue;
+      }
+      if (!tools.some((t) => t.name === serverTool.name)) {
+        tools.push(serverTool);
       }
     }
 

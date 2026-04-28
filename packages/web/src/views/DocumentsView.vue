@@ -27,6 +27,7 @@ const uploadTitle = ref("");
 const uploadContent = ref("");
 const selectedDoc = ref<Document | null>(null);
 const deletingId = ref<string | null>(null);
+const editingDocId = ref<string | null>(null);
 
 const displayDocuments = computed<Document[]>(() => {
   const q = searchQuery.value.trim();
@@ -74,6 +75,11 @@ async function loadDocuments() {
   }
 }
 
+async function loadDocumentDetail(id: string): Promise<Document> {
+  const resp = await apiClient<{ data: Document }>(`/documents/${id}`);
+  return resp.data;
+}
+
 async function doSearch(query: string) {
   searching.value = true;
   try {
@@ -96,23 +102,61 @@ async function handleUpload() {
   }
   loading.value = true;
   try {
-    await apiClient("/documents/upload", {
-      method: "POST",
+    const isEditing = Boolean(editingDocId.value);
+    const savedDocumentId = editingDocId.value;
+    await apiClient(isEditing ? `/documents/${savedDocumentId}` : "/documents/upload", {
+      method: isEditing ? "PUT" : "POST",
       body: JSON.stringify({
         filename: uploadTitle.value.trim(),
         content: uploadContent.value,
       }),
     });
-    await MessagePlugin.success("文档已上传");
+    await MessagePlugin.success(isEditing ? "文档已更新" : "文档已上传");
     uploadTitle.value = "";
     uploadContent.value = "";
+    editingDocId.value = null;
     showUpload.value = false;
     await loadDocuments();
+    if (isEditing && savedDocumentId) {
+      selectedDoc.value = await loadDocumentDetail(savedDocumentId);
+    }
   } catch (err: any) {
     await MessagePlugin.error(err.message);
   } finally {
     loading.value = false;
   }
+}
+
+async function selectDocument(doc: Document) {
+  if (selectedDoc.value?.id === doc.id) {
+    selectedDoc.value = null;
+    return;
+  }
+  try {
+    selectedDoc.value = await loadDocumentDetail(doc.id);
+  } catch (err: any) {
+    await MessagePlugin.error(err.message);
+  }
+}
+
+async function startEdit(doc: Document) {
+  try {
+    const detail = doc.content !== undefined ? doc : await loadDocumentDetail(doc.id);
+    editingDocId.value = detail.id;
+    uploadTitle.value = detail.title;
+    uploadContent.value = detail.content ?? "";
+    selectedDoc.value = detail;
+    showUpload.value = true;
+  } catch (err: any) {
+    await MessagePlugin.error(err.message);
+  }
+}
+
+function cancelUpload() {
+  showUpload.value = false;
+  editingDocId.value = null;
+  uploadTitle.value = "";
+  uploadContent.value = "";
 }
 
 async function handleDelete(id: string) {
@@ -183,7 +227,7 @@ function highlightMatch(text: string, query: string): string {
           />
           <span v-if="searching" class="search-spinner" />
         </div>
-        <button class="btn-primary" @click="showUpload = !showUpload">
+        <button class="btn-primary" @click="showUpload ? cancelUpload() : (showUpload = true)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
@@ -203,8 +247,8 @@ function highlightMatch(text: string, query: string): string {
             <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
           <div>
-            <h3>上传新文档</h3>
-            <p>添加文本或 Markdown 内容到知识库</p>
+            <h3>{{ editingDocId ? "编辑文档" : "上传新文档" }}</h3>
+            <p>{{ editingDocId ? "保存后会重新分块并更新知识库索引" : "添加文本或 Markdown 内容到知识库" }}</p>
           </div>
         </div>
         <div class="upload-body">
@@ -228,14 +272,14 @@ function highlightMatch(text: string, query: string): string {
             ></textarea>
           </div>
           <div class="upload-actions">
-            <button class="btn-secondary" @click="showUpload = false">取消</button>
+            <button class="btn-secondary" @click="cancelUpload">取消</button>
             <button class="btn-primary" :disabled="loading" @click="handleUpload">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="17 8 12 3 7 8" />
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
-              {{ loading ? "上传中..." : "上传" }}
+              {{ loading ? (editingDocId ? "保存中..." : "上传中...") : (editingDocId ? "保存修改" : "上传") }}
             </button>
           </div>
         </div>
@@ -275,7 +319,7 @@ function highlightMatch(text: string, query: string): string {
         :key="doc.id"
         class="card doc-card"
         :class="{ selected: selectedDoc?.id === doc.id }"
-        @click="selectedDoc = selectedDoc?.id === doc.id ? null : doc"
+        @click="selectDocument(doc)"
       >
         <div class="doc-card-header">
           <div class="doc-icon">
@@ -301,18 +345,30 @@ function highlightMatch(text: string, query: string): string {
 
         <div class="doc-card-footer">
           <span class="doc-date">{{ formatDate(doc.createdAt) }}</span>
-          <button
-            class="btn-delete"
-            :disabled="deletingId === doc.id"
-            @click.stop="handleDelete(doc.id)"
-            :title="'删除文档'"
-          >
-            <svg v-if="deletingId !== doc.id" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-            </svg>
-            <span v-else class="spinner-mini" />
-          </button>
+          <div class="doc-actions">
+            <button
+              class="btn-icon"
+              @click.stop="startEdit(doc)"
+              :title="'编辑文档'"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+            </button>
+            <button
+              class="btn-icon danger"
+              :disabled="deletingId === doc.id"
+              @click.stop="handleDelete(doc.id)"
+              :title="'删除文档'"
+            >
+              <svg v-if="deletingId !== doc.id" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+              <span v-else class="spinner-mini" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -628,7 +684,13 @@ function highlightMatch(text: string, query: string): string {
   color: var(--color-text-muted);
 }
 
-.btn-delete {
+.doc-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-icon {
   width: 28px;
   height: 28px;
   display: flex;
@@ -641,14 +703,24 @@ function highlightMatch(text: string, query: string): string {
   cursor: pointer;
 }
 
-.btn-delete:hover {
+.btn-icon:hover {
+  background: var(--btn-secondary-bg);
+  color: var(--color-text-primary);
+}
+
+.btn-icon.danger:hover {
   background: var(--btn-danger-bg);
   color: var(--color-danger);
 }
 
-.btn-delete svg {
+.btn-icon svg {
   width: 14px;
   height: 14px;
+}
+
+.btn-icon:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .spinner-mini {

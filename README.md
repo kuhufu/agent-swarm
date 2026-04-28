@@ -159,8 +159,10 @@ pnpm --filter @agent-swarm/server test
 ### 文档知识库
 
 - `GET /api/documents`
+- `GET /api/documents/:id`
 - `POST /api/documents/upload`
-- `POST /api/documents/search`
+- `PUT /api/documents/:id`
+- `POST /api/documents/search`：`query` 支持空格分隔多关键词，按 OR 召回，例如 `认证 身份验证 Authentication`
 - `DELETE /api/documents/:id`
 
 ### LLM 配置

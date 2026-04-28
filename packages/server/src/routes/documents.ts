@@ -31,6 +31,15 @@ function splitTextIntoChunks(text: string, chunkSize = 500, overlap = 50): strin
   return chunks;
 }
 
+function buildDocumentChunks(documentId: string, text: string) {
+  return splitTextIntoChunks(text).map((chunkText, i) => ({
+    id: randomUUID(),
+    documentId,
+    content: chunkText,
+    index: i,
+  }));
+}
+
 export function documentRoutes(swarm: AgentSwarm): Router {
   const router = Router();
 
@@ -74,11 +83,63 @@ export function documentRoutes(swarm: AgentSwarm): Router {
       }));
 
       await store.addDocument(
-        { id: docId, userId, title: filename, source: filename, createdAt: Date.now() },
+        { id: docId, userId, title: filename, source: filename, content: text, createdAt: Date.now() },
         chunks,
       );
 
       res.status(201).json({ data: { id: docId, title: filename, chunks: chunks.length } });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.get("/documents/:id", async (req, res) => {
+    try {
+      const userId = resolveRequestUserId(req);
+      if (!userId) return res.status(401).json({ error: "未登录" });
+
+      const store = (swarm as any).vectorStore;
+      if (!store) return res.status(404).json({ error: "知识库未初始化" });
+      const doc = await store.getDocument(req.params.id as string, userId);
+      if (!doc) return res.status(404).json({ error: "文档不存在" });
+      res.json({ data: doc });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.put("/documents/:id", async (req, res) => {
+    try {
+      const userId = resolveRequestUserId(req);
+      if (!userId) return res.status(401).json({ error: "未登录" });
+
+      const { filename, content } = req.body ?? {};
+      if (!filename || !content) {
+        return res.status(400).json({ error: "filename 和 content 不能为空" });
+      }
+
+      const store = (swarm as any).vectorStore;
+      if (!store) return res.status(404).json({ error: "知识库未初始化" });
+
+      const documentId = req.params.id as string;
+      const existing = await store.getDocument(documentId, userId);
+      if (!existing) return res.status(404).json({ error: "文档不存在" });
+
+      const text = typeof content === "string" ? content : JSON.stringify(content);
+      const chunks = buildDocumentChunks(documentId, text);
+      await store.addDocument(
+        {
+          id: documentId,
+          userId,
+          title: filename,
+          source: filename,
+          content: text,
+          createdAt: existing.createdAt,
+        },
+        chunks,
+      );
+
+      res.json({ data: { id: documentId, title: filename, chunks: chunks.length } });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

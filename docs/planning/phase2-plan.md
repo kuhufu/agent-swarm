@@ -803,7 +803,7 @@ async search(query: string, topK = 5): Promise<SearchResult[]> {
 `packages/core/src/tools/retrieve-knowledge.ts`：
 
 ```typescript
-export function createRetrieveKnowledgeTool(store: IVectorStore): AgentTool {
+export function createRetrieveKnowledgeTool(store: IVectorStore, options: { userId: string }): AgentTool {
   return {
     name: "retrieve_knowledge",
     label: "检索知识库",
@@ -813,7 +813,7 @@ export function createRetrieveKnowledgeTool(store: IVectorStore): AgentTool {
       topK: Type.Optional(Type.Number({ description: "返回结果数", default: 5 })),
     }),
     execute: async (_, params) => {
-      const results = await store.search(params.query, params.topK ?? 5);
+      const results = await store.search(params.query, params.topK ?? 5, options.userId);
       if (results.length === 0) {
         return {
           content: [{ type: "text", text: "知识库中没有找到相关内容。" }],

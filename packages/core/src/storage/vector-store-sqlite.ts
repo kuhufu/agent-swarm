@@ -19,6 +19,18 @@ function splitTextIntoChunks(text: string, chunkSize = 500, overlap = 50): strin
   return chunks;
 }
 
+function buildFtsQuery(query: string): string {
+  const terms = query
+    .replace(/[^\w\u4e00-\u9fff]+/g, " ")
+    .split(/\s+/)
+    .map((term) => term.trim())
+    .filter((term) => term.length > 0);
+
+  return terms
+    .map((term) => `"${term.replace(/"/g, "\"\"")}"`)
+    .join(" OR ");
+}
+
 export class SQLiteVectorStore implements IVectorStore {
   private db: Database.Database;
 
@@ -34,6 +46,7 @@ export class SQLiteVectorStore implements IVectorStore {
         user_id TEXT NOT NULL,
         title TEXT NOT NULL,
         source TEXT NOT NULL,
+        content TEXT,
         created_at INTEGER NOT NULL
       );
       CREATE TABLE IF NOT EXISTS rag_chunks (
@@ -50,6 +63,14 @@ export class SQLiteVectorStore implements IVectorStore {
         content_rowid='rowid'
       );
     `);
+    this.ensureContentColumn();
+  }
+
+  private ensureContentColumn(): void {
+    const columns = this.db.prepare("PRAGMA table_info(rag_documents)").all() as Array<{ name: string }>;
+    if (!columns.some((column) => column.name === "content")) {
+      this.db.exec("ALTER TABLE rag_documents ADD COLUMN content TEXT;");
+    }
   }
 
   private requireUserId(userId: string | null): string {
@@ -62,13 +83,14 @@ export class SQLiteVectorStore implements IVectorStore {
 
   async addDocument(doc: Document, chunks: DocumentChunk[]): Promise<void> {
     const insertDoc = this.db.prepare(
-      "INSERT OR REPLACE INTO rag_documents (id, user_id, title, source, created_at) VALUES (?, ?, ?, ?, ?)",
+      "INSERT OR REPLACE INTO rag_documents (id, user_id, title, source, content, created_at) VALUES (?, ?, ?, ?, ?, ?)",
     );
     const insertChunk = this.db.prepare(
       "INSERT INTO rag_chunks (id, document_id, content, idx, metadata) VALUES (?, ?, ?, ?, ?)",
     );
     const tx = this.db.transaction(() => {
-      insertDoc.run(doc.id, doc.userId, doc.title, doc.source, doc.createdAt);
+      this.db.prepare("DELETE FROM rag_chunks WHERE document_id = ?").run(doc.id);
+      insertDoc.run(doc.id, doc.userId, doc.title, doc.source, doc.content ?? chunks.map((chunk) => chunk.content).join("\n\n"), doc.createdAt);
       for (const chunk of chunks) {
         insertChunk.run(chunk.id, doc.id, chunk.content, chunk.index, JSON.stringify(chunk.metadata ?? {}));
       }
@@ -76,6 +98,23 @@ export class SQLiteVectorStore implements IVectorStore {
     tx();
     // rebuild must run outside transaction
     this.db.exec("INSERT INTO rag_fts(rag_fts) VALUES('rebuild')");
+  }
+
+  async getDocument(documentId: string, userId: string): Promise<Document | null> {
+    const normalizedUserId = this.requireUserId(userId);
+    const row = this.db.prepare("SELECT * FROM rag_documents WHERE id = ? AND user_id = ?")
+      .get(documentId, normalizedUserId) as {
+        id: string; user_id: string | null; title: string; source: string; content: string | null; created_at: number;
+      } | undefined;
+    if (!row) return null;
+    return {
+      id: row.id,
+      userId: this.requireUserId(row.user_id),
+      title: row.title,
+      source: row.source,
+      content: row.content ?? "",
+      createdAt: row.created_at,
+    };
   }
 
   async deleteDocument(documentId: string, userId: string): Promise<void> {
@@ -91,14 +130,16 @@ export class SQLiteVectorStore implements IVectorStore {
     this.db.exec("INSERT INTO rag_fts(rag_fts) VALUES('rebuild')");
   }
 
-  async search(query: string, topK = 5, userId?: string): Promise<SearchResult[]> {
-    // trigram tokenizer handles mixed CJK/ASCII \u2014 just strip special chars
-    const cleanQuery = query.replace(/[^\w\u4e00-\u9fff]/g, " ").replace(/\s+/g, " ").trim();
-    if (!cleanQuery) return [];
+  async search(query: string, topK: number | undefined, userId: string): Promise<SearchResult[]> {
+    const normalizedUserId = this.requireUserId(userId);
+    const limit = topK ?? 5;
+    // Space-separated keywords are treated as OR terms, e.g. "认证 身份验证 Authentication".
+    const ftsQuery = buildFtsQuery(query);
+    if (!ftsQuery) return [];
 
     const baseSql = `
       SELECT c.id, c.document_id, c.content, c.idx, c.metadata,
-             d.id as doc_id, d.user_id, d.title, d.source, d.created_at,
+      d.id as doc_id, d.user_id, d.title, d.source, d.content as doc_content, d.created_at,
              rank
       FROM rag_fts f
       JOIN rag_chunks c ON f.rowid = c.rowid
@@ -106,15 +147,13 @@ export class SQLiteVectorStore implements IVectorStore {
       WHERE rag_fts MATCH ?
     `;
 
-    const sql = userId
-      ? `${baseSql} AND d.user_id = ? ORDER BY rank LIMIT ?`
-      : `${baseSql} ORDER BY rank LIMIT ?`;
+    const sql = `${baseSql} AND d.user_id = ? ORDER BY rank LIMIT ?`;
 
-    const params = userId ? [cleanQuery, userId, topK] : [cleanQuery, topK];
+    const params = [ftsQuery, normalizedUserId, limit];
 
     const rows = this.db.prepare(sql).all(...params) as Array<{
       id: string; document_id: string; content: string; idx: number; metadata: string;
-      doc_id: string; user_id: string | null; title: string; source: string; created_at: number;
+      doc_id: string; user_id: string | null; title: string; source: string; doc_content: string | null; created_at: number;
       rank: number;
     }>;
 
@@ -131,6 +170,7 @@ export class SQLiteVectorStore implements IVectorStore {
         userId: this.requireUserId(r.user_id),
         title: r.title,
         source: r.source,
+        content: r.doc_content ?? undefined,
         createdAt: r.created_at,
       },
       score: -r.rank,  // FTS5 rank is negative (lower is better)
@@ -141,11 +181,12 @@ export class SQLiteVectorStore implements IVectorStore {
     const query = this.db.prepare("SELECT * FROM rag_documents WHERE user_id = ? ORDER BY created_at DESC");
     const rows = query.all(userId);
 
-    return (rows as Array<{ id: string; user_id: string | null; title: string; source: string; created_at: number }>).map((r) => ({
+    return (rows as Array<{ id: string; user_id: string | null; title: string; source: string; content: string | null; created_at: number }>).map((r) => ({
       id: r.id,
       userId: this.requireUserId(r.user_id),
       title: r.title,
       source: r.source,
+      content: r.content ?? undefined,
       createdAt: r.created_at,
     }));
   }

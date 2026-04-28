@@ -3,6 +3,7 @@ export interface Document {
   userId: string;
   title: string;
   source: string;
+  content?: string;
   createdAt: number;
 }
 
@@ -23,8 +24,9 @@ export interface SearchResult {
 export interface IVectorStore {
   init(): Promise<void>;
   addDocument(doc: Document, chunks: DocumentChunk[]): Promise<void>;
+  getDocument(documentId: string, userId: string): Promise<Document | null>;
   deleteDocument(documentId: string, userId: string): Promise<void>;
-  search(query: string, topK?: number, userId?: string): Promise<SearchResult[]>;
+  search(query: string, topK: number | undefined, userId: string): Promise<SearchResult[]>;
   listDocuments(userId: string): Promise<Document[]>;
   clear(): Promise<void>;
 }

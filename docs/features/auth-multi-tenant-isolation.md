@@ -33,9 +33,13 @@
 文档上传会写入 `userId`，以下接口均按当前用户过滤：
 
 - `GET /api/documents`
+- `GET /api/documents/:id`
 - `POST /api/documents/upload`
+- `PUT /api/documents/:id`
 - `POST /api/documents/search`
 - `DELETE /api/documents/:id`
+
+聊天运行时启用 `retrieve_knowledge` 后，服务端会按当前 WebSocket 用户创建知识库检索工具；Agent 调用该工具时同样传入当前 `userId`，不会检索其他用户上传的文档。
 
 ## 用量统计隔离
 
