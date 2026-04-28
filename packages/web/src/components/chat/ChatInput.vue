@@ -535,7 +535,7 @@ function handleOutsideClick(event: MouseEvent) {
 
 <style scoped>
 .chat-input {
-  width: min(860px, calc(100% - 32px));
+  width: min(910px, calc(100% - 32px));
   margin: 6px auto 28px;
   padding: 14px 16px 6px;
   border: 1px solid var(--color-border-subtle);
