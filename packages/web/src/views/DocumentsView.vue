@@ -836,11 +836,13 @@ function highlightMatch(text: string, query: string): string {
 
 .doc-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   padding: 20px 24px;
   border-bottom: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
+  height: 76px;
+  box-sizing: border-box;
 }
 
 .doc-title-area {
@@ -853,13 +855,22 @@ function highlightMatch(text: string, query: string): string {
 .doc-title-text {
   min-width: 0;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.doc-title-text h2,
+.doc-title-text input {
+  margin: 0 !important;
 }
 
 .doc-panel-title {
   font-size: 16px;
   font-weight: 600;
+  line-height: 1.375;
   color: var(--color-text-primary);
-  margin: 0 0 6px;
+  margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -884,6 +895,7 @@ function highlightMatch(text: string, query: string): string {
   overflow-y: auto;
   padding: 20px 24px;
   min-height: 0;
+  overflow: hidden;
 }
 
 .doc-textarea {
@@ -895,7 +907,7 @@ function highlightMatch(text: string, query: string): string {
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.7;
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
   background: transparent;
   border: none;
   outline: none;
@@ -909,26 +921,18 @@ function highlightMatch(text: string, query: string): string {
   color: var(--color-text-secondary);
 }
 
-.doc-textarea:not(.readonly) {
-  color: var(--color-text-primary);
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  min-height: 100%;
-}
-
 .edit-title-input {
   width: 100%;
-  padding: 4px 8px;
+  padding: 0;
   font-size: 16px;
   font-weight: 600;
+  line-height: 1.375;
   color: var(--color-text-primary);
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
   outline: none;
-  margin-bottom: 6px;
+  margin: 0;
+  height: auto;
 }
 
 .edit-title-input:focus {
