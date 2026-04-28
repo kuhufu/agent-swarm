@@ -25,6 +25,7 @@ const {
   currentTimeToolEnabled,
   jsExecutionToolEnabled,
   searchToolEnabled,
+  retrieveKnowledgeToolEnabled,
   thinkingLevel,
 } = useChat();
 
@@ -228,6 +229,12 @@ function selectSavedModel(sm: SavedModel) {
 function handleToggleCurrentTimeTool() {
   captureTextareaSelection();
   currentTimeToolEnabled.value = !currentTimeToolEnabled.value;
+  requestTextareaFocus();
+}
+
+function handleToggleRetrieveKnowledgeTool() {
+  captureTextareaSelection();
+  retrieveKnowledgeToolEnabled.value = !retrieveKnowledgeToolEnabled.value;
   requestTextareaFocus();
 }
 
@@ -463,6 +470,20 @@ function handleOutsideClick(event: MouseEvent) {
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <span>搜索</span>
+        </button>
+        <button
+          class="tool-btn"
+          :class="{ active: retrieveKnowledgeToolEnabled }"
+          @mousedown="handleKeepTextareaFocusMouseDown"
+          @click="handleToggleRetrieveKnowledgeTool"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            <line x1="8" y1="7" x2="16" y2="7" />
+            <line x1="8" y1="11" x2="14" y2="11" />
+          </svg>
+          <span>知识库</span>
         </button>
         <div class="think-level-select-inline">
           <button

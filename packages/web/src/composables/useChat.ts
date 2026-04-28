@@ -40,6 +40,10 @@ export function useChat() {
     get: () => conversationStore.isToolEnabled("web_search"),
     set: (value: boolean) => conversationStore.setClientToolEnabled("web_search", value),
   });
+  const retrieveKnowledgeToolEnabled = computed({
+    get: () => conversationStore.isToolEnabled("retrieve_knowledge"),
+    set: (value: boolean) => conversationStore.setClientToolEnabled("retrieve_knowledge", value),
+  });
   const thinkingLevel = computed({
     get: () => conversationStore.thinkingLevel,
     set: (value: string) => conversationStore.setThinkingLevel(value),
@@ -174,6 +178,7 @@ export function useChat() {
     currentTimeToolEnabled,
     jsExecutionToolEnabled,
     searchToolEnabled,
+    retrieveKnowledgeToolEnabled,
     thinkingLevel,
   };
 }

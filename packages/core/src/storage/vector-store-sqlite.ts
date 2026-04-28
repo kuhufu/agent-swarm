@@ -45,6 +45,7 @@ export class SQLiteVectorStore implements IVectorStore {
       );
       CREATE VIRTUAL TABLE IF NOT EXISTS rag_fts USING fts5(
         content,
+        tokenize='trigram',
         content='rag_chunks',
         content_rowid='rowid'
       );
@@ -66,18 +67,15 @@ export class SQLiteVectorStore implements IVectorStore {
     const insertChunk = this.db.prepare(
       "INSERT INTO rag_chunks (id, document_id, content, idx, metadata) VALUES (?, ?, ?, ?, ?)",
     );
-    const insertFts = this.db.prepare(
-      "INSERT INTO rag_fts (rowid, content) VALUES (?, ?)",
-    );
-
     const tx = this.db.transaction(() => {
       insertDoc.run(doc.id, doc.userId, doc.title, doc.source, doc.createdAt);
       for (const chunk of chunks) {
-        const result = insertChunk.run(chunk.id, doc.id, chunk.content, chunk.index, JSON.stringify(chunk.metadata ?? {}));
-        insertFts.run(result.lastInsertRowid, chunk.content);
+        insertChunk.run(chunk.id, doc.id, chunk.content, chunk.index, JSON.stringify(chunk.metadata ?? {}));
       }
     });
     tx();
+    // rebuild must run outside transaction
+    this.db.exec("INSERT INTO rag_fts(rag_fts) VALUES('rebuild')");
   }
 
   async deleteDocument(documentId: string, userId: string): Promise<void> {
@@ -89,13 +87,13 @@ export class SQLiteVectorStore implements IVectorStore {
         )
       `).run(documentId, userId);
       this.db.prepare("DELETE FROM rag_documents WHERE id = ? AND user_id = ?").run(documentId, userId);
-      // Rebuild FTS index
-      this.db.exec("INSERT INTO rag_fts(rag_fts) VALUES('rebuild')");
     })();
+    this.db.exec("INSERT INTO rag_fts(rag_fts) VALUES('rebuild')");
   }
 
   async search(query: string, topK = 5, userId?: string): Promise<SearchResult[]> {
-    const cleanQuery = query.replace(/[^\w\u4e00-\u9fff\s]/g, " ").trim();
+    // trigram tokenizer handles mixed CJK/ASCII \u2014 just strip special chars
+    const cleanQuery = query.replace(/[^\w\u4e00-\u9fff]/g, " ").replace(/\s+/g, " ").trim();
     if (!cleanQuery) return [];
 
     const baseSql = `
@@ -112,9 +110,9 @@ export class SQLiteVectorStore implements IVectorStore {
       ? `${baseSql} AND d.user_id = ? ORDER BY rank LIMIT ?`
       : `${baseSql} ORDER BY rank LIMIT ?`;
 
-    const rows = this.db.prepare(sql).all(
-      ...(userId ? [cleanQuery, userId, topK] : [cleanQuery, topK]),
-    ) as Array<{
+    const params = userId ? [cleanQuery, userId, topK] : [cleanQuery, topK];
+
+    const rows = this.db.prepare(sql).all(...params) as Array<{
       id: string; document_id: string; content: string; idx: number; metadata: string;
       doc_id: string; user_id: string | null; title: string; source: string; created_at: number;
       rank: number;
@@ -153,6 +151,7 @@ export class SQLiteVectorStore implements IVectorStore {
   }
 
   async clear(): Promise<void> {
-    this.db.exec("DELETE FROM rag_chunks; DELETE FROM rag_documents; INSERT INTO rag_fts(rag_fts) VALUES('rebuild')");
+    this.db.exec("DELETE FROM rag_chunks; DELETE FROM rag_documents;");
+    this.db.exec("INSERT INTO rag_fts(rag_fts) VALUES('rebuild')");
   }
 }
