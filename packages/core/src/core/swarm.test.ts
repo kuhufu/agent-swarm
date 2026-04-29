@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { existsSync, rmSync } from "node:fs";
 import { AgentSwarm } from "./swarm.js";
 import type { AgentSwarmRootConfig, SwarmConfig, EventLogLevel, SwarmEvent } from "./types.js";
-import { createWorkspaceManager } from "../tools/workspace.js";
+import { createWorkspaceManager } from "../tools/workspace/manager.js";
 
 const TEST_USER_ID = "user-test";
 

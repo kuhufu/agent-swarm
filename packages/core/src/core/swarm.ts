@@ -21,8 +21,8 @@ import type { ToolRuntimeAvailability } from "../tools/runtime.js";
 import { createRuntimeTool } from "../tools/runtime.js";
 import { createAllMCPTools } from "../tools/mcp/tool-provider.js";
 import { createRetrieveKnowledgeTool } from "../tools/retrieve-knowledge.js";
-import { createWorkspaceManager } from "../tools/workspace.js";
-import { createWorkspaceTool } from "../tools/workspace-tool-set.js";
+import { createWorkspaceManager } from "../tools/workspace/manager.js";
+import { createWorkspaceTool } from "../tools/workspace/tool-set.js";
 
 export interface AgentSwarmOptions {
   configPath?: string;

@@ -1,6 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
-import type { WorkspaceManager } from "./workspace.js";
+import type { WorkspaceManager } from "./manager.js";
 
 const WriteFileParams = Type.Object({
   path: Type.String({ description: "写入路径（相对于工作区根目录）" }),
@@ -16,7 +16,7 @@ export function createWriteFileTool(
   workspace: WorkspaceManager,
 ): AgentTool<typeof WriteFileParams, WriteFileDetails> {
   return {
-    name: "write_file",
+    name: "workspace_write_file",
     label: "写入文件",
     description: "将内容写入工作目录中的文件。自动创建父目录。",
     parameters: WriteFileParams,

@@ -43,11 +43,11 @@ describe("tool runtime", () => {
       enabledTools: ["workspace"],
       clientToolExecutor: async () => ({ content: "" }),
       runtimeTools: [
-        createRuntimeTool("workspace", [tool("write_file"), tool("read_file")]),
+        createRuntimeTool("workspace", [tool("workspace_write_file"), tool("workspace_read_file")]),
       ],
     });
 
-    expect(tools.map((item) => item.name)).toEqual(["write_file", "read_file"]);
+    expect(tools.map((item) => item.name)).toEqual(["workspace_write_file", "workspace_read_file"]);
   });
 
   it("uses the agent tool name as the runtime tool id for single tools", () => {

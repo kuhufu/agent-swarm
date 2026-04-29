@@ -1,6 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
-import type { WorkspaceManager } from "./workspace.js";
+import type { WorkspaceManager } from "./manager.js";
 
 const ReadFileParams = Type.Object({
   path: Type.String({ description: "要读取的文件路径（相对于工作区根目录）" }),
@@ -21,7 +21,7 @@ export function createReadFileTool(
   workspace: WorkspaceManager,
 ): AgentTool<typeof ReadFileParams, ReadFileDetails> {
   return {
-    name: "read_file",
+    name: "workspace_read_file",
     label: "读取文件",
     description: "读取工作区中文件的内容。",
     parameters: ReadFileParams,

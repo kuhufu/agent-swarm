@@ -1,6 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
-import type { WorkspaceManager, FileInfo } from "./workspace.js";
+import type { WorkspaceManager, FileInfo } from "./manager.js";
 
 const ListFilesParams = Type.Object({
   path: Type.Optional(Type.String({
@@ -16,7 +16,7 @@ export function createListFilesTool(
   workspace: WorkspaceManager,
 ): AgentTool<typeof ListFilesParams, ListFilesDetails> {
   return {
-    name: "list_files",
+    name: "workspace_list_files",
     label: "列出文件",
     description: "列出工作区中的文件。",
     parameters: ListFilesParams,

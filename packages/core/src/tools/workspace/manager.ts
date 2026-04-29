@@ -1,7 +1,7 @@
 import { mkdir, writeFile, readFile, readdir, stat, rm } from "node:fs/promises";
 import { join, resolve, relative } from "node:path";
 import { tmpdir } from "node:os";
-import type { ChildProcess } from "node:child_process";
+import { spawn } from "node:child_process";
 
 const WORKSPACE_ROOT = join(tmpdir(), "agent-workspaces");
 const MAX_FILE_SIZE = 1_048_576; // 1MB
@@ -13,18 +13,16 @@ export interface FileInfo {
   size: number;
 }
 
-export interface WorkspaceProcessInfo {
-  pid: number;
-  command: string;
-  startedAt: number;
-}
-
-interface TrackedWorkspaceProcess extends WorkspaceProcessInfo {
-  process: ChildProcess;
+export interface WorkspaceContainerInfo {
+  id: string;
+  name: string;
+  image: string;
+  status: string;
+  ports: string;
 }
 
 export class WorkspaceManager {
-  private static readonly activeProcesses = new Map<string, Map<number, TrackedWorkspaceProcess>>();
+  static dockerCommandRunner: (args: string[]) => Promise<string> = dockerStdout;
 
   readonly conversationId: string;
   readonly baseDir: string;
@@ -149,91 +147,108 @@ export class WorkspaceManager {
     }
   }
 
-  trackProcess(child: ChildProcess, command: string): WorkspaceProcessInfo | null {
-    if (!child.pid) {
-      return null;
-    }
-
-    const info: TrackedWorkspaceProcess = {
-      pid: child.pid,
-      command,
-      startedAt: Date.now(),
-      process: child,
-    };
-    let processes = WorkspaceManager.activeProcesses.get(this.conversationId);
-    if (!processes) {
-      processes = new Map();
-      WorkspaceManager.activeProcesses.set(this.conversationId, processes);
-    }
-    processes.set(child.pid, info);
-    child.once("exit", () => {
-      this.untrackProcess(child.pid);
-    });
-    child.once("close", () => {
-      this.untrackProcess(child.pid);
-    });
-    return { pid: info.pid, command: info.command, startedAt: info.startedAt };
+  async listContainers(): Promise<WorkspaceContainerInfo[]> {
+    const lines = await WorkspaceManager.dockerCommandRunner([
+      "ps",
+      "-a",
+      "--filter",
+      `label=agent-swarm.conversation-id=${this.conversationId}`,
+      "--format",
+      "{{json .}}",
+    ]);
+    return lines
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => {
+        const raw = JSON.parse(line) as Record<string, unknown>;
+        return {
+          id: String(raw.ID ?? ""),
+          name: String(raw.Names ?? ""),
+          image: String(raw.Image ?? ""),
+          status: String(raw.Status ?? ""),
+          ports: String(raw.Ports ?? ""),
+        };
+      })
+      .filter((container) => container.id || container.name);
   }
 
-  listProcesses(): WorkspaceProcessInfo[] {
-    return Array.from(WorkspaceManager.activeProcesses.get(this.conversationId)?.values() ?? [])
-      .map(({ pid, command, startedAt }) => ({ pid, command, startedAt }));
+  removeContainer(containerName: string): void {
+    removeDockerContainer(containerName);
   }
 
-  killProcess(pid: number, signal: NodeJS.Signals = "SIGTERM"): boolean {
-    const tracked = WorkspaceManager.activeProcesses.get(this.conversationId)?.get(pid);
-    if (!tracked) {
-      return false;
-    }
-
-    killProcessTree(tracked.process, signal);
-    return true;
-  }
-
-  killAllProcesses(signal: NodeJS.Signals = "SIGTERM"): number {
-    const processes = this.listProcesses();
-    for (const processInfo of processes) {
-      this.killProcess(processInfo.pid, signal);
-    }
-    return processes.length;
+  async cleanupContainers(): Promise<number> {
+    return removeDockerContainersByConversation(this.conversationId);
   }
 
   async cleanup(): Promise<void> {
-    this.killAllProcesses("SIGTERM");
+    await this.cleanupContainers().catch(() => {
+      // Docker may be unavailable; workspace files should still be removed.
+    });
     await rm(this.baseDir, { recursive: true, force: true });
   }
 
-  private untrackProcess(pid: number | undefined): void {
-    if (!pid) {
-      return;
-    }
-    const processes = WorkspaceManager.activeProcesses.get(this.conversationId);
-    processes?.delete(pid);
-    if (processes?.size === 0) {
-      WorkspaceManager.activeProcesses.delete(this.conversationId);
-    }
+  static setDockerCommandRunnerForTest(runner: (args: string[]) => Promise<string>): () => void {
+    const previous = WorkspaceManager.dockerCommandRunner;
+    WorkspaceManager.dockerCommandRunner = runner;
+    return () => {
+      WorkspaceManager.dockerCommandRunner = previous;
+    };
   }
+}
+
+function removeDockerContainer(containerName: string): void {
+  const child = spawn("docker", ["rm", "-f", containerName], {
+    stdio: "ignore",
+    shell: false,
+    detached: true,
+  });
+  child.on("error", () => {
+    // Docker may be unavailable; this is best-effort cleanup.
+  });
+  child.unref();
+}
+
+async function removeDockerContainersByConversation(conversationId: string): Promise<number> {
+  const ids = await WorkspaceManager.dockerCommandRunner([
+    "ps",
+    "-aq",
+    "--filter",
+    `label=agent-swarm.conversation-id=${conversationId}`,
+  ]);
+  const containers = ids.split(/\s+/).filter(Boolean);
+  if (containers.length === 0) {
+    return 0;
+  }
+  await WorkspaceManager.dockerCommandRunner(["rm", "-f", ...containers]);
+  return containers.length;
+}
+
+function dockerStdout(args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn("docker", args, {
+      shell: false,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout?.on("data", (data: Buffer) => {
+      stdout += data.toString("utf-8");
+    });
+    child.stderr?.on("data", (data: Buffer) => {
+      stderr += data.toString("utf-8");
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve(stdout);
+        return;
+      }
+      reject(new Error(stderr || `docker exited with ${code}`));
+    });
+  });
 }
 
 export function createWorkspaceManager(conversationId: string): WorkspaceManager {
   return new WorkspaceManager(conversationId);
-}
-
-function killProcessTree(child: ChildProcess, signal: NodeJS.Signals): void {
-  if (!child.pid || child.killed) {
-    return;
-  }
-
-  try {
-    process.kill(-child.pid, signal);
-    return;
-  } catch {
-    // Fall through to killing the direct child when process-group kill is unavailable.
-  }
-
-  try {
-    child.kill(signal);
-  } catch {
-    // Process may have already exited.
-  }
 }

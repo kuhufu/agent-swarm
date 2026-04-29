@@ -15,7 +15,7 @@ import { DebateMode } from "../modes/debate.js";
 import type { ClientToolExecutionResult } from "../tools/client-bridge.js";
 import type { ToolRuntimeAvailability, ToolRuntimeOptions } from "../tools/runtime.js";
 import { createToolRuntimeOptions, withRuntimeTools } from "../tools/runtime.js";
-import { createWorkspaceManager } from "../tools/workspace.js";
+import { createWorkspaceManager } from "../tools/workspace/manager.js";
 import { storedToMessage } from "../storage/message-mapper.js";
 import type { ModeExecutor, ModeExecutionContext } from "../modes/types.js";
 import { mapThinkingLevel, resolveModelFromProvider } from "../llm/provider.js";
@@ -185,7 +185,9 @@ export class Conversation {
    */
   abort(): void {
     this._aborted = true;
-    createWorkspaceManager(this.id).killAllProcesses("SIGTERM");
+    void createWorkspaceManager(this.id).cleanupContainers().catch(() => {
+      // Docker may be unavailable; aborting agents should continue regardless.
+    });
     for (const [, active] of this.agents) {
       active.agent.abort();
     }
