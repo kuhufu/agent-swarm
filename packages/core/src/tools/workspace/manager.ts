@@ -13,6 +13,12 @@ export interface FileInfo {
   size: number;
 }
 
+export interface GrepMatch {
+  path: string;
+  line: number;
+  content: string;
+}
+
 export interface WorkspaceContainerInfo {
   id: string;
   name: string;
@@ -145,6 +151,50 @@ export class WorkspaceManager {
     } catch {
       return 0;
     }
+  }
+
+  async grep(pattern: string, options?: { include?: string; maxResults?: number }): Promise<GrepMatch[]> {
+    const args = ["-rn"];
+    if (options?.include) {
+      args.push("--include", options.include);
+    }
+    args.push(pattern, ".");
+
+    return new Promise((resolve) => {
+      const child = spawn("grep", args, { cwd: this.baseDir, shell: false });
+      let stdout = "";
+      let stderr = "";
+
+      child.stdout?.on("data", (data: Buffer) => {
+        stdout += data.toString("utf-8");
+      });
+      child.stderr?.on("data", (data: Buffer) => {
+        stderr += data.toString("utf-8");
+      });
+      child.on("error", () => {
+        resolve([]);
+      });
+      child.on("close", (code) => {
+        if (code === 0 || code === 1) {
+          const maxResults = options?.maxResults ?? 50;
+          const lines = stdout.split("\n").filter(Boolean).slice(0, maxResults);
+          const results: GrepMatch[] = [];
+          const re = /^(.+?):(\d+):(.*)$/;
+          for (const line of lines) {
+            const m = line.match(re);
+            if (!m) continue;
+            results.push({
+              path: m[1]!.replace(/^\.\//, ""),
+              line: Number.parseInt(m[2]!, 10) || 0,
+              content: m[3]!.slice(0, 200).trim(),
+            });
+          }
+          resolve(results);
+        } else {
+          resolve([]);
+        }
+      });
+    });
   }
 
   async listContainers(): Promise<WorkspaceContainerInfo[]> {
