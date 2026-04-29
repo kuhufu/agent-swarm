@@ -1,10 +1,11 @@
 import { Router } from "express";
 import type { AgentSwarm, LLMBackendConfig, ApiProtocol } from "@agent-swarm/core";
 import { validateBody } from "../middleware/validate.js";
+import { requireAdmin } from "../middleware/auth.js";
 import { updateConfigSchema, testModelSchema } from "../schemas/index.js";
 
 function isEmptyObject(v: unknown): boolean {
-  return typeof v !== "object" || v === null || Array.isArray(v) || Object.keys(v as object).length === 0;
+  return typeof v === "object" && v !== null && !Array.isArray(v) && Object.keys(v as object).length === 0;
 }
 
 function coalesce<T>(value: unknown, fallback: T | undefined): T | undefined {
@@ -43,12 +44,12 @@ function toResponse(config: LLMBackendConfig) {
 export function configRoutes(swarm: AgentSwarm): Router {
   const router = Router();
 
-  router.get("/", (_req, res) => {
+  router.get("/", requireAdmin, (_req, res) => {
     const config = swarm.getLLMConfig();
     res.json({ data: toResponse(config) });
   });
 
-  router.put("/", validateBody(updateConfigSchema), async (req, res) => {
+  router.put("/", requireAdmin, validateBody(updateConfigSchema), async (req, res) => {
     try {
       const body = req.body as Record<string, unknown>;
       const {
@@ -106,12 +107,12 @@ export function configRoutes(swarm: AgentSwarm): Router {
     }
   });
 
-  router.get("/providers", (_req, res) => {
+  router.get("/providers", requireAdmin, (_req, res) => {
     const providers = swarm.listProviders();
     res.json({ data: providers });
   });
 
-  router.get("/providers/:providerId/models", async (req, res) => {
+  router.get("/providers/:providerId/models", requireAdmin, async (req, res) => {
     try {
       const providerId = req.params.providerId as string;
       if (!providerId) {
@@ -124,7 +125,7 @@ export function configRoutes(swarm: AgentSwarm): Router {
     }
   });
 
-  router.post("/test-model", validateBody(testModelSchema), async (req, res) => {
+  router.post("/test-model", requireAdmin, validateBody(testModelSchema), async (req, res) => {
     try {
       const body = req.body as Record<string, unknown>;
       const provider = body.provider as string;

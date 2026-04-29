@@ -1,5 +1,21 @@
 import type { SwarmConfig, AgentPreset } from "../core/types.js";
 
+export type UserRole = "admin" | "user";
+
+export interface StoredUser {
+  id: string;
+  username: string;
+  passwordHash: string;
+  role: UserRole;
+  createdAt: number;
+}
+
+export interface PublicUser {
+  id: string;
+  username: string;
+  role: UserRole;
+}
+
 export interface StoredMessage {
   id: string;
   agentId?: string | null;
@@ -99,9 +115,10 @@ export interface IStorage {
   loadSetting(key: string): Promise<string | null>;
 
   // User management
-  createUser(user: { id: string; username: string; passwordHash: string; createdAt: number }): Promise<void>;
-  getUserByUsername(username: string): Promise<{ id: string; username: string; passwordHash: string } | null>;
-  getUserById(id: string): Promise<{ id: string; username: string } | null>;
+  createUser(user: StoredUser): Promise<void>;
+  countUsers(): Promise<number>;
+  getUserByUsername(username: string): Promise<StoredUser | null>;
+  getUserById(id: string): Promise<PublicUser | null>;
 
   // Swarm management
   saveSwarm(config: SwarmConfig, userId: string): Promise<void>;

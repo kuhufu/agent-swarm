@@ -548,14 +548,6 @@ export const useConversationStore = defineStore("conversation", () => {
 
       setCurrentConversation(normalizedConversationId);
 
-      if (!hasActiveRuntime) {
-        mutateRuntimeState(normalizedConversationId, (state) => {
-          state.messages = normalizeHistoryMessages(Array.isArray(messagesRes.data) ? messagesRes.data : [], resolveAgentName);
-          state.streamingMessages = new Map();
-          state.isActive = false;
-        });
-      }
-
       applyConversationPreferences(conversationRes.data);
       updateConversationInfo(normalizedConversationId, conversationRes.data);
       if (conversationRes.data.swarmId.startsWith("__direct_")) {
@@ -577,6 +569,14 @@ export const useConversationStore = defineStore("conversation", () => {
         }
       }
       populateAgentStatesFromConversation(conversationRes.data, normalizedConversationId);
+
+      if (!hasActiveRuntime) {
+        mutateRuntimeState(normalizedConversationId, (state) => {
+          state.messages = normalizeHistoryMessages(Array.isArray(messagesRes.data) ? messagesRes.data : [], resolveAgentName);
+          state.streamingMessages = new Map();
+          state.isActive = false;
+        });
+      }
     } finally {
       loadingMessages.value = false;
     }

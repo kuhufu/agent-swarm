@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { AgentSwarm } from "@agent-swarm/core";
 import { validateBody } from "../middleware/validate.js";
+import { requireAdmin } from "../middleware/auth.js";
 import { createAgentTemplateSchema, updateAgentTemplateSchema } from "../schemas/index.js";
 
 export function templateRoutes(swarm: AgentSwarm): Router {
@@ -15,7 +16,7 @@ export function templateRoutes(swarm: AgentSwarm): Router {
     }
   });
 
-  router.post("/", validateBody(createAgentTemplateSchema), async (req, res) => {
+  router.post("/", requireAdmin, validateBody(createAgentTemplateSchema), async (req, res) => {
     try {
       const input = req.body;
       const template = {
@@ -37,7 +38,7 @@ export function templateRoutes(swarm: AgentSwarm): Router {
     }
   });
 
-  router.put("/:id", validateBody(updateAgentTemplateSchema), async (req, res) => {
+  router.put("/:id", requireAdmin, validateBody(updateAgentTemplateSchema), async (req, res) => {
     try {
       const id = req.params.id as string;
       const existing = await swarm.listAgentTemplates().then(
@@ -70,9 +71,9 @@ export function templateRoutes(swarm: AgentSwarm): Router {
     }
   });
 
-  router.delete("/:id", async (req, res) => {
+  router.delete("/:id", requireAdmin, async (req, res) => {
     try {
-      await swarm.deleteAgentTemplate(req.params.id);
+      await swarm.deleteAgentTemplate(req.params.id as string);
       res.json({ success: true });
     } catch (err: any) {
       const message = err?.message ?? "删除模板失败";

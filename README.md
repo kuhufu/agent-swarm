@@ -16,7 +16,7 @@
 - 输入体验优化：重复点击“新对话/直接对话”、切换模型、启停工具、点击 `chat-input` 非交互区后会自动聚焦输入框且保持光标
 - 历史消息持久化：SQLite 存储，支持恢复会话上下文
 - 上下文清空：保留历史消息，仅重置后续模型上下文
-- 多租户隔离：`swarms / conversations / agent presets / documents / usage analytics` 按 `userId` 严格隔离
+- 多租户隔离：`swarms / conversations / agent presets / documents / usage analytics` 按 `userId` 严格隔离；首个注册用户自动成为 `admin`
 - 工具运行时：`packages/core/src/tools/runtime.ts` 统一把模式工具、前端桥接工具、WebSearch、MCP 和运行时工具注入 Agent
 - Workspace 工具：`workspace_run_container` 通过 Docker 隔离执行命令，容器按会话 label 关联，并通过 `workspace_list_containers` / `workspace_remove_containers` 管理当前会话容器
 - 消息 Markdown 渲染：基于 `marked + marked-highlight + highlight.js + dompurify`，支持代码高亮与安全净化
@@ -142,9 +142,9 @@ pnpm --filter @agent-swarm/server test
 ### 系统 Agent 模板管理
 
 - `GET /api/templates`
-- `POST /api/templates`
-- `PUT /api/templates/:id`
-- `DELETE /api/templates/:id`
+- `POST /api/templates`（需要 `admin`）
+- `PUT /api/templates/:id`（需要 `admin`）
+- `DELETE /api/templates/:id`（需要 `admin`）
 
 ### 会话管理
 
@@ -171,11 +171,11 @@ pnpm --filter @agent-swarm/server test
 
 ### LLM 配置
 
-- `GET /api/config`
-- `PUT /api/config`
-- `GET /api/config/providers`
-- `GET /api/config/providers/:providerId/models`
-- `POST /api/config/test-model`
+- `GET /api/config`（需要 `admin`）
+- `PUT /api/config`（需要 `admin`）
+- `GET /api/config/providers`（需要 `admin`）
+- `GET /api/config/providers/:providerId/models`（需要 `admin`）
+- `POST /api/config/test-model`（需要 `admin`）
 
 ## WebSocket 协议（核心）
 
@@ -228,11 +228,12 @@ pnpm --filter @agent-swarm/server test
 - 文档知识库（列表、上传、检索、删除）
 - 用量统计（会话用量、每日汇总、LLM 调用明细）
 
-历史公共用户数据迁移（`__public__` -> `ec33ff27-cc7e-4e4c-aba8-c4599d494286`）可执行：
+全局资源权限：
 
-```bash
-./scripts/migrate-public-user-id.sh ./packages/server/data/agent-swarm.db ec33ff27-cc7e-4e4c-aba8-c4599d494286
-```
+- 首个注册用户自动获得 `admin` 角色，后续注册用户默认为 `user`。
+- LLM 配置与系统 Agent 模板属于全局资源；读写 LLM 配置以及创建/更新/删除系统模板均要求 `admin`。
+- 用户级 Agent 预设以 `(userId, id)` 作为业务键，不同用户可以复用相同预设 ID。
+- Swarm 内 Agent 以 `(swarmId, agentId)` 作为业务键，不同 Swarm 可以复用相同 Agent ID。
 
 ## 提供商思考格式
 

@@ -47,15 +47,45 @@ interface RenderEntry {
   streaming: boolean;
 }
 
+function resolveSwarmAgentName(agentId?: string): string | undefined {
+  if (!agentId) {
+    return undefined;
+  }
+  const swarm = swarmStore.currentSwarm;
+  if (!swarm) {
+    return undefined;
+  }
+  const agent = swarm.agents.find((item) => item.id === agentId)
+    ?? (swarm.orchestrator?.id === agentId ? swarm.orchestrator : undefined);
+  return agent?.name;
+}
+
+function withResolvedAgentName(message: ChatMessage): ChatMessage {
+  if (props.isDirectMode || message.role !== "assistant" || !message.agentId) {
+    return message;
+  }
+  if (message.agentName && message.agentName !== message.agentId) {
+    return message;
+  }
+  const agentName = resolveSwarmAgentName(message.agentId);
+  if (!agentName || agentName === message.agentName) {
+    return message;
+  }
+  return {
+    ...message,
+    agentName,
+  };
+}
+
 const renderEntries = computed<RenderEntry[]>(() => {
   const byId = new Map<string, RenderEntry>();
 
   for (const msg of visibleMessages.value) {
-    byId.set(msg.id, { message: msg, streaming: false });
+    byId.set(msg.id, { message: withResolvedAgentName(msg), streaming: false });
   }
 
   for (const msg of props.streamingMessages) {
-    byId.set(msg.id, { message: msg, streaming: true });
+    byId.set(msg.id, { message: withResolvedAgentName(msg), streaming: true });
   }
 
   return Array.from(byId.values()).sort((a, b) => {

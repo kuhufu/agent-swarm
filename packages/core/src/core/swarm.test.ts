@@ -278,6 +278,108 @@ describe("AgentSwarm persistence", () => {
     cleanupDb(dbPath);
   });
 
+  it("keeps agent presets isolated when different users reuse the same id", async () => {
+    const dbPath = createTestDbPath("preset-id-isolation");
+    cleanupDb(dbPath);
+
+    const swarm = new AgentSwarm({
+      config: createRootConfig(dbPath, []),
+    });
+    await swarm.init();
+
+    await swarm.addAgentPreset({
+      id: "shared-preset",
+      name: "User A Preset",
+      description: "",
+      systemPrompt: "A",
+      model: { provider: "openai", modelId: "gpt-4o-mini" },
+      category: "",
+      tags: [],
+      builtIn: false,
+    }, "user_a");
+    await swarm.addAgentPreset({
+      id: "shared-preset",
+      name: "User B Preset",
+      description: "",
+      systemPrompt: "B",
+      model: { provider: "anthropic", modelId: "claude-3-5-sonnet" },
+      category: "",
+      tags: [],
+      builtIn: false,
+    }, "user_b");
+
+    expect((await swarm.getAgentPreset("shared-preset", "user_a"))?.name).toBe("User A Preset");
+    expect((await swarm.getAgentPreset("shared-preset", "user_b"))?.name).toBe("User B Preset");
+
+    await swarm.close();
+    cleanupDb(dbPath);
+  });
+
+  it("stores agents by swarm scope when different swarms reuse the same agent id", async () => {
+    const dbPath = createTestDbPath("agent-id-isolation");
+    cleanupDb(dbPath);
+
+    const firstSwarm = createSwarmConfig("first_swarm");
+    firstSwarm.agents[0]!.id = "shared-agent";
+    firstSwarm.agents[0]!.name = "First Agent";
+    const secondSwarm = createSwarmConfig("second_swarm");
+    secondSwarm.agents[0]!.id = "shared-agent";
+    secondSwarm.agents[0]!.name = "Second Agent";
+
+    const swarm = new AgentSwarm({
+      config: createRootConfig(dbPath, []),
+    });
+    await swarm.init();
+    await swarm.addSwarmConfig(firstSwarm, TEST_USER_ID);
+    await swarm.addSwarmConfig(secondSwarm, TEST_USER_ID);
+
+    const internalStorage = (swarm as unknown as { storage: { rawDb: { prepare: (sql: string) => { all: (...args: unknown[]) => unknown[] } } } }).storage;
+    const rows = internalStorage.rawDb.prepare(
+      "SELECT swarm_id, id, name FROM agents WHERE id = ? ORDER BY swarm_id",
+    ).all("shared-agent") as Array<{ swarm_id: string; id: string; name: string }>;
+
+    expect(rows).toEqual([
+      { swarm_id: "first_swarm", id: "shared-agent", name: "First Agent" },
+      { swarm_id: "second_swarm", id: "shared-agent", name: "Second Agent" },
+    ]);
+
+    await swarm.close();
+    cleanupDb(dbPath);
+  });
+
+  it("assigns admin role only to the first created user", async () => {
+    const dbPath = createTestDbPath("user-roles");
+    cleanupDb(dbPath);
+
+    const swarm = new AgentSwarm({
+      config: createRootConfig(dbPath, []),
+    });
+    await swarm.init();
+
+    const firstRole = await swarm.countUsers() === 0 ? "admin" : "user";
+    await swarm.createUser({
+      id: "first",
+      username: "first",
+      passwordHash: "hash",
+      role: firstRole,
+      createdAt: Date.now(),
+    });
+    const secondRole = await swarm.countUsers() === 0 ? "admin" : "user";
+    await swarm.createUser({
+      id: "second",
+      username: "second",
+      passwordHash: "hash",
+      role: secondRole,
+      createdAt: Date.now(),
+    });
+
+    expect((await swarm.getUserById("first"))?.role).toBe("admin");
+    expect((await swarm.getUserById("second"))?.role).toBe("user");
+
+    await swarm.close();
+    cleanupDb(dbPath);
+  });
+
   it("isolates usage and llm-call analytics by user", async () => {
     const dbPath = createTestDbPath("usage-isolation");
     cleanupDb(dbPath);

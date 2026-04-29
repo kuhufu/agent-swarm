@@ -12,6 +12,9 @@ import type {
   Conversation,
   ConversationPreferences,
   ConversationDirectModel,
+  StoredUser,
+  PublicUser,
+  UserRole,
 } from "./interface.js";
 import type { SwarmConfig, AgentPreset } from "../core/types.js";
 import { settingsTable, swarmsTable, agentsTable, conversationsTable, messagesTable, eventsTable, presetAgentsTable, agentTemplatesTable, usersTable, llmCallsTable } from "./schema.js";
@@ -43,6 +46,7 @@ export class SqliteStorage implements IStorage {
     this.rawDb.pragma("foreign_keys = ON");
 
     this.db = drizzle(this.rawDb);
+    this.resetDevelopmentSchemaIfOutdated();
 
     // Create tables if not exist
     this.rawDb.exec(`
@@ -60,12 +64,13 @@ export class SqliteStorage implements IStorage {
         updated_at INTEGER NOT NULL
       );
       CREATE TABLE IF NOT EXISTS agents (
-        id TEXT PRIMARY KEY,
+        id TEXT NOT NULL,
         swarm_id TEXT NOT NULL REFERENCES swarms(id),
         name TEXT NOT NULL,
         config TEXT NOT NULL,
         created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (swarm_id, id)
       );
       CREATE TABLE IF NOT EXISTS conversations (
         id TEXT PRIMARY KEY,
@@ -73,6 +78,7 @@ export class SqliteStorage implements IStorage {
         swarm_id TEXT NOT NULL REFERENCES swarms(id),
         title TEXT,
         enabled_tools TEXT NOT NULL DEFAULT '[]',
+        thinking_level TEXT NOT NULL DEFAULT 'off',
         direct_provider TEXT,
         direct_model_id TEXT,
         context_reset_at INTEGER,
@@ -82,7 +88,7 @@ export class SqliteStorage implements IStorage {
       CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
         conversation_id TEXT NOT NULL REFERENCES conversations(id),
-        agent_id TEXT REFERENCES agents(id),
+        agent_id TEXT,
         role TEXT NOT NULL,
         content TEXT,
         thinking TEXT,
@@ -95,7 +101,7 @@ export class SqliteStorage implements IStorage {
       CREATE TABLE IF NOT EXISTS events (
         id TEXT PRIMARY KEY,
         conversation_id TEXT NOT NULL REFERENCES conversations(id),
-        agent_id TEXT REFERENCES agents(id),
+        agent_id TEXT,
         event_type TEXT NOT NULL,
         event_data TEXT,
         timestamp INTEGER NOT NULL
@@ -105,7 +111,7 @@ export class SqliteStorage implements IStorage {
       CREATE INDEX IF NOT EXISTS idx_events_conversation ON events(conversation_id, timestamp);
       CREATE INDEX IF NOT EXISTS idx_conversations_swarm ON conversations(swarm_id);
       CREATE TABLE IF NOT EXISTS preset_agents (
-        id TEXT PRIMARY KEY,
+        id TEXT NOT NULL,
         user_id TEXT NOT NULL,
         name TEXT NOT NULL,
         description TEXT NOT NULL DEFAULT '',
@@ -116,7 +122,8 @@ export class SqliteStorage implements IStorage {
         tags TEXT NOT NULL DEFAULT '[]',
         built_in INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (user_id, id)
       );
       CREATE TABLE IF NOT EXISTS agent_templates (
         id TEXT PRIMARY KEY,
@@ -134,6 +141,7 @@ export class SqliteStorage implements IStorage {
         id TEXT PRIMARY KEY,
         username TEXT NOT NULL UNIQUE,
         password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'user',
         created_at INTEGER NOT NULL
       );
       CREATE TABLE IF NOT EXISTS llm_calls (
@@ -171,6 +179,47 @@ export class SqliteStorage implements IStorage {
   private getDb() {
     if (!this.db) throw new Error("Storage not initialized");
     return this.db;
+  }
+
+  private resetDevelopmentSchemaIfOutdated(): void {
+    if (!this.rawDb) return;
+
+    const hasTable = (table: string) => {
+      const row = this.rawDb!.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
+      return Boolean(row);
+    };
+    const tableInfo = (table: string) => this.rawDb!.prepare(`PRAGMA table_info(${table})`).all() as Array<{
+      name?: string;
+      pk?: number;
+    }>;
+
+    const agentsInfo = hasTable("agents") ? tableInfo("agents") : [];
+    const presetInfo = hasTable("preset_agents") ? tableInfo("preset_agents") : [];
+    const usersInfo = hasTable("users") ? tableInfo("users") : [];
+    const agentIdPk = agentsInfo.find((column) => column.name === "id")?.pk ?? 0;
+    const presetIdPk = presetInfo.find((column) => column.name === "id")?.pk ?? 0;
+    const usersHasRole = usersInfo.some((column) => column.name === "role");
+
+    if (
+      (agentsInfo.length > 0 && agentIdPk === 1)
+      || (presetInfo.length > 0 && presetIdPk === 1)
+      || (usersInfo.length > 0 && !usersHasRole)
+    ) {
+      this.rawDb.exec(`
+        PRAGMA foreign_keys = OFF;
+        DROP TABLE IF EXISTS llm_calls;
+        DROP TABLE IF EXISTS events;
+        DROP TABLE IF EXISTS messages;
+        DROP TABLE IF EXISTS conversations;
+        DROP TABLE IF EXISTS agents;
+        DROP TABLE IF EXISTS swarms;
+        DROP TABLE IF EXISTS preset_agents;
+        DROP TABLE IF EXISTS agent_templates;
+        DROP TABLE IF EXISTS users;
+        DROP TABLE IF EXISTS settings;
+        PRAGMA foreign_keys = ON;
+      `);
+    }
   }
 
   private normalizeEnabledTools(input: unknown): string[] {
@@ -321,28 +370,53 @@ export class SqliteStorage implements IStorage {
 
   // ── User management ──
 
-  async createUser(user: { id: string; username: string; passwordHash: string; createdAt: number }): Promise<void> {
+  async createUser(user: StoredUser): Promise<void> {
     this.getDb().insert(usersTable).values({
       id: user.id,
       username: user.username,
       passwordHash: user.passwordHash,
+      role: user.role,
       createdAt: user.createdAt,
     }).run();
   }
 
-  async getUserByUsername(username: string): Promise<{ id: string; username: string; passwordHash: string } | null> {
-    const rows = this.getDb().select().from(usersTable).where(eq(usersTable.username, username)).all();
-    if (rows.length === 0) return null;
-    return rows[0];
+  async countUsers(): Promise<number> {
+    if (!this.rawDb) {
+      throw new Error("Storage not initialized");
+    }
+    const row = this.rawDb.prepare("SELECT COUNT(*) AS count FROM users").get() as { count: number };
+    return row.count;
   }
 
-  async getUserById(id: string): Promise<{ id: string; username: string } | null> {
+  private normalizeUserRole(role: string | null | undefined): UserRole {
+    return role === "admin" ? "admin" : "user";
+  }
+
+  async getUserByUsername(username: string): Promise<StoredUser | null> {
+    const rows = this.getDb().select().from(usersTable).where(eq(usersTable.username, username)).all();
+    if (rows.length === 0) return null;
+    const row = rows[0];
+    return {
+      id: row.id,
+      username: row.username,
+      passwordHash: row.passwordHash,
+      role: this.normalizeUserRole(row.role),
+      createdAt: row.createdAt,
+    };
+  }
+
+  async getUserById(id: string): Promise<PublicUser | null> {
     const rows = this.getDb().select({
       id: usersTable.id,
       username: usersTable.username,
+      role: usersTable.role,
     }).from(usersTable).where(eq(usersTable.id, id)).all();
     if (rows.length === 0) return null;
-    return rows[0];
+    return {
+      id: rows[0].id,
+      username: rows[0].username,
+      role: this.normalizeUserRole(rows[0].role),
+    };
   }
 
   // ── LLM call log ──
@@ -491,9 +565,8 @@ export class SqliteStorage implements IStorage {
         createdAt: now,
         updatedAt: now,
       }).onConflictDoUpdate({
-        target: agentsTable.id,
+        target: [agentsTable.swarmId, agentsTable.id],
         set: {
-          swarmId: config.id,
           name: agent.name,
           config: JSON.stringify(serializableAgent),
           updatedAt: now,
@@ -775,9 +848,8 @@ export class SqliteStorage implements IStorage {
       createdAt: now,
       updatedAt: now,
     }).onConflictDoUpdate({
-      target: presetAgentsTable.id,
+      target: [presetAgentsTable.userId, presetAgentsTable.id],
       set: {
-        userId,
         name: preset.name,
         description: preset.description,
         systemPrompt: preset.systemPrompt,

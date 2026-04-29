@@ -7,6 +7,7 @@ const PUBLIC_AUTH_PATHS = new Set<string>(["/auth/login", "/auth/register"]);
 export interface AuthUser {
   id: string;
   username: string;
+  role: "admin" | "user";
 }
 
 declare global {
@@ -46,14 +47,26 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
   }
 }
 
-export function signToken(user: { id: string; username: string }): string {
+export function signToken(user: { id: string; username: string; role: "admin" | "user" }): string {
   const expiresIn = process.env.JWT_EXPIRES_IN ?? "7d";
-  return jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: expiresIn as any });
+  return jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: expiresIn as any });
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (!req.user) {
     res.status(401).json({ error: "未登录" });
+    return;
+  }
+  next();
+}
+
+export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+  if (!req.user) {
+    res.status(401).json({ error: "未登录" });
+    return;
+  }
+  if (req.user.role !== "admin") {
+    res.status(403).json({ error: "需要管理员权限" });
     return;
   }
   next();
@@ -65,7 +78,15 @@ export function resolveRequestUserId(req: Request): string | null {
 
 export function verifyAccessToken(token: string): AuthUser | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as AuthUser;
+    const payload = jwt.verify(token, JWT_SECRET) as Partial<AuthUser>;
+    if (typeof payload.id !== "string" || typeof payload.username !== "string") {
+      return null;
+    }
+    return {
+      id: payload.id,
+      username: payload.username,
+      role: payload.role === "admin" ? "admin" : "user",
+    };
   } catch {
     return null;
   }

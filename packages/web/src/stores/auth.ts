@@ -19,7 +19,7 @@ async function apiRequest(method: string, path: string, body?: unknown) {
 
 export const useAuthStore = defineStore("auth", () => {
   const token = ref<string | null>(localStorage.getItem("token"));
-  const user = ref<{ id: string; username: string } | null>(null);
+  const user = ref<{ id: string; username: string; role: "admin" | "user" } | null>(null);
 
   const isAuthenticated = computed(() => !!token.value);
 

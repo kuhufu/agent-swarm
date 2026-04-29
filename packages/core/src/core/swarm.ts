@@ -1,5 +1,5 @@
 import type { SwarmConfig, AgentSwarmRootConfig, LLMBackendConfig, ApiProtocol, EventLogLevel, AgentPreset } from "./types.js";
-import type { IStorage, LLMCallRecord, LLMCallQuery } from "../storage/interface.js";
+import type { IStorage, LLMCallRecord, LLMCallQuery, StoredUser, PublicUser } from "../storage/interface.js";
 import type { Conversation as StoredConversation, ConversationPreferences } from "../storage/interface.js";
 import type { StoredMessage } from "../storage/interface.js";
 import type { InterventionHandler } from "../intervention/handler.js";
@@ -909,17 +909,22 @@ export class AgentSwarm {
 
   // ── User management ──
 
-  async createUser(user: { id: string; username: string; passwordHash: string; createdAt: number }): Promise<void> {
+  async createUser(user: StoredUser): Promise<void> {
     this.ensureInitialized();
     await this.storage.createUser(user);
   }
 
-  async getUserByUsername(username: string): Promise<{ id: string; username: string; passwordHash: string } | null> {
+  async countUsers(): Promise<number> {
+    this.ensureInitialized();
+    return this.storage.countUsers();
+  }
+
+  async getUserByUsername(username: string): Promise<StoredUser | null> {
     this.ensureInitialized();
     return this.storage.getUserByUsername(username);
   }
 
-  async getUserById(id: string): Promise<{ id: string; username: string } | null> {
+  async getUserById(id: string): Promise<PublicUser | null> {
     this.ensureInitialized();
     return this.storage.getUserById(id);
   }

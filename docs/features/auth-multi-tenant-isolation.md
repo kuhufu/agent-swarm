@@ -16,6 +16,20 @@
 
 `/api/auth/logout` 为无状态退出接口：服务端返回成功，客户端负责清理本地 token 与会话状态。
 
+## 用户角色
+
+用户角色写入 `users.role`，JWT 中也会携带 `role`：
+
+- 首个注册用户自动成为 `admin`。
+- 后续注册用户默认为 `user`。
+
+全局资源需要管理员权限：
+
+- LLM 配置：`GET/PUT /api/config`、`GET /api/config/providers`、`GET /api/config/providers/:providerId/models`、`POST /api/config/test-model`
+- 系统 Agent 模板写操作：`POST /api/templates`、`PUT /api/templates/:id`、`DELETE /api/templates/:id`
+
+普通用户仍可读取系统模板列表并导入模板为自己的用户级 Agent 预设。
+
 ## 租户隔离范围
 
 服务端默认并且始终按 `req.user.id` 进行数据隔离：
@@ -27,6 +41,10 @@
 - `usage analytics`（用量统计）
 
 对应列表/查询/创建/更新/删除操作均传递用户上下文，避免跨用户可见或误操作。
+
+用户级 Agent 预设使用 `(userId, id)` 作为业务键；不同用户可以使用相同预设 ID，不会互相覆盖。
+
+Swarm 内 Agent 使用 `(swarmId, agentId)` 作为业务键；不同 Swarm 可以复用相同 Agent ID，消息与事件仅保存 Agent 字符串标识，不再依赖全局 Agent 外键。
 
 ## 文档知识库隔离
 
@@ -48,14 +66,6 @@
 - `GET /api/conversations/:id/usage`
 - `GET /api/usage/daily`
 - `GET /api/llm/calls`
-
-## 历史公共用户迁移
-
-如需将历史 `__public__` 数据迁移到已注册用户 `ec33ff27-cc7e-4e4c-aba8-c4599d494286`，执行：
-
-```bash
-./scripts/migrate-public-user-id.sh ./packages/server/data/agent-swarm.db ec33ff27-cc7e-4e4c-aba8-c4599d494286
-```
 
 ## WebSocket 认证
 

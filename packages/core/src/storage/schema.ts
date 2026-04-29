@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, primaryKey } from "drizzle-orm/sqlite-core";
 
 export const settingsTable = sqliteTable("settings", {
   key: text("key").primaryKey(),
@@ -16,13 +16,15 @@ export const swarmsTable = sqliteTable("swarms", {
 });
 
 export const agentsTable = sqliteTable("agents", {
-  id: text("id").primaryKey(),
+  id: text("id").notNull(),
   swarmId: text("swarm_id").notNull().references(() => swarmsTable.id),
   name: text("name").notNull(),
   config: text("config").notNull(), // JSON: SwarmAgentConfig
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
-});
+}, (table) => [
+  primaryKey({ columns: [table.swarmId, table.id] }),
+]);
 
 export const conversationsTable = sqliteTable("conversations", {
   id: text("id").primaryKey(),
@@ -41,7 +43,7 @@ export const conversationsTable = sqliteTable("conversations", {
 export const messagesTable = sqliteTable("messages", {
   id: text("id").primaryKey(),
   conversationId: text("conversation_id").notNull().references(() => conversationsTable.id),
-  agentId: text("agent_id").references(() => agentsTable.id),
+  agentId: text("agent_id"),
   role: text("role").notNull(), // user / assistant / toolResult / system / notification
   content: text("content"),
   thinking: text("thinking"),
@@ -53,7 +55,7 @@ export const messagesTable = sqliteTable("messages", {
 });
 
 export const presetAgentsTable = sqliteTable("preset_agents", {
-  id: text("id").primaryKey(),
+  id: text("id").notNull(),
   userId: text("user_id").notNull(),
   name: text("name").notNull(),
   description: text("description").notNull().default(""),
@@ -65,12 +67,14 @@ export const presetAgentsTable = sqliteTable("preset_agents", {
   builtIn: integer("built_in").notNull().default(0),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
-});
+}, (table) => [
+  primaryKey({ columns: [table.userId, table.id] }),
+]);
 
 export const eventsTable = sqliteTable("events", {
   id: text("id").primaryKey(),
   conversationId: text("conversation_id").notNull().references(() => conversationsTable.id),
-  agentId: text("agent_id").references(() => agentsTable.id),
+  agentId: text("agent_id"),
   eventType: text("event_type").notNull(),
   eventData: text("event_data"), // JSON
   timestamp: integer("timestamp").notNull(),
@@ -93,6 +97,7 @@ export const usersTable = sqliteTable("users", {
   id: text("id").primaryKey(),
   username: text("username").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  role: text("role").notNull().default("user"),
   createdAt: integer("created_at").notNull(),
 });
 

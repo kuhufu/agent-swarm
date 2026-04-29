@@ -26,18 +26,20 @@ export function authRoutes(swarm: AgentSwarm): Router {
       }
 
       const passwordHash = await bcrypt.hash(password, 10);
+      const role: "admin" | "user" = await swarm.countUsers() === 0 ? "admin" : "user";
       const user = {
         id: randomUUID(),
         username: username.trim(),
         passwordHash,
+        role,
         createdAt: Date.now(),
       };
 
       await swarm.createUser(user);
 
-      const token = signToken({ id: user.id, username: user.username });
+      const token = signToken({ id: user.id, username: user.username, role: user.role });
       res.status(201).json({
-        data: { token, user: { id: user.id, username: user.username } },
+        data: { token, user: { id: user.id, username: user.username, role: user.role } },
       });
     } catch (err: any) {
       if (err?.message?.includes("UNIQUE constraint")) {
@@ -64,9 +66,9 @@ export function authRoutes(swarm: AgentSwarm): Router {
         return res.status(401).json({ error: "用户名或密码错误" });
       }
 
-      const token = signToken({ id: user.id, username: user.username });
+      const token = signToken({ id: user.id, username: user.username, role: user.role });
       res.json({
-        data: { token, user: { id: user.id, username: user.username } },
+        data: { token, user: { id: user.id, username: user.username, role: user.role } },
       });
     } catch {
       res.status(500).json({ error: "登录失败" });
@@ -77,7 +79,7 @@ export function authRoutes(swarm: AgentSwarm): Router {
     if (!req.user) {
       return res.status(401).json({ error: "未登录" });
     }
-    res.json({ data: { id: req.user.id, username: req.user.username } });
+    res.json({ data: { id: req.user.id, username: req.user.username, role: req.user.role } });
   });
 
   router.post("/logout", (_req, res) => {

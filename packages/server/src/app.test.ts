@@ -4,12 +4,13 @@ import type { AgentSwarm, LLMBackendConfig, SwarmConfig } from "@agent-swarm/cor
 import { createApp } from "./app.js";
 import { signToken } from "./middleware/auth.js";
 
-const TEST_USER = { id: "test-user", username: "tester" };
+const TEST_USER = { id: "test-user", username: "tester", role: "admin" as const };
 const TEST_TOKEN = signToken(TEST_USER);
+const NORMAL_USER_TOKEN = signToken({ id: "normal-user", username: "normal", role: "user" });
 
-function withAuthHeaders(headers: Record<string, string> = {}): Record<string, string> {
+function withAuthHeaders(headers: Record<string, string> = {}, token = TEST_TOKEN): Record<string, string> {
   return {
-    Authorization: `Bearer ${TEST_TOKEN}`,
+    Authorization: `Bearer ${token}`,
     ...headers,
   };
 }
@@ -24,6 +25,7 @@ function createMockSwarm() {
     apiKeys: { anthropic: "", openai: "" },
   };
   const swarms = new Map<string, SwarmConfig>();
+  const templates = new Map<string, any>();
 
   swarms.set("router_swarm", {
     id: "router_swarm",
@@ -51,6 +53,10 @@ function createMockSwarm() {
     addAgentPreset: async (preset: any) => preset,
     updateAgentPreset: async (_id: string, preset: any) => preset,
     deleteAgentPreset: async () => undefined,
+    listAgentTemplates: async () => Array.from(templates.values()),
+    addAgentTemplate: async (template: any) => { templates.set(template.id, template); return template; },
+    updateAgentTemplate: async (id: string, template: any) => { if (!templates.has(id)) throw new Error("Agent template not found"); templates.set(id, template); return template; },
+    deleteAgentTemplate: async (id: string) => { if (!templates.has(id)) throw new Error("Agent template not found"); templates.delete(id); },
     listConversations: async () => [],
     listAllConversations: async () => [],
     createConversation: async () => ({ getId: () => "conv_test" }),
@@ -157,6 +163,90 @@ describe("API routes", () => {
     }
   });
 
+  it("PUT /api/config persists saved models", async () => {
+    const server = await startTestServer();
+    try {
+      const response = await fetch(`${server.baseUrl}/api/config`, {
+        method: "PUT",
+        headers: withAuthHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          models: [
+            {
+              id: "gpt-4o-mini",
+              name: "GPT 4o Mini",
+              provider: "openai",
+              modelId: "gpt-4o-mini",
+            },
+          ],
+        }),
+      });
+      const data = await response.json() as { data: { models: any[] } };
+      expect(response.status).toBe(200);
+      expect(data.data.models).toEqual([
+        {
+          id: "gpt-4o-mini",
+          name: "GPT 4o Mini",
+          provider: "openai",
+          modelId: "gpt-4o-mini",
+        },
+      ]);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("PUT /api/config can clear saved models", async () => {
+    const server = await startTestServer();
+    try {
+      await fetch(`${server.baseUrl}/api/config`, {
+        method: "PUT",
+        headers: withAuthHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          models: [{ id: "m1", name: "M1", provider: "openai", modelId: "m1" }],
+        }),
+      });
+
+      const response = await fetch(`${server.baseUrl}/api/config`, {
+        method: "PUT",
+        headers: withAuthHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({ models: [] }),
+      });
+      const data = await response.json() as { data: { models: any[] } };
+      expect(response.status).toBe(200);
+      expect(data.data.models).toEqual([]);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("PUT /api/config requires admin role", async () => {
+    const server = await startTestServer();
+    try {
+      const response = await fetch(`${server.baseUrl}/api/config`, {
+        method: "PUT",
+        headers: withAuthHeaders({ "content-type": "application/json" }, NORMAL_USER_TOKEN),
+        body: JSON.stringify({ apiKeys: { openai: "sk-denied" } }),
+      });
+      expect(response.status).toBe(403);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("POST /api/templates requires admin role", async () => {
+    const server = await startTestServer();
+    try {
+      const response = await fetch(`${server.baseUrl}/api/templates`, {
+        method: "POST",
+        headers: withAuthHeaders({ "content-type": "application/json" }, NORMAL_USER_TOKEN),
+        body: JSON.stringify({ id: "template", name: "Template" }),
+      });
+      expect(response.status).toBe(403);
+    } finally {
+      await server.close();
+    }
+  });
+
   it("PUT /api/swarms/:id merges existing config and auto-fills router orchestrator", async () => {
     const server = await startTestServer();
     try {
@@ -258,6 +348,46 @@ describe("API routes", () => {
         method: "POST",
         headers: withAuthHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ name: "Test Swarm", mode: "router", agents: [] }),
+      });
+      expect(response.status).toBe(400);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("POST /api/swarms accepts intervention strategy records", async () => {
+    const server = await startTestServer();
+    try {
+      const response = await fetch(`${server.baseUrl}/api/swarms`, {
+        method: "POST",
+        headers: withAuthHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          name: "Intervention Swarm",
+          mode: "sequential",
+          agents: [{ id: "agent_1", name: "Agent 1", description: "", systemPrompt: "", model: { provider: "openai", modelId: "gpt-4o-mini" } }],
+          interventions: { before_tool_call: "confirm" },
+        }),
+      });
+      const data = await response.json() as { data: SwarmConfig };
+      expect(response.status).toBe(201);
+      expect(data.data.interventions).toEqual({ before_tool_call: "confirm" });
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("POST /api/swarms rejects legacy intervention arrays", async () => {
+    const server = await startTestServer();
+    try {
+      const response = await fetch(`${server.baseUrl}/api/swarms`, {
+        method: "POST",
+        headers: withAuthHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          name: "Bad Intervention Swarm",
+          mode: "sequential",
+          agents: [{ id: "agent_1", name: "Agent 1", description: "", systemPrompt: "", model: { provider: "openai", modelId: "gpt-4o-mini" } }],
+          interventions: [{ point: "before_tool_call", strategy: "confirm" }],
+        }),
       });
       expect(response.status).toBe(400);
     } finally {

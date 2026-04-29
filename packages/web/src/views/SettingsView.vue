@@ -130,6 +130,13 @@ function updateProvider(id: string, field: string, value: unknown) {
 
 const models = reactive<SavedModel[]>([]);
 
+function resetLocalConfigState() {
+  for (const id of Object.keys(providers)) {
+    delete providers[id];
+  }
+  models.splice(0, models.length);
+}
+
 function addModel(model: SavedModel) {
   models.push(model);
 }
@@ -176,6 +183,7 @@ onMounted(async () => {
   try {
     await settingsStore.fetchConfig();
     loadError.value = "";
+    resetLocalConfigState();
     const config = settingsStore.config;
     if (config) {
       for (const [provider, key] of Object.entries(config.apiKeys)) {

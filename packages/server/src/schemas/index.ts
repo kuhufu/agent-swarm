@@ -36,10 +36,19 @@ const pipelineStepSchema = z.object({
   }).optional(),
 });
 
-const interventionSchema = z.object({
-  point: z.string(),
-  strategy: z.string(),
-});
+const interventionPointSchema = z.enum([
+  "before_agent_start",
+  "after_agent_end",
+  "before_tool_call",
+  "after_tool_call",
+  "on_handoff",
+  "on_error",
+  "on_approval_required",
+]);
+
+const interventionStrategySchema = z.enum(["auto", "confirm", "review", "edit", "reject"]);
+
+const interventionsSchema = z.partialRecord(interventionPointSchema, interventionStrategySchema);
 
 export const createSwarmSchema = z.object({
   name: z.string().min(1, "名称不能为空"),
@@ -50,7 +59,7 @@ export const createSwarmSchema = z.object({
   aggregator: agentConfigSchema.optional(),
   debateConfig: debatableConfigSchema.optional(),
   pipeline: z.array(pipelineStepSchema).optional(),
-  interventions: z.array(interventionSchema).optional(),
+  interventions: interventionsSchema.optional(),
   maxTotalTurns: z.number().int().positive().optional(),
   maxConcurrency: z.number().int().positive().optional(),
 });
@@ -64,7 +73,7 @@ export const updateSwarmSchema = z.object({
   aggregator: agentConfigSchema.optional(),
   debateConfig: debatableConfigSchema.optional(),
   pipeline: z.array(pipelineStepSchema).optional(),
-  interventions: z.array(interventionSchema).optional(),
+  interventions: interventionsSchema.optional(),
   maxTotalTurns: z.number().int().positive().optional(),
   maxConcurrency: z.number().int().positive().optional(),
 });
@@ -134,9 +143,10 @@ export const updateConfigSchema = z.object({
     low: z.number().int().positive().optional(),
   }).optional(),
   models: z.array(z.object({
-    provider: z.string(),
-    modelId: z.string(),
-    label: z.string().optional(),
+    id: z.string().min(1, "模型 ID 不能为空"),
+    name: z.string().min(1, "模型名称不能为空"),
+    provider: z.string().min(1, "提供商不能为空"),
+    modelId: z.string().min(1, "模型标识不能为空"),
   })).optional(),
 });
 
