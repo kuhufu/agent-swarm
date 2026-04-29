@@ -3,7 +3,6 @@ import type { IncomingMessage } from "http";
 import type { Express } from "express";
 import { WebSocketServer, WebSocket } from "ws";
 import type { AgentSwarm, SwarmEvent, ThinkingLevel, SwarmConversation } from "@agent-swarm/core";
-import { createAllMCPTools, createRetrieveKnowledgeTool } from "@agent-swarm/core";
 import { verifyAccessToken } from "./middleware/auth.js";
 
 interface WSClient {
@@ -318,11 +317,6 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
             isError: result?.isError === true,
           };
         },
-        webSearchConfig: swarm.webSearchConfig,
-        mcpTools: swarm.mcpClient ? createAllMCPTools(swarm.mcpClient) : undefined,
-        serverTools: (swarm as any).vectorStore
-          ? [createRetrieveKnowledgeTool((swarm as any).vectorStore, { userId: client.userId })]
-          : undefined,
       });
 
       for await (const event of stream) {

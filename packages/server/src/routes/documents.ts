@@ -48,7 +48,7 @@ export function documentRoutes(swarm: AgentSwarm): Router {
       const userId = resolveRequestUserId(req);
       if (!userId) return res.status(401).json({ error: "未登录" });
 
-      const store = (swarm as any).vectorStore;
+      const store = swarm.vectorStore;
       if (!store) return res.json({ data: [] });
       const docs = await store.listDocuments(userId);
       res.json({ data: docs });
@@ -67,7 +67,7 @@ export function documentRoutes(swarm: AgentSwarm): Router {
         return res.status(400).json({ error: "filename 和 content 不能为空" });
       }
 
-      const store = (swarm as any).vectorStore;
+      const store = swarm.vectorStore;
       if (!store) {
         return res.status(500).json({ error: "知识库未初始化" });
       }
@@ -98,7 +98,7 @@ export function documentRoutes(swarm: AgentSwarm): Router {
       const userId = resolveRequestUserId(req);
       if (!userId) return res.status(401).json({ error: "未登录" });
 
-      const store = (swarm as any).vectorStore;
+      const store = swarm.vectorStore;
       if (!store) return res.status(404).json({ error: "知识库未初始化" });
       const doc = await store.getDocument(req.params.id as string, userId);
       if (!doc) return res.status(404).json({ error: "文档不存在" });
@@ -118,7 +118,7 @@ export function documentRoutes(swarm: AgentSwarm): Router {
         return res.status(400).json({ error: "filename 和 content 不能为空" });
       }
 
-      const store = (swarm as any).vectorStore;
+      const store = swarm.vectorStore;
       if (!store) return res.status(404).json({ error: "知识库未初始化" });
 
       const documentId = req.params.id as string;
@@ -150,7 +150,7 @@ export function documentRoutes(swarm: AgentSwarm): Router {
       const userId = resolveRequestUserId(req);
       if (!userId) return res.status(401).json({ error: "未登录" });
 
-      const store = (swarm as any).vectorStore;
+      const store = swarm.vectorStore;
       if (!store) return res.status(404).json({ error: "知识库未初始化" });
       await store.deleteDocument(req.params.id as string, userId);
       res.json({ data: { deleted: true } });
@@ -167,7 +167,7 @@ export function documentRoutes(swarm: AgentSwarm): Router {
       const { query, topK } = req.body ?? {};
       if (!query) return res.status(400).json({ error: "query 不能为空" });
 
-      const store = (swarm as any).vectorStore;
+      const store = swarm.vectorStore;
       if (!store) return res.json({ data: [] });
 
       const results = await store.search(query, topK ?? 5, userId);

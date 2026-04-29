@@ -26,10 +26,8 @@ async function main() {
       swarms: [],
     },
     logger,
+    vectorStore,
   });
-
-  // Attach vector store for document routes
-  (swarm as any).vectorStore = vectorStore;
 
   await swarm.init();
 

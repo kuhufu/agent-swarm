@@ -16,6 +16,13 @@ import { ConsoleLogger } from "../logger/console-logger.js";
 import type { WebSearchConfig } from "../tools/web-search.js";
 import { MCPClient } from "../tools/mcp/client.js";
 import type { MCPServerConfig } from "../tools/mcp/client.js";
+import type { IVectorStore } from "../storage/vector-store.js";
+import type { ToolRuntimeAvailability } from "../tools/runtime.js";
+import { createRuntimeTool } from "../tools/runtime.js";
+import { createAllMCPTools } from "../tools/mcp/tool-provider.js";
+import { createRetrieveKnowledgeTool } from "../tools/retrieve-knowledge.js";
+import { createWorkspaceManager } from "../tools/workspace.js";
+import { createWorkspaceTool } from "../tools/workspace-tool-set.js";
 
 export interface AgentSwarmOptions {
   configPath?: string;
@@ -25,6 +32,7 @@ export interface AgentSwarmOptions {
   logger?: Logger;
   webSearchConfig?: WebSearchConfig;
   mcpServers?: MCPServerConfig[];
+  vectorStore?: IVectorStore;
 }
 
 export interface ModelConnectionTestOptions {
@@ -89,6 +97,7 @@ export class AgentSwarm {
   public readonly logger: Logger;
   public readonly webSearchConfig?: WebSearchConfig;
   public readonly mcpClient: MCPClient;
+  public readonly vectorStore?: IVectorStore;
   private readonly mcpServerConfigs?: MCPServerConfig[];
 
   private normalizeUserId(userId: string): string {
@@ -148,6 +157,7 @@ export class AgentSwarm {
     this.webSearchConfig = options.webSearchConfig;
     this.mcpClient = new MCPClient();
     this.mcpServerConfigs = options.mcpServers;
+    this.vectorStore = options.vectorStore;
 
     // Bootstrap in-memory index from startup config before init.
     for (const swarm of this.config.swarms) {
@@ -208,12 +218,14 @@ export class AgentSwarm {
 
     return new Conversation(
       conv.id,
+      normalizedUserId,
       swarmConfig,
       this.storage,
       this.config.llm,
       this.interventionHandler,
       [],
       this.eventLogLevel,
+      (context) => this.createToolRuntimeAvailability(context),
     );
   }
 
@@ -263,12 +275,14 @@ export class AgentSwarm {
 
     return new Conversation(
       newConv.id,
+      normalizedUserId,
       swarmConfig,
       this.storage,
       this.config.llm,
       this.interventionHandler,
       [],
       this.eventLogLevel,
+      (context) => this.createToolRuntimeAvailability(context),
     );
   }
 
@@ -320,12 +334,14 @@ export class AgentSwarm {
 
     return new Conversation(
       conv.id,
+      normalizedUserId,
       directSwarm,
       this.storage,
       this.config.llm,
       this.interventionHandler,
       [],
       this.eventLogLevel,
+      (context) => this.createToolRuntimeAvailability(context),
     );
   }
 
@@ -359,15 +375,38 @@ export class AgentSwarm {
 
     const conversation = new Conversation(
       conv.id,
+      normalizedUserId,
       this.applyConversationDirectModel(swarmConfig, conv),
       this.storage,
       this.config.llm,
       this.interventionHandler,
       restoredMessages,
       this.eventLogLevel,
+      (context) => this.createToolRuntimeAvailability(context),
     );
 
     return conversation;
+  }
+
+  createToolRuntimeAvailability(context: {
+    conversationId: string;
+    userId: string;
+  }): ToolRuntimeAvailability {
+    const runtimeTools = [
+      createWorkspaceTool(createWorkspaceManager(context.conversationId)),
+    ];
+
+    if (this.vectorStore) {
+      runtimeTools.push(createRuntimeTool(
+        createRetrieveKnowledgeTool(this.vectorStore, { userId: context.userId }),
+      ));
+    }
+
+    return {
+      webSearchConfig: this.webSearchConfig,
+      mcpTools: createAllMCPTools(this.mcpClient),
+      runtimeTools,
+    };
   }
 
   /**

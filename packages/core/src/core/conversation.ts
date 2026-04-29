@@ -12,12 +12,9 @@ import { SequentialMode } from "../modes/sequential.js";
 import { ParallelMode } from "../modes/parallel.js";
 import { SwarmMode } from "../modes/swarm-mode.js";
 import { DebateMode } from "../modes/debate.js";
-import { createRouteToAgentTool } from "../tools/route-to-agent.js";
-import { createHandoffTool } from "../tools/handoff.js";
-import { createClientBridgeTool } from "../tools/client-bridge.js";
-import type { ClientToolDefinition, ClientToolExecutionResult } from "../tools/client-bridge.js";
-import { createWebSearchTool } from "../tools/web-search.js";
-import type { WebSearchConfig } from "../tools/web-search.js";
+import type { ClientToolExecutionResult } from "../tools/client-bridge.js";
+import type { ToolRuntimeAvailability, ToolRuntimeOptions } from "../tools/runtime.js";
+import { createToolRuntimeOptions, withRuntimeTools } from "../tools/runtime.js";
 import { storedToMessage } from "../storage/message-mapper.js";
 import type { ModeExecutor, ModeExecutionContext } from "../modes/types.js";
 import { mapThinkingLevel, resolveModelFromProvider } from "../llm/provider.js";
@@ -39,21 +36,11 @@ export interface ConversationPromptOptions {
   clientToolExecutor?: (
     request: { toolName: string; toolCallId: string; params: unknown },
   ) => Promise<ClientToolExecutionResult>;
-  webSearchConfig?: WebSearchConfig;
-  mcpTools?: AgentTool<any>[];
-  serverTools?: AgentTool<any>[];
 }
 
-interface ConversationRuntimeOptions {
-  enabledTools: string[];
+interface ConversationRuntimeOptions extends ToolRuntimeOptions {
   thinkingEnabled?: boolean;
   thinkingLevel?: ThinkingLevel;
-  clientToolExecutor: (
-    request: { toolName: string; toolCallId: string; params: unknown },
-  ) => Promise<ClientToolExecutionResult>;
-  webSearchConfig?: WebSearchConfig;
-  mcpTools?: AgentTool<any>[];
-  serverTools?: AgentTool<any>[];
 }
 
 export class Conversation {
@@ -81,32 +68,40 @@ export class Conversation {
   private agents: Map<string, ActiveAgent> = new Map();
   private restoredMessages: Message[];
   private runtimeOptions: ConversationRuntimeOptions = {
-    enabledTools: [],
+    ...createToolRuntimeOptions(),
     thinkingEnabled: undefined,
-    clientToolExecutor: async () => ({
-      content: "Client tool executor not configured",
-      isError: true,
-    }),
   };
   private eventListeners: ((event: SwarmEvent) => void)[] = [];
   private _aborted = false;
+  private readonly userId: string;
+  private readonly toolAvailabilityProvider?: (context: {
+    conversationId: string;
+    userId: string;
+  }) => ToolRuntimeAvailability | Promise<ToolRuntimeAvailability>;
 
   constructor(
     id: string,
+    userId: string,
     swarmConfig: SwarmConfig,
     storage: IStorage,
     llmConfig: LLMBackendConfig,
     interventionHandler?: InterventionHandler,
     restoredHistory: StoredMessage[] = [],
     eventLogLevel: EventLogLevel = "key",
+    toolAvailabilityProvider?: (context: {
+      conversationId: string;
+      userId: string;
+    }) => ToolRuntimeAvailability | Promise<ToolRuntimeAvailability>,
   ) {
     this.id = id;
+    this.userId = userId;
     this.swarmConfig = swarmConfig;
     this.storage = storage;
     this.llmConfig = llmConfig;
     this.interventionHandler = interventionHandler;
     this.restoredMessages = restoredHistory.map((msg) => storedToMessage(msg));
     this.eventLogLevel = eventLogLevel;
+    this.toolAvailabilityProvider = toolAvailabilityProvider;
   }
 
   getId(): string { return this.id; }
@@ -116,22 +111,15 @@ export class Conversation {
    */
   async *prompt(message: string, options: ConversationPromptOptions = {}): AsyncGenerator<SwarmEvent> {
     this._aborted = false;
+    const toolAvailability = await this.resolveToolAvailability();
     this.runtimeOptions = {
-      enabledTools: Array.isArray(options.enabledTools)
-        ? Array.from(new Set(options.enabledTools
-          .filter((tool): tool is string => typeof tool === "string")
-          .map((tool) => tool.trim())
-          .filter((tool) => tool.length > 0)))
-        : [],
+      ...createToolRuntimeOptions({
+        ...toolAvailability,
+        enabledTools: options.enabledTools,
+        clientToolExecutor: options.clientToolExecutor,
+      }),
       thinkingEnabled: typeof options.thinkingEnabled === "boolean" ? options.thinkingEnabled : undefined,
       thinkingLevel: options.thinkingLevel,
-      clientToolExecutor: options.clientToolExecutor ?? (async () => ({
-        content: "Client tool executor not configured",
-        isError: true,
-      })),
-      webSearchConfig: options.webSearchConfig,
-      mcpTools: options.mcpTools,
-      serverTools: options.serverTools,
     };
     this.syncActiveAgentTools();
 
@@ -256,6 +244,16 @@ export class Conversation {
     }
   }
 
+  private async resolveToolAvailability(): Promise<ToolRuntimeAvailability> {
+    if (!this.toolAvailabilityProvider) {
+      return {};
+    }
+    return this.toolAvailabilityProvider({
+      conversationId: this.id,
+      userId: this.userId,
+    });
+  }
+
   private createModeContext(message: string): ModeExecutionContext {
     return {
       swarmConfig: this.swarmConfig,
@@ -332,139 +330,11 @@ export class Conversation {
   }
 
   private withAutoTools(config: SwarmAgentConfig): SwarmAgentConfig {
-    const mergedTools: AgentTool<any>[] = [...(config.tools ?? [])];
-
-    for (const tool of this.getAutoTools(config)) {
-      if (!mergedTools.some((existing) => existing.name === tool.name)) {
-        mergedTools.push(tool);
-      }
-    }
-
+    const enhancedConfig = withRuntimeTools(config, this.swarmConfig, this.runtimeOptions);
     return {
-      ...config,
-      tools: mergedTools,
+      ...enhancedConfig,
       thinkingLevel: this.resolveRuntimeThinkingLevel(config),
     };
-  }
-
-  private getAutoTools(config: SwarmAgentConfig): AgentTool<any>[] {
-    const tools: AgentTool<any>[] = [];
-
-    const availableAgents = this.swarmConfig.agents.map((agent) => ({
-      id: agent.id,
-      name: agent.name,
-      description: agent.description,
-    }));
-    if (
-      this.swarmConfig.orchestrator
-      && !availableAgents.some((agent) => agent.id === this.swarmConfig.orchestrator!.id)
-    ) {
-      availableAgents.push({
-        id: this.swarmConfig.orchestrator.id,
-        name: this.swarmConfig.orchestrator.name,
-        description: this.swarmConfig.orchestrator.description,
-      });
-    }
-
-    if (
-      this.swarmConfig.mode === "router"
-      && this.swarmConfig.orchestrator
-      && config.id === this.swarmConfig.orchestrator.id
-    ) {
-      tools.push(createRouteToAgentTool(availableAgents));
-    }
-
-    if (this.swarmConfig.mode === "swarm") {
-      tools.push(
-        createHandoffTool(availableAgents.filter((agent) => agent.id !== config.id)),
-      );
-    }
-
-    for (const clientTool of this.buildClientToolDefinitions()) {
-      if (!this.runtimeOptions.enabledTools.includes(clientTool.name)) {
-        continue;
-      }
-
-      const remoteExecutor = async (request: { toolCallId: string; params: unknown }) => this.runtimeOptions.clientToolExecutor({
-        toolName: clientTool.name,
-        toolCallId: request.toolCallId,
-        params: request.params,
-      });
-
-      tools.push(createClientBridgeTool({
-        tool: clientTool,
-        execute: remoteExecutor,
-      }));
-    }
-
-    // Server-side web search tool (DuckDuckGo 免费，无需配置)
-    if (this.runtimeOptions.enabledTools.includes("web_search")) {
-      tools.push(createWebSearchTool(
-        this.runtimeOptions.webSearchConfig ?? { provider: "duckduckgo" },
-      ));
-    }
-
-    // MCP tools (from connected MCP servers)
-    if (this.runtimeOptions.enabledTools.includes("mcp") && this.runtimeOptions.mcpTools) {
-      for (const mcpTool of this.runtimeOptions.mcpTools) {
-        if (!tools.some((t) => t.name === mcpTool.name)) {
-          tools.push(mcpTool);
-        }
-      }
-    }
-
-    for (const serverTool of this.runtimeOptions.serverTools ?? []) {
-      if (!this.runtimeOptions.enabledTools.includes(serverTool.name)) {
-        continue;
-      }
-      if (!tools.some((t) => t.name === serverTool.name)) {
-        tools.push(serverTool);
-      }
-    }
-
-    return tools;
-  }
-
-  private buildClientToolDefinitions(): ClientToolDefinition[] {
-    const tools: ClientToolDefinition[] = [];
-    tools.push({
-      name: "current_time",
-      label: "Current Time",
-      description: "Get current local date and time from the user's browser.",
-      parametersSchema: {
-        type: "object",
-        properties: {
-          locale: {
-            type: "string",
-            description: "Optional BCP 47 locale, e.g. zh-CN or en-US.",
-          },
-        },
-        additionalProperties: false,
-      },
-    });
-    tools.push({
-      name: "javascript_execute",
-      label: "JavaScript Execute",
-      description: "Execute runnable JavaScript code in the browser for calculation, transformation, and quick checks.",
-      parametersSchema: {
-        type: "object",
-        properties: {
-          code: {
-            type: "string",
-            description: "Must be runnable JavaScript statements (not plain text). Use executable code and preferably `return` the final value.",
-          },
-          timeoutMs: {
-            type: "number",
-            description: "Execution timeout in milliseconds (50-5000). Default 2000.",
-            minimum: 50,
-            maximum: 5000,
-          },
-        },
-        required: ["code"],
-        additionalProperties: false,
-      },
-    });
-    return tools;
   }
  
   private syncActiveAgentTools() {

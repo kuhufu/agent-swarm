@@ -44,6 +44,10 @@ export function useChat() {
     get: () => conversationStore.isToolEnabled("retrieve_knowledge"),
     set: (value: boolean) => conversationStore.setClientToolEnabled("retrieve_knowledge", value),
   });
+  const workspaceToolEnabled = computed({
+    get: () => conversationStore.isToolEnabled("workspace"),
+    set: (value: boolean) => conversationStore.setClientToolEnabled("workspace", value),
+  });
   const thinkingLevel = computed({
     get: () => conversationStore.thinkingLevel,
     set: (value: string) => conversationStore.setThinkingLevel(value),
@@ -179,6 +183,7 @@ export function useChat() {
     jsExecutionToolEnabled,
     searchToolEnabled,
     retrieveKnowledgeToolEnabled,
+    workspaceToolEnabled,
     thinkingLevel,
   };
 }

@@ -17,6 +17,7 @@
 - 历史消息持久化：SQLite 存储，支持恢复会话上下文
 - 上下文清空：保留历史消息，仅重置后续模型上下文
 - 多租户隔离：`swarms / conversations / agent presets / documents / usage analytics` 按 `userId` 严格隔离
+- 工具运行时：`packages/core/src/tools/runtime.ts` 统一把模式工具、前端桥接工具、WebSearch、MCP 和运行时工具注入 Agent
 - 消息 Markdown 渲染：基于 `marked + marked-highlight + highlight.js + dompurify`，支持代码高亮与安全净化
 - 介入机制：支持工具调用/错误/handoff 等节点人工决策
 - 事件分级落库：`eventLogLevel = none | key | full`（默认 `key`）
@@ -33,6 +34,7 @@ agent-swarm/
 ├── docs/
 │   ├── architecture/
 │   │   ├── context-recovery.md
+│   │   ├── core-tool-runtime.md
 │   │   └── frontend-conversation-runtime.md
 │   ├── features/
 │   │   ├── agent-presets.md

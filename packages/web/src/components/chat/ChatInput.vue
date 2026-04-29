@@ -26,6 +26,7 @@ const {
   jsExecutionToolEnabled,
   searchToolEnabled,
   retrieveKnowledgeToolEnabled,
+  workspaceToolEnabled,
   thinkingLevel,
 } = useChat();
 
@@ -244,6 +245,12 @@ function handleToggleJsExecutionTool() {
   requestTextareaFocus();
 }
 
+function handleToggleWorkspaceTool() {
+  captureTextareaSelection();
+  workspaceToolEnabled.value = !workspaceToolEnabled.value;
+  requestTextareaFocus();
+}
+
 function handleToggleThinkLevel() {
   captureTextareaSelection();
   showModelSelect.value = false;
@@ -458,6 +465,17 @@ function handleOutsideClick(event: MouseEvent) {
             <polyline points="8 6 2 12 8 18" />
           </svg>
           <span>JS 执行</span>
+        </button>
+        <button
+          class="tool-btn"
+          :class="{ active: workspaceToolEnabled }"
+          @mousedown="handleKeepTextareaFocusMouseDown"
+          @click="handleToggleWorkspaceTool"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+          </svg>
+          <span>工作区</span>
         </button>
         <button
           class="tool-btn"

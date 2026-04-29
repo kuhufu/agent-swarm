@@ -45,7 +45,7 @@ agent-swarm/
 │   │   │   ├── intervention/    # 介入处理器和内置策略
 │   │   │   ├── storage/         # IStorage 接口 + SQLite 实现
 │   │   │   ├── llm/             # LLM 配置管理 + pi-ai 桥接
-│   │   │   └── tools/           # route_to_agent / handoff / respond_to_user
+│   │   │   └── tools/           # 工具定义、MCP、workspace 组合工具、运行时工具注入
 │   │   └── package.json
 │   ├── server/                  # @agent-swarm/server
 │   │   ├── src/
@@ -107,6 +107,7 @@ pnpm test                  # 运行 core 单元测试
 - 存储：通过 `IStorage` 接口抽象，默认 `SqliteStorage` 实现
 - 事件：所有协作过程通过 `SwarmEvent` 类型的事件流暴露
 - 介入：通过 `InterventionHandler` 抽象类实现，内置 5 种策略
+- 工具注入：统一通过 `packages/core/src/tools/runtime.ts`；`Conversation` 按 `enabledTools` 决定启用，`AgentSwarm.createToolRuntimeAvailability()` 只提供可用工具资源，WebSocket 不创建具体工具
 - API 路由：RESTful 风格，响应格式 `{ data: T }` 或 `{ error: string }`
 - WebSocket 消息格式：`{ type: string, payload: any, conversationId?: string }`
 
