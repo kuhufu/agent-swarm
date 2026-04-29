@@ -6,7 +6,7 @@ import { createExecuteFileTool } from "./execute.js";
 import { createListFilesTool } from "./list-files.js";
 import { createReadFileTool } from "./read-file.js";
 import { createWriteFileTool } from "./write-file.js";
-import { createCleanupWorkspaceContainersTool, createListWorkspaceContainersTool } from "./containers.js";
+import { createRemoveWorkspaceContainersTool, createListWorkspaceContainersTool, createStartWorkspaceContainersTool, createStopWorkspaceContainersTool, createRestartWorkspaceContainersTool } from "./containers.js";
 
 export const WORKSPACE_TOOL_ID = "workspace";
 
@@ -17,7 +17,10 @@ export function createWorkspaceTools(workspace: WorkspaceManager): AgentTool<any
     createListFilesTool(workspace),
     createExecuteFileTool(workspace),
     createListWorkspaceContainersTool(workspace),
-    createCleanupWorkspaceContainersTool(workspace),
+    createStartWorkspaceContainersTool(workspace),
+    createStopWorkspaceContainersTool(workspace),
+    createRestartWorkspaceContainersTool(workspace),
+    createRemoveWorkspaceContainersTool(workspace),
   ];
 }
 

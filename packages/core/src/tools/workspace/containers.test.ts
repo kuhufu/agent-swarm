@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createCleanupWorkspaceContainersTool, createListWorkspaceContainersTool } from "./containers.js";
+import { createRemoveWorkspaceContainersTool, createListWorkspaceContainersTool, createStartWorkspaceContainersTool, createStopWorkspaceContainersTool, createRestartWorkspaceContainersTool } from "./containers.js";
 import { WorkspaceManager, createWorkspaceManager } from "./manager.js";
 
 describe("workspace container tools", () => {
@@ -25,7 +25,7 @@ describe("workspace container tools", () => {
 
     try {
       const listTool = createListWorkspaceContainersTool(workspace);
-      const cleanupTool = createCleanupWorkspaceContainersTool(workspace);
+      const cleanupTool = createRemoveWorkspaceContainersTool(workspace);
 
       const listResult = await listTool.execute("list", {});
       expect(listResult.details.containers).toEqual([
@@ -35,9 +35,9 @@ describe("workspace container tools", () => {
         }),
       ]);
 
-      const cleanupResult = await cleanupTool.execute("cleanup", {});
+      const cleanupResult = await cleanupTool.execute("cleanup", { containerNames: ["agent-swarm-test-container"] });
       expect(cleanupResult.details.containersRemoved).toBe(1);
-      expect(dockerCalls).toContainEqual(["rm", "-f", "abc123"]);
+      expect(dockerCalls).toContainEqual(["rm", "-f", "agent-swarm-test-container"]);
       expect(dockerCalls).toContainEqual([
         "ps",
         "-a",
@@ -63,7 +63,7 @@ describe("workspace container tools", () => {
     });
 
     try {
-      const cleanupTool = createCleanupWorkspaceContainersTool(workspace);
+      const cleanupTool = createRemoveWorkspaceContainersTool(workspace);
       const result = await cleanupTool.execute("cleanup", {
         containerNames: ["container-a", "container-b"],
       });
@@ -87,7 +87,7 @@ describe("workspace container tools", () => {
     });
 
     try {
-      const cleanupTool = createCleanupWorkspaceContainersTool(workspace);
+      const cleanupTool = createRemoveWorkspaceContainersTool(workspace);
       const result = await cleanupTool.execute("cleanup", {
         containerNames: ["foreign-container", "allowed-container"],
       });
@@ -109,7 +109,7 @@ describe("workspace container tools", () => {
     });
 
     try {
-      const cleanupTool = createCleanupWorkspaceContainersTool(workspace);
+      const cleanupTool = createRemoveWorkspaceContainersTool(workspace);
       const result = await cleanupTool.execute("cleanup", {
         containerNames: [],
       });
@@ -118,5 +118,72 @@ describe("workspace container tools", () => {
     } finally {
       restore();
     }
+  });
+
+  describe("start/stop/restart containers", () => {
+    function setupMock(workspace: WorkspaceManager) {
+      const dockerCalls: string[][] = [];
+      const restore = WorkspaceManager.setDockerCommandRunnerForTest(async (args) => {
+        dockerCalls.push(args);
+        if (args.includes("--format")) {
+          return `${JSON.stringify({ ID: "c1", Names: "my-container", Image: "node", Status: "running", Ports: "" })}\n`;
+        }
+        return "";
+      });
+      return { dockerCalls, restore };
+    }
+
+    it("starts specified containers", async () => {
+      const workspace = createWorkspaceManager(`test-start-${crypto.randomUUID()}`);
+      const { dockerCalls, restore } = setupMock(workspace);
+      try {
+        const tool = createStartWorkspaceContainersTool(workspace);
+        const result = await tool.execute("start", { containerNames: ["my-container"] });
+        expect(result.details.succeeded).toBe(1);
+        expect(dockerCalls).toContainEqual(["start", "my-container"]);
+      } finally {
+        restore();
+      }
+    });
+
+    it("stops specified containers", async () => {
+      const workspace = createWorkspaceManager(`test-stop-${crypto.randomUUID()}`);
+      const { dockerCalls, restore } = setupMock(workspace);
+      try {
+        const tool = createStopWorkspaceContainersTool(workspace);
+        const result = await tool.execute("stop", { containerNames: ["my-container"] });
+        expect(result.details.succeeded).toBe(1);
+        expect(dockerCalls).toContainEqual(["stop", "my-container"]);
+      } finally {
+        restore();
+      }
+    });
+
+    it("restarts specified containers", async () => {
+      const workspace = createWorkspaceManager(`test-restart-${crypto.randomUUID()}`);
+      const { dockerCalls, restore } = setupMock(workspace);
+      try {
+        const tool = createRestartWorkspaceContainersTool(workspace);
+        const result = await tool.execute("restart", { containerNames: ["my-container"] });
+        expect(result.details.succeeded).toBe(1);
+        expect(dockerCalls).toContainEqual(["restart", "my-container"]);
+      } finally {
+        restore();
+      }
+    });
+
+    it("skips foreign containers for start", async () => {
+      const workspace = createWorkspaceManager(`test-start-foreign-${crypto.randomUUID()}`);
+      const { dockerCalls, restore } = setupMock(workspace);
+      try {
+        const tool = createStartWorkspaceContainersTool(workspace);
+        const result = await tool.execute("start", { containerNames: ["my-container", "foreign"] });
+        expect(result.details.succeeded).toBe(1);
+        expect(dockerCalls).toContainEqual(["start", "my-container"]);
+        expect(dockerCalls).not.toContainEqual(expect.arrayContaining(["foreign"]));
+      } finally {
+        restore();
+      }
+    });
   });
 });

@@ -80,7 +80,7 @@ export { createRuntimeTool, createToolRuntimeOptions, withRuntimeTools, createRu
 export type { ToolRuntimeOptions, ToolRuntimeInput, ToolRuntimeAvailability, RuntimeTool } from "./tools/runtime.js";
 export { WorkspaceManager, createWorkspaceManager } from "./tools/workspace/manager.js";
 export { createWorkspaceTools } from "./tools/workspace/tool-set.js";
-export { createListWorkspaceContainersTool, createCleanupWorkspaceContainersTool } from "./tools/workspace/containers.js";
+export { createListWorkspaceContainersTool, createStartWorkspaceContainersTool, createStopWorkspaceContainersTool, createRestartWorkspaceContainersTool, createRemoveWorkspaceContainersTool } from "./tools/workspace/containers.js";
 export { MCPClient } from "./tools/mcp/client.js";
 export type { MCPServerConfig, MCPTransport, MCPTool, MCPServerStatus } from "./tools/mcp/client.js";
 export { createMCPToolProvider, createAllMCPTools } from "./tools/mcp/tool-provider.js";

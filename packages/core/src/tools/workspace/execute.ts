@@ -84,7 +84,7 @@ export function createExecuteFileTool(
   const dockerImage = options.dockerImage ?? process.env.AGENT_SWARM_WORKSPACE_IMAGE ?? DEFAULT_DOCKER_IMAGE;
 
   return {
-    name: "workspace_execute",
+    name: "workspace_run_container",
     label: "执行命令",
     description: "在新的 Docker 隔离容器中执行命令。工作区挂载到 /workspace。默认禁用网络；如需启动 Web 服务，使用 ports 显式把容器内监听端口映射到宿主机 127.0.0.1，并设置 background=true。注意：containerPort 必须等于应用代码实际监听端口；如果只是想换浏览器访问端口，只改 hostPort，不要改代码里的监听端口。不要用本工具再启动一个 node/curl 请求去访问后台服务；新容器内的 localhost 不是后台服务容器。启动成功后直接把 http://127.0.0.1:<hostPort> 告诉用户访问。",
     parameters: ExecuteFileParams,
@@ -408,7 +408,7 @@ function getDockerInfrastructureError(exitCode: number | null, stderr: string): 
     return "Docker daemon 未运行或当前进程无法连接 Docker socket。请先启动 Docker Desktop / Docker 服务后再执行 workspace 命令。";
   }
   if (/command not found|executable file not found|no such file or directory/i.test(stderr) && /docker/i.test(stderr)) {
-    return "未找到 Docker CLI。workspace_execute 需要本机安装 Docker 并确保 docker 命令在 PATH 中。";
+    return "未找到 Docker CLI。workspace_run_container 需要本机安装 Docker 并确保 docker 命令在 PATH 中。";
   }
   return null;
 }

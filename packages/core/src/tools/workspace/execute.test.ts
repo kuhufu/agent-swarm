@@ -53,7 +53,7 @@ function createSpawnMock(autoClose = true) {
   return { spawn, calls };
 }
 
-describe("workspace_execute tool", () => {
+describe("workspace_run_container tool", () => {
   it("runs commands through docker with an isolated workspace mount", async () => {
     const workspace = createWorkspaceManager(`test-docker-${crypto.randomUUID()}`);
     const { spawn, calls } = createSpawnMock();

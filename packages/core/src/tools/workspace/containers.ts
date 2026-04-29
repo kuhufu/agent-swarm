@@ -4,8 +4,8 @@ import type { WorkspaceContainerInfo, WorkspaceManager } from "./manager.js";
 
 const EmptyParams = Type.Object({});
 
-const CleanupContainersParams = Type.Object({
-  containerNames: Type.Optional(Type.Array(Type.String())),
+const ContainerNamesParams = Type.Object({
+  containerNames: Type.Array(Type.String()),
 });
 
 interface ListWorkspaceContainersDetails {
@@ -14,7 +14,12 @@ interface ListWorkspaceContainersDetails {
 
 interface CleanupWorkspaceContainersDetails {
   containersRemoved: number;
-  containerNames?: string[];
+  containerNames: string[];
+}
+
+interface OperationContainersDetails {
+  containerNames: string[];
+  succeeded: number;
 }
 
 export function createListWorkspaceContainersTool(
@@ -23,7 +28,7 @@ export function createListWorkspaceContainersTool(
   return {
     name: "workspace_list_containers",
     label: "列出工作区容器",
-    description: "列出当前会话 workspace 中由 workspace_execute 创建的 Docker 容器。容器通过 agent-swarm.conversation-id label 关联到当前会话，因此服务重启后仍可查询；只能查看当前会话，不能访问其他会话或任意宿主机容器。",
+    description: "列出当前会话 workspace 中由 workspace_run_container 创建的 Docker 容器。容器通过 agent-swarm.conversation-id label 关联到当前会话，因此服务重启后仍可查询；只能查看当前会话，不能访问其他会话或任意宿主机容器。",
     parameters: EmptyParams,
     execute: async (): Promise<AgentToolResult<ListWorkspaceContainersDetails>> => {
       const containers = await workspace.listContainers();
@@ -56,35 +61,88 @@ export function createListWorkspaceContainersTool(
   };
 }
 
-export function createCleanupWorkspaceContainersTool(
+export function createRemoveWorkspaceContainersTool(
   workspace: WorkspaceManager,
-): AgentTool<typeof CleanupContainersParams, CleanupWorkspaceContainersDetails> {
+): AgentTool<typeof ContainerNamesParams, CleanupWorkspaceContainersDetails> {
   return {
-    name: "workspace_cleanup_containers",
+    name: "workspace_remove_containers",
     label: "清理工作区容器",
-    description: "停止并删除当前会话 workspace 中由 workspace_execute 创建的 Docker 容器。可指定 containerNames 按容器名删除（仅删除属于当前会话的容器），未指定时按当前会话 Docker label 批量清理。",
-    parameters: CleanupContainersParams,
+    description: "停止并删除当前会话 workspace 中由 workspace_run_container 创建的 Docker 容器（仅删除属于当前会话的容器）。必须指定 containerNames。",
+    parameters: ContainerNamesParams,
     execute: async (_ctx, params): Promise<AgentToolResult<CleanupWorkspaceContainersDetails>> => {
-      const { containerNames } = params;
-      if (containerNames !== undefined && containerNames.length > 0) {
-        const removed = await workspace.removeContainers(containerNames);
-        return {
-          content: [{
-            type: "text",
-            text: `已清理 ${removed} 个指定容器。`,
-          }],
-          details: { containersRemoved: removed, containerNames },
-        };
-      }
-      const containersRemoved = await workspace.cleanupContainers();
+      const removed = await workspace.removeContainers(params.containerNames);
       return {
         content: [{
           type: "text",
-          text: containersRemoved > 0
-            ? `已按当前会话 label 清理 ${containersRemoved} 个 Docker 容器。`
-            : "当前会话没有需要清理的 workspace Docker 容器。",
+          text: `已清理 ${removed} 个指定容器。`,
         }],
-        details: { containersRemoved },
+        details: { containersRemoved: removed, containerNames: params.containerNames },
+      };
+    },
+  };
+}
+
+export function createStartWorkspaceContainersTool(
+  workspace: WorkspaceManager,
+): AgentTool<typeof ContainerNamesParams, OperationContainersDetails> {
+  return {
+    name: "workspace_start_containers",
+    label: "启动工作区容器",
+    description: "启动当前会话 workspace 中已停止的 Docker 容器（仅限属于当前会话的容器）。",
+    parameters: ContainerNamesParams,
+    execute: async (_ctx, params): Promise<AgentToolResult<OperationContainersDetails>> => {
+      const { containerNames } = params;
+      const succeeded = await workspace.startContainers(containerNames);
+      return {
+        content: [{
+          type: "text",
+          text: `已启动 ${succeeded}/${containerNames.length} 个容器。`,
+        }],
+        details: { containerNames, succeeded },
+      };
+    },
+  };
+}
+
+export function createStopWorkspaceContainersTool(
+  workspace: WorkspaceManager,
+): AgentTool<typeof ContainerNamesParams, OperationContainersDetails> {
+  return {
+    name: "workspace_stop_containers",
+    label: "停止工作区容器",
+    description: "停止当前会话 workspace 中正在运行的 Docker 容器（仅限属于当前会话的容器）。",
+    parameters: ContainerNamesParams,
+    execute: async (_ctx, params): Promise<AgentToolResult<OperationContainersDetails>> => {
+      const { containerNames } = params;
+      const succeeded = await workspace.stopContainers(containerNames);
+      return {
+        content: [{
+          type: "text",
+          text: `已停止 ${succeeded}/${containerNames.length} 个容器。`,
+        }],
+        details: { containerNames, succeeded },
+      };
+    },
+  };
+}
+
+export function createRestartWorkspaceContainersTool(
+  workspace: WorkspaceManager,
+): AgentTool<typeof ContainerNamesParams, OperationContainersDetails> {
+  return {
+    name: "workspace_restart_containers",
+    label: "重启工作区容器",
+    description: "重启当前会话 workspace 中的 Docker 容器（仅限属于当前会话的容器）。",
+    parameters: ContainerNamesParams,
+    execute: async (_ctx, params): Promise<AgentToolResult<OperationContainersDetails>> => {
+      const { containerNames } = params;
+      const succeeded = await workspace.restartContainers(containerNames);
+      return {
+        content: [{
+          type: "text",
+          text: `已重启 ${succeeded}/${containerNames.length} 个容器。`,
+        }],
+        details: { containerNames, succeeded },
       };
     },
   };

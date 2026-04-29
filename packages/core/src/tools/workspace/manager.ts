@@ -191,6 +191,48 @@ export class WorkspaceManager {
     return toRemove.length;
   }
 
+  async startContainers(names: string[]): Promise<number> {
+    if (names.length === 0) {
+      return 0;
+    }
+    const containers = await this.listContainers();
+    const allowedNames = new Set(containers.map((c) => c.name));
+    const toStart = names.filter((n) => allowedNames.has(n));
+    if (toStart.length === 0) {
+      return 0;
+    }
+    await WorkspaceManager.dockerCommandRunner(["start", ...toStart]);
+    return toStart.length;
+  }
+
+  async stopContainers(names: string[]): Promise<number> {
+    if (names.length === 0) {
+      return 0;
+    }
+    const containers = await this.listContainers();
+    const allowedNames = new Set(containers.map((c) => c.name));
+    const toStop = names.filter((n) => allowedNames.has(n));
+    if (toStop.length === 0) {
+      return 0;
+    }
+    await WorkspaceManager.dockerCommandRunner(["stop", ...toStop]);
+    return toStop.length;
+  }
+
+  async restartContainers(names: string[]): Promise<number> {
+    if (names.length === 0) {
+      return 0;
+    }
+    const containers = await this.listContainers();
+    const allowedNames = new Set(containers.map((c) => c.name));
+    const toRestart = names.filter((n) => allowedNames.has(n));
+    if (toRestart.length === 0) {
+      return 0;
+    }
+    await WorkspaceManager.dockerCommandRunner(["restart", ...toRestart]);
+    return toRestart.length;
+  }
+
   async cleanupContainers(): Promise<number> {
     return removeDockerContainersByConversation(this.conversationId);
   }
