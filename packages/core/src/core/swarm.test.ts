@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { rmSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import { AgentSwarm } from "./swarm.js";
 import type { AgentSwarmRootConfig, SwarmConfig, EventLogLevel, SwarmEvent } from "./types.js";
+import { createWorkspaceManager } from "../tools/workspace.js";
 
 const TEST_USER_ID = "user-test";
 
@@ -168,6 +169,29 @@ describe("AgentSwarm persistence", () => {
 
     await expect(swarm.deleteSwarmConfig("delete_target", TEST_USER_ID)).resolves.toBeUndefined();
     expect(await swarm.listSwarms(TEST_USER_ID)).toHaveLength(0);
+
+    await swarm.close();
+    cleanupDb(dbPath);
+  });
+
+  it("cleans conversation workspace when deleting a conversation", async () => {
+    const dbPath = createTestDbPath("delete-conversation-workspace");
+    cleanupDb(dbPath);
+
+    const swarm = new AgentSwarm({
+      config: createRootConfig(dbPath, [createSwarmConfig("workspace_swarm")]),
+    });
+
+    await swarm.init();
+    const conversation = await swarm.createConversation(TEST_USER_ID, "workspace_swarm", "workspace", undefined);
+    const workspace = createWorkspaceManager(conversation.getId());
+    await workspace.writeFile("result.txt", "temporary workspace file");
+
+    expect(existsSync(workspace.baseDir)).toBe(true);
+
+    await swarm.deleteConversation(conversation.getId(), TEST_USER_ID);
+
+    expect(existsSync(workspace.baseDir)).toBe(false);
 
     await swarm.close();
     cleanupDb(dbPath);

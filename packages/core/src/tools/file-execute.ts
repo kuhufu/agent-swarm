@@ -19,6 +19,9 @@ interface ExecuteFileDetails {
   exitCode: number | null;
   stdout: string;
   stderr: string;
+  pid?: number;
+  aborted?: boolean;
+  timedOut?: boolean;
 }
 
 const DEFAULT_TIMEOUT_MS = 10000;
@@ -31,29 +34,59 @@ export function createExecuteFileTool(
     label: "执行命令",
     description: "在工作区的隔离目录中执行 shell 命令。工作区中有 write_file 写入的文件。",
     parameters: ExecuteFileParams,
-    execute: async (_toolCallId, params) => {
+    execute: async (_toolCallId, params, signal?: AbortSignal) => {
       await workspace.ensureDir();
       const cwd = params.cwd
         ? workspace.checkPath(params.cwd)
         : workspace.baseDir;
 
       const timeoutMs = params.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-      const [cmd, ...args] = params.command.split(/\s+/);
-
-      if (!cmd) {
+      const command = params.command.trim();
+      if (!command) {
         throw new Error("命令不能为空");
       }
 
       return new Promise<AgentToolResult<ExecuteFileDetails>>((resolve, reject) => {
-        const child = spawn(cmd, args, {
+        const child = spawn(command, {
           cwd,
-          timeout: timeoutMs,
           env: { ...process.env },
           shell: true,
+          detached: true,
         });
+        const processInfo = workspace.trackProcess(child, command);
 
         let stdout = "";
         let stderr = "";
+        let settled = false;
+        let aborted = false;
+        let timedOut = false;
+
+        const timeout = setTimeout(() => {
+          timedOut = true;
+          workspace.killProcess(child.pid ?? 0, "SIGTERM");
+        }, timeoutMs);
+
+        const forceKillTimeout = setTimeout(() => {
+          if (!settled && (timedOut || aborted)) {
+            workspace.killProcess(child.pid ?? 0, "SIGKILL");
+          }
+        }, timeoutMs + 1000);
+
+        const onAbort = () => {
+          aborted = true;
+          workspace.killProcess(child.pid ?? 0, "SIGTERM");
+          setTimeout(() => {
+            if (!settled) {
+              workspace.killProcess(child.pid ?? 0, "SIGKILL");
+            }
+          }, 1000);
+        };
+
+        if (signal?.aborted) {
+          onAbort();
+        } else {
+          signal?.addEventListener("abort", onAbort, { once: true });
+        }
 
         child.stdout.on("data", (data: Buffer) => {
           stdout += data.toString("utf-8");
@@ -64,10 +97,17 @@ export function createExecuteFileTool(
         });
 
         child.on("error", (err: Error) => {
+          clearTimeout(timeout);
+          clearTimeout(forceKillTimeout);
+          signal?.removeEventListener("abort", onAbort);
           reject(new Error(`命令执行失败: ${err.message}`));
         });
 
-        child.on("close", (code: number | null) => {
+        child.on("close", (code: number | null, closeSignal: NodeJS.Signals | null) => {
+          settled = true;
+          clearTimeout(timeout);
+          clearTimeout(forceKillTimeout);
+          signal?.removeEventListener("abort", onAbort);
           const maxOutput = 8000;
           const truncatedStdout = stdout.length > maxOutput
             ? stdout.slice(0, maxOutput) + "\n...(stdout 已截断)"
@@ -77,15 +117,26 @@ export function createExecuteFileTool(
             : stderr;
 
           const text = [
-            `命令: ${params.command}`,
+            `命令: ${command}`,
+            processInfo ? `进程: ${processInfo.pid}` : undefined,
             `退出码: ${code ?? "null"}`,
+            closeSignal ? `信号: ${closeSignal}` : undefined,
+            timedOut ? "状态: 已超时并终止" : undefined,
+            aborted ? "状态: 已取消并终止" : undefined,
             truncatedStdout ? `stdout:\n${truncatedStdout}` : "stdout: (无输出)",
             truncatedStderr ? `stderr:\n${truncatedStderr}` : "stderr: (无输出)",
-          ].join("\n");
+          ].filter(Boolean).join("\n");
 
           resolve({
             content: [{ type: "text", text }],
-            details: { exitCode: code, stdout: truncatedStdout, stderr: truncatedStderr },
+            details: {
+              exitCode: code,
+              stdout: truncatedStdout,
+              stderr: truncatedStderr,
+              ...(processInfo ? { pid: processInfo.pid } : {}),
+              aborted,
+              timedOut,
+            },
           });
         });
       });

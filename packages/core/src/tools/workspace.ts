@@ -1,6 +1,7 @@
 import { mkdir, writeFile, readFile, readdir, stat, rm } from "node:fs/promises";
 import { join, resolve, relative } from "node:path";
 import { tmpdir } from "node:os";
+import type { ChildProcess } from "node:child_process";
 
 const WORKSPACE_ROOT = join(tmpdir(), "agent-workspaces");
 const MAX_FILE_SIZE = 1_048_576; // 1MB
@@ -12,7 +13,19 @@ export interface FileInfo {
   size: number;
 }
 
+export interface WorkspaceProcessInfo {
+  pid: number;
+  command: string;
+  startedAt: number;
+}
+
+interface TrackedWorkspaceProcess extends WorkspaceProcessInfo {
+  process: ChildProcess;
+}
+
 export class WorkspaceManager {
+  private static readonly activeProcesses = new Map<string, Map<number, TrackedWorkspaceProcess>>();
+
   readonly conversationId: string;
   readonly baseDir: string;
 
@@ -136,11 +149,91 @@ export class WorkspaceManager {
     }
   }
 
+  trackProcess(child: ChildProcess, command: string): WorkspaceProcessInfo | null {
+    if (!child.pid) {
+      return null;
+    }
+
+    const info: TrackedWorkspaceProcess = {
+      pid: child.pid,
+      command,
+      startedAt: Date.now(),
+      process: child,
+    };
+    let processes = WorkspaceManager.activeProcesses.get(this.conversationId);
+    if (!processes) {
+      processes = new Map();
+      WorkspaceManager.activeProcesses.set(this.conversationId, processes);
+    }
+    processes.set(child.pid, info);
+    child.once("exit", () => {
+      this.untrackProcess(child.pid);
+    });
+    child.once("close", () => {
+      this.untrackProcess(child.pid);
+    });
+    return { pid: info.pid, command: info.command, startedAt: info.startedAt };
+  }
+
+  listProcesses(): WorkspaceProcessInfo[] {
+    return Array.from(WorkspaceManager.activeProcesses.get(this.conversationId)?.values() ?? [])
+      .map(({ pid, command, startedAt }) => ({ pid, command, startedAt }));
+  }
+
+  killProcess(pid: number, signal: NodeJS.Signals = "SIGTERM"): boolean {
+    const tracked = WorkspaceManager.activeProcesses.get(this.conversationId)?.get(pid);
+    if (!tracked) {
+      return false;
+    }
+
+    killProcessTree(tracked.process, signal);
+    return true;
+  }
+
+  killAllProcesses(signal: NodeJS.Signals = "SIGTERM"): number {
+    const processes = this.listProcesses();
+    for (const processInfo of processes) {
+      this.killProcess(processInfo.pid, signal);
+    }
+    return processes.length;
+  }
+
   async cleanup(): Promise<void> {
+    this.killAllProcesses("SIGTERM");
     await rm(this.baseDir, { recursive: true, force: true });
+  }
+
+  private untrackProcess(pid: number | undefined): void {
+    if (!pid) {
+      return;
+    }
+    const processes = WorkspaceManager.activeProcesses.get(this.conversationId);
+    processes?.delete(pid);
+    if (processes?.size === 0) {
+      WorkspaceManager.activeProcesses.delete(this.conversationId);
+    }
   }
 }
 
 export function createWorkspaceManager(conversationId: string): WorkspaceManager {
   return new WorkspaceManager(conversationId);
+}
+
+function killProcessTree(child: ChildProcess, signal: NodeJS.Signals): void {
+  if (!child.pid || child.killed) {
+    return;
+  }
+
+  try {
+    process.kill(-child.pid, signal);
+    return;
+  } catch {
+    // Fall through to killing the direct child when process-group kill is unavailable.
+  }
+
+  try {
+    child.kill(signal);
+  } catch {
+    // Process may have already exited.
+  }
 }

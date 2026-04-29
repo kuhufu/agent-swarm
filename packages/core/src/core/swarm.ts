@@ -489,6 +489,12 @@ export class AgentSwarm {
   async deleteConversation(id: string, userId: string) {
     this.ensureInitialized();
     const normalizedUserId = this.normalizeUserId(userId);
+    const conversation = await this.storage.getConversation(id, normalizedUserId);
+    if (!conversation) {
+      throw new Error(`Conversation not found: ${id}`);
+    }
+
+    await createWorkspaceManager(id).cleanup();
     await this.storage.deleteConversation(id, normalizedUserId);
   }
 

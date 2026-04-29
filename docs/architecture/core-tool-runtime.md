@@ -31,4 +31,10 @@
 
 WebSocket 层只传递用户选择的 `enabledTools` 和前端工具执行器。它不创建具体工具，也不判断工具是否启用。
 
+## Workspace 执行进程
+
+`execute_file` 启动的命令必须登记到 `WorkspaceManager` 的会话级进程表，并监听工具调用的 `AbortSignal`。当用户点击停止、WebSocket 断开或 `Conversation.abort()` 被调用时，Conversation 会通过当前 `conversationId` 杀掉 workspace 中仍在运行的进程树。
+
+删除会话时，`AgentSwarm.deleteConversation()` 会先清理对应 `conversationId` 的 workspace 目录和仍在运行的 workspace 进程，再删除会话消息、事件和会话记录。
+
 新增前端执行工具时，更新 `createClientToolDefinitions()` 和前端 `packages/web/src/tools/client-tools.ts` 的实际执行逻辑，二者的工具名和参数 schema 必须保持一致。
