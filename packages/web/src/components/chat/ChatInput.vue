@@ -203,6 +203,9 @@ function handleKeydown(e: KeyboardEvent) {
   if (e.key !== "Enter") {
     return;
   }
+  if (e.isComposing || e.keyCode === 229) {
+    return;
+  }
   if (e.ctrlKey) {
     return;
   }
