@@ -1,4 +1,4 @@
-import { mkdir, writeFile, readFile, readdir, stat, rm } from "node:fs/promises";
+import { mkdir, writeFile, readFile, readdir, stat, rm, realpath } from "node:fs/promises";
 import { join, resolve, relative } from "node:path";
 import { tmpdir } from "node:os";
 import { spawn } from "node:child_process";
@@ -32,28 +32,60 @@ export class WorkspaceManager {
 
   readonly conversationId: string;
   readonly baseDir: string;
+  private realBaseDir: string | null = null;
 
   constructor(conversationId: string) {
     this.conversationId = conversationId;
     this.baseDir = resolve(WORKSPACE_ROOT, conversationId);
   }
 
+  private async resolveRealBase(): Promise<string> {
+    if (this.realBaseDir) {
+      return this.realBaseDir;
+    }
+    this.realBaseDir = await realpath(this.baseDir);
+    return this.realBaseDir;
+  }
+
   async ensureDir(): Promise<void> {
     await mkdir(this.baseDir, { recursive: true });
   }
 
-  checkPath(relativePath: string): string {
+  async checkPath(relativePath: string): Promise<string> {
     const raw = join(this.baseDir, relativePath);
     const resolved = resolve(raw);
     if (!resolved.startsWith(this.baseDir + "/") && resolved !== this.baseDir) {
       throw new Error(`路径不允许逃逸工作目录: ${relativePath}`);
     }
-    return resolved;
+    try {
+      const real = await realpath(resolved);
+      const realBase = await this.resolveRealBase();
+      if (!real.startsWith(realBase + "/") && real !== realBase) {
+        throw new Error(`路径不允许逃逸工作目录: ${relativePath}`);
+      }
+      return real;
+    } catch (err: unknown) {
+      const code = (err as NodeJS.ErrnoException)?.code;
+      if (code === "ENOENT") {
+        const parentDir = resolve(resolved, "..");
+        try {
+          const realParent = await realpath(parentDir);
+          const realBase = await this.resolveRealBase();
+          if (!realParent.startsWith(realBase + "/") && realParent !== realBase) {
+            throw new Error(`路径不允许逃逸工作目录: ${relativePath}`);
+          }
+          return resolved;
+        } catch {
+          throw new Error(`无法验证路径安全性: ${relativePath}`);
+        }
+      }
+      return resolved;
+    }
   }
 
   async writeFile(relativePath: string, content: string): Promise<FileInfo> {
     await this.ensureDir();
-    const fullPath = this.checkPath(relativePath);
+    const fullPath = await this.checkPath(relativePath);
 
     if (Buffer.byteLength(content, "utf-8") > MAX_FILE_SIZE) {
       throw new Error(`文件过大（最大 1MB）: ${relativePath}`);
@@ -67,7 +99,7 @@ export class WorkspaceManager {
   }
 
   async readFile(relativePath: string, maxLines?: number): Promise<{ content: string; size: number; truncated: boolean }> {
-    const fullPath = this.checkPath(relativePath);
+    const fullPath = await this.checkPath(relativePath);
 
     const fileStat = await stat(fullPath).catch(() => {
       throw new Error(`文件不存在: ${relativePath}`);
@@ -93,7 +125,7 @@ export class WorkspaceManager {
 
   async listFiles(relativePath?: string): Promise<FileInfo[]> {
     await this.ensureDir();
-    const target = relativePath ? this.checkPath(relativePath) : this.baseDir;
+    const target = relativePath ? await this.checkPath(relativePath) : this.baseDir;
     const results: FileInfo[] = [];
 
     const dirStat = await stat(target).catch(() => {

@@ -238,7 +238,7 @@ export function createRunWorkspaceContainerTool(
     parameters: ExecuteFileParams,
     execute: async (toolCallId, params, signal?: AbortSignal) => {
       await workspace.ensureDir();
-      const hostCwd = params.cwd ? workspace.checkPath(params.cwd) : workspace.baseDir;
+      const hostCwd = params.cwd ? await workspace.checkPath(params.cwd) : workspace.baseDir;
       const containerCwd = toContainerCwd(workspace.baseDir, hostCwd);
       const containerName = createContainerName(workspace.conversationId, toolCallId);
 
