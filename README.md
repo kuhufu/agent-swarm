@@ -194,6 +194,8 @@ pnpm --filter @agent-swarm/server test
 - `intervention_decision`
 - `client_tool_result`
 
+同一个 WebSocket 连接可以同时订阅多个会话；服务端按 `conversationId` 分发事件。`subscribe_conversation` 会校验当前用户拥有该会话。`abort` 携带 `conversationId` 时只终止指定会话，未携带时终止该连接发起的全部活跃会话。
+
 服务端 -> 客户端常用消息：
 
 - `connected`

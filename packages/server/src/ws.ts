@@ -8,8 +8,8 @@ import { verifyAccessToken } from "./middleware/auth.js";
 interface WSClient {
   ws: WebSocket;
   userId: string;
-  conversationId?: string;
-  activeConversation?: SwarmConversation;
+  subscribedConversationIds: Set<string>;
+  activeConversations: Map<string, SwarmConversation>;
   /** Pending intervention decisions — maps requestId → resolve function */
   pendingDecisions: Map<string, (decision: any) => void>;
   /** Pending client tool executions — maps requestId → resolve function */
@@ -110,7 +110,14 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
       return;
     }
 
-    const client: WSClient = { ws, userId, pendingDecisions: new Map(), pendingToolExecutions: new Map() };
+    const client: WSClient = {
+      ws,
+      userId,
+      subscribedConversationIds: new Set(),
+      activeConversations: new Map(),
+      pendingDecisions: new Map(),
+      pendingToolExecutions: new Map(),
+    };
     clients.add(client);
 
     ws.on("message", async (data) => {
@@ -128,15 +135,13 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
             handleClientToolResult(client, msg);
             break;
           case "subscribe_conversation":
-            client.conversationId = msg.conversationId;
+            await handleSubscribeConversation(client, msg, swarm);
             break;
           case "unsubscribe_conversation":
-            client.conversationId = undefined;
+            handleUnsubscribeConversation(client, msg);
             break;
           case "abort":
-            if (client.activeConversation) {
-              client.activeConversation.abort();
-            }
+            handleAbort(client, msg);
             break;
           default:
             send(client, { type: "error", payload: { message: `Unknown message type: ${msg.type}` } });
@@ -147,9 +152,10 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
     });
 
     ws.on("close", () => {
-      if (client.activeConversation) {
-        client.activeConversation.abort();
+      for (const conversation of client.activeConversations.values()) {
+        conversation.abort();
       }
+      client.activeConversations.clear();
       for (const resolve of client.pendingDecisions.values()) {
         resolve({ action: "abort", reason: "WebSocket disconnected" });
       }
@@ -260,10 +266,10 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
         return;
       }
 
-      client.activeConversation = conversation;
       const convId = conversation.getId();
       activeConversationId = convId;
-      client.conversationId = convId;
+      client.activeConversations.set(convId, conversation);
+      client.subscribedConversationIds.add(convId);
 
       // Set up intervention callback
       conversation.onIntervention(async (point: any, context: any) => {
@@ -343,8 +349,54 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
         ...(activeConversationId || conversationId ? { conversationId: activeConversationId ?? conversationId } : {}),
       });
     } finally {
-      client.activeConversation = undefined;
+      if (activeConversationId && client.activeConversations.get(activeConversationId) === conversation) {
+        client.activeConversations.delete(activeConversationId);
+      }
     }
+  }
+
+  async function handleSubscribeConversation(client: WSClient, msg: any, swarm: AgentSwarm) {
+    const conversationId = resolveMessageConversationId(msg);
+    if (!conversationId) {
+      send(client, { type: "error", payload: { message: "conversationId is required" } });
+      return;
+    }
+    const conversation = await swarm.getConversation(conversationId, client.userId);
+    if (!conversation) {
+      send(client, {
+        type: "error",
+        payload: { message: `Conversation not found: ${conversationId}` },
+        conversationId,
+      });
+      return;
+    }
+    client.subscribedConversationIds.add(conversationId);
+  }
+
+  function handleUnsubscribeConversation(client: WSClient, msg: any) {
+    const conversationId = resolveMessageConversationId(msg);
+    if (!conversationId) {
+      send(client, { type: "error", payload: { message: "conversationId is required" } });
+      return;
+    }
+    client.subscribedConversationIds.delete(conversationId);
+  }
+
+  function handleAbort(client: WSClient, msg: any) {
+    const conversationId = resolveMessageConversationId(msg);
+    if (conversationId) {
+      const active = client.activeConversations.get(conversationId);
+      if (active) {
+        active.abort();
+        client.activeConversations.delete(conversationId);
+      }
+      return;
+    }
+
+    for (const active of client.activeConversations.values()) {
+      active.abort();
+    }
+    client.activeConversations.clear();
   }
 
   function handleInterventionDecision(client: WSClient, msg: any) {
@@ -436,10 +488,24 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
       if (excludeClient && client === excludeClient) {
         continue;
       }
-      if (client.conversationId === conversationId && client.ws.readyState === WebSocket.OPEN) {
+      if (client.subscribedConversationIds.has(conversationId) && client.ws.readyState === WebSocket.OPEN) {
         client.ws.send(payload);
       }
     }
+  }
+
+  function resolveMessageConversationId(msg: any): string | undefined {
+    if (typeof msg?.conversationId === "string" && msg.conversationId.trim().length > 0) {
+      return msg.conversationId.trim();
+    }
+    const payload = msg?.payload;
+    if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+      const raw = (payload as Record<string, unknown>).conversationId;
+      if (typeof raw === "string" && raw.trim().length > 0) {
+        return raw.trim();
+      }
+    }
+    return undefined;
   }
 
   return server;

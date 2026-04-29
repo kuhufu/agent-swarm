@@ -186,8 +186,13 @@ pnpm test                  # 运行 core 单元测试
 
 # 前端 → 服务端
 { type: "send_message", conversationId: string, payload: { content: string } }
+{ type: "subscribe_conversation", payload: { conversationId: string } }
+{ type: "unsubscribe_conversation", payload: { conversationId: string } }
+{ type: "abort", payload: { conversationId?: string } }
 { type: "intervention_decision", payload: { requestId: string, decision: InterventionDecision } }
 ```
+
+同一个 WebSocket 连接可以订阅多个会话；服务端按 `conversationId` 广播事件并在订阅时校验用户权限。服务端跟踪每个连接上的多个活跃会话，`abort` 携带 `conversationId` 时只终止指定会话，未携带时终止该连接发起的全部活跃会话。
 
 ---
 
