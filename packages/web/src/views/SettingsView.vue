@@ -2,15 +2,17 @@
 import { onMounted, ref, reactive, computed } from "vue";
 import { MessagePlugin } from "tdesign-vue-next";
 import { useSettingsStore } from "../stores/settings.js";
-import type { InterventionPoint, InterventionStrategy, ApiProtocol, ProviderConfig, SavedModel } from "../types/index.js";
+import { useAuthStore } from "../stores/auth.js";
+import type { ApiProtocol, ProviderConfig, SavedModel } from "../types/index.js";
 import ProvidersTab from "../components/settings/ProvidersTab.vue";
 import ModelsTab from "../components/settings/ModelsTab.vue";
-import InterventionTab from "../components/settings/InterventionTab.vue";
 import AgentTemplatesTab from "../components/settings/AgentTemplatesTab.vue";
 import CustomSelect from "../components/common/CustomSelect.vue";
 
 const settingsStore = useSettingsStore();
-type SettingsTab = "providers" | "models" | "templates" | "intervention";
+const authStore = useAuthStore();
+const isAdmin = computed(() => authStore.user?.role === "admin");
+type SettingsTab = "providers" | "models" | "templates";
 
 const activeTab = ref<SettingsTab>("providers");
 const activeTabMeta = computed(() => {
@@ -26,10 +28,6 @@ const activeTabMeta = computed(() => {
     templates: {
       title: "系统 Agent 模版",
       description: "维护跨用户共享、可导入为个人预设的 Agent 模版",
-    },
-    intervention: {
-      title: "介入策略",
-      description: "设置全局审批与介入默认行为",
     },
   };
   return tabMeta[activeTab.value];
@@ -153,24 +151,11 @@ function reorderModels(fromIndex: number, toIndex: number) {
 
 const providerIds = computed(() => Object.keys(providers));
 
-const interventions = reactive<Partial<Record<InterventionPoint, InterventionStrategy>>>({
-  before_agent_start: "auto",
-  after_agent_end: "auto",
-  before_tool_call: "auto",
-  after_tool_call: "auto",
-  on_handoff: "auto",
-  on_error: "auto",
-  on_approval_required: "confirm",
-});
-
-function updateIntervention(point: InterventionPoint, strategy: InterventionStrategy) {
-  interventions[point] = strategy;
-}
-
 const saving = ref(false);
 const saved = ref(false);
 const saveError = ref("");
 const loadError = ref("");
+const checkingAuth = ref(true);
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -181,6 +166,14 @@ function getErrorMessage(error: unknown): string {
 
 onMounted(async () => {
   try {
+    if (!authStore.user) {
+      await authStore.fetchMe();
+    }
+    checkingAuth.value = false;
+    if (!isAdmin.value) {
+      loadError.value = "";
+      return;
+    }
     await settingsStore.fetchConfig();
     loadError.value = "";
     resetLocalConfigState();
@@ -218,10 +211,16 @@ onMounted(async () => {
     }
   } catch (error) {
     loadError.value = getErrorMessage(error);
+  } finally {
+    checkingAuth.value = false;
   }
 });
 
 async function saveSettings() {
+  if (!isAdmin.value) {
+    MessagePlugin.error("需要管理员权限");
+    return;
+  }
   saving.value = true;
   saved.value = false;
   saveError.value = "";
@@ -234,7 +233,7 @@ async function saveSettings() {
         providerConfigs[id] = {
           ...(entry.baseUrl.trim() ? { baseUrl: entry.baseUrl.trim() } : {}),
           ...(entry.apiProtocol ? { apiProtocol: entry.apiProtocol as ApiProtocol } : {}),
-          ...(entry.thinkingFormat ? { thinkingFormat: entry.thinkingFormat as any } : {}),
+          ...(entry.thinkingFormat ? { thinkingFormat: entry.thinkingFormat as ProviderConfig["thinkingFormat"] } : {}),
         };
       }
     }
@@ -242,7 +241,7 @@ async function saveSettings() {
       apiKeys,
       providers: providerConfigs,
       models: [...models],
-    } as any);
+    });
     saved.value = true;
     setTimeout(() => { saved.value = false; }, 2000);
   } catch (error) {
@@ -256,11 +255,25 @@ async function saveSettings() {
 
 <template>
   <div class="settings-view">
-    <div class="settings-layout">
+    <div v-if="checkingAuth" class="access-denied">
+      <div class="access-denied-card">
+        <h2>正在检查权限</h2>
+        <p>请稍候。</p>
+      </div>
+    </div>
+
+    <div v-else-if="!isAdmin" class="access-denied">
+      <div class="access-denied-card">
+        <h2>需要管理员权限</h2>
+        <p>全局 LLM 配置和系统模板只允许管理员维护。普通用户仍可在对话、Agent 和 Swarm 页面使用已配置的模型。</p>
+      </div>
+    </div>
+
+    <div v-else class="settings-layout">
       <aside class="settings-sidebar">
         <div class="sidebar-header">
           <h2>设置管理</h2>
-          <p>配置 LLM 和全局策略</p>
+          <p>配置 LLM 和系统模板</p>
         </div>
 
         <div class="settings-section">
@@ -299,23 +312,6 @@ async function saveSettings() {
                 <span class="settings-name">模型管理</span>
               </div>
               <span class="settings-meta">自定义模型列表</span>
-            </button>
-            <button
-              class="settings-item"
-              :class="{ active: activeTab === 'intervention' }"
-              @click="activeTab = 'intervention'"
-            >
-              <div class="settings-item-top">
-                <span class="settings-nav-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                    <line x1="12" y1="9" x2="12" y2="13" />
-                    <line x1="12" y1="17" x2="12.01" y2="17" />
-                  </svg>
-                </span>
-                <span class="settings-name">介入策略</span>
-              </div>
-              <span class="settings-meta">全局审批规则</span>
             </button>
             <button
               class="settings-item"
@@ -397,13 +393,6 @@ async function saveSettings() {
     />
           </div>
 
-          <div v-if="activeTab === 'intervention'" class="tab-panel">
-            <InterventionTab
-              :interventions="interventions"
-              @update="updateIntervention"
-            />
-          </div>
-
           <div v-if="activeTab === 'templates'" class="tab-panel">
             <AgentTemplatesTab :saved-models="models" />
           </div>
@@ -479,6 +468,36 @@ async function saveSettings() {
 <style scoped>
 .settings-view {
   height: 100%;
+}
+
+.access-denied {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.access-denied-card {
+  width: min(420px, 100%);
+  padding: 24px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  text-align: center;
+}
+
+.access-denied-card h2 {
+  margin: 0 0 8px;
+  color: var(--color-text-primary);
+  font-size: 18px;
+}
+
+.access-denied-card p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .settings-layout {

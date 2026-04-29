@@ -172,7 +172,7 @@ pnpm test                  # 运行 core 单元测试
 | GET | `/api/conversations?swarmId=` | 列出对话 |
 | POST | `/api/conversations` | 创建对话 |
 | GET | `/api/conversations/:id/messages` | 获取消息 |
-| GET | `/api/config` | 获取 LLM 配置（需要 `admin`） |
+| GET | `/api/config` | 获取 LLM 非敏感配置；`admin` 可见脱敏 API Key |
 | PUT | `/api/config` | 更新 LLM 配置（需要 `admin`） |
 | WS | `/ws` | WebSocket 连接 |
 
@@ -200,7 +200,7 @@ pnpm test                  # 运行 core 单元测试
 
 - `better-sqlite3` 是 native 模块，需要 C++ 编译环境（Python 3.12 及以下 + setuptools）
 - `@mariozechner/pi-agent-core` 和 `@mariozechner/pi-ai` 是核心依赖，Agent/AgentTool/AgentMessage 等类型来自这些包
-- 首个注册用户自动成为 `admin`；全局 LLM 配置与系统 Agent 模板写操作需要 `admin`
+- 首个注册用户自动成为 `admin`；全局 LLM 配置写操作与系统 Agent 模板写操作需要 `admin`；开发期可用 `node scripts/set-user-role.mjs <db-path> <username> <admin|user>` 调整角色
 - 用户级 Agent 预设按 `(user_id, id)` 隔离；Swarm 内 Agent 按 `(swarm_id, id)` 隔离，开发阶段 schema 变化可直接重建本地数据库
 - 环境变量（API Key）通过 `.env` 注入 server，不暴露到前端
 - 配置文件 `agent-swarm.config.ts` 使用 `defineConfig()` 辅助函数提供类型检查

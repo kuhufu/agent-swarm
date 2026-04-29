@@ -163,6 +163,30 @@ describe("API routes", () => {
     }
   });
 
+  it("GET /api/config hides api keys for non-admin users but returns models", async () => {
+    const server = await startTestServer();
+    try {
+      await fetch(`${server.baseUrl}/api/config`, {
+        method: "PUT",
+        headers: withAuthHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          apiKeys: { openai: "sk-test-1234567890123456" },
+          models: [{ id: "m1", name: "M1", provider: "openai", modelId: "m1" }],
+        }),
+      });
+
+      const response = await fetch(`${server.baseUrl}/api/config`, {
+        headers: withAuthHeaders({}, NORMAL_USER_TOKEN),
+      });
+      const data = await response.json() as { data: { apiKeys: Record<string, string>; models: any[] } };
+      expect(response.status).toBe(200);
+      expect(data.data.apiKeys).toEqual({});
+      expect(data.data.models).toEqual([{ id: "m1", name: "M1", provider: "openai", modelId: "m1" }]);
+    } finally {
+      await server.close();
+    }
+  });
+
   it("PUT /api/config persists saved models", async () => {
     const server = await startTestServer();
     try {

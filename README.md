@@ -171,7 +171,7 @@ pnpm --filter @agent-swarm/server test
 
 ### LLM 配置
 
-- `GET /api/config`（需要 `admin`）
+- `GET /api/config`（普通用户可读非敏感配置；`admin` 可见脱敏 API Key）
 - `PUT /api/config`（需要 `admin`）
 - `GET /api/config/providers`（需要 `admin`）
 - `GET /api/config/providers/:providerId/models`（需要 `admin`）
@@ -231,9 +231,16 @@ pnpm --filter @agent-swarm/server test
 全局资源权限：
 
 - 首个注册用户自动获得 `admin` 角色，后续注册用户默认为 `user`。
-- LLM 配置与系统 Agent 模板属于全局资源；读写 LLM 配置以及创建/更新/删除系统模板均要求 `admin`。
+- LLM 配置与系统 Agent 模板属于全局资源；写 LLM 配置以及创建/更新/删除系统模板均要求 `admin`。普通用户可通过 `GET /api/config` 读取模型列表等非敏感配置，API Key 不会返回。
 - 用户级 Agent 预设以 `(userId, id)` 作为业务键，不同用户可以复用相同预设 ID。
 - Swarm 内 Agent 以 `(swarmId, agentId)` 作为业务键，不同 Swarm 可以复用相同 Agent ID。
+
+开发阶段如需调整用户角色，可执行：
+
+```bash
+node scripts/set-user-role.mjs ./packages/server/data/agent-swarm.db <username> admin
+node scripts/set-user-role.mjs ./packages/server/data/agent-swarm.db <username> user
+```
 
 ## 提供商思考格式
 

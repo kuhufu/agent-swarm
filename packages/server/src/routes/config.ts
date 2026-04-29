@@ -29,10 +29,10 @@ function maskApiKeys(apiKeys: Record<string, string>): Record<string, string> {
   return maskedApiKeys;
 }
 
-function toResponse(config: LLMBackendConfig) {
+function toResponse(config: LLMBackendConfig, options: { includeSecrets: boolean }) {
   const apiKeys = config.apiKeys && typeof config.apiKeys === "object" ? config.apiKeys : {};
   return {
-    apiKeys: maskApiKeys(apiKeys),
+    apiKeys: options.includeSecrets ? maskApiKeys(apiKeys) : {},
     providers: config.providers,
     endpoints: config.endpoints,
     defaultThinkingLevel: config.defaultThinkingLevel,
@@ -44,9 +44,9 @@ function toResponse(config: LLMBackendConfig) {
 export function configRoutes(swarm: AgentSwarm): Router {
   const router = Router();
 
-  router.get("/", requireAdmin, (_req, res) => {
+  router.get("/", (req, res) => {
     const config = swarm.getLLMConfig();
-    res.json({ data: toResponse(config) });
+    res.json({ data: toResponse(config, { includeSecrets: req.user?.role === "admin" }) });
   });
 
   router.put("/", requireAdmin, validateBody(updateConfigSchema), async (req, res) => {
@@ -101,7 +101,7 @@ export function configRoutes(swarm: AgentSwarm): Router {
       };
 
       const updatedConfig = await swarm.updateLLMConfig(nextConfig);
-      res.json({ data: toResponse(updatedConfig) });
+      res.json({ data: toResponse(updatedConfig, { includeSecrets: true }) });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

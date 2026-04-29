@@ -79,3 +79,10 @@ export function clearConversationContext(conversationId: string) {
     method: "POST",
   });
 }
+
+export function forkConversation(conversationId: string, payload: { swarmId?: string; title?: string } = {}) {
+  return apiClient<ConversationDetailResponse>(`/conversations/${conversationId}/fork`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

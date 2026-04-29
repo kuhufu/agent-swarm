@@ -22,13 +22,13 @@ const currentThemeLabel = computed(() => {
 const authStore = useAuthStore();
 const { disconnect } = useWebSocket();
 
-const navItems = [
+const navItems = computed(() => [
   { label: "对话", route: "/chat", icon: MessageIcon },
   { label: "Swarm", route: "/swarms", icon: SwarmIcon },
   { label: "Agents", route: "/agents", icon: AgentsIcon },
   { label: "知识库", route: "/documents", icon: KnowledgeIcon },
-  { label: "设置", route: "/settings", icon: SettingsIcon },
-];
+  ...(authStore.user?.role === "admin" ? [{ label: "设置", route: "/settings", icon: SettingsIcon }] : []),
+]);
 
 const isChatRoute = computed(() => route.name === "chat");
 const showAuthSection = computed(() => authStore.isAuthenticated);
@@ -187,8 +187,7 @@ async function handleNewConversation() {
 
 function handleNewDirectConversation() {
   closeConversationMenu();
-  // Clear current swarm to enter direct mode
-  swarmStore.selectSwarm(null as any);
+  swarmStore.clearSwarmSelection();
   if (!isChatRoute.value || routeConversationId.value) {
     void router.push({ name: "chat", params: {} });
   }

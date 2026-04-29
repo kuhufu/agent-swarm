@@ -140,6 +140,7 @@ export function conversationRoutes(swarm: AgentSwarm): Router {
       const { swarmId, title } = req.body ?? {};
       const conversation = await swarm.forkConversation(req.params.id as string, { swarmId, title }, userId);
       const info = await swarm.getConversation(conversation.getId(), userId);
+      if (!info) return res.status(500).json({ error: "无法加载已创建的分支会话" });
       res.status(201).json({ data: info });
     } catch (err: any) {
       res.status(400).json({ error: err.message });

@@ -4,7 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useSwarmStore } from "../stores/swarm.js";
 import { useConversationStore } from "../stores/conversation.js";
 import { useWebSocket } from "../composables/useWebSocket.js";
-import { apiClient } from "../api/client.js";
+import { forkConversation } from "../api/conversations.js";
 import MessageList from "../components/chat/MessageList.vue";
 import ChatInput from "../components/chat/ChatInput.vue";
 import AgentStatus from "../components/chat/AgentStatus.vue";
@@ -102,14 +102,21 @@ async function handleForkConversation() {
   const convId = conversationStore.currentConversationId;
   if (!convId) return;
   try {
-    const data = await apiClient<{ data: { id: string } }>(`/conversations/${convId}/fork`, { method: "POST" });
-    const newId = data.data.id;
-    const convs = conversationStore.conversations;
-    convs.unshift(data.data as any);
-    conversationStore.setCurrentConversation(newId);
-    router.push(`/chat/${newId}`);
-  } catch (err: any) {
-    console.error("Fork failed:", err.message);
+    const res = await forkConversation(convId);
+    const forked = res.data;
+    if (!forked?.id) {
+      throw new Error("分支会话创建失败");
+    }
+    const existingIndex = conversationStore.conversations.findIndex((item) => item.id === forked.id);
+    if (existingIndex >= 0) {
+      conversationStore.conversations[existingIndex] = forked;
+    } else {
+      conversationStore.conversations.unshift(forked);
+    }
+    conversationStore.setCurrentConversation(forked.id);
+    void router.push(`/chat/${forked.id}`);
+  } catch (err) {
+    console.error("Fork failed:", err instanceof Error ? err.message : err);
   }
 }
 </script>

@@ -25,10 +25,17 @@
 
 全局资源需要管理员权限：
 
-- LLM 配置：`GET/PUT /api/config`、`GET /api/config/providers`、`GET /api/config/providers/:providerId/models`、`POST /api/config/test-model`
+- LLM 配置写入与联调：`PUT /api/config`、`GET /api/config/providers`、`GET /api/config/providers/:providerId/models`、`POST /api/config/test-model`
 - 系统 Agent 模板写操作：`POST /api/templates`、`PUT /api/templates/:id`、`DELETE /api/templates/:id`
 
-普通用户仍可读取系统模板列表并导入模板为自己的用户级 Agent 预设。
+普通用户仍可读取系统模板列表、导入模板为自己的用户级 Agent 预设，并通过 `GET /api/config` 读取模型列表等非敏感 LLM 配置。普通用户访问 `GET /api/config` 时，`apiKeys` 始终返回空对象。
+
+开发阶段可用脚本调整角色：
+
+```bash
+node scripts/set-user-role.mjs ./packages/server/data/agent-swarm.db <username> admin
+node scripts/set-user-role.mjs ./packages/server/data/agent-swarm.db <username> user
+```
 
 ## 租户隔离范围
 
