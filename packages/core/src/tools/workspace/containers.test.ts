@@ -50,4 +50,73 @@ describe("workspace container tools", () => {
       restore();
     }
   });
+
+  it("cleans specified container names that belong to the current conversation", async () => {
+    const workspace = createWorkspaceManager(`test-container-tools-${crypto.randomUUID()}`);
+    const dockerCalls: string[][] = [];
+    const restore = WorkspaceManager.setDockerCommandRunnerForTest(async (args) => {
+      dockerCalls.push(args);
+      if (args.includes("--format")) {
+        return `${JSON.stringify({ ID: "a1", Names: "container-a", Image: "node", Status: "running", Ports: "" })}\n${JSON.stringify({ ID: "b2", Names: "container-b", Image: "node", Status: "running", Ports: "" })}\n`;
+      }
+      return "";
+    });
+
+    try {
+      const cleanupTool = createCleanupWorkspaceContainersTool(workspace);
+      const result = await cleanupTool.execute("cleanup", {
+        containerNames: ["container-a", "container-b"],
+      });
+      expect(result.details.containersRemoved).toBe(2);
+      expect(result.details.containerNames).toEqual(["container-a", "container-b"]);
+      expect(dockerCalls).toContainEqual(["rm", "-f", "container-a", "container-b"]);
+    } finally {
+      restore();
+    }
+  });
+
+  it("skips containers not belonging to the current conversation", async () => {
+    const workspace = createWorkspaceManager(`test-container-tools-${crypto.randomUUID()}`);
+    const dockerCalls: string[][] = [];
+    const restore = WorkspaceManager.setDockerCommandRunnerForTest(async (args) => {
+      dockerCalls.push(args);
+      if (args.includes("--format")) {
+        return `${JSON.stringify({ ID: "c3", Names: "allowed-container", Image: "node", Status: "running", Ports: "" })}\n`;
+      }
+      return "";
+    });
+
+    try {
+      const cleanupTool = createCleanupWorkspaceContainersTool(workspace);
+      const result = await cleanupTool.execute("cleanup", {
+        containerNames: ["foreign-container", "allowed-container"],
+      });
+      expect(result.details.containersRemoved).toBe(1);
+      expect(result.details.containerNames).toEqual(["foreign-container", "allowed-container"]);
+      expect(dockerCalls).toContainEqual(["rm", "-f", "allowed-container"]);
+      expect(dockerCalls).not.toContainEqual(expect.arrayContaining(["foreign-container"]));
+    } finally {
+      restore();
+    }
+  });
+
+  it("returns 0 for empty containerNames array", async () => {
+    const workspace = createWorkspaceManager(`test-container-tools-${crypto.randomUUID()}`);
+    const dockerCalls: string[][] = [];
+    const restore = WorkspaceManager.setDockerCommandRunnerForTest(async (args) => {
+      dockerCalls.push(args);
+      return "";
+    });
+
+    try {
+      const cleanupTool = createCleanupWorkspaceContainersTool(workspace);
+      const result = await cleanupTool.execute("cleanup", {
+        containerNames: [],
+      });
+      expect(result.details.containersRemoved).toBe(0);
+      expect(dockerCalls).not.toContainEqual(expect.arrayContaining(["rm"]));
+    } finally {
+      restore();
+    }
+  });
 });

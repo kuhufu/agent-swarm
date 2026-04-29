@@ -177,6 +177,20 @@ export class WorkspaceManager {
     removeDockerContainer(containerName);
   }
 
+  async removeContainers(names: string[]): Promise<number> {
+    if (names.length === 0) {
+      return 0;
+    }
+    const containers = await this.listContainers();
+    const allowedNames = new Set(containers.map((c) => c.name));
+    const toRemove = names.filter((n) => allowedNames.has(n));
+    if (toRemove.length === 0) {
+      return 0;
+    }
+    await WorkspaceManager.dockerCommandRunner(["rm", "-f", ...toRemove]);
+    return toRemove.length;
+  }
+
   async cleanupContainers(): Promise<number> {
     return removeDockerContainersByConversation(this.conversationId);
   }

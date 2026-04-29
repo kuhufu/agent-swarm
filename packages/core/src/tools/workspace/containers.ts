@@ -4,12 +4,17 @@ import type { WorkspaceContainerInfo, WorkspaceManager } from "./manager.js";
 
 const EmptyParams = Type.Object({});
 
+const CleanupContainersParams = Type.Object({
+  containerNames: Type.Optional(Type.Array(Type.String())),
+});
+
 interface ListWorkspaceContainersDetails {
   containers: WorkspaceContainerInfo[];
 }
 
 interface CleanupWorkspaceContainersDetails {
   containersRemoved: number;
+  containerNames?: string[];
 }
 
 export function createListWorkspaceContainersTool(
@@ -53,13 +58,24 @@ export function createListWorkspaceContainersTool(
 
 export function createCleanupWorkspaceContainersTool(
   workspace: WorkspaceManager,
-): AgentTool<typeof EmptyParams, CleanupWorkspaceContainersDetails> {
+): AgentTool<typeof CleanupContainersParams, CleanupWorkspaceContainersDetails> {
   return {
     name: "workspace_cleanup_containers",
     label: "清理工作区容器",
-    description: "停止并删除当前会话 workspace 中由 workspace_execute 创建的 Docker 容器。只按当前 conversationId 的 Docker label 清理，不接受任意容器名，不能删除其他会话或宿主机上的其他容器。",
-    parameters: EmptyParams,
-    execute: async (): Promise<AgentToolResult<CleanupWorkspaceContainersDetails>> => {
+    description: "停止并删除当前会话 workspace 中由 workspace_execute 创建的 Docker 容器。可指定 containerNames 按容器名删除（仅删除属于当前会话的容器），未指定时按当前会话 Docker label 批量清理。",
+    parameters: CleanupContainersParams,
+    execute: async (_ctx, params): Promise<AgentToolResult<CleanupWorkspaceContainersDetails>> => {
+      const { containerNames } = params;
+      if (containerNames !== undefined && containerNames.length > 0) {
+        const removed = await workspace.removeContainers(containerNames);
+        return {
+          content: [{
+            type: "text",
+            text: `已清理 ${removed} 个指定容器。`,
+          }],
+          details: { containersRemoved: removed, containerNames },
+        };
+      }
       const containersRemoved = await workspace.cleanupContainers();
       return {
         content: [{
