@@ -2,12 +2,11 @@ import type { AgentTool } from "@mariozechner/pi-agent-core";
 import type { RuntimeTool } from "../runtime.js";
 import { createRuntimeTool } from "../runtime.js";
 import type { WorkspaceManager } from "./manager.js";
-import { createExecuteFileTool } from "./execute.js";
 import { createListFilesTool } from "./list-files.js";
 import { createReadFileTool } from "./read-file.js";
 import { createWriteFileTool } from "./write-file.js";
 import { createGrepTool } from "./grep.js";
-import { createRemoveWorkspaceContainersTool, createListWorkspaceContainersTool, createStartWorkspaceContainersTool, createStopWorkspaceContainersTool, createRestartWorkspaceContainersTool } from "./containers.js";
+import { createRunWorkspaceContainerTool, createRemoveWorkspaceContainersTool, createListWorkspaceContainersTool, createStartWorkspaceContainersTool, createStopWorkspaceContainersTool, createRestartWorkspaceContainersTool } from "./containers.js";
 
 export const WORKSPACE_TOOL_ID = "workspace";
 
@@ -17,7 +16,7 @@ export function createWorkspaceTools(workspace: WorkspaceManager): AgentTool<any
     createReadFileTool(workspace),
     createGrepTool(workspace),
     createListFilesTool(workspace),
-    createExecuteFileTool(workspace),
+    createRunWorkspaceContainerTool(workspace),
     createListWorkspaceContainersTool(workspace),
     createStartWorkspaceContainersTool(workspace),
     createStopWorkspaceContainersTool(workspace),

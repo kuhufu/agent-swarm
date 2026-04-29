@@ -77,7 +77,7 @@ agent-swarm/
 
 ```bash
 pnpm install               # 安装依赖
-pnpm dev                   # 同时启动 server + web
+pnpm dev                   # 同时启动 core（tsc --watch）+ server + web
 pnpm dev:core              # 仅 SDK（tsc --watch）
 pnpm dev:server            # 仅 API 服务（tsx watch）
 pnpm dev:web               # 仅前端（vite）

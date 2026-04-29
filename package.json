@@ -2,7 +2,7 @@
   "name": "agent-swarm-monorepo",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @agent-swarm/server dev & pnpm --filter @agent-swarm/web dev",
+    "dev": "pnpm --filter @agent-swarm/core dev & pnpm --filter @agent-swarm/server dev & pnpm --filter @agent-swarm/web dev",
     "dev:core": "pnpm --filter @agent-swarm/core dev",
     "dev:server": "pnpm --filter @agent-swarm/server dev",
     "dev:web": "pnpm --filter @agent-swarm/web dev",
