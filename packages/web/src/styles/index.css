@@ -133,6 +133,10 @@
 }
 
 @layer base {
+  html.preload, html.preload *, html.preload *::before, html.preload *::after {
+    transition: none !important;
+  }
+
   html {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
