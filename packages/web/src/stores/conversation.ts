@@ -18,6 +18,7 @@ interface ConversationRuntimeState {
   messages: ChatMessage[];
   streamingMessages: Map<string, ChatMessage>;
   agentStates: Map<string, AgentState>;
+  activeAssistantMessageIds: Map<string, string>;
   isActive: boolean;
 }
 
@@ -124,6 +125,7 @@ export const useConversationStore = defineStore("conversation", () => {
       messages: [],
       streamingMessages: new Map(),
       agentStates: new Map(),
+      activeAssistantMessageIds: new Map(),
       isActive: false,
     };
   }
@@ -227,6 +229,7 @@ export const useConversationStore = defineStore("conversation", () => {
       agentStates: new Map(
         Array.from(state.agentStates.entries()).map(([key, agentState]) => [key, cloneAgentState(agentState)]),
       ),
+      activeAssistantMessageIds: new Map(state.activeAssistantMessageIds),
       isActive: state.isActive,
     };
   }
@@ -276,6 +279,11 @@ export const useConversationStore = defineStore("conversation", () => {
       mergedStreamingMessages.set(key, cloneMessage(message));
     }
 
+    const mergedActiveAssistantMessageIds = new Map(draftState.activeAssistantMessageIds);
+    for (const [agentId, messageId] of existingState.activeAssistantMessageIds.entries()) {
+      mergedActiveAssistantMessageIds.set(agentId, messageId);
+    }
+
     const mergedAgentStates = new Map<string, AgentState>();
     for (const [agentId, state] of draftState.agentStates.entries()) {
       mergedAgentStates.set(agentId, cloneAgentState(state));
@@ -288,6 +296,7 @@ export const useConversationStore = defineStore("conversation", () => {
       messages: mergedMessages,
       streamingMessages: mergedStreamingMessages,
       agentStates: mergedAgentStates,
+      activeAssistantMessageIds: mergedActiveAssistantMessageIds,
       isActive: existingState.isActive || draftState.isActive,
     };
   }
@@ -413,6 +422,10 @@ export const useConversationStore = defineStore("conversation", () => {
     };
   }
 
+  function findMessageIndexById(messages: ChatMessage[], messageId: string): number {
+    return messages.findIndex((message) => message.id === messageId);
+  }
+
   function upsertToolCall(agentId: string | undefined, toolCall: ToolCallInfo, conversationId?: string) {
     if (!toolCall.id || !toolCall.name) {
       return;
@@ -424,6 +437,18 @@ export const useConversationStore = defineStore("conversation", () => {
         if (streaming?.role === "assistant") {
           state.streamingMessages.set(agentId, upsertToolCallInMessage(streaming, toolCall));
           return;
+        }
+
+        const activeMessageId = state.activeAssistantMessageIds.get(agentId);
+        if (activeMessageId) {
+          const activeMessageIndex = findMessageIndexById(state.messages, activeMessageId);
+          if (activeMessageIndex >= 0) {
+            state.messages[activeMessageIndex] = upsertToolCallInMessage(
+              state.messages[activeMessageIndex],
+              toolCall,
+            );
+            return;
+          }
         }
       }
 
@@ -439,8 +464,9 @@ export const useConversationStore = defineStore("conversation", () => {
         return;
       }
 
+      const messageId = crypto.randomUUID();
       state.messages.push({
-        id: crypto.randomUUID(),
+        id: messageId,
         role: "assistant",
         content: "",
         agentId,
@@ -448,6 +474,9 @@ export const useConversationStore = defineStore("conversation", () => {
         toolCalls: [toolCall],
         timestamp: Date.now(),
       });
+      if (agentId) {
+        state.activeAssistantMessageIds.set(agentId, messageId);
+      }
     });
   }
 
@@ -462,7 +491,33 @@ export const useConversationStore = defineStore("conversation", () => {
       if (existing && existing.content.trim().length > 0) {
         state.messages.push(cloneMessage(existing));
       }
-      state.streamingMessages.set(key, { ...msg, content: "" });
+      let carriedToolCalls: ToolCallInfo[] | undefined;
+      if (msg.role === "assistant" && msg.agentId) {
+        const activeMessageId = state.activeAssistantMessageIds.get(msg.agentId);
+        if (activeMessageId) {
+          const activeMessageIndex = findMessageIndexById(state.messages, activeMessageId);
+          const activeMessage = activeMessageIndex >= 0 ? state.messages[activeMessageIndex] : undefined;
+          if (
+            activeMessage?.role === "assistant"
+            && activeMessage.agentId === msg.agentId
+            && activeMessage.content.trim().length === 0
+            && Array.isArray(activeMessage.toolCalls)
+            && activeMessage.toolCalls.length > 0
+          ) {
+            carriedToolCalls = activeMessage.toolCalls.map((toolCall) => cloneToolCall(toolCall));
+            state.messages.splice(activeMessageIndex, 1);
+          }
+        }
+      }
+      const nextMessage = {
+        ...msg,
+        content: "",
+        toolCalls: carriedToolCalls ?? msg.toolCalls,
+      };
+      state.streamingMessages.set(key, nextMessage);
+      if (msg.role === "assistant" && msg.agentId) {
+        state.activeAssistantMessageIds.set(msg.agentId, nextMessage.id);
+      }
     });
   }
 
@@ -506,6 +561,9 @@ export const useConversationStore = defineStore("conversation", () => {
         const stream = state.streamingMessages.get(agentId);
         if (stream && shouldPersistStreamMessage(stream)) {
           state.messages.push(cloneMessage(stream));
+          if (stream.role === "assistant") {
+            state.activeAssistantMessageIds.set(agentId, stream.id);
+          }
         }
         state.streamingMessages.delete(agentId);
         return;
@@ -514,6 +572,9 @@ export const useConversationStore = defineStore("conversation", () => {
       for (const [key, stream] of state.streamingMessages.entries()) {
         if (shouldPersistStreamMessage(stream)) {
           state.messages.push(cloneMessage(stream));
+          if (stream.role === "assistant" && stream.agentId) {
+            state.activeAssistantMessageIds.set(stream.agentId, stream.id);
+          }
         }
         state.streamingMessages.delete(key);
       }
@@ -524,6 +585,7 @@ export const useConversationStore = defineStore("conversation", () => {
     mutateRuntimeState(undefined, (state) => {
       state.messages = [];
       state.streamingMessages = new Map();
+      state.activeAssistantMessageIds = new Map();
     });
   }
 
@@ -576,9 +638,9 @@ export const useConversationStore = defineStore("conversation", () => {
 
   function populateAgentStatesFromConversation(conversation: ConversationInfo, conversationId: string) {
     if (conversation.swarmId.startsWith("__direct_")) {
-      mutateRuntimeState(conversationId, (state) => {
-        state.agentStates = buildDirectAgentStates(conversation, conversationId);
-      });
+    mutateRuntimeState(conversationId, (state) => {
+      state.agentStates = buildDirectAgentStates(conversation, conversationId);
+    });
       return;
     }
 
@@ -658,6 +720,7 @@ export const useConversationStore = defineStore("conversation", () => {
       if (cached && cached.messages.length > 0) {
         mutateRuntimeState(normalizedConversationId, (state) => {
           state.messages = normalizeHistoryMessages(cached.messages, resolveAgentName);
+          state.activeAssistantMessageIds = new Map();
         });
       }
 
@@ -670,6 +733,7 @@ export const useConversationStore = defineStore("conversation", () => {
       mutateRuntimeState(normalizedConversationId, (state) => {
         state.messages = normalizeHistoryMessages(mergedMessages, resolveAgentName);
         state.streamingMessages = new Map();
+        state.activeAssistantMessageIds = new Map();
         state.isActive = false;
       });
 
