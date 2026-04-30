@@ -106,7 +106,7 @@ const formatTime = formatTimeShort;
       <template v-if="message.parts">
         <template v-for="(part, index) in message.parts" :key="index">
           <div v-if="part.type === 'thinking'" class="msg-thinking">
-            <details open>
+            <details>
               <summary>
                 <ThinkingIcon />
                 思考过程
@@ -127,7 +127,7 @@ const formatTime = formatTimeShort;
       </template>
       <template v-else>
         <div v-if="message.thinking" class="msg-thinking">
-          <details open>
+          <details>
             <summary>
               <ThinkingIcon />
               思考过程
