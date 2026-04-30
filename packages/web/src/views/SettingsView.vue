@@ -255,11 +255,6 @@ async function saveSettings() {
 
 <template>
   <div class="settings-view">
-    <div v-if="checkingAuth" class="settings-loading-overlay">
-      <div class="loading-spinner" />
-      <p>正在加载设置...</p>
-    </div>
-
     <div v-if="!isAdmin && !checkingAuth" class="access-denied">
       <div class="access-denied-card">
         <h2>需要管理员权限</h2>
@@ -267,7 +262,11 @@ async function saveSettings() {
       </div>
     </div>
 
-    <div class="settings-layout" :class="{ visible: isAdmin && !checkingAuth }">
+    <div v-show="isAdmin" class="settings-layout" :class="{ visible: !checkingAuth }">
+      <div v-if="checkingAuth" class="settings-loading-overlay">
+        <div class="loading-spinner" />
+        <p>正在加载设置...</p>
+      </div>
       <aside class="settings-sidebar">
         <div class="sidebar-header">
           <h2>设置管理</h2>
@@ -466,17 +465,14 @@ async function saveSettings() {
 <style scoped>
 .settings-view {
   height: 100%;
-  position: relative;
 }
 
 .access-denied {
-  position: absolute;
-  inset: 0;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
-  z-index: 99;
 }
 
 .access-denied-card {
@@ -484,10 +480,8 @@ async function saveSettings() {
   padding: 24px;
   border: 1px solid var(--color-border-subtle);
   border-radius: 12px;
-  background: var(--color-surface-2);
-  backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.03);
   text-align: center;
-  box-shadow: var(--shadow-dialog);
 }
 
 .access-denied-card h2 {
@@ -506,26 +500,23 @@ async function saveSettings() {
 .settings-layout {
   display: flex;
   height: 100%;
-  opacity: 1;
-  transition: opacity 0.3s ease;
+  opacity: 0;
+  transition: opacity 0.25s ease;
 }
 
-.settings-layout:not(.visible) {
-  opacity: 0;
-  pointer-events: none;
+.settings-layout.visible {
+  opacity: 1;
 }
 
 .settings-loading-overlay {
   position: absolute;
   inset: 0;
-  z-index: 50;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 12px;
   color: var(--color-text-muted);
-  background: var(--color-surface-0);
 }
 
 .settings-loading-overlay p {
