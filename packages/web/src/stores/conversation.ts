@@ -464,6 +464,12 @@ export const useConversationStore = defineStore("conversation", () => {
     }
 
     mutateRuntimeState(conversationId, (state) => {
+      const refreshToolCallBindings = () => {
+        state.messages = [...state.messages];
+        state.streamingMessages = new Map(state.streamingMessages);
+        state.toolCallMessageIds = new Map(state.toolCallMessageIds);
+      };
+
       const boundMessageId = state.toolCallMessageIds.get(toolCall.id);
       if (boundMessageId) {
         const boundMessageIndex = findMessageIndexById(state.messages, boundMessageId);
@@ -472,11 +478,13 @@ export const useConversationStore = defineStore("conversation", () => {
             state.messages[boundMessageIndex],
             toolCall,
           );
+          refreshToolCallBindings();
           return;
         }
         for (const [streamKey, stream] of state.streamingMessages.entries()) {
           if (stream.id === boundMessageId) {
             state.streamingMessages.set(streamKey, upsertToolCallInMessage(stream, toolCall));
+            refreshToolCallBindings();
             return;
           }
         }
@@ -486,6 +494,7 @@ export const useConversationStore = defineStore("conversation", () => {
       if (groupIndex >= 0) {
         state.messages[groupIndex] = upsertToolCallInMessage(state.messages[groupIndex], toolCall);
         state.toolCallMessageIds.set(toolCall.id, state.messages[groupIndex].id);
+        refreshToolCallBindings();
         return;
       }
 
@@ -503,6 +512,7 @@ export const useConversationStore = defineStore("conversation", () => {
         state.activeAssistantMessageIds.set(agentId, messageId);
       }
       state.toolCallMessageIds.set(toolCall.id, messageId);
+      refreshToolCallBindings();
     });
   }
 
