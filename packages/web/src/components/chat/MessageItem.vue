@@ -103,30 +103,54 @@ const formatTime = formatTimeShort;
         </template>
       </div>
 
-      <div v-if="message.thinking" class="msg-thinking">
-        <details open>
-          <summary>
-            <ThinkingIcon />
-            思考过程
-            <span class="chevron">&gt;</span>
-          </summary>
-          <div class="thinking-content markdown-content" v-html="renderedThinking" />
-        </details>
-      </div>
+      <template v-if="message.parts">
+        <template v-for="(part, index) in message.parts" :key="index">
+          <div v-if="part.type === 'thinking'" class="msg-thinking">
+            <details open>
+              <summary>
+                <ThinkingIcon />
+                思考过程
+                <span class="chevron">&gt;</span>
+              </summary>
+              <div class="thinking-content markdown-content" v-html="renderMarkdown(part.content ?? '')" />
+            </details>
+          </div>
+          <div v-if="part.type === 'content'" class="msg-content markdown-content" v-html="renderMarkdown(part.content ?? '')" />
+          <div v-if="part.type === 'toolCalls'" class="msg-tool-calls">
+            <ToolCallCard
+              v-for="tc in part.toolCalls"
+              :key="tc.id"
+              :tool-call="tc"
+            />
+          </div>
+        </template>
+      </template>
+      <template v-else>
+        <div v-if="message.thinking" class="msg-thinking">
+          <details open>
+            <summary>
+              <ThinkingIcon />
+              思考过程
+              <span class="chevron">&gt;</span>
+            </summary>
+            <div class="thinking-content markdown-content" v-html="renderedThinking" />
+          </details>
+        </div>
 
-      <div
-        v-if="hasRenderableContent"
-        class="msg-content markdown-content"
-        v-html="renderedContent"
-      />
-
-      <div v-if="message.toolCalls?.length" class="msg-tool-calls">
-        <ToolCallCard
-          v-for="tc in message.toolCalls"
-          :key="tc.id"
-          :tool-call="tc"
+        <div
+          v-if="hasRenderableContent"
+          class="msg-content markdown-content"
+          v-html="renderedContent"
         />
-      </div>
+
+        <div v-if="message.toolCalls?.length" class="msg-tool-calls">
+          <ToolCallCard
+            v-for="tc in message.toolCalls"
+            :key="tc.id"
+            :tool-call="tc"
+          />
+        </div>
+      </template>
 
       <div class="msg-footer">
         <span v-if="streaming" class="streaming-indicator">

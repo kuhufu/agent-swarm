@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from "vue";
-import type { ChatMessage, ToolCallInfo } from "../../types/index.js";
+import type { ChatMessage, MessagePart, ToolCallInfo } from "../../types/index.js";
 import { useSwarmStore } from "../../stores/swarm.js";
 import { MODE_LABEL_ZH } from "../../constants/swarm-modes.js";
 import MessageItem from "./MessageItem.vue";
@@ -96,6 +96,98 @@ function hasRenderableMessageBody(message: ChatMessage): boolean {
   return hasText || hasThinking || hasToolCalls;
 }
 
+function toParts(message: ChatMessage): MessagePart[] {
+  const parts: MessagePart[] = [];
+  if (message.thinking?.trim()) {
+    parts.push({ type: "thinking", content: message.thinking });
+  }
+  if (message.content?.trim()) {
+    parts.push({ type: "content", content: message.content });
+  }
+  if (message.toolCalls?.length) {
+    parts.push({ type: "toolCalls", toolCalls: message.toolCalls });
+  }
+  return parts;
+}
+
+function mergeTextParts(...parts: Array<string | undefined>): string {
+  return parts
+    .map((part) => part?.trim() ?? "")
+    .filter((part) => part.length > 0)
+    .join("\n\n");
+}
+
+function mergeToolCalls(
+  existing: ToolCallInfo[] | undefined,
+  incoming: ToolCallInfo[] | undefined,
+): ToolCallInfo[] | undefined {
+  if (!existing?.length && !incoming?.length) {
+    return undefined;
+  }
+
+  const merged: ToolCallInfo[] = [];
+  const indexById = new Map<string, number>();
+
+  for (const toolCall of [...(existing ?? []), ...(incoming ?? [])]) {
+    const index = indexById.get(toolCall.id);
+    if (index === undefined) {
+      indexById.set(toolCall.id, merged.length);
+      merged.push(toolCall);
+      continue;
+    }
+    merged[index] = {
+      ...merged[index],
+      ...toolCall,
+      arguments: toolCall.arguments !== undefined ? toolCall.arguments : merged[index].arguments,
+      result: toolCall.result !== undefined ? toolCall.result : merged[index].result,
+      isError: typeof toolCall.isError === "boolean" ? toolCall.isError : merged[index].isError,
+    };
+  }
+
+  return merged;
+}
+
+function canMergeAssistantEntries(previous: RenderEntry, next: RenderEntry): boolean {
+  return previous.message.role === "assistant"
+    && next.message.role === "assistant"
+    && (previous.message.agentId ?? "") === (next.message.agentId ?? "");
+}
+
+function mergeAssistantEntries(previous: RenderEntry, next: RenderEntry): RenderEntry {
+  return {
+    streaming: previous.streaming || next.streaming,
+    message: {
+      ...previous.message,
+      id: `${previous.message.id}+${next.message.id}`,
+      content: mergeTextParts(previous.message.content, next.message.content),
+      thinking: mergeTextParts(previous.message.thinking, next.message.thinking) || undefined,
+      toolCalls: mergeToolCalls(previous.message.toolCalls, next.message.toolCalls),
+      agentName: previous.message.agentName ?? next.message.agentName,
+      timestamp: Math.min(previous.message.timestamp, next.message.timestamp),
+      createdAt: previous.message.createdAt ?? next.message.createdAt,
+      parts: [
+        ...toParts(previous.message),
+        ...toParts(next.message),
+      ],
+    },
+  };
+}
+
+function mergeAdjacentAssistantEntries(entries: RenderEntry[]): RenderEntry[] {
+  const merged: RenderEntry[] = [];
+
+  for (const entry of entries) {
+    const previous = merged[merged.length - 1];
+    if (previous && canMergeAssistantEntries(previous, entry)) {
+      merged[merged.length - 1] = mergeAssistantEntries(previous, entry);
+      continue;
+    }
+    merged.push(entry);
+  }
+
+  return merged;
+}
+
 const renderEntries = computed<RenderEntry[]>(() => {
   const byId = new Map<string, RenderEntry>();
 
@@ -117,7 +209,7 @@ const renderEntries = computed<RenderEntry[]>(() => {
     return a.message.id.localeCompare(b.message.id);
   });
 
-  return sortedEntries;
+  return mergeAdjacentAssistantEntries(sortedEntries);
 });
 
 function isNearBottom(el: HTMLElement): boolean {

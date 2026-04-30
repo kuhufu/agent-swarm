@@ -142,6 +142,12 @@ export interface ModelTestResult {
 // Chat Types
 // ============================================================================
 
+export interface MessagePart {
+  type: "thinking" | "content" | "toolCalls";
+  content?: string;
+  toolCalls?: ToolCallInfo[];
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "tool_result" | "system" | "notification";
@@ -153,6 +159,7 @@ export interface ChatMessage {
   metadata?: Record<string, unknown>;
   timestamp: number;
   createdAt?: number;
+  parts?: MessagePart[];
 }
 
 export interface ToolCallInfo {
