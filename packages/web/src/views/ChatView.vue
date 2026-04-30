@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed, watch } from "vue";
+import { onMounted, onUnmounted, computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useSwarmStore } from "../stores/swarm.js";
 import { useConversationStore } from "../stores/conversation.js";
@@ -15,27 +15,8 @@ const conversationStore = useConversationStore();
 const { connect, connected } = useWebSocket();
 const route = useRoute();
 const router = useRouter();
+const draftSwarmId = ref<string>("");
 
-const currentConversation = computed(() =>
-  conversationStore.currentConversationId
-    ? conversationStore.conversations.find((c) => c.id === conversationStore.currentConversationId) ?? null
-    : null,
-);
-const swarmId = computed(() => {
-  const conv = currentConversation.value;
-  if (conv && !conv.swarmId.startsWith("__direct_")) {
-    return conv.swarmId;
-  }
-  return swarmStore.currentSwarmId ?? "";
-});
-const isDirectMode = computed(() => {
-  const conv = currentConversation.value;
-  if (conv) return conv.swarmId.startsWith("__direct_");
-  return !swarmStore.currentSwarmId;
-});
-const streamingMessages = computed(() =>
-  Array.from(conversationStore.streamingMessages.values()),
-);
 const routeConversationId = computed(() => {
   const rawConversationId = route.params.conversationId;
   if (typeof rawConversationId !== "string") {
@@ -44,33 +25,75 @@ const routeConversationId = computed(() => {
   const normalizedConversationId = rawConversationId.trim();
   return normalizedConversationId.length > 0 ? normalizedConversationId : null;
 });
+const currentConversation = computed(() =>
+  routeConversationId.value
+    ? conversationStore.conversations.find((c) => c.id === routeConversationId.value) ?? null
+    : null,
+);
+const swarmId = computed(() => {
+  const conv = currentConversation.value;
+  if (conv && !conv.swarmId.startsWith("__direct_")) {
+    return conv.swarmId;
+  }
+  return draftSwarmId.value;
+});
+const isDirectMode = computed(() => {
+  const conv = currentConversation.value;
+  if (conv) return conv.swarmId.startsWith("__direct_");
+  return !draftSwarmId.value;
+});
+const streamingMessages = computed(() =>
+  Array.from(conversationStore.getStreamingMessages(routeConversationId.value).values()),
+);
 
 const currentConversationTitle = computed(() => {
-  if (!conversationStore.currentConversationId) return null;
+  if (!routeConversationId.value) return null;
   const conv = conversationStore.conversations.find(
-    (c) => c.id === conversationStore.currentConversationId,
+    (c) => c.id === routeConversationId.value,
   );
   return conv?.title ?? null;
 });
+const active = computed(() => conversationStore.getIsActive(routeConversationId.value));
+const messages = computed(() => conversationStore.getMessages(routeConversationId.value));
+const agentStates = computed(() => Array.from(conversationStore.getAgentStates(routeConversationId.value).values()));
 
 onMounted(() => {
   swarmStore.fetchSwarms();
   if (!connected.value) {
     connect();
   }
+  window.addEventListener("agent-swarm:conversation-created", handleConversationCreated);
 });
+
+onUnmounted(() => {
+  window.removeEventListener("agent-swarm:conversation-created", handleConversationCreated);
+});
+
+function handleConversationCreated(event: Event) {
+  const detail = (event as CustomEvent<{ conversationId?: unknown }>).detail;
+  const conversationId = typeof detail?.conversationId === "string" ? detail.conversationId : "";
+  if (!conversationId) {
+    return;
+  }
+  if (routeConversationId.value !== conversationId) {
+    void router.replace({ name: "chat", params: { conversationId } });
+  }
+}
+
+watch(
+  () => swarmStore.swarms.map((swarm) => swarm.id),
+  (ids) => {
+    if (draftSwarmId.value && !ids.includes(draftSwarmId.value)) {
+      draftSwarmId.value = "";
+    }
+  },
+  { immediate: true },
+);
 
 watch(
   routeConversationId,
   (conversationId) => {
     if (!conversationId) {
-      if (conversationStore.currentConversationId) {
-        conversationStore.setCurrentConversation(null);
-      }
-      return;
-    }
-
-    if (conversationStore.currentConversationId === conversationId) {
       return;
     }
 
@@ -83,31 +106,19 @@ watch(
   { immediate: true },
 );
 
-watch(
-  () => conversationStore.currentConversationId,
-  (conversationId) => {
-    const currentRouteConversationId = routeConversationId.value;
-    if (conversationId === currentRouteConversationId) {
-      return;
-    }
-
-    if (conversationId) {
-      void router.replace({ name: "chat", params: { conversationId } });
-      return;
-    }
-
-    if (currentRouteConversationId) {
-      void router.replace({ name: "chat", params: {} });
-    }
-  },
-);
-
 function handleNewConversation() {
-  conversationStore.setCurrentConversation(null);
+  void router.push({ name: "chat", params: {} });
+}
+
+function handleSelectDraftSwarm(swarmId: string) {
+  draftSwarmId.value = swarmId;
+  if (routeConversationId.value) {
+    void router.push({ name: "chat", params: {} });
+  }
 }
 
 async function handleForkConversation() {
-  const convId = conversationStore.currentConversationId;
+  const convId = routeConversationId.value;
   if (!convId) return;
   try {
     const res = await forkConversation(convId);
@@ -121,7 +132,6 @@ async function handleForkConversation() {
     } else {
       conversationStore.conversations.unshift(forked);
     }
-    conversationStore.setCurrentConversation(forked.id);
     void router.push(`/chat/${forked.id}`);
   } catch (err) {
     console.error("Fork failed:", err instanceof Error ? err.message : err);
@@ -143,7 +153,7 @@ async function handleForkConversation() {
           <span v-if="isDirectMode" class="mode-badge direct">直接对话模式</span>
         </div>
         <button
-          v-if="conversationStore.currentConversationId"
+          v-if="routeConversationId"
           class="new-chat-btn fork-btn"
           @click="handleForkConversation"
           title="创建分支对话"
@@ -166,17 +176,24 @@ async function handleForkConversation() {
         </button>
       </div>
       <MessageList
-        :messages="conversationStore.messages"
+        :messages="messages"
         :streaming-messages="streamingMessages"
         :is-direct-mode="isDirectMode"
-        :conversation-id="conversationStore.currentConversationId"
+        :conversation-id="routeConversationId"
         :swarm-id="swarmId"
+        @select-swarm="handleSelectDraftSwarm"
       />
       <InterventionPanel />
-      <ChatInput :key="conversationStore.currentConversationId ?? 'new'" :swarm-id="swarmId" :active="conversationStore.isActive" :is-direct-mode="isDirectMode" />
+      <ChatInput
+        :key="routeConversationId ?? 'new'"
+        :conversation-id="routeConversationId"
+        :swarm-id="swarmId"
+        :active="active"
+        :is-direct-mode="isDirectMode"
+      />
     </div>
     <aside class="chat-sidebar-right">
-      <AgentStatus :agents="Array.from(conversationStore.agentStates.values())" :swarm-id="swarmId" />
+      <AgentStatus :agents="agentStates" :swarm-id="swarmId" />
     </aside>
   </div>
 </template>

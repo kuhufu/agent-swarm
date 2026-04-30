@@ -2,27 +2,27 @@
 import { ref } from "vue";
 import { useIntervention } from "../../composables/useIntervention.js";
 
-const { hasPending, currentIntervention, approve, reject, edit } = useIntervention();
+const { hasPending, nextIntervention, approve, reject, edit } = useIntervention();
 const editValue = ref("");
 const showEdit = ref(false);
 
 function handleEdit() {
-  if (currentIntervention.value) {
-    editValue.value = JSON.stringify(currentIntervention.value.context, null, 2);
+  if (nextIntervention.value) {
+    editValue.value = JSON.stringify(nextIntervention.value.context, null, 2);
     showEdit.value = true;
   }
 }
 
 function submitEdit() {
-  if (currentIntervention.value) {
-    edit(currentIntervention.value.requestId, editValue.value);
+  if (nextIntervention.value) {
+    edit(nextIntervention.value.requestId, editValue.value);
     showEdit.value = false;
   }
 }
 </script>
 
 <template>
-  <div v-if="hasPending && currentIntervention" class="intervention-panel animate-slide-up">
+  <div v-if="hasPending && nextIntervention" class="intervention-panel animate-slide-up">
     <div class="intervention-header">
       <div class="intervention-title">
         <div class="intervention-icon">
@@ -34,14 +34,14 @@ function submitEdit() {
         </div>
         <div>
           <span class="intervention-badge">需要介入</span>
-          <span class="intervention-point">{{ currentIntervention.point }}</span>
+          <span class="intervention-point">{{ nextIntervention.point }}</span>
         </div>
       </div>
     </div>
 
     <div class="intervention-body">
       <div class="intervention-context">
-        <pre>{{ JSON.stringify(currentIntervention.context, null, 2) }}</pre>
+        <pre>{{ JSON.stringify(nextIntervention.context, null, 2) }}</pre>
       </div>
       <div v-if="showEdit" class="intervention-edit">
         <textarea
@@ -54,13 +54,13 @@ function submitEdit() {
     </div>
 
     <div class="intervention-actions">
-      <button class="btn-primary" @click="approve(currentIntervention.requestId)">
+      <button class="btn-primary" @click="approve(nextIntervention.requestId)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
           <polyline points="20 6 9 17 4 12" />
         </svg>
         批准
       </button>
-      <button class="btn-secondary" @click="reject(currentIntervention.requestId)">
+      <button class="btn-secondary" @click="reject(nextIntervention.requestId)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
           <line x1="18" y1="6" x2="6" y2="18" />
           <line x1="6" y1="6" x2="18" y2="18" />

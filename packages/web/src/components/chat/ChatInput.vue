@@ -6,6 +6,7 @@ import { useConversationStore } from "../../stores/conversation.js";
 import type { SavedModel } from "../../types/index.js";
 
 const props = defineProps<{
+  conversationId?: string | null;
   swarmId: string;
   active?: boolean;
   isDirectMode?: boolean;
@@ -28,7 +29,7 @@ const {
   retrieveKnowledgeToolEnabled,
   workspaceToolEnabled,
   thinkingLevel,
-} = useChat();
+} = useChat(computed(() => props.conversationId ?? null));
 
 const settingsStore = useSettingsStore();
 const conversationStore = useConversationStore();

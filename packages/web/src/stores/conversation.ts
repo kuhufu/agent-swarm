@@ -125,14 +125,13 @@ export const useConversationStore = defineStore("conversation", () => {
     };
   }
 
-  const currentConversationId = ref<string | null>(null);
+  const defaultConversationId = ref<string | null>(null);
   const loading = ref(false);
   const loadingMessages = ref(false);
   const conversations = ref<ConversationInfo[]>(restoreConversationsCache());
   const enabledTools = ref<string[]>([]);
   const thinkingLevel = ref<string>("off");
   const thinkModeEnabled = computed(() => thinkingLevel.value !== "off");
-  const currentDirectModel = ref<ConversationInfo["directModel"] | null>(null);
   const inputFocusRequestKey = ref(0);
   const runtimeStates = ref<Map<string, ConversationRuntimeState>>(
     new Map([[DRAFT_RUNTIME_ID, createEmptyRuntimeState()]]),
@@ -151,11 +150,11 @@ export const useConversationStore = defineStore("conversation", () => {
     if (normalized) {
       return normalized;
     }
-    return currentConversationId.value ?? DRAFT_RUNTIME_ID;
+    return defaultConversationId.value ?? DRAFT_RUNTIME_ID;
   }
 
   function resolveCurrentRuntimeStateId(): string {
-    return currentConversationId.value ?? DRAFT_RUNTIME_ID;
+    return defaultConversationId.value ?? DRAFT_RUNTIME_ID;
   }
 
   function getOrCreateRuntimeStateById(runtimeId: string): ConversationRuntimeState {
@@ -197,6 +196,30 @@ export const useConversationStore = defineStore("conversation", () => {
     const state = runtimeStates.value.get(runtimeId) ?? runtimeStates.value.get(DRAFT_RUNTIME_ID)!;
     return state.isActive;
   });
+
+  function getMessages(conversationId?: string | null): ChatMessage[] {
+    const state = runtimeStates.value.get(resolveRuntimeStateId(conversationId))
+      ?? runtimeStates.value.get(DRAFT_RUNTIME_ID)!;
+    return state.messages;
+  }
+
+  function getStreamingMessages(conversationId?: string | null): Map<string, ChatMessage> {
+    const state = runtimeStates.value.get(resolveRuntimeStateId(conversationId))
+      ?? runtimeStates.value.get(DRAFT_RUNTIME_ID)!;
+    return state.streamingMessages;
+  }
+
+  function getAgentStates(conversationId?: string | null): Map<string, AgentState> {
+    const state = runtimeStates.value.get(resolveRuntimeStateId(conversationId))
+      ?? runtimeStates.value.get(DRAFT_RUNTIME_ID)!;
+    return state.agentStates;
+  }
+
+  function getIsActive(conversationId?: string | null): boolean {
+    const state = runtimeStates.value.get(resolveRuntimeStateId(conversationId))
+      ?? runtimeStates.value.get(DRAFT_RUNTIME_ID)!;
+    return state.isActive;
+  }
 
   function cloneToolCall(toolCall: ToolCallInfo): ToolCallInfo {
     return {
@@ -341,7 +364,6 @@ export const useConversationStore = defineStore("conversation", () => {
   ) {
     enabledTools.value = normalizeEnabledTools(preferences?.enabledTools);
     thinkingLevel.value = preferences?.thinkingLevel ?? "off";
-    currentDirectModel.value = normalizeDirectModel(preferences?.directModel);
   }
 
   function normalizeDirectModel(
@@ -356,6 +378,14 @@ export const useConversationStore = defineStore("conversation", () => {
       return null;
     }
     return { provider, modelId };
+  }
+
+  function getDirectModel(conversationId?: string | null): ConversationInfo["directModel"] | null {
+    if (!conversationId) {
+      return null;
+    }
+    const conversation = conversations.value.find((item) => item.id === conversationId);
+    return normalizeDirectModel(conversation?.directModel);
   }
 
   function updateConversationInfo(id: string, patch: Partial<ConversationInfo>) {
@@ -509,11 +539,11 @@ export const useConversationStore = defineStore("conversation", () => {
     inputFocusRequestKey.value += 1;
   }
 
-  function setCurrentConversation(id: string | null) {
+  function setDefaultConversation(id: string | null) {
     const normalizedId = normalizeConversationId(id);
 
     if (!normalizedId) {
-      currentConversationId.value = null;
+      defaultConversationId.value = null;
       resetRuntimeStateById(DRAFT_RUNTIME_ID);
       applyConversationPreferences(null);
       requestInputFocus();
@@ -522,7 +552,7 @@ export const useConversationStore = defineStore("conversation", () => {
 
     getOrCreateRuntimeStateById(normalizedId);
 
-    if (currentConversationId.value === normalizedId) {
+    if (defaultConversationId.value === normalizedId) {
       const conversation = conversations.value.find((item) => item.id === normalizedId);
       if (conversation) {
         applyConversationPreferences(conversation);
@@ -531,7 +561,7 @@ export const useConversationStore = defineStore("conversation", () => {
       return;
     }
 
-    currentConversationId.value = normalizedId;
+    defaultConversationId.value = normalizedId;
     const conversation = conversations.value.find((item) => item.id === normalizedId);
     if (conversation) {
       applyConversationPreferences(conversation);
@@ -555,7 +585,7 @@ export const useConversationStore = defineStore("conversation", () => {
     const conversation = conversationId
       ? conversations.value.find((item) => item.id === conversationId)
       : null;
-    const swarm = swarmStore.getSwarmById(conversation?.swarmId ?? swarmStore.currentSwarmId);
+    const swarm = swarmStore.getSwarmById(conversation?.swarmId);
     if (!swarm) {
       return undefined;
     }
@@ -636,12 +666,12 @@ export const useConversationStore = defineStore("conversation", () => {
     // If runtime already has messages, just switch to it without any API call
     const existingRuntime = runtimeStates.value.get(resolveRuntimeStateId(normalizedConversationId));
     if (existingRuntime && existingRuntime.messages.length > 0 && !existingRuntime.isActive && existingRuntime.streamingMessages.size === 0) {
-      setCurrentConversation(normalizedConversationId);
+      setDefaultConversation(normalizedConversationId);
       return;
     }
 
     // Set current conversation from cache immediately (title, preferences)
-    setCurrentConversation(normalizedConversationId);
+    setDefaultConversation(normalizedConversationId);
 
     loadingMessages.value = true;
     try {
@@ -652,23 +682,14 @@ export const useConversationStore = defineStore("conversation", () => {
       updateConversationInfo(normalizedConversationId, conversationRes.data);
 
       if (conversationRes.data.swarmId.startsWith("__direct_")) {
-        swarmStore.clearSwarmSelection();
+        // Direct conversations do not require a Swarm selection.
       } else {
-        let matchedSwarm = swarmStore.swarms.find((item) => item.id === conversationRes.data.swarmId);
-        if (!matchedSwarm) {
+        if (!swarmStore.getSwarmById(conversationRes.data.swarmId)) {
           try {
             await swarmStore.fetchSwarms();
           } catch {
             // ignore swarm refresh failure and fallback to runtime state
           }
-          matchedSwarm = swarmStore.swarms.find((item) => item.id === conversationRes.data.swarmId);
-        }
-        if (matchedSwarm) {
-          if (swarmStore.currentSwarmId !== matchedSwarm.id) {
-            swarmStore.selectSwarm(matchedSwarm.id);
-          }
-        } else {
-          swarmStore.clearSwarmSelection();
         }
       }
       populateAgentStatesFromConversation(conversationRes.data, normalizedConversationId);
@@ -760,8 +781,8 @@ export const useConversationStore = defineStore("conversation", () => {
       const res = await conversationsApi.listConversations(swarmId);
       conversations.value = res.data;
       saveConversationsCache(res.data);
-      if (currentConversationId.value) {
-        const current = conversations.value.find((conv) => conv.id === currentConversationId.value);
+      if (defaultConversationId.value) {
+        const current = conversations.value.find((conv) => conv.id === defaultConversationId.value);
         if (current) {
           applyConversationPreferences(current);
         }
@@ -777,8 +798,8 @@ export const useConversationStore = defineStore("conversation", () => {
       const res = await conversationsApi.listConversations();
       conversations.value = res.data;
       saveConversationsCache(res.data);
-      if (currentConversationId.value) {
-        const current = conversations.value.find((conv) => conv.id === currentConversationId.value);
+      if (defaultConversationId.value) {
+        const current = conversations.value.find((conv) => conv.id === defaultConversationId.value);
         if (current) {
           applyConversationPreferences(current);
         }
@@ -796,7 +817,7 @@ export const useConversationStore = defineStore("conversation", () => {
   }
 
   function cacheConversation(conversationId?: string | null) {
-    const id = conversationId ?? currentConversationId.value;
+    const id = conversationId ?? defaultConversationId.value;
     if (!id) return;
     const state = runtimeStates.value.get(id);
     if (!state) return;
@@ -813,13 +834,12 @@ export const useConversationStore = defineStore("conversation", () => {
     runtimeStates.value.delete(id);
     runtimeStates.value = new Map(runtimeStates.value);
     void deleteCachedMessages(id);
-    if (currentConversationId.value === id) {
-      setCurrentConversation(null);
+    if (defaultConversationId.value === id) {
+      setDefaultConversation(null);
     }
   }
 
-  async function clearCurrentConversationContext() {
-    const conversationId = currentConversationId.value;
+  async function clearConversationContext(conversationId: string | null | undefined) {
     if (!conversationId) {
       throw new Error("当前没有可清空上下文的会话");
     }
@@ -856,17 +876,29 @@ export const useConversationStore = defineStore("conversation", () => {
     return res.data;
   }
 
+  async function clearCurrentConversationContext() {
+    return clearConversationContext(defaultConversationId.value);
+  }
+
+  async function persistConversationPreferences(
+    conversationId: string,
+    patch: Partial<Pick<ConversationInfo, "enabledTools" | "thinkingLevel" | "directModel">>,
+  ) {
+    const res = await conversationsApi.updateConversationPreferences(conversationId, patch);
+    updateConversationInfo(conversationId, res.data);
+    if (conversationId === defaultConversationId.value) {
+      applyConversationPreferences(res.data);
+    }
+  }
+
   async function persistCurrentConversationPreferences(
     patch: Partial<Pick<ConversationInfo, "enabledTools" | "thinkingLevel" | "directModel">>,
   ) {
-    const conversationId = currentConversationId.value;
+    const conversationId = defaultConversationId.value;
     if (!conversationId) {
       return;
     }
-
-    const res = await conversationsApi.updateConversationPreferences(conversationId, patch);
-    updateConversationInfo(conversationId, res.data);
-    applyConversationPreferences(res.data);
+    await persistConversationPreferences(conversationId, patch);
   }
 
   function isToolEnabled(toolName: string): boolean {
@@ -902,13 +934,11 @@ export const useConversationStore = defineStore("conversation", () => {
   }
 
   function setDirectModel(
+    conversationId: string | null | undefined,
     model: ConversationInfo["directModel"] | null,
     persist = true,
   ) {
     const normalized = normalizeDirectModel(model);
-    currentDirectModel.value = normalized;
-
-    const conversationId = currentConversationId.value;
     const currentConversation = conversationId
       ? conversations.value.find((item) => item.id === conversationId)
       : undefined;
@@ -921,7 +951,7 @@ export const useConversationStore = defineStore("conversation", () => {
     }
 
     if (persist && conversationId && normalized && isDirectConversation) {
-      void persistCurrentConversationPreferences({ directModel: normalized }).catch(() => {
+      void persistConversationPreferences(conversationId, { directModel: normalized }).catch(() => {
         // ignore persistence failures; current UI state is still usable for this turn
       });
     }
@@ -932,8 +962,8 @@ export const useConversationStore = defineStore("conversation", () => {
       return;
     }
     const raw = payload as Record<string, unknown>;
-    const conversationId = typeof raw.conversationId === "string" ? raw.conversationId : currentConversationId.value;
-    const isCurrentConversation = conversationId === currentConversationId.value;
+    const conversationId = typeof raw.conversationId === "string" ? raw.conversationId : defaultConversationId.value;
+    const isCurrentConversation = conversationId === defaultConversationId.value;
     const patch: Partial<ConversationInfo> = {};
 
     if (Array.isArray(raw.enabledTools)) {
@@ -952,9 +982,6 @@ export const useConversationStore = defineStore("conversation", () => {
       const normalized = normalizeDirectModel(raw.directModel as ConversationInfo["directModel"]);
       if (normalized) {
         patch.directModel = normalized;
-        if (isCurrentConversation) {
-          currentDirectModel.value = normalized;
-        }
       }
     }
 
@@ -971,29 +998,30 @@ export const useConversationStore = defineStore("conversation", () => {
   }
 
   function reset() {
-    currentConversationId.value = null;
+    defaultConversationId.value = null;
     loading.value = false;
     loadingMessages.value = false;
     conversations.value = [];
     enabledTools.value = [];
     thinkingLevel.value = "off";
-    currentDirectModel.value = null;
     runtimeStates.value = new Map([[DRAFT_RUNTIME_ID, createEmptyRuntimeState()]]);
   }
 
   return {
-    currentConversationId,
     messages,
     streamingMessages,
     agentStates,
     isActive,
+    getMessages,
+    getStreamingMessages,
+    getAgentStates,
+    getIsActive,
     loading,
     loadingMessages,
     conversations,
     enabledTools,
     thinkModeEnabled,
     thinkingLevel,
-    currentDirectModel,
     inputFocusRequestKey,
     addMessage,
     upsertToolCall,
@@ -1003,7 +1031,6 @@ export const useConversationStore = defineStore("conversation", () => {
     finalizeStream,
     clearMessages,
     bindDraftToConversation,
-    setCurrentConversation,
     openConversation,
     setAgentStatus,
     setAgentName,
@@ -1014,12 +1041,14 @@ export const useConversationStore = defineStore("conversation", () => {
     updateConversationTitle,
     deleteConversation,
     cacheConversation,
+    clearConversationContext,
     clearCurrentConversationContext,
     isToolEnabled,
     setEnabledTools,
     setClientToolEnabled,
     setThinkingLevel,
     setDirectModel,
+    getDirectModel,
     requestInputFocus,
     applyConversationSettingsFromServer,
     reset,

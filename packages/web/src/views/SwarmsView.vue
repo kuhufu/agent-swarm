@@ -84,7 +84,6 @@ const modes: { value: CollaborationMode; label: string; desc: string; icon: stri
 function ensureSelectedSwarm() {
   if (!swarmStore.swarms.length) {
     selectedSwarmId.value = null;
-    swarmStore.clearSwarmSelection();
     return;
   }
 
@@ -98,7 +97,6 @@ function ensureSelectedSwarm() {
   }
 
   selectedSwarmId.value = firstSwarm.id;
-  swarmStore.selectSwarm(firstSwarm.id);
 }
 
 onMounted(async () => {
@@ -304,7 +302,6 @@ function handleSelect(swarm: SwarmConfig) {
     if (!confirm("当前有未保存的修改，确定切换吗？")) return;
   }
   selectedSwarmId.value = swarm.id;
-  swarmStore.selectSwarm(swarm.id);
   resetAgentForm();
 }
 

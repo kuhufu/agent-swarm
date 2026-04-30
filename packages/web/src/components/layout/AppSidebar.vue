@@ -133,11 +133,7 @@ const openedMenuConversation = computed(() =>
 
 function navigateTo(path: string) {
   if (path === "/chat") {
-    const currentConversationId = conversationStore.currentConversationId;
-    void router.push({
-      name: "chat",
-      params: currentConversationId ? { conversationId: currentConversationId } : {},
-    });
+    void router.push({ name: "chat", params: routeConversationId.value ? { conversationId: routeConversationId.value } : {} });
     return;
   }
   void router.push(path);
@@ -147,8 +143,6 @@ async function handleLogout() {
   closeUserMenu();
   await authStore.logout();
   disconnect();
-  conversationStore.setCurrentConversation(null);
-  swarmStore.clearSwarmSelection();
   await router.replace("/login");
 }
 
@@ -169,29 +163,21 @@ async function handleNewConversation() {
     }
   }
 
-  const targetSwarmId = swarmStore.currentSwarmId ?? swarmStore.swarms[0]?.id ?? null;
-  if (!targetSwarmId) {
+  if (swarmStore.swarms.length === 0) {
     showError("暂无可用 Swarm，请先创建");
     return;
-  }
-
-  if (swarmStore.currentSwarmId !== targetSwarmId) {
-    swarmStore.selectSwarm(targetSwarmId);
   }
 
   if (!isChatRoute.value || routeConversationId.value) {
     await router.push({ name: "chat", params: {} });
   }
-  conversationStore.setCurrentConversation(null);
 }
 
 function handleNewDirectConversation() {
   closeConversationMenu();
-  swarmStore.clearSwarmSelection();
   if (!isChatRoute.value || routeConversationId.value) {
     void router.push({ name: "chat", params: {} });
   }
-  conversationStore.setCurrentConversation(null);
 }
 
 function closeConversationMenu() {

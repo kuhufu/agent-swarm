@@ -1,16 +1,13 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
-import type { InterventionRequest, InterventionDecision, InterventionAction } from "../types/index.js";
+import { computed, ref } from "vue";
+import type { InterventionRequest, InterventionDecision } from "../types/index.js";
 
 export const useInterventionStore = defineStore("intervention", () => {
   const pendingInterventions = ref<InterventionRequest[]>([]);
-  const currentIntervention = ref<InterventionRequest | null>(null);
+  const nextIntervention = computed(() => pendingInterventions.value[0] ?? null);
 
   function addIntervention(request: InterventionRequest) {
     pendingInterventions.value.push(request);
-    if (!currentIntervention.value) {
-      currentIntervention.value = request;
-    }
   }
 
   function resolveIntervention(requestId: string, decision: InterventionDecision): InterventionDecision | null {
@@ -18,16 +15,12 @@ export const useInterventionStore = defineStore("intervention", () => {
     if (idx === -1) return null;
 
     pendingInterventions.value.splice(idx, 1);
-    if (currentIntervention.value?.requestId === requestId) {
-      currentIntervention.value = pendingInterventions.value[0] ?? null;
-    }
     return decision;
   }
 
   function clearAll() {
     pendingInterventions.value = [];
-    currentIntervention.value = null;
   }
 
-  return { pendingInterventions, currentIntervention, addIntervention, resolveIntervention, clearAll };
+  return { pendingInterventions, nextIntervention, addIntervention, resolveIntervention, clearAll };
 });

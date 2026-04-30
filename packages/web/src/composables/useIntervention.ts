@@ -8,7 +8,7 @@ export function useIntervention() {
   const { send } = useWebSocket();
 
   const hasPending = computed(() => interventionStore.pendingInterventions.length > 0);
-  const currentIntervention = computed(() => interventionStore.currentIntervention);
+  const nextIntervention = computed(() => interventionStore.nextIntervention);
 
   function submitDecision(requestId: string, action: InterventionAction, editedInput?: string, reason?: string) {
     const decision = interventionStore.resolveIntervention(requestId, { action, editedInput, reason });
@@ -35,5 +35,5 @@ export function useIntervention() {
     submitDecision(requestId, "abort");
   }
 
-  return { hasPending, currentIntervention, approve, reject, edit, abort };
+  return { hasPending, nextIntervention, approve, reject, edit, abort };
 }

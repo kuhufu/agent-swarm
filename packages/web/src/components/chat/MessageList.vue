@@ -12,6 +12,9 @@ const props = defineProps<{
   conversationId?: string | null;
   swarmId?: string | null;
 }>();
+const emit = defineEmits<{
+  selectSwarm: [swarmId: string];
+}>();
 
 const swarmStore = useSwarmStore();
 
@@ -29,7 +32,7 @@ const modeLabels: Record<string, string> = {
 };
 
 function selectSwarm(swarmId: string) {
-  swarmStore.selectSwarm(swarmId);
+  emit("selectSwarm", swarmId);
 }
 
 const visibleMessages = computed(() =>

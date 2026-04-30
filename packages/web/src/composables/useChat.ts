@@ -1,4 +1,4 @@
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, type Ref } from "vue";
 import { useConversationStore } from "../stores/conversation.js";
 import { useWebSocket } from "./useWebSocket.js";
 import { showError } from "../utils/ui-feedback.js";
@@ -8,14 +8,15 @@ export interface DirectModelSelection {
   modelId: string;
 }
 
-export function useChat() {
+export function useChat(conversationId: Ref<string | null>) {
   const conversationStore = useConversationStore();
   const { send, connected, connect } = useWebSocket();
   const inputText = ref("");
   const sending = ref(false);
+  const draftDirectModel = ref<DirectModelSelection | null>(null);
   const directModel = computed<DirectModelSelection | null>({
     get: (): DirectModelSelection | null => {
-      const model = conversationStore.currentDirectModel;
+      const model = conversationStore.getDirectModel(conversationId.value) ?? draftDirectModel.value;
       if (!model) {
         return null;
       }
@@ -25,7 +26,11 @@ export function useChat() {
       };
     },
     set: (value: DirectModelSelection | null): void => {
-      conversationStore.setDirectModel(value, true);
+      if (conversationId.value) {
+        conversationStore.setDirectModel(conversationId.value, value, true);
+        return;
+      }
+      draftDirectModel.value = value;
     },
   });
   const currentTimeToolEnabled = computed({
@@ -56,7 +61,7 @@ export function useChat() {
   // Sync sending state with isActive from the store.
   // When the WS handler sets isActive=false (swarm_end/prompt_completed/error),
   // sending should also be reset so the input is re-enabled.
-  watch(() => conversationStore.isActive, (active) => {
+  watch(() => conversationStore.getIsActive(conversationId.value), (active) => {
     if (!active) {
       sending.value = false;
     }
@@ -68,7 +73,8 @@ export function useChat() {
     if (!text || sending.value || !connected.value) return;
 
     sending.value = true;
-    conversationStore.setActive(true);
+    const runtimeConversationId = conversationId.value ?? undefined;
+    conversationStore.setActive(true, runtimeConversationId);
 
     // Add user message to store
     conversationStore.addMessage({
@@ -76,16 +82,16 @@ export function useChat() {
       role: "user",
       content: text,
       timestamp: Date.now(),
-    });
+    }, runtimeConversationId);
 
     // Send via WebSocket — create new conversation or use existing
-    const conversationId = conversationStore.currentConversationId;
+    const activeConversationId = conversationId.value;
 
-    if (conversationId) {
+    if (activeConversationId) {
       send({
         type: "send_message",
         payload: {
-          conversationId,
+          conversationId: activeConversationId,
           content: text,
           enabledTools: conversationStore.enabledTools,
           thinkingLevel: thinkingLevel.value,
@@ -112,21 +118,20 @@ export function useChat() {
     if (!text || sending.value || !connected.value || !directModel.value) return;
 
     sending.value = true;
-    conversationStore.setActive(true);
+    const runtimeConversationId = conversationId.value ?? undefined;
+    conversationStore.setActive(true, runtimeConversationId);
 
     conversationStore.addMessage({
       id: crypto.randomUUID(),
       role: "user",
       content: text,
       timestamp: Date.now(),
-    });
-
-    const conversationId = conversationStore.currentConversationId;
+    }, runtimeConversationId);
 
     send({
       type: "send_message",
       payload: {
-        conversationId: conversationId ?? undefined,
+        conversationId: conversationId.value ?? undefined,
         provider: directModel.value.provider,
         modelId: directModel.value.modelId,
         content: text,
@@ -139,18 +144,18 @@ export function useChat() {
   }
 
   function abort() {
-    if (conversationStore.currentConversationId) {
+    if (conversationId.value) {
       send({
         type: "abort",
-        payload: { conversationId: conversationStore.currentConversationId },
+        payload: { conversationId: conversationId.value },
       });
     }
-    conversationStore.setActive(false);
+    conversationStore.setActive(false, conversationId.value ?? undefined);
     sending.value = false;
   }
 
   const canClearContext = computed(() =>
-    Boolean(conversationStore.currentConversationId) && !conversationStore.isActive && !sending.value,
+    Boolean(conversationId.value) && !conversationStore.getIsActive(conversationId.value) && !sending.value,
   );
 
   async function clearContext() {
@@ -159,7 +164,7 @@ export function useChat() {
     }
 
     try {
-      await conversationStore.clearCurrentConversationContext();
+      await conversationStore.clearConversationContext(conversationId.value);
       return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : "清空上下文失败";

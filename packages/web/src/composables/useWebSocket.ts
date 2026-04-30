@@ -23,7 +23,6 @@ function conversationIdFromPayload(payload: unknown): string | undefined {
 
 function resolveTargetConversationId(
   msg: WSMessage,
-  currentConversationId: string | null,
 ): string | undefined {
   const topLevelConversationId = typeof msg.conversationId === "string" ? msg.conversationId : undefined;
   const payloadConversationId = conversationIdFromPayload(msg.payload);
@@ -34,7 +33,7 @@ function resolveTargetConversationId(
   }
 
   if (msg.type === "prompt_completed" || msg.type === "error") {
-    return lastConversationId ?? currentConversationId ?? undefined;
+    return lastConversationId ?? undefined;
   }
 
   return undefined;
@@ -130,7 +129,7 @@ export function useWebSocket() {
   function handleMessage(msg: WSMessage) {
     const conversationStore = useConversationStore();
     const interventionStore = useInterventionStore();
-    const targetConversationId = resolveTargetConversationId(msg, conversationStore.currentConversationId);
+    const targetConversationId = resolveTargetConversationId(msg);
 
     switch (msg.type) {
       case "connected":
@@ -139,9 +138,9 @@ export function useWebSocket() {
       case "conversation_created":
         if (targetConversationId) {
           conversationStore.bindDraftToConversation(targetConversationId);
-        }
-        if (targetConversationId && targetConversationId !== conversationStore.currentConversationId) {
-          conversationStore.setCurrentConversation(targetConversationId);
+          window.dispatchEvent(new CustomEvent("agent-swarm:conversation-created", {
+            detail: { conversationId: targetConversationId },
+          }));
         }
         conversationStore.applyConversationSettingsFromServer(msg.payload);
         void conversationStore.fetchAllConversations();
@@ -154,8 +153,11 @@ export function useWebSocket() {
           conversationStore.setAgentName(msg.payload.agentId, msg.payload.agentName, targetConversationId);
         }
         // Direct conversation: populate agent model from conversation preferences
-        if (conversationStore.currentDirectModel && targetConversationId) {
-          conversationStore.setAgentModel(msg.payload.agentId, conversationStore.currentDirectModel, targetConversationId);
+        if (targetConversationId) {
+          const directModel = conversationStore.getDirectModel(targetConversationId);
+          if (directModel) {
+            conversationStore.setAgentModel(msg.payload.agentId, directModel, targetConversationId);
+          }
         }
         break;
 
@@ -173,8 +175,8 @@ export function useWebSocket() {
           }
           const streamAgentName = explicitAgentName
             ?? (
-              typeof msg.payload.agentId === "string" && targetConversationId === conversationStore.currentConversationId
-                ? conversationStore.agentStates.get(msg.payload.agentId)?.name
+              typeof msg.payload.agentId === "string"
+                ? conversationStore.getAgentStates(targetConversationId).get(msg.payload.agentId)?.name
                 : undefined
             )
             ?? msg.payload.agentId;
