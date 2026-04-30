@@ -52,6 +52,13 @@ interface RenderEntry {
   streaming: boolean;
 }
 
+function messageRenderKey(entry: RenderEntry): string {
+  if (entry.streaming && entry.message.role === "assistant") {
+    return `streaming:${entry.message.agentId ?? entry.message.id}`;
+  }
+  return entry.message.id;
+}
+
 function resolveSwarmAgentName(agentId?: string): string | undefined {
   if (!agentId) {
     return undefined;
@@ -193,7 +200,7 @@ onMounted(async () => {
     <div v-else class="messages-container">
       <MessageItem
         v-for="entry in renderEntries"
-        :key="entry.message.id"
+        :key="messageRenderKey(entry)"
         :message="entry.message"
         :streaming="entry.streaming"
         :is-direct-mode="isDirectMode"

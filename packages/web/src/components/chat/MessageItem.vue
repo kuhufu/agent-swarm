@@ -408,15 +408,15 @@ const formatTime = formatTimeShort;
   height: 5px;
   border-radius: 50%;
   background: var(--color-accent);
-  animation: bounce 1.4s ease-in-out infinite both;
+  animation: bounce 3.6s ease-in-out infinite both;
 }
 
-.dot:nth-child(1) { animation-delay: -0.32s; }
-.dot:nth-child(2) { animation-delay: -0.16s; }
+.dot:nth-child(1) { animation-delay: -0.72s; }
+.dot:nth-child(2) { animation-delay: -0.36s; }
 
 @keyframes bounce {
-  0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
-  40% { transform: scale(1); opacity: 1; }
+  0%, 75%, 100% { transform: scale(0.75); opacity: 0.65; }
+  35% { transform: scale(1); opacity: 0.9; }
 }
 
 /* ── Thinking ── */
