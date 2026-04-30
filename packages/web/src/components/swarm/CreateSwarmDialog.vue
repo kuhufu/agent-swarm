@@ -34,7 +34,7 @@ const showCustomModel = ref(false);
 
 const settingsStore = useSettingsStore();
 const agentStore = useAgentStore();
-const savedModels = computed<SavedModel[]>(() => settingsStore.config?.models ?? []);
+const savedModels = computed<SavedModel[]>(() => settingsStore.models);
 const presetAgentOptions = computed(() => [
   { value: "", label: "不使用预设模板" },
   ...agentStore.sortedPresets.map((preset) => ({

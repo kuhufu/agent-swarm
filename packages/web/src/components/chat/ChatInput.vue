@@ -53,7 +53,7 @@ const thinkLevelLabel = computed(() => {
   return found ? found.label : "关闭";
 });
 
-const savedModels = computed<SavedModel[]>(() => settingsStore.config?.models ?? []);
+const savedModels = computed<SavedModel[]>(() => settingsStore.models);
 
 const canSendDirect = computed(() =>
   directModel.value !== null && directModel.value.provider !== "" && directModel.value.modelId !== "",

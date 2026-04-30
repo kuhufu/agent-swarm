@@ -13,7 +13,7 @@ const emit = defineEmits<{
 }>();
 
 const settingsStore = useSettingsStore();
-const savedModels = computed<SavedModel[]>(() => settingsStore.config?.models ?? []);
+const savedModels = computed<SavedModel[]>(() => settingsStore.models);
 const showCustomModel = ref(false);
 
 const agentForm = reactive<SwarmAgentConfig>({

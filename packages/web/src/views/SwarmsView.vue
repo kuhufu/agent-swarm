@@ -55,7 +55,7 @@ const selectedSwarm = computed(() =>
   swarmStore.swarms.find((s) => s.id === selectedSwarmId.value) ?? null
 );
 
-const savedModels = computed<SavedModel[]>(() => settingsStore.config?.models ?? []);
+const savedModels = computed<SavedModel[]>(() => settingsStore.models);
 const presetAgentOptions = computed(() => [
   { value: "", label: "不使用预设模板" },
   ...agentStore.sortedPresets.map((preset) => ({

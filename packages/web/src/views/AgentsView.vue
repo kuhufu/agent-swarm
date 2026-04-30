@@ -44,7 +44,7 @@ const form = reactive<AgentFormState>({
 });
 
 const showTemplateSelect = ref(false);
-const savedModels = computed<SavedModel[]>(() => settingsStore.config?.models ?? []);
+const savedModels = computed<SavedModel[]>(() => settingsStore.models);
 
 const selectedItem = computed<PresetAgent | null>(() => {
   if (!selectedRef.value) return null;
