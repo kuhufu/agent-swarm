@@ -82,6 +82,13 @@ function withResolvedAgentName(message: ChatMessage): ChatMessage {
   };
 }
 
+function hasRenderableMessageBody(message: ChatMessage): boolean {
+  const hasText = message.content.trim().length > 0;
+  const hasThinking = typeof message.thinking === "string" && message.thinking.trim().length > 0;
+  const hasToolCalls = Array.isArray(message.toolCalls) && message.toolCalls.length > 0;
+  return hasText || hasThinking || hasToolCalls;
+}
+
 const renderEntries = computed<RenderEntry[]>(() => {
   const byId = new Map<string, RenderEntry>();
 
@@ -90,6 +97,9 @@ const renderEntries = computed<RenderEntry[]>(() => {
   }
 
   for (const msg of props.streamingMessages) {
+    if (msg.role === "assistant" && !hasRenderableMessageBody(msg)) {
+      continue;
+    }
     byId.set(msg.id, { message: withResolvedAgentName(msg), streaming: true });
   }
 
