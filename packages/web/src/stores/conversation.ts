@@ -21,6 +21,8 @@ interface ConversationRuntimeState {
   isActive: boolean;
 }
 
+type ConversationPreferences = Partial<Pick<ConversationInfo, "enabledTools" | "thinkingLevel" | "directModel">>;
+
 const CONVERSATIONS_CACHE_KEY = CACHE_KEYS.CONVERSATIONS;
 
 function restoreConversationsCache(): ConversationInfo[] {
@@ -130,6 +132,7 @@ export const useConversationStore = defineStore("conversation", () => {
   const loadingMessages = ref(false);
   const conversations = ref<ConversationInfo[]>(restoreConversationsCache());
   const inputFocusRequestKey = ref(0);
+  const conversationPreferences = ref<Map<string, ConversationPreferences>>(new Map());
   const runtimeStates = ref<Map<string, ConversationRuntimeState>>(
     new Map([[DRAFT_RUNTIME_ID, createEmptyRuntimeState()]]),
   );
@@ -347,7 +350,8 @@ export const useConversationStore = defineStore("conversation", () => {
       return null;
     }
     const conversation = conversations.value.find((item) => item.id === conversationId);
-    return normalizeDirectModel(conversation?.directModel);
+    const fallback = conversationPreferences.value.get(conversationId)?.directModel;
+    return normalizeDirectModel(conversation?.directModel ?? fallback);
   }
 
   function getEnabledTools(conversationId?: string | null): string[] {
@@ -355,7 +359,8 @@ export const useConversationStore = defineStore("conversation", () => {
       return [];
     }
     const conversation = conversations.value.find((item) => item.id === conversationId);
-    return normalizeEnabledTools(conversation?.enabledTools);
+    const fallback = conversationPreferences.value.get(conversationId)?.enabledTools;
+    return normalizeEnabledTools(conversation?.enabledTools ?? fallback);
   }
 
   function getThinkingLevel(conversationId?: string | null): string {
@@ -363,12 +368,21 @@ export const useConversationStore = defineStore("conversation", () => {
       return "off";
     }
     const conversation = conversations.value.find((item) => item.id === conversationId);
-    return conversation?.thinkingLevel ?? "off";
+    return conversation?.thinkingLevel ?? conversationPreferences.value.get(conversationId)?.thinkingLevel ?? "off";
+  }
+
+  function setConversationPreferenceFallback(id: string, patch: ConversationPreferences) {
+    conversationPreferences.value.set(id, {
+      ...(conversationPreferences.value.get(id) ?? {}),
+      ...patch,
+    });
+    conversationPreferences.value = new Map(conversationPreferences.value);
   }
 
   function updateConversationInfo(id: string, patch: Partial<ConversationInfo>) {
     const index = conversations.value.findIndex((conv) => conv.id === id);
     if (index < 0) {
+      setConversationPreferenceFallback(id, patch);
       return;
     }
     conversations.value[index] = { ...conversations.value[index], ...patch };
@@ -877,6 +891,7 @@ export const useConversationStore = defineStore("conversation", () => {
     loading.value = false;
     loadingMessages.value = false;
     conversations.value = [];
+    conversationPreferences.value = new Map();
     runtimeStates.value = new Map([[DRAFT_RUNTIME_ID, createEmptyRuntimeState()]]);
   }
 
