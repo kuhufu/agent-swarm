@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, ref, onMounted, onBeforeUnmount } from "vue";
+import { computed, ref, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useSwarmStore } from "../../stores/swarm.js";
 import { useConversationStore } from "../../stores/conversation.js";
@@ -313,17 +313,6 @@ onBeforeUnmount(() => {
   window.removeEventListener("scroll", handleWindowChange, true);
 });
 
-// Refresh conversation list when navigating to chat or when swarm changes
-watch(
-  () => swarmStore.currentSwarm?.id,
-  async () => {
-    try {
-      await conversationStore.fetchAllConversations();
-    } catch {
-      // ignore sidebar conversation list fetch failure
-    }
-  },
-);
 </script>
 
 <script lang="ts">
