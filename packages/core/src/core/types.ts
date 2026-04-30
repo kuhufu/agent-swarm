@@ -128,6 +128,14 @@ export interface SwarmConfig {
   interventions?: Partial<Record<InterventionPoint, InterventionStrategy>>;
   maxTotalTurns?: number;
   maxConcurrency?: number;
+  swarmContext?: SwarmContextConfig;
+}
+
+export interface SwarmContextConfig {
+  mode: "handoff_only" | "summary";
+  maxAgentSummaries?: number;
+  maxSummaryChars?: number;
+  maxTotalChars?: number;
 }
 
 // ============================================================================

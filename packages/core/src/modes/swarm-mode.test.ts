@@ -628,8 +628,57 @@ describe("SwarmMode", () => {
       returnToAgentId: firstAgentId,
     });
     expect(secondAgent.prompts[0]).toContain("Task: review the plan");
+    expect(secondAgent.prompts[0]).toContain("Shared swarm context:");
+    expect(secondAgent.prompts[0]).toContain("agent-a (agent-a): first");
     expect(secondAgent.prompts[0]).toContain("Context: the user wants stronger swarm behavior");
     expect(secondAgent.prompts[0]).toContain("Message: legacy message");
+  });
+
+  it("can disable shared summaries with handoff_only context mode", async () => {
+    const firstAgentId = "agent-a";
+    const secondAgentId = "agent-b";
+    const configs = [createAgentConfig(firstAgentId), createAgentConfig(secondAgentId)];
+
+    const firstAgent = new FakeAgent({
+      assistantText: "first summary should not be shared",
+      handoffTo: secondAgentId,
+      handoffMessage: "handoff only",
+    });
+    const secondAgent = new FakeAgent({ assistantText: "second" });
+
+    const agents = new Map<string, { agent: any; config: SwarmAgentConfig }>([
+      [firstAgentId, { agent: firstAgent as any, config: configs[0] }],
+      [secondAgentId, { agent: secondAgent as any, config: configs[1] }],
+    ]);
+
+    const ctx: ModeExecutionContext = {
+      swarmConfig: {
+        id: "swarm-handoff-only-context",
+        name: "swarm-handoff-only-context",
+        mode: "swarm",
+        agents: configs,
+        maxTotalTurns: 5,
+        swarmContext: { mode: "handoff_only" },
+      } as SwarmConfig,
+      message: "start",
+      conversationId: "conv-1",
+      storage: createStorageMock(),
+      llmConfig: { apiKeys: {} },
+      agents,
+      createAgentFn: () => undefined,
+      emit: () => undefined,
+      abort: () => undefined,
+      isAborted: () => false,
+    };
+
+    const mode = new SwarmMode();
+    for await (const _event of mode.execute(ctx)) {
+      // consume stream
+    }
+
+    expect(secondAgent.prompts[0]).toContain("Message: handoff only");
+    expect(secondAgent.prompts[0]).not.toContain("Shared swarm context:");
+    expect(secondAgent.prompts[0]).not.toContain("first summary should not be shared");
   });
 
   it("rejects immediate reverse handoff loops for the same task", async () => {

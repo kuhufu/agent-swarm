@@ -29,6 +29,7 @@ function buildSwarmConfig(input: Record<string, unknown>, options: { idOverride?
     interventions: input.interventions as SwarmConfig["interventions"],
     maxTotalTurns: input.maxTotalTurns as number | undefined,
     maxConcurrency: input.maxConcurrency as number | undefined,
+    swarmContext: input.swarmContext as SwarmConfig["swarmContext"],
   };
 
   if (config.mode === "router" && !config.orchestrator) {
@@ -109,6 +110,7 @@ export function swarmRoutes(swarm: AgentSwarm): Router {
         interventions: body.interventions ?? existing.interventions,
         maxTotalTurns: body.maxTotalTurns ?? existing.maxTotalTurns,
         maxConcurrency: body.maxConcurrency ?? existing.maxConcurrency,
+        swarmContext: body.swarmContext ?? existing.swarmContext,
       };
 
       const config = await swarm.updateSwarmConfig(id, buildSwarmConfig(mergedInput, { idOverride: id }), userId);

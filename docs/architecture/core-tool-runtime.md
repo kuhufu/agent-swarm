@@ -47,6 +47,27 @@ WebSocket 层只传递用户选择的 `enabledTools` 和前端工具执行器。
 
 执行器只识别工具名为 `handoff` 且执行成功的工具结果。其他工具返回 `details.handoffTo` 不会触发切换。`SwarmMode` 会把结构化字段组装成目标 Agent 的输入，并在 `handoff` 事件里透传这些字段，便于前端展示协作链路。连续 `A -> B -> A` 且任务上下文相同的短循环会被拒绝；全局轮次仍受 `maxTotalTurns` 控制。
 
+### 共享上下文摘要
+
+`SwarmMode` 支持 `swarmContext` 配置：
+
+```ts
+swarmContext?: {
+  mode: "handoff_only" | "summary";
+  maxAgentSummaries?: number;
+  maxSummaryChars?: number;
+  maxTotalChars?: number;
+}
+```
+
+默认模式为 `summary`。每个 Agent 执行结束后，执行器从该 Agent 最后一条 assistant 消息提取轻量摘要，保存在本次 Swarm 执行的共享工作记忆中。下一次 handoff 时，目标 Agent 的输入会包含：
+
+- 原始用户请求。
+- 最近若干个 Agent 的摘要。
+- 当前 handoff 的 `task/context/expectedOutput/reason/returnToAgentId/message`。
+
+摘要不会写回各 Agent 自己的长期 `state.messages`，只作为当前 handoff prompt 的附加上下文使用。`handoff_only` 会关闭摘要注入，仅传递当前 handoff payload。
+
 ## Workspace 执行进程
 
 `workspace_run_container` 不允许在宿主机 shell 直接执行模型生成的命令。命令必须通过 `docker run` 在隔离容器内执行：workspace 目录 bind mount 到 `/workspace`，默认禁用网络，限制 CPU、内存和 pids，rootfs 只读，丢弃 Linux capabilities，并启用 `no-new-privileges`。默认镜像为 `node:22-alpine`，可通过 `AGENT_SWARM_WORKSPACE_IMAGE` 覆盖。

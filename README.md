@@ -225,6 +225,8 @@ pnpm --filter @agent-swarm/server test
 
 执行器只把 `handoff` 工具的成功结果识别为交接提议，其他工具即使返回 `details.handoffTo` 也不会触发切换。连续反向交接同一任务会被拒绝，避免 `A -> B -> A` 的短循环；总轮次仍受 Swarm 的 `maxTotalTurns` 限制。
 
+Swarm 还支持轻量共享上下文。`swarmContext.mode` 默认为 `summary`：每个 Agent 结束后，执行器从最后一条 assistant 输出中提取短摘要，并在下一次 handoff 时和原始用户请求一起注入目标 Agent 输入。可通过 `swarmContext: { mode: "handoff_only" }` 关闭共享摘要，仅传递当前 handoff payload。可选限制项包括 `maxAgentSummaries`、`maxSummaryChars`、`maxTotalChars`。
+
 ### 多租户数据边界
 
 认证开启且为强制要求，以下资源均按当前登录用户隔离，默认不会跨用户可见：

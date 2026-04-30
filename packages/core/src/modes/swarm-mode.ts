@@ -26,6 +26,19 @@ interface HandoffResolution {
   errorEvent?: SwarmEvent;
 }
 
+interface AgentSummary {
+  agentId: string;
+  agentName: string;
+  summary: string;
+}
+
+interface NormalizedSwarmContextConfig {
+  mode: "handoff_only" | "summary";
+  maxAgentSummaries: number;
+  maxSummaryChars: number;
+  maxTotalChars: number;
+}
+
 /**
  * Swarm mode: agents can hand off to each other dynamically.
  * Uses `handoff` tool to transfer control between agents.
@@ -39,6 +52,8 @@ export class SwarmMode implements ModeExecutor {
     let currentMessage = message;
     let turn = 0;
     const handoffHistory: HandoffProposal[] = [];
+    const agentSummaries: AgentSummary[] = [];
+    const contextConfig = this.normalizeSwarmContextConfig(swarmConfig.swarmContext);
 
     // Ensure initial agent is created
     if (currentAgentId) {
@@ -113,6 +128,7 @@ export class SwarmMode implements ModeExecutor {
       if (handoffDecisionPromise && !handoffDecisionSettled) {
         await handoffDecisionPromise;
       }
+      this.collectAgentSummary(currentAgentId, ctx, agentSummaries, contextConfig);
 
       // Check for handoff
       if (handoffResolution.proposal) {
@@ -137,7 +153,12 @@ export class SwarmMode implements ModeExecutor {
           });
 
           // Build context message from previous agent's output
-          const handoffPrompt = this.buildHandoffPrompt(handoff);
+          const handoffPrompt = this.buildHandoffPrompt(
+            handoff,
+            agentSummaries,
+            contextConfig,
+            message,
+          );
           if (handoffPrompt) {
             currentMessage = handoffPrompt;
           } else {
@@ -491,8 +512,83 @@ export class SwarmMode implements ModeExecutor {
     ].join("\u001f");
   }
 
-  private buildHandoffPrompt(proposal: HandoffProposal): string {
+  private normalizeSwarmContextConfig(
+    input: ModeExecutionContext["swarmConfig"]["swarmContext"],
+  ): NormalizedSwarmContextConfig {
+    return {
+      mode: input?.mode ?? "summary",
+      maxAgentSummaries: input?.maxAgentSummaries ?? 6,
+      maxSummaryChars: input?.maxSummaryChars ?? 1000,
+      maxTotalChars: input?.maxTotalChars ?? 4000,
+    };
+  }
+
+  private collectAgentSummary(
+    agentId: string,
+    ctx: ModeExecutionContext,
+    summaries: AgentSummary[],
+    config: NormalizedSwarmContextConfig,
+  ) {
+    if (config.mode !== "summary") {
+      return;
+    }
+    const active = ctx.agents.get(agentId);
+    if (!active) {
+      return;
+    }
+    const lastAssistant = [...active.agent.state.messages]
+      .reverse()
+      .find((message: any) => message.role === "assistant");
+    if (!lastAssistant) {
+      return;
+    }
+    const text = this.extractText(lastAssistant.content).trim();
+    if (!text) {
+      return;
+    }
+    const existingIndex = summaries.findIndex((summary) => summary.agentId === agentId);
+    const nextSummary: AgentSummary = {
+      agentId,
+      agentName: active.config.name,
+      summary: this.truncateText(text, config.maxSummaryChars),
+    };
+    if (existingIndex >= 0) {
+      summaries.splice(existingIndex, 1);
+    }
+    summaries.push(nextSummary);
+    while (summaries.length > config.maxAgentSummaries) {
+      summaries.shift();
+    }
+  }
+
+  private buildSharedContextPrompt(
+    summaries: AgentSummary[],
+    config: NormalizedSwarmContextConfig,
+    originalMessage: string,
+  ): string {
+    if (config.mode !== "summary" || summaries.length === 0) {
+      return "";
+    }
+    const lines = [
+      "Original user request:",
+      this.truncateText(originalMessage, Math.min(config.maxSummaryChars, 1000)),
+      "",
+      "Shared swarm context:",
+      ...summaries.map((item) => `- ${item.agentName} (${item.agentId}): ${item.summary}`),
+    ];
+    return this.truncateText(lines.join("\n"), config.maxTotalChars);
+  }
+
+  private buildHandoffPrompt(
+    proposal: HandoffProposal,
+    summaries: AgentSummary[],
+    contextConfig: NormalizedSwarmContextConfig,
+    originalMessage: string,
+  ): string {
+    const sharedContext = this.buildSharedContextPrompt(summaries, contextConfig, originalMessage);
     const sections = [
+      sharedContext,
+      sharedContext ? "Current handoff:" : "",
       proposal.task ? `Task: ${proposal.task}` : "",
       proposal.context ? `Context: ${proposal.context}` : "",
       proposal.expectedOutput ? `Expected output: ${proposal.expectedOutput}` : "",
@@ -501,6 +597,13 @@ export class SwarmMode implements ModeExecutor {
       proposal.message ? `Message: ${proposal.message}` : "",
     ].filter((section) => section.length > 0);
     return sections.join("\n\n");
+  }
+
+  private truncateText(input: string, maxChars: number): string {
+    if (input.length <= maxChars) {
+      return input;
+    }
+    return `${input.slice(0, Math.max(0, maxChars - 1)).trimEnd()}…`;
   }
 
   private mapAgentEvent(e: PiAgentEvent, agentId: string, agentName: string): SwarmEvent | null {

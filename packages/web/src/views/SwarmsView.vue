@@ -341,6 +341,7 @@ async function handleSave() {
     debateConfig: editForm.mode === "debate" ? editForm.debateConfig : undefined,
     maxTotalTurns: editForm.maxTotalTurns,
     maxConcurrency: editForm.maxConcurrency,
+    swarmContext: selectedSwarm.value?.swarmContext,
   };
   if (orchestrator) {
     updated.orchestrator = { ...orchestrator, model: { ...orchestrator.model } };

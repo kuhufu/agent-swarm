@@ -49,6 +49,12 @@ const interventionPointSchema = z.enum([
 const interventionStrategySchema = z.enum(["auto", "confirm", "review", "edit", "reject"]);
 
 const interventionsSchema = z.partialRecord(interventionPointSchema, interventionStrategySchema);
+const swarmContextSchema = z.object({
+  mode: z.enum(["handoff_only", "summary"]),
+  maxAgentSummaries: z.number().int().positive().optional(),
+  maxSummaryChars: z.number().int().positive().optional(),
+  maxTotalChars: z.number().int().positive().optional(),
+}).optional();
 
 export const createSwarmSchema = z.object({
   name: z.string().min(1, "名称不能为空"),
@@ -62,6 +68,7 @@ export const createSwarmSchema = z.object({
   interventions: interventionsSchema.optional(),
   maxTotalTurns: z.number().int().positive().optional(),
   maxConcurrency: z.number().int().positive().optional(),
+  swarmContext: swarmContextSchema,
 });
 
 export const updateSwarmSchema = z.object({
@@ -76,6 +83,7 @@ export const updateSwarmSchema = z.object({
   interventions: interventionsSchema.optional(),
   maxTotalTurns: z.number().int().positive().optional(),
   maxConcurrency: z.number().int().positive().optional(),
+  swarmContext: swarmContextSchema,
 });
 
 export const createAgentPresetSchema = z.object({

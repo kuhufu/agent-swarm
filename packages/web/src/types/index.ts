@@ -11,6 +11,14 @@ export interface SwarmConfig {
   debateConfig?: DebateConfig;
   maxTotalTurns?: number;
   maxConcurrency?: number;
+  swarmContext?: SwarmContextConfig;
+}
+
+export interface SwarmContextConfig {
+  mode: "handoff_only" | "summary";
+  maxAgentSummaries?: number;
+  maxSummaryChars?: number;
+  maxTotalChars?: number;
 }
 
 export interface DebateConfig {
