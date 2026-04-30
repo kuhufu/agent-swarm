@@ -12,6 +12,7 @@ import {
   setCachedMessages,
   deleteCachedMessages,
 } from "../utils/message-cache.js";
+import { CACHE_KEYS } from "../utils/cache-keys.js";
 
 interface ConversationRuntimeState {
   messages: ChatMessage[];
@@ -20,7 +21,7 @@ interface ConversationRuntimeState {
   isActive: boolean;
 }
 
-const CONVERSATIONS_CACHE_KEY = "cached-conversations";
+const CONVERSATIONS_CACHE_KEY = CACHE_KEYS.CONVERSATIONS;
 
 function restoreConversationsCache(): ConversationInfo[] {
   try {

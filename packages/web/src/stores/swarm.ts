@@ -2,8 +2,9 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import type { SwarmConfig } from "../types/index.js";
 import * as swarmApi from "../api/swarms.js";
+import { CACHE_KEYS } from "../utils/cache-keys.js";
 
-const SWARMS_CACHE_KEY = "cached-swarms";
+const SWARMS_CACHE_KEY = CACHE_KEYS.SWARMS;
 
 export const useSwarmStore = defineStore("swarm", () => {
   const swarms = ref<SwarmConfig[]>(restoreSwarmCache());

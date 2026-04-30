@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { clearAllCaches } from "../utils/cache-keys.js";
+import { CACHE_KEYS, clearAllCaches } from "../utils/cache-keys.js";
 import { useAgentStore } from "./agents.js";
 import { useConversationStore } from "./conversation.js";
 import { useSettingsStore } from "./settings.js";
@@ -25,16 +25,16 @@ async function apiRequest(method: string, path: string, body?: unknown) {
 export const useAuthStore = defineStore("auth", () => {
   const token = ref<string | null>(localStorage.getItem("token"));
   const user = ref<{ id: string; username: string; role: "admin" | "user" } | null>(
-    restoreFromCache<{ id: string; username: string; role: "admin" | "user" }>("cached-user"),
+    restoreFromCache<{ id: string; username: string; role: "admin" | "user" }>(CACHE_KEYS.USER),
   );
 
   const isAuthenticated = computed(() => !!token.value);
 
   function saveUserCache(userData: typeof user.value) {
     if (userData) {
-      localStorage.setItem("cached-user", JSON.stringify(userData));
+      localStorage.setItem(CACHE_KEYS.USER, JSON.stringify(userData));
     } else {
-      localStorage.removeItem("cached-user");
+      localStorage.removeItem(CACHE_KEYS.USER);
     }
   }
 
@@ -59,7 +59,7 @@ export const useAuthStore = defineStore("auth", () => {
     token.value = null;
     user.value = null;
     localStorage.removeItem("token");
-    localStorage.removeItem("cached-user");
+    localStorage.removeItem(CACHE_KEYS.USER);
     await clearAllCaches();
     resetClientStores();
   }

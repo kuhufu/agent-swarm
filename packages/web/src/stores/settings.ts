@@ -2,8 +2,9 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import type { LLMConfig, SavedModel } from "../types/index.js";
 import * as configApi from "../api/config.js";
+import { CACHE_KEYS } from "../utils/cache-keys.js";
 
-const CACHED_MODELS_KEY = "cached-models";
+const CACHED_MODELS_KEY = CACHE_KEYS.MODELS;
 
 function restoreCachedModels(): SavedModel[] {
   try {

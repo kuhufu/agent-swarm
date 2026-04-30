@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import type { PresetAgent } from "../types/index.js";
 import * as agentsApi from "../api/agents.js";
 import type { CreatePresetAgentPayload, UpdatePresetAgentPayload } from "../api/agents.js";
+import { CACHE_KEYS } from "../utils/cache-keys.js";
 
 function sortByName(input: PresetAgent[]): PresetAgent[] {
   return [...input].sort((a, b) => {
@@ -12,8 +13,8 @@ function sortByName(input: PresetAgent[]): PresetAgent[] {
   });
 }
 
-const PRESETS_CACHE_KEY = "cached-agents-presets";
-const TEMPLATES_CACHE_KEY = "cached-agents-templates";
+const PRESETS_CACHE_KEY = CACHE_KEYS.AGENTS_PRESETS;
+const TEMPLATES_CACHE_KEY = CACHE_KEYS.AGENTS_TEMPLATES;
 
 function restoreAgentsCache<T>(key: string): T[] {
   try {

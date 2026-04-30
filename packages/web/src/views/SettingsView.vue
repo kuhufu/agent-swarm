@@ -8,6 +8,7 @@ import ProvidersTab from "../components/settings/ProvidersTab.vue";
 import ModelsTab from "../components/settings/ModelsTab.vue";
 import AgentTemplatesTab from "../components/settings/AgentTemplatesTab.vue";
 import CustomSelect from "../components/common/CustomSelect.vue";
+import { CACHE_KEYS } from "../utils/cache-keys.js";
 
 const settingsStore = useSettingsStore();
 const authStore = useAuthStore();
@@ -40,7 +41,7 @@ interface ProviderEntry {
   thinkingFormat: string;
 }
 
-const PROVIDER_IDS_CACHE_KEY = "cached-provider-ids";
+const PROVIDER_IDS_CACHE_KEY = CACHE_KEYS.PROVIDER_IDS;
 
 function restoreProviderIdsCache(): string[] {
   try {
