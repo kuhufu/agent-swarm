@@ -16,14 +16,22 @@ const { connect, connected } = useWebSocket();
 const route = useRoute();
 const router = useRouter();
 
-const swarmId = computed(() => swarmStore.currentSwarm?.id ?? "");
+const currentConversation = computed(() =>
+  conversationStore.currentConversationId
+    ? conversationStore.conversations.find((c) => c.id === conversationStore.currentConversationId) ?? null
+    : null,
+);
+const swarmId = computed(() => {
+  const conv = currentConversation.value;
+  if (conv && !conv.swarmId.startsWith("__direct_")) {
+    return conv.swarmId;
+  }
+  return swarmStore.currentSwarmId ?? "";
+});
 const isDirectMode = computed(() => {
-  const conv = conversationStore.conversations.find(
-    (c) => c.id === conversationStore.currentConversationId,
-  );
+  const conv = currentConversation.value;
   if (conv) return conv.swarmId.startsWith("__direct_");
-  // No current conversation yet — keep consistent with swarm selection
-  return !swarmStore.currentSwarm;
+  return !swarmStore.currentSwarmId;
 });
 const streamingMessages = computed(() =>
   Array.from(conversationStore.streamingMessages.values()),
@@ -162,12 +170,13 @@ async function handleForkConversation() {
         :streaming-messages="streamingMessages"
         :is-direct-mode="isDirectMode"
         :conversation-id="conversationStore.currentConversationId"
+        :swarm-id="swarmId"
       />
       <InterventionPanel />
       <ChatInput :key="conversationStore.currentConversationId ?? 'new'" :swarm-id="swarmId" :active="conversationStore.isActive" :is-direct-mode="isDirectMode" />
     </div>
     <aside class="chat-sidebar-right">
-      <AgentStatus :agents="Array.from(conversationStore.agentStates.values())" />
+      <AgentStatus :agents="Array.from(conversationStore.agentStates.values())" :swarm-id="swarmId" />
     </aside>
   </div>
 </template>

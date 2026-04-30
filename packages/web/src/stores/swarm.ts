@@ -7,7 +7,7 @@ const SWARMS_CACHE_KEY = "cached-swarms";
 
 export const useSwarmStore = defineStore("swarm", () => {
   const swarms = ref<SwarmConfig[]>(restoreSwarmCache());
-  const currentSwarm = ref<SwarmConfig | null>(null);
+  const currentSwarmId = ref<string | null>(null);
   const loading = ref(false);
 
   function restoreSwarmCache(): SwarmConfig[] {
@@ -30,13 +30,8 @@ export const useSwarmStore = defineStore("swarm", () => {
       const res = await swarmApi.listSwarms();
       swarms.value = res.data;
       saveSwarmCache(res.data);
-      if (currentSwarm.value) {
-        const updated = swarms.value.find((s) => s.id === currentSwarm.value!.id);
-        if (updated) {
-          currentSwarm.value = updated;
-        } else {
-          currentSwarm.value = null;
-        }
+      if (currentSwarmId.value && !swarms.value.some((s) => s.id === currentSwarmId.value)) {
+        currentSwarmId.value = null;
       }
     } finally {
       loading.value = false;
@@ -56,9 +51,6 @@ export const useSwarmStore = defineStore("swarm", () => {
     if (index >= 0) {
       swarms.value[index] = res.data;
     }
-    if (currentSwarm.value?.id === id) {
-      currentSwarm.value = res.data;
-    }
     saveSwarmCache(swarms.value);
     return res.data;
   }
@@ -67,24 +59,40 @@ export const useSwarmStore = defineStore("swarm", () => {
     await swarmApi.deleteSwarm(id);
     swarms.value = swarms.value.filter((s) => s.id !== id);
     saveSwarmCache(swarms.value);
-    if (currentSwarm.value?.id === id) {
-      currentSwarm.value = null;
+    if (currentSwarmId.value === id) {
+      currentSwarmId.value = null;
     }
   }
 
-  function selectSwarm(swarm: SwarmConfig) {
-    currentSwarm.value = swarm;
+  function getSwarmById(id?: string | null): SwarmConfig | null {
+    return id ? swarms.value.find((swarm) => swarm.id === id) ?? null : null;
+  }
+
+  function selectSwarm(swarmId: string) {
+    currentSwarmId.value = swarmId;
   }
 
   function clearSwarmSelection() {
-    currentSwarm.value = null;
+    currentSwarmId.value = null;
   }
 
   function reset() {
     swarms.value = [];
-    currentSwarm.value = null;
+    currentSwarmId.value = null;
     loading.value = false;
   }
 
-  return { swarms, currentSwarm, loading, fetchSwarms, createSwarm, updateSwarm, removeSwarm, selectSwarm, clearSwarmSelection, reset };
+  return {
+    swarms,
+    currentSwarmId,
+    loading,
+    fetchSwarms,
+    createSwarm,
+    updateSwarm,
+    removeSwarm,
+    getSwarmById,
+    selectSwarm,
+    clearSwarmSelection,
+    reset,
+  };
 });

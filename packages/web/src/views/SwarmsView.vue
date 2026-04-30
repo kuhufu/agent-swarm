@@ -98,7 +98,7 @@ function ensureSelectedSwarm() {
   }
 
   selectedSwarmId.value = firstSwarm.id;
-  swarmStore.selectSwarm(firstSwarm);
+  swarmStore.selectSwarm(firstSwarm.id);
 }
 
 onMounted(async () => {
@@ -304,7 +304,7 @@ function handleSelect(swarm: SwarmConfig) {
     if (!confirm("当前有未保存的修改，确定切换吗？")) return;
   }
   selectedSwarmId.value = swarm.id;
-  swarmStore.selectSwarm(swarm);
+  swarmStore.selectSwarm(swarm.id);
   resetAgentForm();
 }
 

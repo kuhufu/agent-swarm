@@ -169,14 +169,14 @@ async function handleNewConversation() {
     }
   }
 
-  const targetSwarm = swarmStore.currentSwarm ?? swarmStore.swarms[0] ?? null;
-  if (!targetSwarm) {
+  const targetSwarmId = swarmStore.currentSwarmId ?? swarmStore.swarms[0]?.id ?? null;
+  if (!targetSwarmId) {
     showError("暂无可用 Swarm，请先创建");
     return;
   }
 
-  if (!swarmStore.currentSwarm || swarmStore.currentSwarm.id !== targetSwarm.id) {
-    swarmStore.selectSwarm(targetSwarm);
+  if (swarmStore.currentSwarmId !== targetSwarmId) {
+    swarmStore.selectSwarm(targetSwarmId);
   }
 
   if (!isChatRoute.value || routeConversationId.value) {

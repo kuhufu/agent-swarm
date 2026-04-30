@@ -7,12 +7,13 @@ import type { AgentState } from "../../types/index.js";
 
 const props = defineProps<{
   agents: AgentState[];
+  swarmId?: string | null;
 }>();
 
 const swarmStore = useSwarmStore();
 
 const swarmInfo = computed(() => {
-  const swarm = swarmStore.currentSwarm;
+  const swarm = swarmStore.getSwarmById(props.swarmId);
   if (!swarm) return null;
   return {
     name: swarm.name,
@@ -23,12 +24,12 @@ const swarmInfo = computed(() => {
 
 /** Configured agents from the current Swarm (shown before conversation starts) */
 const configuredAgents = computed(() => {
-  const swarm = swarmStore.currentSwarm;
+  const swarm = swarmStore.getSwarmById(props.swarmId);
   return swarm?.agents ?? [];
 });
 
 const displayedAgents = computed(() => {
-  const swarm = swarmStore.currentSwarm;
+  const swarm = swarmStore.getSwarmById(props.swarmId);
   if (!swarm) {
     return props.agents;
   }
@@ -47,7 +48,7 @@ function statusLabel(status: AgentState["status"]): string {
 }
 
 function getAgentConfig(agentId: string) {
-  const swarm = swarmStore.currentSwarm;
+  const swarm = swarmStore.getSwarmById(props.swarmId);
   if (!swarm) return null;
   return swarm.agents.find((a) => a.id === agentId) ?? null;
 }

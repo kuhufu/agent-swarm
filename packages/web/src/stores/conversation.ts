@@ -552,7 +552,10 @@ export const useConversationStore = defineStore("conversation", () => {
       return fromState;
     }
 
-    const swarm = swarmStore.currentSwarm;
+    const conversation = conversationId
+      ? conversations.value.find((item) => item.id === conversationId)
+      : null;
+    const swarm = swarmStore.getSwarmById(conversation?.swarmId ?? swarmStore.currentSwarmId);
     if (!swarm) {
       return undefined;
     }
@@ -589,8 +592,7 @@ export const useConversationStore = defineStore("conversation", () => {
       return;
     }
 
-    const matchedSwarm = swarmStore.swarms.find((s) => s.id === conversation.swarmId)
-      ?? (swarmStore.currentSwarm?.id === conversation.swarmId ? swarmStore.currentSwarm : null);
+    const matchedSwarm = swarmStore.getSwarmById(conversation.swarmId);
 
     if (!matchedSwarm) {
       mutateRuntimeState(conversationId, (state) => {
@@ -662,8 +664,8 @@ export const useConversationStore = defineStore("conversation", () => {
           matchedSwarm = swarmStore.swarms.find((item) => item.id === conversationRes.data.swarmId);
         }
         if (matchedSwarm) {
-          if (swarmStore.currentSwarm?.id !== matchedSwarm.id) {
-            swarmStore.selectSwarm(matchedSwarm);
+          if (swarmStore.currentSwarmId !== matchedSwarm.id) {
+            swarmStore.selectSwarm(matchedSwarm.id);
           }
         } else {
           swarmStore.clearSwarmSelection();

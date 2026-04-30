@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from "vue";
-import type { ChatMessage, SwarmConfig } from "../../types/index.js";
+import type { ChatMessage } from "../../types/index.js";
 import { useSwarmStore } from "../../stores/swarm.js";
 import { MODE_LABEL_ZH } from "../../constants/swarm-modes.js";
 import MessageItem from "./MessageItem.vue";
@@ -10,6 +10,7 @@ const props = defineProps<{
   streamingMessages: ChatMessage[];
   isDirectMode?: boolean;
   conversationId?: string | null;
+  swarmId?: string | null;
 }>();
 
 const swarmStore = useSwarmStore();
@@ -27,8 +28,8 @@ const modeLabels: Record<string, string> = {
   debate: "辩论",
 };
 
-function selectSwarm(swarm: SwarmConfig) {
-  swarmStore.selectSwarm(swarm);
+function selectSwarm(swarmId: string) {
+  swarmStore.selectSwarm(swarmId);
 }
 
 const visibleMessages = computed(() =>
@@ -52,7 +53,7 @@ function resolveSwarmAgentName(agentId?: string): string | undefined {
   if (!agentId) {
     return undefined;
   }
-  const swarm = swarmStore.currentSwarm;
+  const swarm = swarmStore.getSwarmById(props.swarmId);
   if (!swarm) {
     return undefined;
   }
@@ -159,8 +160,8 @@ onMounted(async () => {
           v-for="swarm in swarms"
           :key="swarm.id"
           class="swarm-card"
-          :class="{ active: swarmStore.currentSwarm?.id === swarm.id }"
-          @click="selectSwarm(swarm)"
+          :class="{ active: props.swarmId === swarm.id }"
+          @click="selectSwarm(swarm.id)"
         >
           <div class="swarm-card-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
