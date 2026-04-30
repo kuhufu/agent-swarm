@@ -488,10 +488,9 @@ const formatTime = formatTimeShort;
 /* ── Tool calls ── */
 .msg-tool-calls {
   margin-top: 8px;
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
   gap: 8px;
-  width: 100%;
 }
 
 @keyframes fadeIn {
