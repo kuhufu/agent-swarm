@@ -295,6 +295,10 @@ export interface HandoffEvent {
   fromAgentId: string;
   toAgentId: string;
   reason?: string;
+  task?: string;
+  context?: string;
+  expectedOutput?: string;
+  returnToAgentId?: string;
 }
 
 export interface InterventionRequiredEvent {

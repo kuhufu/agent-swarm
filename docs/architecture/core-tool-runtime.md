@@ -31,6 +31,22 @@
 
 WebSocket 层只传递用户选择的 `enabledTools` 和前端工具执行器。它不创建具体工具，也不判断工具是否启用。
 
+## Swarm handoff 协议
+
+`handoff` 是 `swarm` 模式的内置调度协议，不是普通工具副作用。Agent 调用 `handoff` 只是在提出交接请求；`SwarmMode` 会完成目标校验、`on_handoff` 介入审批、循环保护和事件记录，审批通过后才中断当前 Agent 并把控制权交给目标 Agent。
+
+`handoff` 参数：
+
+- `agentId`：目标 Agent ID，必须来自当前 Swarm 可用 Agent 列表。
+- `message`：兼容旧用法的交接消息，可为空。
+- `reason`：交接原因。
+- `task`：目标 Agent 应完成的具体任务。
+- `context`：目标 Agent 需要的上下文。
+- `expectedOutput`：目标 Agent 应返回的结果形态。
+- `returnToAgentId`：可选的回交 Agent ID，用于表达接力计划。
+
+执行器只识别工具名为 `handoff` 且执行成功的工具结果。其他工具返回 `details.handoffTo` 不会触发切换。`SwarmMode` 会把结构化字段组装成目标 Agent 的输入，并在 `handoff` 事件里透传这些字段，便于前端展示协作链路。连续 `A -> B -> A` 且任务上下文相同的短循环会被拒绝；全局轮次仍受 `maxTotalTurns` 控制。
+
 ## Workspace 执行进程
 
 `workspace_run_container` 不允许在宿主机 shell 直接执行模型生成的命令。命令必须通过 `docker run` 在隔离容器内执行：workspace 目录 bind mount 到 `/workspace`，默认禁用网络，限制 CPU、内存和 pids，rootfs 只读，丢弃 Linux capabilities，并启用 `no-new-privileges`。默认镜像为 `node:22-alpine`，可通过 `AGENT_SWARM_WORKSPACE_IMAGE` 覆盖。

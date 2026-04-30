@@ -9,6 +9,23 @@ import {
   extractAssistantTextAndThinking,
 } from "./message-fallback.js";
 
+interface HandoffProposal {
+  fromAgentId: string;
+  toAgentId: string;
+  message: string;
+  reason?: string;
+  task?: string;
+  context?: string;
+  expectedOutput?: string;
+  returnToAgentId?: string;
+}
+
+interface HandoffResolution {
+  proposal: HandoffProposal | null;
+  rejected: boolean;
+  errorEvent?: SwarmEvent;
+}
+
 /**
  * Swarm mode: agents can hand off to each other dynamically.
  * Uses `handoff` tool to transfer control between agents.
@@ -21,6 +38,7 @@ export class SwarmMode implements ModeExecutor {
     let currentAgentId = orchId ?? swarmConfig.agents[0]?.id;
     let currentMessage = message;
     let turn = 0;
+    const handoffHistory: HandoffProposal[] = [];
 
     // Ensure initial agent is created
     if (currentAgentId) {
@@ -55,60 +73,73 @@ export class SwarmMode implements ModeExecutor {
         }
       }
 
-      // Listen for handoff during agent execution
-      let handoffTo: string | null = null;
-      let handoffMessage: string | null = null;
-      let handoffDetected = false;
+      // Listen for handoff proposals during agent execution. A handoff is a
+      // scheduler decision, not a tool side effect.
+      let handoffResolution: HandoffResolution = { proposal: null, rejected: false };
+      let handoffDecisionSettled = false;
+      let handoffDecisionPromise: Promise<void> | null = null;
       const active = agents.get(currentAgentId)!;
       const unsub = active.agent.subscribe((e: PiAgentEvent) => {
-        if (e.type === "tool_execution_end" && !e.isError) {
+        if (e.type === "tool_execution_end" && e.toolName === "handoff" && !e.isError) {
           const result = e.result;
-          const nextAgentId = this.extractHandoffTarget(result);
-          if (!handoffDetected && nextAgentId && nextAgentId !== currentAgentId) {
-            handoffDetected = true;
-            handoffTo = nextAgentId;
-            if (typeof result?.details?.message === "string" && result.details.message.trim()) {
-              handoffMessage = result.details.message;
-            }
-            // A successful handoff means current agent should stop and yield control.
-            active.agent.abort();
+          const proposal = this.extractHandoffProposal(result, currentAgentId);
+          if (!handoffDecisionPromise && proposal && proposal.toAgentId !== currentAgentId) {
+            handoffDecisionPromise = this.resolveHandoffProposal(ctx, proposal, handoffHistory)
+              .then((resolution) => {
+                handoffResolution = resolution;
+                handoffDecisionSettled = true;
+                if (resolution.proposal) {
+                  // Once the scheduler accepts a handoff, the source agent
+                  // should yield control to the target agent.
+                  active.agent.abort();
+                }
+              })
+              .catch((err) => {
+                const errorEvent: SwarmEvent = {
+                  type: "error",
+                  agentId: proposal.fromAgentId,
+                  error: err as Error,
+                };
+                ctx.emit(errorEvent);
+                handoffResolution = { proposal: null, rejected: true, errorEvent };
+                handoffDecisionSettled = true;
+              });
           }
         }
       });
 
-      yield* this.runAgent(currentAgentId, currentMessage, ctx, () => handoffDetected);
+      yield* this.runAgent(currentAgentId, currentMessage, ctx, () => Boolean(handoffResolution.proposal));
       unsub();
+      if (handoffDecisionPromise && !handoffDecisionSettled) {
+        await handoffDecisionPromise;
+      }
 
       // Check for handoff
-      if (handoffTo) {
+      if (handoffResolution.proposal) {
+        const handoff = handoffResolution.proposal;
         // Ensure target agent is created
-        const targetConfig = swarmConfig.agents.find((a) => a.id === handoffTo)
-          ?? (swarmConfig.orchestrator?.id === handoffTo ? swarmConfig.orchestrator : undefined);
-        if (targetConfig && !agents.has(handoffTo)) {
+        const targetConfig = swarmConfig.agents.find((a) => a.id === handoff.toAgentId)
+          ?? (swarmConfig.orchestrator?.id === handoff.toAgentId ? swarmConfig.orchestrator : undefined);
+        if (targetConfig && !agents.has(handoff.toAgentId)) {
           createAgentFn(targetConfig);
         }
 
-        if (agents.has(handoffTo)) {
-          // Check intervention for handoff
-          const handoffStrategy = this.getStrategy(ctx, "on_handoff");
-          if (handoffStrategy !== "auto" && ctx.interventionCallback) {
-            const decision = await ctx.interventionCallback("on_handoff", {
-              fromAgentId: currentAgentId,
-              toAgentId: handoffTo,
-            });
-            if (decision?.action === "reject" || decision?.action === "abort") {
-              if (decision?.action === "abort") {
-                ctx.abort();
-              }
-              break;
-            }
-          }
-
-          emit({ type: "handoff", fromAgentId: currentAgentId, toAgentId: handoffTo });
+        if (agents.has(handoff.toAgentId)) {
+          emit({
+            type: "handoff",
+            fromAgentId: handoff.fromAgentId,
+            toAgentId: handoff.toAgentId,
+            reason: handoff.reason,
+            task: handoff.task,
+            context: handoff.context,
+            expectedOutput: handoff.expectedOutput,
+            returnToAgentId: handoff.returnToAgentId,
+          });
 
           // Build context message from previous agent's output
-          if (handoffMessage) {
-            currentMessage = handoffMessage;
+          const handoffPrompt = this.buildHandoffPrompt(handoff);
+          if (handoffPrompt) {
+            currentMessage = handoffPrompt;
           } else {
             const prevAgent = agents.get(currentAgentId);
             if (prevAgent) {
@@ -120,17 +151,23 @@ export class SwarmMode implements ModeExecutor {
             }
           }
 
-          currentAgentId = handoffTo;
+          handoffHistory.push(handoff);
+          currentAgentId = handoff.toAgentId;
         } else {
           const missingTargetError: SwarmEvent = {
             type: "error",
             agentId: currentAgentId,
-            error: new Error(`Handoff target agent not found: ${handoffTo}`),
+            error: new Error(`Handoff target agent not found: ${handoff.toAgentId}`),
           };
           emit(missingTargetError);
           yield missingTargetError;
           break;
         }
+      } else if (handoffResolution.rejected) {
+        if (handoffResolution.errorEvent) {
+          yield handoffResolution.errorEvent;
+        }
+        break;
       } else {
         // No handoff — agent is done responding
         break;
@@ -273,10 +310,20 @@ export class SwarmMode implements ModeExecutor {
       })
       .catch((err) => {
         if (isExpectedAbort?.()) {
-          settle();
+          void persistNewMessagesOnce()
+            .catch((persistErr) => {
+              const persistenceError: SwarmEvent = { type: "error", agentId, error: persistErr as Error };
+              events.push(persistenceError);
+              ctx.emit(persistenceError);
+            })
+            .finally(() => {
+              settle();
+            });
           return;
         }
-        events.push({ type: "error", agentId, error: err as Error });
+        const errorEvent: SwarmEvent = { type: "error", agentId, error: err as Error };
+        events.push(errorEvent);
+        ctx.emit(errorEvent);
         settle();
       });
 
@@ -286,7 +333,7 @@ export class SwarmMode implements ModeExecutor {
       await new Promise((r) => setTimeout(r, 10));
       while (yielded < events.length) yield events[yielded++];
       if (isExpectedAbort?.()) {
-        void persistNewMessagesOnce()
+        await persistNewMessagesOnce()
           .catch((err) => {
             const persistenceError: SwarmEvent = { type: "error", agentId, error: err as Error };
             events.push(persistenceError);
@@ -337,7 +384,7 @@ export class SwarmMode implements ModeExecutor {
     return "";
   }
 
-  private extractHandoffTarget(result: unknown): string | null {
+  private extractHandoffProposal(result: unknown, fromAgentId: string): HandoffProposal | null {
     if (!result || typeof result !== "object") {
       return null;
     }
@@ -350,7 +397,110 @@ export class SwarmMode implements ModeExecutor {
       return null;
     }
     const target = rawTarget.trim();
-    return target.length > 0 ? target : null;
+    if (target.length === 0) {
+      return null;
+    }
+    const readString = (key: string): string | undefined => {
+      const value = (details as Record<string, unknown>)[key];
+      if (typeof value !== "string") {
+        return undefined;
+      }
+      const normalized = value.trim();
+      return normalized.length > 0 ? normalized : undefined;
+    };
+    return {
+      fromAgentId,
+      toAgentId: target,
+      message: readString("message") ?? "",
+      reason: readString("reason"),
+      task: readString("task"),
+      context: readString("context"),
+      expectedOutput: readString("expectedOutput"),
+      returnToAgentId: readString("returnToAgentId"),
+    };
+  }
+
+  private async resolveHandoffProposal(
+    ctx: ModeExecutionContext,
+    proposal: HandoffProposal,
+    history: HandoffProposal[],
+  ): Promise<HandoffResolution> {
+    const loopError = this.validateHandoffLoop(proposal, history);
+    if (loopError) {
+      const errorEvent: SwarmEvent = {
+        type: "error",
+        agentId: proposal.fromAgentId,
+        error: new Error(loopError),
+      };
+      ctx.emit(errorEvent);
+      return { proposal: null, rejected: true, errorEvent };
+    }
+
+    const handoffStrategy = this.getStrategy(ctx, "on_handoff");
+    if (handoffStrategy !== "auto" && ctx.interventionCallback) {
+      const decision = await ctx.interventionCallback("on_handoff", {
+        fromAgentId: proposal.fromAgentId,
+        toAgentId: proposal.toAgentId,
+        message: proposal.message,
+        reason: proposal.reason,
+        task: proposal.task,
+        context: proposal.context,
+        expectedOutput: proposal.expectedOutput,
+        returnToAgentId: proposal.returnToAgentId,
+      });
+      if (decision?.action === "abort") {
+        ctx.abort();
+        return { proposal: null, rejected: true };
+      }
+      if (decision?.action === "reject") {
+        return { proposal: null, rejected: true };
+      }
+      if (decision?.action === "edit" && typeof decision.editedInput === "string") {
+        return {
+          proposal: {
+            ...proposal,
+            message: decision.editedInput,
+          },
+          rejected: false,
+        };
+      }
+    }
+
+    return { proposal, rejected: false };
+  }
+
+  private validateHandoffLoop(proposal: HandoffProposal, history: HandoffProposal[]): string | null {
+    const previous = history.length > 0 ? history[history.length - 1] : undefined;
+    if (
+      previous
+      && previous.fromAgentId === proposal.toAgentId
+      && previous.toAgentId === proposal.fromAgentId
+      && this.handoffTaskKey(previous) === this.handoffTaskKey(proposal)
+    ) {
+      return `Rejected handoff loop: ${proposal.fromAgentId} -> ${proposal.toAgentId} repeats the previous task`;
+    }
+    return null;
+  }
+
+  private handoffTaskKey(proposal: HandoffProposal): string {
+    return [
+      proposal.task ?? "",
+      proposal.message ?? "",
+      proposal.context ?? "",
+      proposal.expectedOutput ?? "",
+    ].join("\u001f");
+  }
+
+  private buildHandoffPrompt(proposal: HandoffProposal): string {
+    const sections = [
+      proposal.task ? `Task: ${proposal.task}` : "",
+      proposal.context ? `Context: ${proposal.context}` : "",
+      proposal.expectedOutput ? `Expected output: ${proposal.expectedOutput}` : "",
+      proposal.reason ? `Reason for handoff: ${proposal.reason}` : "",
+      proposal.returnToAgentId ? `Return to agent: ${proposal.returnToAgentId}` : "",
+      proposal.message ? `Message: ${proposal.message}` : "",
+    ].filter((section) => section.length > 0);
+    return sections.join("\n\n");
   }
 
   private mapAgentEvent(e: PiAgentEvent, agentId: string, agentName: string): SwarmEvent | null {

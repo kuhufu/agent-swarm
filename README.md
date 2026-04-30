@@ -9,6 +9,7 @@
 ## 核心能力
 
 - 五种协作模式：`router` / `sequential` / `parallel` / `swarm` / `debate`
+- `swarm` 模式采用动态调度协议：Agent 通过结构化 `handoff` 提议交接，执行器负责审批、循环保护、事件记录和目标 Agent 切换
 - 直接对话模式：无需预建 swarm，可按会话选择 `provider + modelId`
 - Agent 预设库：内置模板 + 自定义模板 CRUD，支持创建 Swarm 时复用
 - Swarm Agent 顺序管理：创建与编辑 Swarm 时均支持拖动排序 Agent 列表
@@ -217,6 +218,12 @@ pnpm --filter @agent-swarm/server test
 1. 指定 `swarmId`：走 swarm 模式会话。
 2. 指定 `conversationId`：续聊已有会话。
 3. 指定 `provider + modelId`：直接对话模式（不依赖预建 swarm）。
+
+### Swarm 模式 handoff 语义
+
+`swarm` 模式不是固定流水线，而是由当前 Agent 发起结构化 `handoff` 提议，`SwarmMode` 作为调度器决定是否切换控制权。`handoff` 支持 `agentId/message/reason/task/context/expectedOutput/returnToAgentId` 字段；审批通过后才会中断当前 Agent 并启动目标 Agent。`handoff` 事件会透传 `reason/task/context/expectedOutput/returnToAgentId`，前端可用于展示协作链路。
+
+执行器只把 `handoff` 工具的成功结果识别为交接提议，其他工具即使返回 `details.handoffTo` 也不会触发切换。连续反向交接同一任务会被拒绝，避免 `A -> B -> A` 的短循环；总轮次仍受 Swarm 的 `maxTotalTurns` 限制。
 
 ### 多租户数据边界
 
