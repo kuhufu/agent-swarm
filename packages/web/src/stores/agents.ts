@@ -12,9 +12,26 @@ function sortByName(input: PresetAgent[]): PresetAgent[] {
   });
 }
 
+const PRESETS_CACHE_KEY = "cached-agents-presets";
+const TEMPLATES_CACHE_KEY = "cached-agents-templates";
+
+function restoreAgentsCache<T>(key: string): T[] {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T[]) : [];
+  } catch {
+    localStorage.removeItem(key);
+    return [];
+  }
+}
+
+function saveAgentsCache<T>(key: string, data: T[]) {
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
 export const useAgentStore = defineStore("agents", () => {
-  const presets = ref<PresetAgent[]>([]);
-  const templates = ref<PresetAgent[]>([]);
+  const presets = ref<PresetAgent[]>(restoreAgentsCache<PresetAgent>(PRESETS_CACHE_KEY));
+  const templates = ref<PresetAgent[]>(restoreAgentsCache<PresetAgent>(TEMPLATES_CACHE_KEY));
   const loading = ref(false);
   const loaded = ref(false);
 
@@ -41,6 +58,11 @@ export const useAgentStore = defineStore("agents", () => {
     templates.value = sortByName([...templates.value, next]);
   }
 
+  function persistCache() {
+    saveAgentsCache(PRESETS_CACHE_KEY, presets.value);
+    saveAgentsCache(TEMPLATES_CACHE_KEY, templates.value);
+  }
+
   async function fetchAgents(force = false) {
     if (loading.value) return;
     if (loaded.value && !force) return;
@@ -52,6 +74,7 @@ export const useAgentStore = defineStore("agents", () => {
       presets.value = sortByName(Array.isArray(data.presets) ? data.presets : []);
       templates.value = sortByName(Array.isArray(data.templates) ? data.templates : []);
       loaded.value = true;
+      persistCache();
     } finally {
       loading.value = false;
     }
@@ -60,18 +83,21 @@ export const useAgentStore = defineStore("agents", () => {
   async function createAgent(payload: CreatePresetAgentPayload) {
     const res = await agentsApi.createAgent(payload);
     upsertPreset(res.data);
+    persistCache();
     return res.data;
   }
 
   async function updateAgent(id: string, payload: UpdatePresetAgentPayload) {
     const res = await agentsApi.updateAgent(id, payload);
     upsertPreset(res.data);
+    persistCache();
     return res.data;
   }
 
   async function deleteAgent(id: string) {
     await agentsApi.deleteAgent(id);
     presets.value = presets.value.filter((item) => item.id !== id);
+    persistCache();
   }
 
   async function importTemplate(templateId: string) {
@@ -83,24 +109,28 @@ export const useAgentStore = defineStore("agents", () => {
   async function fetchTemplates() {
     const res = await agentsApi.listTemplates();
     templates.value = sortByName(Array.isArray(res.data) ? res.data : []);
+    saveAgentsCache(TEMPLATES_CACHE_KEY, templates.value);
     return templates.value;
   }
 
   async function createTemplate(payload: CreatePresetAgentPayload) {
     const res = await agentsApi.createTemplate(payload);
     upsertTemplate(res.data);
+    persistCache();
     return res.data;
   }
 
   async function updateTemplate(id: string, payload: UpdatePresetAgentPayload) {
     const res = await agentsApi.updateTemplate(id, payload);
     upsertTemplate(res.data);
+    persistCache();
     return res.data;
   }
 
   async function deleteTemplate(id: string) {
     await agentsApi.deleteTemplate(id);
     templates.value = templates.value.filter((item) => item.id !== id);
+    persistCache();
   }
 
   return {

@@ -9,6 +9,7 @@ const props = defineProps<{
   messages: ChatMessage[];
   streamingMessages: ChatMessage[];
   isDirectMode?: boolean;
+  conversationId?: string | null;
 }>();
 
 const swarmStore = useSwarmStore();
@@ -145,7 +146,7 @@ onMounted(async () => {
     class="message-list"
     @scroll="updateAutoScrollState"
   >
-    <div v-if="renderEntries.length === 0" class="empty-state">
+    <div v-if="!conversationId" class="empty-state">
       <div class="empty-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />

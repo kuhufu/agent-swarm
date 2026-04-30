@@ -562,12 +562,14 @@ export const useConversationStore = defineStore("conversation", () => {
       return;
     }
 
+    // Set current conversation from cache immediately (title, preferences)
+    setCurrentConversation(normalizedConversationId);
+
     loadingMessages.value = true;
     try {
       // Fetch conversation info (always needed)
       const conversationRes = await conversationsApi.getConversation(normalizedConversationId);
 
-      setCurrentConversation(normalizedConversationId);
       applyConversationPreferences(conversationRes.data);
       updateConversationInfo(normalizedConversationId, conversationRes.data);
 

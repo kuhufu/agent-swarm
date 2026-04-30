@@ -40,7 +40,26 @@ interface ProviderEntry {
   thinkingFormat: string;
 }
 
-const providers = reactive<Record<string, ProviderEntry>>({});
+const PROVIDER_IDS_CACHE_KEY = "cached-provider-ids";
+
+function restoreProviderIdsCache(): string[] {
+  try {
+    const raw = localStorage.getItem(PROVIDER_IDS_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    localStorage.removeItem(PROVIDER_IDS_CACHE_KEY);
+    return [];
+  }
+}
+
+function saveProviderIdsCache(ids: string[]) {
+  localStorage.setItem(PROVIDER_IDS_CACHE_KEY, JSON.stringify(ids));
+}
+
+const initialProviderIds = restoreProviderIdsCache();
+const providers = reactive<Record<string, ProviderEntry>>(
+  Object.fromEntries(initialProviderIds.map((id) => [id, { apiKey: "", baseUrl: "", apiProtocol: "" as ApiProtocol | "", thinkingFormat: "" }])),
+);
 
 const showProviderDialog = ref(false);
 const providerForm = reactive<{
@@ -92,6 +111,7 @@ function addCustomProvider() {
     apiProtocol: providerForm.apiProtocol,
     thinkingFormat: providerForm.thinkingFormat,
   };
+  saveProviderIdsCache(Object.keys(providers));
   closeProviderDialog();
 }
 
@@ -115,6 +135,7 @@ function closeProviderDialog() {
 
 function removeProvider(id: string) {
   delete providers[id];
+  saveProviderIdsCache(Object.keys(providers));
 }
 
 function updateProvider(id: string, field: string, value: unknown) {
@@ -155,7 +176,7 @@ const saving = ref(false);
 const saved = ref(false);
 const saveError = ref("");
 const loadError = ref("");
-const checkingAuth = ref(true);
+const checkingAuth = ref(authStore.user === null);
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -208,6 +229,7 @@ onMounted(async () => {
       if (config.models) {
         models.push(...config.models);
       }
+      saveProviderIdsCache(Object.keys(providers));
     }
   } catch (error) {
     loadError.value = getErrorMessage(error);

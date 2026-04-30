@@ -161,6 +161,7 @@ async function handleForkConversation() {
         :messages="conversationStore.messages"
         :streaming-messages="streamingMessages"
         :is-direct-mode="isDirectMode"
+        :conversation-id="conversationStore.currentConversationId"
       />
       <InterventionPanel />
       <ChatInput :key="conversationStore.currentConversationId ?? 'new'" :swarm-id="swarmId" :active="conversationStore.isActive" :is-direct-mode="isDirectMode" />
