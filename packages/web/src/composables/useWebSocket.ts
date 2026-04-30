@@ -275,12 +275,10 @@ export function useWebSocket() {
             timestamp: Date.now(),
           }, targetConversationId);
         }
-        conversationStore.cacheConversation(targetConversationId);
         break;
 
       case "prompt_completed":
         conversationStore.setActive(false, targetConversationId);
-        conversationStore.cacheConversation(targetConversationId);
         break;
 
       // ── Error ──

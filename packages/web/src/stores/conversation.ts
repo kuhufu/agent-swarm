@@ -763,17 +763,6 @@ export const useConversationStore = defineStore("conversation", () => {
     }
   }
 
-  function cacheConversation(conversationId?: string | null) {
-    const id = normalizeConversationId(conversationId);
-    if (!id) return;
-    const state = runtimeStates.value.get(id);
-    if (!state) return;
-    const maxCreatedAt = state.messages.reduce(
-      (max, m) => Math.max(max, m.createdAt ?? 0), 0,
-    );
-    void setCachedMessages(id, state.messages, maxCreatedAt);
-  }
-
   async function deleteConversation(id: string) {
     await conversationsApi.deleteConversation(id);
     conversations.value = conversations.value.filter((conv) => conv.id !== id);
@@ -921,7 +910,6 @@ export const useConversationStore = defineStore("conversation", () => {
     fetchAllConversations,
     updateConversationTitle,
     deleteConversation,
-    cacheConversation,
     clearConversationContext,
     updateConversationPreferences: persistConversationPreferences,
     setDirectModel,
