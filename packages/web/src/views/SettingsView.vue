@@ -255,18 +255,21 @@ async function saveSettings() {
 
 <template>
   <div class="settings-view">
-    <div v-if="!isAdmin && !checkingAuth" class="access-denied">
+    <div v-if="checkingAuth" class="access-denied">
+      <div class="access-denied-card">
+        <h2>正在检查权限</h2>
+        <p>请稍候。</p>
+      </div>
+    </div>
+
+    <div v-else-if="!isAdmin" class="access-denied">
       <div class="access-denied-card">
         <h2>需要管理员权限</h2>
         <p>全局 LLM 配置和系统模板只允许管理员维护。普通用户仍可在对话、Agent 和 Swarm 页面使用已配置的模型。</p>
       </div>
     </div>
 
-    <div v-show="isAdmin" class="settings-layout" :class="{ visible: !checkingAuth }">
-      <div v-if="checkingAuth" class="settings-loading-overlay">
-        <div class="loading-spinner" />
-        <p>正在加载设置...</p>
-      </div>
+    <div v-else class="settings-layout">
       <aside class="settings-sidebar">
         <div class="sidebar-header">
           <h2>设置管理</h2>
@@ -500,37 +503,6 @@ async function saveSettings() {
 .settings-layout {
   display: flex;
   height: 100%;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-
-.settings-layout.visible {
-  opacity: 1;
-}
-
-.settings-loading-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: var(--color-text-muted);
-}
-
-.settings-loading-overlay p {
-  margin: 0;
-  font-size: 14px;
-}
-
-.loading-spinner {
-  width: 24px;
-  height: 24px;
-  border: 2px solid var(--color-border-subtle);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: spin-slow 0.6s linear infinite;
 }
 
 .settings-sidebar {
