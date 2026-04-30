@@ -348,72 +348,74 @@ onBeforeUnmount(() => {
           新建预设
         </button>
 
-        <div class="preset-section">
-          <button
-            class="preset-section-toggle"
-            @click="showSystemTemplates = !showSystemTemplates"
-          >
-            <span class="preset-section-title">系统模板</span>
-            <span class="preset-section-toggle-meta">
-              {{ agentStore.sortedTemplates.length }} 个
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                :class="{ expanded: showSystemTemplates }"
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </span>
-          </button>
-          <template v-if="showSystemTemplates">
+        <div class="sidebar-scrollable">
+          <div class="preset-section">
             <button
-              v-for="template in agentStore.sortedTemplates"
-              :key="template.id"
-              class="preset-item template-item"
-              :class="{ active: selectedRef?.kind === 'template' && selectedRef.id === template.id }"
-              @click="selectTemplate(template.id)"
+              class="preset-section-toggle"
+              @click="showSystemTemplates = !showSystemTemplates"
             >
-              <span class="preset-name">{{ template.name }}</span>
-              <span class="preset-meta">{{ template.category || "未分类" }}</span>
-            </button>
-            <div v-if="!agentStore.sortedTemplates.length" class="preset-empty">暂无系统模板</div>
-          </template>
-        </div>
-
-        <div class="preset-section">
-          <div class="preset-section-title">我的预设</div>
-          <div
-            v-for="preset in agentStore.sortedPresets"
-            :key="preset.id"
-            class="preset-item-row"
-            :class="{
-              active: selectedRef?.kind === 'preset' && selectedRef.id === preset.id,
-              'menu-open': openPresetActionMenuId === preset.id,
-            }"
-          >
-            <button class="preset-item" @click="selectPreset(preset.id)">
-              <span class="preset-name">{{ preset.name }}</span>
-              <span class="preset-meta">{{ preset.category || "未分类" }}</span>
-            </button>
-            <div class="preset-actions">
-              <button
-                class="preset-action-trigger"
-                aria-label="打开预设操作"
-                @click.stop="togglePresetActionMenu($event, preset.id)"
-              >
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                  <circle cx="5" cy="12" r="1.8" />
-                  <circle cx="12" cy="12" r="1.8" />
-                  <circle cx="19" cy="12" r="1.8" />
+              <span class="preset-section-title">系统模板</span>
+              <span class="preset-section-toggle-meta">
+                {{ agentStore.sortedTemplates.length }} 个
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  :class="{ expanded: showSystemTemplates }"
+                >
+                  <polyline points="6 9 12 15 18 9" />
                 </svg>
+              </span>
+            </button>
+            <template v-if="showSystemTemplates">
+              <button
+                v-for="template in agentStore.sortedTemplates"
+                :key="template.id"
+                class="preset-item template-item"
+                :class="{ active: selectedRef?.kind === 'template' && selectedRef.id === template.id }"
+                @click="selectTemplate(template.id)"
+              >
+                <span class="preset-name">{{ template.name }}</span>
+                <span class="preset-meta">{{ template.category || "未分类" }}</span>
               </button>
-            </div>
+              <div v-if="!agentStore.sortedTemplates.length" class="preset-empty">暂无系统模板</div>
+            </template>
           </div>
-          <div v-if="!agentStore.sortedPresets.length" class="preset-empty">暂无自定义预设</div>
+
+          <div class="preset-section">
+            <div class="preset-section-title">我的预设</div>
+            <div
+              v-for="preset in agentStore.sortedPresets"
+              :key="preset.id"
+              class="preset-item-row"
+              :class="{
+                active: selectedRef?.kind === 'preset' && selectedRef.id === preset.id,
+                'menu-open': openPresetActionMenuId === preset.id,
+              }"
+            >
+              <button class="preset-item" @click="selectPreset(preset.id)">
+                <span class="preset-name">{{ preset.name }}</span>
+                <span class="preset-meta">{{ preset.category || "未分类" }}</span>
+              </button>
+              <div class="preset-actions">
+                <button
+                  class="preset-action-trigger"
+                  aria-label="打开预设操作"
+                  @click.stop="togglePresetActionMenu($event, preset.id)"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="5" cy="12" r="1.8" />
+                    <circle cx="12" cy="12" r="1.8" />
+                    <circle cx="19" cy="12" r="1.8" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div v-if="!agentStore.sortedPresets.length" class="preset-empty">暂无自定义预设</div>
+          </div>
         </div>
       </aside>
 
@@ -618,8 +620,22 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 12px;
   padding: 20px 14px;
-  overflow-y: auto;
   flex-shrink: 0;
+  min-height: 0;
+}
+
+.sidebar-scrollable {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar-scrollable::-webkit-scrollbar {
+  display: none;
 }
 
 .sidebar-header h2 {
