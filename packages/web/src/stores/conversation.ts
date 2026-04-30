@@ -15,6 +15,22 @@ interface ConversationRuntimeState {
   isActive: boolean;
 }
 
+const CONVERSATIONS_CACHE_KEY = "cached-conversations";
+
+function restoreConversationsCache(): ConversationInfo[] {
+  try {
+    const raw = localStorage.getItem(CONVERSATIONS_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as ConversationInfo[]) : [];
+  } catch {
+    localStorage.removeItem(CONVERSATIONS_CACHE_KEY);
+    return [];
+  }
+}
+
+function saveConversationsCache(list: ConversationInfo[]) {
+  localStorage.setItem(CONVERSATIONS_CACHE_KEY, JSON.stringify(list));
+}
+
 export const useConversationStore = defineStore("conversation", () => {
   const swarmStore = useSwarmStore();
   const DRAFT_RUNTIME_ID = "__draft__";
@@ -31,7 +47,7 @@ export const useConversationStore = defineStore("conversation", () => {
   const currentConversationId = ref<string | null>(null);
   const loading = ref(false);
   const loadingMessages = ref(false);
-  const conversations = ref<ConversationInfo[]>([]);
+  const conversations = ref<ConversationInfo[]>(restoreConversationsCache());
   const enabledTools = ref<string[]>([]);
   const thinkingLevel = ref<string>("off");
   const thinkModeEnabled = computed(() => thinkingLevel.value !== "off");
@@ -635,6 +651,7 @@ export const useConversationStore = defineStore("conversation", () => {
     try {
       const res = await conversationsApi.listConversations(swarmId);
       conversations.value = res.data;
+      saveConversationsCache(res.data);
       if (currentConversationId.value) {
         const current = conversations.value.find((conv) => conv.id === currentConversationId.value);
         if (current) {
@@ -651,6 +668,7 @@ export const useConversationStore = defineStore("conversation", () => {
     try {
       const res = await conversationsApi.listConversations();
       conversations.value = res.data;
+      saveConversationsCache(res.data);
       if (currentConversationId.value) {
         const current = conversations.value.find((conv) => conv.id === currentConversationId.value);
         if (current) {
@@ -672,6 +690,7 @@ export const useConversationStore = defineStore("conversation", () => {
   async function deleteConversation(id: string) {
     await conversationsApi.deleteConversation(id);
     conversations.value = conversations.value.filter((conv) => conv.id !== id);
+    saveConversationsCache(conversations.value);
     runtimeStates.value.delete(id);
     runtimeStates.value = new Map(runtimeStates.value);
     if (currentConversationId.value === id) {

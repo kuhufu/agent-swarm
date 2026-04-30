@@ -19,14 +19,35 @@ async function apiRequest(method: string, path: string, body?: unknown) {
 
 export const useAuthStore = defineStore("auth", () => {
   const token = ref<string | null>(localStorage.getItem("token"));
-  const user = ref<{ id: string; username: string; role: "admin" | "user" } | null>(null);
+  const user = ref<{ id: string; username: string; role: "admin" | "user" } | null>(
+    restoreFromCache<{ id: string; username: string; role: "admin" | "user" }>("cached-user"),
+  );
 
   const isAuthenticated = computed(() => !!token.value);
+
+  function saveUserCache(userData: typeof user.value) {
+    if (userData) {
+      localStorage.setItem("cached-user", JSON.stringify(userData));
+    } else {
+      localStorage.removeItem("cached-user");
+    }
+  }
+
+  function restoreFromCache<T>(key: string): T | null {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? (JSON.parse(raw) as T) : null;
+    } catch {
+      localStorage.removeItem(key);
+      return null;
+    }
+  }
 
   function clearAuthState() {
     token.value = null;
     user.value = null;
     localStorage.removeItem("token");
+    localStorage.removeItem("cached-user");
   }
 
   async function login(username: string, password: string) {
@@ -34,6 +55,7 @@ export const useAuthStore = defineStore("auth", () => {
     token.value = result.token;
     user.value = result.user;
     localStorage.setItem("token", result.token);
+    saveUserCache(result.user);
   }
 
   async function register(username: string, password: string) {
@@ -41,6 +63,7 @@ export const useAuthStore = defineStore("auth", () => {
     token.value = result.token;
     user.value = result.user;
     localStorage.setItem("token", result.token);
+    saveUserCache(result.user);
   }
 
   async function logout() {
@@ -60,6 +83,7 @@ export const useAuthStore = defineStore("auth", () => {
     try {
       const result = await apiRequest("GET", "/api/auth/me");
       user.value = result;
+      saveUserCache(result);
     } catch {
       clearAuthState();
     }

@@ -4,11 +4,26 @@ import type { SwarmConfig } from "../types/index.js";
 import * as swarmApi from "../api/swarms.js";
 
 const CURRENT_SWARM_ID_KEY = "agent-swarm:currentSwarmId";
+const SWARMS_CACHE_KEY = "cached-swarms";
 
 export const useSwarmStore = defineStore("swarm", () => {
-  const swarms = ref<SwarmConfig[]>([]);
+  const swarms = ref<SwarmConfig[]>(restoreSwarmCache());
   const currentSwarm = ref<SwarmConfig | null>(null);
   const loading = ref(false);
+
+  function restoreSwarmCache(): SwarmConfig[] {
+    try {
+      const raw = localStorage.getItem(SWARMS_CACHE_KEY);
+      return raw ? (JSON.parse(raw) as SwarmConfig[]) : [];
+    } catch {
+      localStorage.removeItem(SWARMS_CACHE_KEY);
+      return [];
+    }
+  }
+
+  function saveSwarmCache(swarmList: SwarmConfig[]) {
+    localStorage.setItem(SWARMS_CACHE_KEY, JSON.stringify(swarmList));
+  }
 
   // Persist currentSwarm id to localStorage
   watch(currentSwarm, (swarm) => {
@@ -24,6 +39,7 @@ export const useSwarmStore = defineStore("swarm", () => {
     try {
       const res = await swarmApi.listSwarms();
       swarms.value = res.data;
+      saveSwarmCache(res.data);
       // Restore currentSwarm from localStorage if lost
       if (!currentSwarm.value) {
         const savedId = localStorage.getItem(CURRENT_SWARM_ID_KEY);
@@ -50,6 +66,7 @@ export const useSwarmStore = defineStore("swarm", () => {
   async function createSwarm(swarm: SwarmConfig) {
     const res = await swarmApi.createSwarm(swarm);
     swarms.value.push(res.data);
+    saveSwarmCache(swarms.value);
     return res.data;
   }
 
@@ -62,12 +79,14 @@ export const useSwarmStore = defineStore("swarm", () => {
     if (currentSwarm.value?.id === id) {
       currentSwarm.value = res.data;
     }
+    saveSwarmCache(swarms.value);
     return res.data;
   }
 
   async function removeSwarm(id: string) {
     await swarmApi.deleteSwarm(id);
     swarms.value = swarms.value.filter((s) => s.id !== id);
+    saveSwarmCache(swarms.value);
     if (currentSwarm.value?.id === id) {
       currentSwarm.value = null;
     }
