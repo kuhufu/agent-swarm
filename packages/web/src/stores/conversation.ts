@@ -571,7 +571,7 @@ export const useConversationStore = defineStore("conversation", () => {
     mutateRuntimeState(conversationId, (state) => {
       if (agentId) {
         const stream = state.streamingMessages.get(agentId);
-        if (stream && shouldPersistStreamMessage(stream)) {
+        if (stream && (shouldPersistStreamMessage(stream) || stream.role === "assistant")) {
           state.messages.push(cloneMessage(stream));
           if (stream.role === "assistant") {
             state.activeAssistantMessageIds.set(agentId, stream.id);
@@ -582,7 +582,7 @@ export const useConversationStore = defineStore("conversation", () => {
       }
 
       for (const [key, stream] of state.streamingMessages.entries()) {
-        if (shouldPersistStreamMessage(stream)) {
+        if (shouldPersistStreamMessage(stream) || stream.role === "assistant") {
           state.messages.push(cloneMessage(stream));
           if (stream.role === "assistant" && stream.agentId) {
             state.activeAssistantMessageIds.set(stream.agentId, stream.id);
