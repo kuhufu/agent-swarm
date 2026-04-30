@@ -12,6 +12,7 @@
   "dependencies": {
     "dompurify": "^3.4.1",
     "highlight.js": "^11.11.1",
+    "idb": "^8.0.3",
     "marked": "^18.0.2",
     "marked-highlight": "^2.2.4",
     "pinia": "^2.2.0",

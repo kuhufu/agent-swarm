@@ -114,6 +114,7 @@ export function normalizeHistoryMessage(
   const agentId = typeof message.agentId === "string" ? message.agentId : undefined;
   const agentName = typeof message.agentName === "string" ? message.agentName : resolveAgentName(agentId);
   const timestamp = typeof message.timestamp === "number" ? message.timestamp : Date.now();
+  const createdAt = typeof message.createdAt === "number" ? message.createdAt : undefined;
   const id = typeof message.id === "string" ? message.id : crypto.randomUUID();
   const rawMetadata = typeof message.metadata === "string" ? message.metadata : undefined;
   const metadata = rawMetadata ? parseMetadata(rawMetadata) : undefined;
@@ -128,6 +129,7 @@ export function normalizeHistoryMessage(
     agentName,
     metadata: metadata ?? undefined,
     timestamp,
+    createdAt,
   };
 }
 

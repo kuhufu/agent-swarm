@@ -147,7 +147,7 @@ export interface IStorage {
 
   // Message management
   appendMessage(conversationId: string, message: StoredMessage): Promise<void>;
-  getMessages(conversationId: string): Promise<StoredMessage[]>;
+  getMessages(conversationId: string, since?: number): Promise<StoredMessage[]>;
   getMessagesByAgent(conversationId: string, agentId: string): Promise<StoredMessage[]>;
   clearMessages(conversationId: string): Promise<void>;
 

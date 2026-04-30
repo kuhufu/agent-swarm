@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { eq, desc, and, gte } from "drizzle-orm";
+import { eq, desc, and, gt } from "drizzle-orm";
 import type {
   IStorage,
   ConversationUsage,
@@ -787,9 +787,13 @@ export class SqliteStorage implements IStorage {
       .run();
   }
 
-  async getMessages(conversationId: string): Promise<StoredMessage[]> {
+  async getMessages(conversationId: string, since?: number): Promise<StoredMessage[]> {
+    const conditions = [eq(messagesTable.conversationId, conversationId)];
+    if (since !== undefined) {
+      conditions.push(gt(messagesTable.createdAt, since));
+    }
     const rows = this.getDb().select().from(messagesTable)
-      .where(eq(messagesTable.conversationId, conversationId))
+      .where(and(...conditions))
       .orderBy(messagesTable.timestamp)
       .all();
     return rows.map((r) => ({

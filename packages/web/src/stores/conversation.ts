@@ -7,6 +7,11 @@ import {
   normalizeHistoryMessage,
   normalizeHistoryMessages,
 } from "../utils/normalize-message.js";
+import {
+  getCachedMessages,
+  setCachedMessages,
+  deleteCachedMessages,
+} from "../utils/message-cache.js";
 
 interface ConversationRuntimeState {
   messages: ChatMessage[];
@@ -550,22 +555,22 @@ export const useConversationStore = defineStore("conversation", () => {
       return;
     }
 
+    // If runtime already has messages, just switch to it without any API call
+    const existingRuntime = runtimeStates.value.get(resolveRuntimeStateId(normalizedConversationId));
+    if (existingRuntime && existingRuntime.messages.length > 0 && !existingRuntime.isActive && existingRuntime.streamingMessages.size === 0) {
+      setCurrentConversation(normalizedConversationId);
+      return;
+    }
+
     loadingMessages.value = true;
     try {
-      const [messagesRes, conversationRes] = await Promise.all([
-        conversationsApi.getMessages(normalizedConversationId),
-        conversationsApi.getConversation(normalizedConversationId),
-      ]);
-
-      const currentRuntime = runtimeStates.value.get(resolveRuntimeStateId(normalizedConversationId));
-      const hasActiveRuntime = Boolean(
-        currentRuntime && (currentRuntime.isActive || currentRuntime.streamingMessages.size > 0),
-      );
+      // Fetch conversation info (always needed)
+      const conversationRes = await conversationsApi.getConversation(normalizedConversationId);
 
       setCurrentConversation(normalizedConversationId);
-
       applyConversationPreferences(conversationRes.data);
       updateConversationInfo(normalizedConversationId, conversationRes.data);
+
       if (conversationRes.data.swarmId.startsWith("__direct_")) {
         swarmStore.clearSwarmSelection();
       } else {
@@ -588,12 +593,41 @@ export const useConversationStore = defineStore("conversation", () => {
       }
       populateAgentStatesFromConversation(conversationRes.data, normalizedConversationId);
 
-      if (!hasActiveRuntime) {
+      // Try IDB cache for instant render
+      const cached = await getCachedMessages(normalizedConversationId);
+      if (cached && cached.messages.length > 0) {
         mutateRuntimeState(normalizedConversationId, (state) => {
-          state.messages = normalizeHistoryMessages(Array.isArray(messagesRes.data) ? messagesRes.data : [], resolveAgentName);
-          state.streamingMessages = new Map();
-          state.isActive = false;
+          state.messages = normalizeHistoryMessages(cached.messages, resolveAgentName);
         });
+      }
+
+      // Fetch messages from API, with `since` if cached
+      const since = cached ? cached.maxCreatedAt : undefined;
+      const messagesRes = await conversationsApi.getMessages(normalizedConversationId, since);
+      const apiMessages = Array.isArray(messagesRes.data) ? messagesRes.data : [];
+
+      mutateRuntimeState(normalizedConversationId, (state) => {
+        if (since && cached && state.messages.length > 0) {
+          const existingIds = new Set(state.messages.map((m) => m.id));
+          const newMessages = normalizeHistoryMessages(
+            apiMessages.filter((m) => !existingIds.has(m.id)),
+            resolveAgentName,
+          );
+          state.messages = [...state.messages, ...newMessages];
+        } else {
+          state.messages = normalizeHistoryMessages(apiMessages, resolveAgentName);
+        }
+        state.streamingMessages = new Map();
+        state.isActive = false;
+      });
+
+      // Update IDB cache
+      const finalState = runtimeStates.value.get(normalizedConversationId);
+      if (finalState) {
+        const maxCreatedAt = finalState.messages.reduce(
+          (max, m) => Math.max(max, m.createdAt ?? 0), 0,
+        );
+        void setCachedMessages(normalizedConversationId, finalState.messages, maxCreatedAt);
       }
     } finally {
       loadingMessages.value = false;
@@ -689,12 +723,25 @@ export const useConversationStore = defineStore("conversation", () => {
     }
   }
 
+  function cacheCurrentConversation() {
+    const conversationId = currentConversationId.value;
+    if (!conversationId) return;
+    const state = runtimeStates.value.get(conversationId);
+    if (!state) return;
+    const lastMsg = state.messages[state.messages.length - 1];
+    const maxCreatedAt = state.messages.reduce(
+      (max, m) => Math.max(max, m.createdAt ?? 0), 0,
+    );
+    void setCachedMessages(conversationId, state.messages, maxCreatedAt);
+  }
+
   async function deleteConversation(id: string) {
     await conversationsApi.deleteConversation(id);
     conversations.value = conversations.value.filter((conv) => conv.id !== id);
     saveConversationsCache(conversations.value);
     runtimeStates.value.delete(id);
     runtimeStates.value = new Map(runtimeStates.value);
+    void deleteCachedMessages(id);
     if (currentConversationId.value === id) {
       setCurrentConversation(null);
     }
@@ -731,6 +778,9 @@ export const useConversationStore = defineStore("conversation", () => {
       const marker = normalizeHistoryMessage(res.data.markerMessage, resolveAgentName);
       addMessage(marker, conversationId);
     }
+
+    // Context cleared → cached messages are stale
+    void deleteCachedMessages(conversationId);
 
     return res.data;
   }
@@ -881,6 +931,7 @@ export const useConversationStore = defineStore("conversation", () => {
     fetchAllConversations,
     updateConversationTitle,
     deleteConversation,
+    cacheCurrentConversation,
     clearCurrentConversationContext,
     isToolEnabled,
     setEnabledTools,

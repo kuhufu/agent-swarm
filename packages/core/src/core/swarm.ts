@@ -501,14 +501,14 @@ export class AgentSwarm {
   /**
    * Get messages for a conversation.
    */
-  async getMessages(conversationId: string, userId: string) {
+  async getMessages(conversationId: string, userId: string, since?: number) {
     this.ensureInitialized();
     const normalizedUserId = this.normalizeUserId(userId);
     const conversation = await this.storage.getConversation(conversationId, normalizedUserId);
     if (!conversation) {
       throw new Error(`Conversation not found: ${conversationId}`);
     }
-    return this.storage.getMessages(conversationId);
+    return this.storage.getMessages(conversationId, since);
   }
 
   async getConversationUsage(conversationId: string, userId: string) {

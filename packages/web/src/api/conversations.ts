@@ -64,8 +64,9 @@ export function updateConversationPreferences(
   });
 }
 
-export function getMessages(conversationId: string) {
-  return apiClient<MessageListResponse>(`/conversations/${conversationId}/messages`);
+export function getMessages(conversationId: string, since?: number) {
+  const query = since !== undefined ? `?since=${since}` : "";
+  return apiClient<MessageListResponse>(`/conversations/${conversationId}/messages${query}`);
 }
 
 export function deleteConversation(conversationId: string) {

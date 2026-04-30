@@ -144,6 +144,7 @@ export interface ChatMessage {
   toolCalls?: ToolCallInfo[];
   metadata?: Record<string, unknown>;
   timestamp: number;
+  createdAt?: number;
 }
 
 export interface ToolCallInfo {
