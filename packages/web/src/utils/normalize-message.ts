@@ -161,12 +161,62 @@ function isStandaloneClientToolResult(raw: Record<string, unknown>): boolean {
   return toolName === "javascript_execute" || toolName === "current_time";
 }
 
+function isToolOnlyAssistantMessage(message: ChatMessage): boolean {
+  return message.role === "assistant"
+    && message.content.trim().length === 0
+    && !(typeof message.thinking === "string" && message.thinking.trim().length > 0)
+    && Array.isArray(message.toolCalls)
+    && message.toolCalls.length > 0;
+}
+
+function hasAssistantBody(message: ChatMessage): boolean {
+  return message.content.trim().length > 0
+    || (typeof message.thinking === "string" && message.thinking.trim().length > 0);
+}
+
 export function normalizeHistoryMessages(
   rawMessages: unknown[],
   resolveAgentName: (agentId?: string) => string | undefined,
 ): ChatMessage[] {
   const normalized: ChatMessage[] = [];
   const toolCallIndex = new Map<string, { messageIndex: number; toolCallIndex: number }>();
+
+  function registerToolCalls(messageIndex: number) {
+    const message = normalized[messageIndex];
+    if (message?.role !== "assistant" || !Array.isArray(message.toolCalls)) {
+      return;
+    }
+    message.toolCalls.forEach((toolCall, index) => {
+      if (typeof toolCall.id === "string" && toolCall.id.trim().length > 0) {
+        toolCallIndex.set(toolCall.id, {
+          messageIndex,
+          toolCallIndex: index,
+        });
+      }
+    });
+  }
+
+  function pushToolCallMessage(message: ChatMessage, toolCalls: ToolCallInfo[]) {
+    const previous = normalized[normalized.length - 1];
+    if (
+      previous
+      && isToolOnlyAssistantMessage(previous)
+      && previous.agentId === message.agentId
+    ) {
+      previous.toolCalls = [...(previous.toolCalls ?? []), ...toolCalls];
+      registerToolCalls(normalized.length - 1);
+      return;
+    }
+
+    normalized.push({
+      ...message,
+      id: hasAssistantBody(message) ? `${message.id}:tools` : message.id,
+      content: "",
+      thinking: undefined,
+      toolCalls,
+    });
+    registerToolCalls(normalized.length - 1);
+  }
 
   for (const raw of rawMessages) {
     if (!raw || typeof raw !== "object") {
@@ -205,18 +255,19 @@ export function normalizeHistoryMessages(
     }
 
     const normalizedMessage = normalizeHistoryMessage(message, resolveAgentName);
-    normalized.push(normalizedMessage);
-
     if (normalizedMessage.role === "assistant" && Array.isArray(normalizedMessage.toolCalls)) {
-      normalizedMessage.toolCalls.forEach((toolCall, index) => {
-        if (typeof toolCall.id === "string" && toolCall.id.trim().length > 0) {
-          toolCallIndex.set(toolCall.id, {
-            messageIndex: normalized.length - 1,
-            toolCallIndex: index,
-          });
-        }
-      });
+      const toolCalls = normalizedMessage.toolCalls;
+      if (hasAssistantBody(normalizedMessage)) {
+        normalized.push({
+          ...normalizedMessage,
+          toolCalls: undefined,
+        });
+      }
+      pushToolCallMessage(normalizedMessage, toolCalls);
+      continue;
     }
+
+    normalized.push(normalizedMessage);
   }
 
   return normalized;

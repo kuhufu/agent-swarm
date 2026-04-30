@@ -435,6 +435,29 @@ export const useConversationStore = defineStore("conversation", () => {
     return messages.findIndex((message) => message.id === messageId);
   }
 
+  function isToolOnlyAssistantMessage(message: ChatMessage): boolean {
+    return message.role === "assistant"
+      && message.content.trim().length === 0
+      && !(typeof message.thinking === "string" && message.thinking.trim().length > 0)
+      && Array.isArray(message.toolCalls)
+      && message.toolCalls.length > 0;
+  }
+
+  function findConsecutiveToolCallMessageIndex(messages: ChatMessage[], agentId: string | undefined): number {
+    const lastIndex = messages.length - 1;
+    if (lastIndex < 0) {
+      return -1;
+    }
+    const lastMessage = messages[lastIndex];
+    if (!isToolOnlyAssistantMessage(lastMessage)) {
+      return -1;
+    }
+    if (agentId && lastMessage.agentId !== agentId) {
+      return -1;
+    }
+    return lastIndex;
+  }
+
   function upsertToolCall(agentId: string | undefined, toolCall: ToolCallInfo, conversationId?: string) {
     if (!toolCall.id || !toolCall.name) {
       return;
@@ -459,38 +482,10 @@ export const useConversationStore = defineStore("conversation", () => {
         }
       }
 
-      if (agentId) {
-        const streaming = state.streamingMessages.get(agentId);
-        if (streaming?.role === "assistant") {
-          state.streamingMessages.set(agentId, upsertToolCallInMessage(streaming, toolCall));
-          state.toolCallMessageIds.set(toolCall.id, streaming.id);
-          return;
-        }
-
-        const activeMessageId = state.activeAssistantMessageIds.get(agentId);
-        if (activeMessageId) {
-          const activeMessageIndex = findMessageIndexById(state.messages, activeMessageId);
-          if (activeMessageIndex >= 0) {
-            state.messages[activeMessageIndex] = upsertToolCallInMessage(
-              state.messages[activeMessageIndex],
-              toolCall,
-            );
-            state.toolCallMessageIds.set(toolCall.id, state.messages[activeMessageIndex].id);
-            return;
-          }
-        }
-      }
-
-      for (let i = state.messages.length - 1; i >= 0; i--) {
-        const message = state.messages[i];
-        if (message.role !== "assistant") {
-          continue;
-        }
-        if (agentId && message.agentId !== agentId) {
-          continue;
-        }
-        state.messages[i] = upsertToolCallInMessage(message, toolCall);
-        state.toolCallMessageIds.set(toolCall.id, state.messages[i].id);
+      const groupIndex = findConsecutiveToolCallMessageIndex(state.messages, agentId);
+      if (groupIndex >= 0) {
+        state.messages[groupIndex] = upsertToolCallInMessage(state.messages[groupIndex], toolCall);
+        state.toolCallMessageIds.set(toolCall.id, state.messages[groupIndex].id);
         return;
       }
 
@@ -571,7 +566,7 @@ export const useConversationStore = defineStore("conversation", () => {
     mutateRuntimeState(conversationId, (state) => {
       if (agentId) {
         const stream = state.streamingMessages.get(agentId);
-        if (stream && (shouldPersistStreamMessage(stream) || stream.role === "assistant")) {
+        if (stream && shouldPersistStreamMessage(stream)) {
           state.messages.push(cloneMessage(stream));
           if (stream.role === "assistant") {
             state.activeAssistantMessageIds.set(agentId, stream.id);
@@ -582,7 +577,7 @@ export const useConversationStore = defineStore("conversation", () => {
       }
 
       for (const [key, stream] of state.streamingMessages.entries()) {
-        if (shouldPersistStreamMessage(stream) || stream.role === "assistant") {
+        if (shouldPersistStreamMessage(stream)) {
           state.messages.push(cloneMessage(stream));
           if (stream.role === "assistant" && stream.agentId) {
             state.activeAssistantMessageIds.set(stream.agentId, stream.id);
