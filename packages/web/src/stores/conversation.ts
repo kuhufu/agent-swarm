@@ -19,6 +19,7 @@ interface ConversationRuntimeState {
   streamingMessages: Map<string, ChatMessage>;
   agentStates: Map<string, AgentState>;
   activeAssistantMessageIds: Map<string, string>;
+  toolCallMessageIds: Map<string, string>;
   isActive: boolean;
 }
 
@@ -126,6 +127,7 @@ export const useConversationStore = defineStore("conversation", () => {
       streamingMessages: new Map(),
       agentStates: new Map(),
       activeAssistantMessageIds: new Map(),
+      toolCallMessageIds: new Map(),
       isActive: false,
     };
   }
@@ -230,6 +232,7 @@ export const useConversationStore = defineStore("conversation", () => {
         Array.from(state.agentStates.entries()).map(([key, agentState]) => [key, cloneAgentState(agentState)]),
       ),
       activeAssistantMessageIds: new Map(state.activeAssistantMessageIds),
+      toolCallMessageIds: new Map(state.toolCallMessageIds),
       isActive: state.isActive,
     };
   }
@@ -284,6 +287,11 @@ export const useConversationStore = defineStore("conversation", () => {
       mergedActiveAssistantMessageIds.set(agentId, messageId);
     }
 
+    const mergedToolCallMessageIds = new Map(draftState.toolCallMessageIds);
+    for (const [toolCallId, messageId] of existingState.toolCallMessageIds.entries()) {
+      mergedToolCallMessageIds.set(toolCallId, messageId);
+    }
+
     const mergedAgentStates = new Map<string, AgentState>();
     for (const [agentId, state] of draftState.agentStates.entries()) {
       mergedAgentStates.set(agentId, cloneAgentState(state));
@@ -297,6 +305,7 @@ export const useConversationStore = defineStore("conversation", () => {
       streamingMessages: mergedStreamingMessages,
       agentStates: mergedAgentStates,
       activeAssistantMessageIds: mergedActiveAssistantMessageIds,
+      toolCallMessageIds: mergedToolCallMessageIds,
       isActive: existingState.isActive || draftState.isActive,
     };
   }
@@ -432,10 +441,29 @@ export const useConversationStore = defineStore("conversation", () => {
     }
 
     mutateRuntimeState(conversationId, (state) => {
+      const boundMessageId = state.toolCallMessageIds.get(toolCall.id);
+      if (boundMessageId) {
+        const boundMessageIndex = findMessageIndexById(state.messages, boundMessageId);
+        if (boundMessageIndex >= 0) {
+          state.messages[boundMessageIndex] = upsertToolCallInMessage(
+            state.messages[boundMessageIndex],
+            toolCall,
+          );
+          return;
+        }
+        for (const [streamKey, stream] of state.streamingMessages.entries()) {
+          if (stream.id === boundMessageId) {
+            state.streamingMessages.set(streamKey, upsertToolCallInMessage(stream, toolCall));
+            return;
+          }
+        }
+      }
+
       if (agentId) {
         const streaming = state.streamingMessages.get(agentId);
         if (streaming?.role === "assistant") {
           state.streamingMessages.set(agentId, upsertToolCallInMessage(streaming, toolCall));
+          state.toolCallMessageIds.set(toolCall.id, streaming.id);
           return;
         }
 
@@ -447,6 +475,7 @@ export const useConversationStore = defineStore("conversation", () => {
               state.messages[activeMessageIndex],
               toolCall,
             );
+            state.toolCallMessageIds.set(toolCall.id, state.messages[activeMessageIndex].id);
             return;
           }
         }
@@ -461,6 +490,7 @@ export const useConversationStore = defineStore("conversation", () => {
           continue;
         }
         state.messages[i] = upsertToolCallInMessage(message, toolCall);
+        state.toolCallMessageIds.set(toolCall.id, state.messages[i].id);
         return;
       }
 
@@ -477,6 +507,7 @@ export const useConversationStore = defineStore("conversation", () => {
       if (agentId) {
         state.activeAssistantMessageIds.set(agentId, messageId);
       }
+      state.toolCallMessageIds.set(toolCall.id, messageId);
     });
   }
 
@@ -491,28 +522,9 @@ export const useConversationStore = defineStore("conversation", () => {
       if (existing && existing.content.trim().length > 0) {
         state.messages.push(cloneMessage(existing));
       }
-      let carriedToolCalls: ToolCallInfo[] | undefined;
-      if (msg.role === "assistant" && msg.agentId) {
-        const activeMessageId = state.activeAssistantMessageIds.get(msg.agentId);
-        if (activeMessageId) {
-          const activeMessageIndex = findMessageIndexById(state.messages, activeMessageId);
-          const activeMessage = activeMessageIndex >= 0 ? state.messages[activeMessageIndex] : undefined;
-          if (
-            activeMessage?.role === "assistant"
-            && activeMessage.agentId === msg.agentId
-            && activeMessage.content.trim().length === 0
-            && Array.isArray(activeMessage.toolCalls)
-            && activeMessage.toolCalls.length > 0
-          ) {
-            carriedToolCalls = activeMessage.toolCalls.map((toolCall) => cloneToolCall(toolCall));
-            state.messages.splice(activeMessageIndex, 1);
-          }
-        }
-      }
       const nextMessage = {
         ...msg,
         content: "",
-        toolCalls: carriedToolCalls ?? msg.toolCalls,
       };
       state.streamingMessages.set(key, nextMessage);
       if (msg.role === "assistant" && msg.agentId) {
@@ -586,6 +598,7 @@ export const useConversationStore = defineStore("conversation", () => {
       state.messages = [];
       state.streamingMessages = new Map();
       state.activeAssistantMessageIds = new Map();
+      state.toolCallMessageIds = new Map();
     });
   }
 
@@ -721,6 +734,7 @@ export const useConversationStore = defineStore("conversation", () => {
         mutateRuntimeState(normalizedConversationId, (state) => {
           state.messages = normalizeHistoryMessages(cached.messages, resolveAgentName);
           state.activeAssistantMessageIds = new Map();
+          state.toolCallMessageIds = new Map();
         });
       }
 
@@ -734,6 +748,7 @@ export const useConversationStore = defineStore("conversation", () => {
         state.messages = normalizeHistoryMessages(mergedMessages, resolveAgentName);
         state.streamingMessages = new Map();
         state.activeAssistantMessageIds = new Map();
+        state.toolCallMessageIds = new Map();
         state.isActive = false;
       });
 
