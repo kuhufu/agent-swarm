@@ -125,7 +125,6 @@ export const useConversationStore = defineStore("conversation", () => {
     };
   }
 
-  const defaultConversationId = ref<string | null>(null);
   const loading = ref(false);
   const loadingMessages = ref(false);
   const conversations = ref<ConversationInfo[]>(restoreConversationsCache());
@@ -150,11 +149,7 @@ export const useConversationStore = defineStore("conversation", () => {
     if (normalized) {
       return normalized;
     }
-    return defaultConversationId.value ?? DRAFT_RUNTIME_ID;
-  }
-
-  function resolveCurrentRuntimeStateId(): string {
-    return defaultConversationId.value ?? DRAFT_RUNTIME_ID;
+    return DRAFT_RUNTIME_ID;
   }
 
   function getOrCreateRuntimeStateById(runtimeId: string): ConversationRuntimeState {
@@ -172,30 +167,6 @@ export const useConversationStore = defineStore("conversation", () => {
     runtimeStates.value.set(runtimeId, createEmptyRuntimeState());
     runtimeStates.value = new Map(runtimeStates.value);
   }
-
-  const messages = computed<ChatMessage[]>(() => {
-    const runtimeId = resolveCurrentRuntimeStateId();
-    const state = runtimeStates.value.get(runtimeId) ?? runtimeStates.value.get(DRAFT_RUNTIME_ID)!;
-    return state.messages;
-  });
-
-  const streamingMessages = computed<Map<string, ChatMessage>>(() => {
-    const runtimeId = resolveCurrentRuntimeStateId();
-    const state = runtimeStates.value.get(runtimeId) ?? runtimeStates.value.get(DRAFT_RUNTIME_ID)!;
-    return state.streamingMessages;
-  });
-
-  const agentStates = computed<Map<string, AgentState>>(() => {
-    const runtimeId = resolveCurrentRuntimeStateId();
-    const state = runtimeStates.value.get(runtimeId) ?? runtimeStates.value.get(DRAFT_RUNTIME_ID)!;
-    return state.agentStates;
-  });
-
-  const isActive = computed<boolean>(() => {
-    const runtimeId = resolveCurrentRuntimeStateId();
-    const state = runtimeStates.value.get(runtimeId) ?? runtimeStates.value.get(DRAFT_RUNTIME_ID)!;
-    return state.isActive;
-  });
 
   function getMessages(conversationId?: string | null): ChatMessage[] {
     const state = runtimeStates.value.get(resolveRuntimeStateId(conversationId))
@@ -539,38 +510,6 @@ export const useConversationStore = defineStore("conversation", () => {
     inputFocusRequestKey.value += 1;
   }
 
-  function setDefaultConversation(id: string | null) {
-    const normalizedId = normalizeConversationId(id);
-
-    if (!normalizedId) {
-      defaultConversationId.value = null;
-      resetRuntimeStateById(DRAFT_RUNTIME_ID);
-      applyConversationPreferences(null);
-      requestInputFocus();
-      return;
-    }
-
-    getOrCreateRuntimeStateById(normalizedId);
-
-    if (defaultConversationId.value === normalizedId) {
-      const conversation = conversations.value.find((item) => item.id === normalizedId);
-      if (conversation) {
-        applyConversationPreferences(conversation);
-      }
-      requestInputFocus();
-      return;
-    }
-
-    defaultConversationId.value = normalizedId;
-    const conversation = conversations.value.find((item) => item.id === normalizedId);
-    if (conversation) {
-      applyConversationPreferences(conversation);
-    } else {
-      applyConversationPreferences(null);
-    }
-    requestInputFocus();
-  }
-
   function resolveAgentName(agentId?: string, conversationId?: string): string | undefined {
     if (!agentId) {
       return undefined;
@@ -666,12 +605,17 @@ export const useConversationStore = defineStore("conversation", () => {
     // If runtime already has messages, just switch to it without any API call
     const existingRuntime = runtimeStates.value.get(resolveRuntimeStateId(normalizedConversationId));
     if (existingRuntime && existingRuntime.messages.length > 0 && !existingRuntime.isActive && existingRuntime.streamingMessages.size === 0) {
-      setDefaultConversation(normalizedConversationId);
+      const cachedConversation = conversations.value.find((item) => item.id === normalizedConversationId);
+      applyConversationPreferences(cachedConversation ?? null);
+      requestInputFocus();
       return;
     }
 
-    // Set current conversation from cache immediately (title, preferences)
-    setDefaultConversation(normalizedConversationId);
+    // Apply cached preferences immediately while the full conversation loads.
+    const cachedConversation = conversations.value.find((item) => item.id === normalizedConversationId);
+    applyConversationPreferences(cachedConversation ?? null);
+    getOrCreateRuntimeStateById(normalizedConversationId);
+    requestInputFocus();
 
     loadingMessages.value = true;
     try {
@@ -781,12 +725,6 @@ export const useConversationStore = defineStore("conversation", () => {
       const res = await conversationsApi.listConversations(swarmId);
       conversations.value = res.data;
       saveConversationsCache(res.data);
-      if (defaultConversationId.value) {
-        const current = conversations.value.find((conv) => conv.id === defaultConversationId.value);
-        if (current) {
-          applyConversationPreferences(current);
-        }
-      }
     } finally {
       loading.value = false;
     }
@@ -798,12 +736,6 @@ export const useConversationStore = defineStore("conversation", () => {
       const res = await conversationsApi.listConversations();
       conversations.value = res.data;
       saveConversationsCache(res.data);
-      if (defaultConversationId.value) {
-        const current = conversations.value.find((conv) => conv.id === defaultConversationId.value);
-        if (current) {
-          applyConversationPreferences(current);
-        }
-      }
     } finally {
       loading.value = false;
     }
@@ -817,7 +749,7 @@ export const useConversationStore = defineStore("conversation", () => {
   }
 
   function cacheConversation(conversationId?: string | null) {
-    const id = conversationId ?? defaultConversationId.value;
+    const id = normalizeConversationId(conversationId);
     if (!id) return;
     const state = runtimeStates.value.get(id);
     if (!state) return;
@@ -834,9 +766,6 @@ export const useConversationStore = defineStore("conversation", () => {
     runtimeStates.value.delete(id);
     runtimeStates.value = new Map(runtimeStates.value);
     void deleteCachedMessages(id);
-    if (defaultConversationId.value === id) {
-      setDefaultConversation(null);
-    }
   }
 
   async function clearConversationContext(conversationId: string | null | undefined) {
@@ -876,58 +805,42 @@ export const useConversationStore = defineStore("conversation", () => {
     return res.data;
   }
 
-  async function clearCurrentConversationContext() {
-    return clearConversationContext(defaultConversationId.value);
-  }
-
   async function persistConversationPreferences(
     conversationId: string,
     patch: Partial<Pick<ConversationInfo, "enabledTools" | "thinkingLevel" | "directModel">>,
   ) {
     const res = await conversationsApi.updateConversationPreferences(conversationId, patch);
     updateConversationInfo(conversationId, res.data);
-    if (conversationId === defaultConversationId.value) {
-      applyConversationPreferences(res.data);
-    }
-  }
-
-  async function persistCurrentConversationPreferences(
-    patch: Partial<Pick<ConversationInfo, "enabledTools" | "thinkingLevel" | "directModel">>,
-  ) {
-    const conversationId = defaultConversationId.value;
-    if (!conversationId) {
-      return;
-    }
-    await persistConversationPreferences(conversationId, patch);
+    applyConversationPreferences(res.data);
   }
 
   function isToolEnabled(toolName: string): boolean {
     return enabledTools.value.includes(toolName);
   }
 
-  function setEnabledTools(nextTools: string[], persist = true) {
+  function setEnabledTools(nextTools: string[], persist = true, conversationId?: string | null) {
     enabledTools.value = normalizeEnabledTools(nextTools);
-    if (persist) {
-      void persistCurrentConversationPreferences({ enabledTools: enabledTools.value }).catch(() => {
+    if (persist && conversationId) {
+      void persistConversationPreferences(conversationId, { enabledTools: enabledTools.value }).catch(() => {
         // ignore persistence failures; current UI state is still usable for this turn
       });
     }
   }
 
-  function setClientToolEnabled(toolName: string, enabled: boolean, persist = true) {
+  function setClientToolEnabled(toolName: string, enabled: boolean, persist = true, conversationId?: string | null) {
     const next = new Set(enabledTools.value);
     if (enabled) {
       next.add(toolName);
     } else {
       next.delete(toolName);
     }
-    setEnabledTools(Array.from(next), persist);
+    setEnabledTools(Array.from(next), persist, conversationId);
   }
 
-  function setThinkingLevel(level: string, persist = true) {
+  function setThinkingLevel(level: string, persist = true, conversationId?: string | null) {
     thinkingLevel.value = level;
-    if (persist) {
-      void persistCurrentConversationPreferences({ thinkingLevel: level }).catch(() => {
+    if (persist && conversationId) {
+      void persistConversationPreferences(conversationId, { thinkingLevel: level }).catch(() => {
         // ignore persistence failures; current UI state is still usable for this turn
       });
     }
@@ -962,21 +875,16 @@ export const useConversationStore = defineStore("conversation", () => {
       return;
     }
     const raw = payload as Record<string, unknown>;
-    const conversationId = typeof raw.conversationId === "string" ? raw.conversationId : defaultConversationId.value;
-    const isCurrentConversation = conversationId === defaultConversationId.value;
+    const conversationId = typeof raw.conversationId === "string" ? raw.conversationId : null;
     const patch: Partial<ConversationInfo> = {};
 
     if (Array.isArray(raw.enabledTools)) {
       patch.enabledTools = normalizeEnabledTools(raw.enabledTools);
-      if (isCurrentConversation) {
-        enabledTools.value = patch.enabledTools;
-      }
+      enabledTools.value = patch.enabledTools;
     }
     if (typeof raw.thinkingLevel === "string") {
       patch.thinkingLevel = raw.thinkingLevel;
-      if (isCurrentConversation) {
-        thinkingLevel.value = raw.thinkingLevel;
-      }
+      thinkingLevel.value = raw.thinkingLevel;
     }
     if (raw.directModel && typeof raw.directModel === "object" && !Array.isArray(raw.directModel)) {
       const normalized = normalizeDirectModel(raw.directModel as ConversationInfo["directModel"]);
@@ -998,7 +906,6 @@ export const useConversationStore = defineStore("conversation", () => {
   }
 
   function reset() {
-    defaultConversationId.value = null;
     loading.value = false;
     loadingMessages.value = false;
     conversations.value = [];
@@ -1008,10 +915,6 @@ export const useConversationStore = defineStore("conversation", () => {
   }
 
   return {
-    messages,
-    streamingMessages,
-    agentStates,
-    isActive,
     getMessages,
     getStreamingMessages,
     getAgentStates,
@@ -1042,7 +945,6 @@ export const useConversationStore = defineStore("conversation", () => {
     deleteConversation,
     cacheConversation,
     clearConversationContext,
-    clearCurrentConversationContext,
     isToolEnabled,
     setEnabledTools,
     setClientToolEnabled,

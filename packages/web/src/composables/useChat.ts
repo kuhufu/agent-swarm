@@ -35,27 +35,27 @@ export function useChat(conversationId: Ref<string | null>) {
   });
   const currentTimeToolEnabled = computed({
     get: () => conversationStore.isToolEnabled("current_time"),
-    set: (value: boolean) => conversationStore.setClientToolEnabled("current_time", value),
+    set: (value: boolean) => conversationStore.setClientToolEnabled("current_time", value, true, conversationId.value),
   });
   const jsExecutionToolEnabled = computed({
     get: () => conversationStore.isToolEnabled("javascript_execute"),
-    set: (value: boolean) => conversationStore.setClientToolEnabled("javascript_execute", value),
+    set: (value: boolean) => conversationStore.setClientToolEnabled("javascript_execute", value, true, conversationId.value),
   });
   const searchToolEnabled = computed({
     get: () => conversationStore.isToolEnabled("web_search"),
-    set: (value: boolean) => conversationStore.setClientToolEnabled("web_search", value),
+    set: (value: boolean) => conversationStore.setClientToolEnabled("web_search", value, true, conversationId.value),
   });
   const retrieveKnowledgeToolEnabled = computed({
     get: () => conversationStore.isToolEnabled("retrieve_knowledge"),
-    set: (value: boolean) => conversationStore.setClientToolEnabled("retrieve_knowledge", value),
+    set: (value: boolean) => conversationStore.setClientToolEnabled("retrieve_knowledge", value, true, conversationId.value),
   });
   const workspaceToolEnabled = computed({
     get: () => conversationStore.isToolEnabled("workspace"),
-    set: (value: boolean) => conversationStore.setClientToolEnabled("workspace", value),
+    set: (value: boolean) => conversationStore.setClientToolEnabled("workspace", value, true, conversationId.value),
   });
   const thinkingLevel = computed({
     get: () => conversationStore.thinkingLevel,
-    set: (value: string) => conversationStore.setThinkingLevel(value),
+    set: (value: string) => conversationStore.setThinkingLevel(value, true, conversationId.value),
   });
 
   // Sync sending state with isActive from the store.
