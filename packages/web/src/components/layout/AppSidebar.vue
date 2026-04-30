@@ -168,15 +168,15 @@ async function handleNewConversation() {
     return;
   }
 
-  if (!isChatRoute.value || routeConversationId.value) {
-    await router.push({ name: "chat", params: {} });
+  if (!isChatRoute.value || routeConversationId.value || route.query.mode !== "swarm") {
+    await router.push({ name: "chat", params: {}, query: { mode: "swarm" } });
   }
 }
 
 function handleNewDirectConversation() {
   closeConversationMenu();
-  if (!isChatRoute.value || routeConversationId.value) {
-    void router.push({ name: "chat", params: {} });
+  if (!isChatRoute.value || routeConversationId.value || route.query.mode !== "direct") {
+    void router.push({ name: "chat", params: {}, query: { mode: "direct" } });
   }
 }
 

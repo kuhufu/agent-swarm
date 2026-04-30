@@ -25,6 +25,9 @@ const routeConversationId = computed(() => {
   const normalizedConversationId = rawConversationId.trim();
   return normalizedConversationId.length > 0 ? normalizedConversationId : null;
 });
+const draftMode = computed<"direct" | "swarm">(() =>
+  route.query.mode === "swarm" ? "swarm" : "direct",
+);
 const currentConversation = computed(() =>
   routeConversationId.value
     ? conversationStore.conversations.find((c) => c.id === routeConversationId.value) ?? null
@@ -40,7 +43,7 @@ const swarmId = computed(() => {
 const isDirectMode = computed(() => {
   const conv = currentConversation.value;
   if (conv) return conv.swarmId.startsWith("__direct_");
-  return !draftSwarmId.value;
+  return draftMode.value === "direct";
 });
 const streamingMessages = computed(() =>
   Array.from(conversationStore.getStreamingMessages(routeConversationId.value).values()),
@@ -80,6 +83,12 @@ function handleConversationCreated(event: Event) {
   }
 }
 
+watch(draftMode, (mode) => {
+  if (mode === "direct") {
+    draftSwarmId.value = "";
+  }
+});
+
 watch(
   () => swarmStore.swarms.map((swarm) => swarm.id),
   (ids) => {
@@ -107,13 +116,13 @@ watch(
 );
 
 function handleNewConversation() {
-  void router.push({ name: "chat", params: {} });
+  void router.push({ name: "chat", params: {}, query: { mode: "swarm" } });
 }
 
 function handleSelectDraftSwarm(swarmId: string) {
   draftSwarmId.value = swarmId;
   if (routeConversationId.value) {
-    void router.push({ name: "chat", params: {} });
+    void router.push({ name: "chat", params: {}, query: { mode: "swarm" } });
   }
 }
 
@@ -185,7 +194,7 @@ async function handleForkConversation() {
       />
       <InterventionPanel />
       <ChatInput
-        :key="routeConversationId ?? 'new'"
+        :key="routeConversationId ?? `new-${draftMode}`"
         :conversation-id="routeConversationId"
         :swarm-id="swarmId"
         :active="active"
