@@ -14,6 +14,33 @@ export function useChat(conversationId: Ref<string | null>) {
   const inputText = ref("");
   const sending = ref(false);
   const draftDirectModel = ref<DirectModelSelection | null>(null);
+  const draftEnabledTools = ref<string[]>([]);
+  const draftThinkingLevel = ref<string>("off");
+  const enabledTools = computed<string[]>(() => {
+    if (conversationId.value) {
+      return conversationStore.getEnabledTools(conversationId.value);
+    }
+    return draftEnabledTools.value;
+  });
+  const setEnabledTools = (nextTools: string[]) => {
+    if (conversationId.value) {
+      void conversationStore.updateConversationPreferences(conversationId.value, { enabledTools: nextTools }).catch(() => {
+        // ignore persistence failures; current UI state is still usable for this turn
+      });
+      return;
+    }
+    draftEnabledTools.value = nextTools;
+  };
+  const isToolEnabled = (toolName: string) => enabledTools.value.includes(toolName);
+  const setClientToolEnabled = (toolName: string, enabled: boolean) => {
+    const next = new Set(enabledTools.value);
+    if (enabled) {
+      next.add(toolName);
+    } else {
+      next.delete(toolName);
+    }
+    setEnabledTools(Array.from(next));
+  };
   const directModel = computed<DirectModelSelection | null>({
     get: (): DirectModelSelection | null => {
       const model = conversationStore.getDirectModel(conversationId.value) ?? draftDirectModel.value;
@@ -34,28 +61,41 @@ export function useChat(conversationId: Ref<string | null>) {
     },
   });
   const currentTimeToolEnabled = computed({
-    get: () => conversationStore.isToolEnabled("current_time"),
-    set: (value: boolean) => conversationStore.setClientToolEnabled("current_time", value, true, conversationId.value),
+    get: () => isToolEnabled("current_time"),
+    set: (value: boolean) => setClientToolEnabled("current_time", value),
   });
   const jsExecutionToolEnabled = computed({
-    get: () => conversationStore.isToolEnabled("javascript_execute"),
-    set: (value: boolean) => conversationStore.setClientToolEnabled("javascript_execute", value, true, conversationId.value),
+    get: () => isToolEnabled("javascript_execute"),
+    set: (value: boolean) => setClientToolEnabled("javascript_execute", value),
   });
   const searchToolEnabled = computed({
-    get: () => conversationStore.isToolEnabled("web_search"),
-    set: (value: boolean) => conversationStore.setClientToolEnabled("web_search", value, true, conversationId.value),
+    get: () => isToolEnabled("web_search"),
+    set: (value: boolean) => setClientToolEnabled("web_search", value),
   });
   const retrieveKnowledgeToolEnabled = computed({
-    get: () => conversationStore.isToolEnabled("retrieve_knowledge"),
-    set: (value: boolean) => conversationStore.setClientToolEnabled("retrieve_knowledge", value, true, conversationId.value),
+    get: () => isToolEnabled("retrieve_knowledge"),
+    set: (value: boolean) => setClientToolEnabled("retrieve_knowledge", value),
   });
   const workspaceToolEnabled = computed({
-    get: () => conversationStore.isToolEnabled("workspace"),
-    set: (value: boolean) => conversationStore.setClientToolEnabled("workspace", value, true, conversationId.value),
+    get: () => isToolEnabled("workspace"),
+    set: (value: boolean) => setClientToolEnabled("workspace", value),
   });
   const thinkingLevel = computed({
-    get: () => conversationStore.thinkingLevel,
-    set: (value: string) => conversationStore.setThinkingLevel(value, true, conversationId.value),
+    get: () => {
+      if (conversationId.value) {
+        return conversationStore.getThinkingLevel(conversationId.value);
+      }
+      return draftThinkingLevel.value;
+    },
+    set: (value: string) => {
+      if (conversationId.value) {
+        void conversationStore.updateConversationPreferences(conversationId.value, { thinkingLevel: value }).catch(() => {
+          // ignore persistence failures; current UI state is still usable for this turn
+        });
+        return;
+      }
+      draftThinkingLevel.value = value;
+    },
   });
 
   // Sync sending state with isActive from the store.
@@ -93,7 +133,7 @@ export function useChat(conversationId: Ref<string | null>) {
         payload: {
           conversationId: activeConversationId,
           content: text,
-          enabledTools: conversationStore.enabledTools,
+          enabledTools: enabledTools.value,
           thinkingLevel: thinkingLevel.value,
         },
       });
@@ -103,7 +143,7 @@ export function useChat(conversationId: Ref<string | null>) {
         payload: {
           swarmId,
           content: text,
-          enabledTools: conversationStore.enabledTools,
+          enabledTools: enabledTools.value,
           thinkingLevel: thinkingLevel.value,
         },
       });
@@ -135,7 +175,7 @@ export function useChat(conversationId: Ref<string | null>) {
         provider: directModel.value.provider,
         modelId: directModel.value.modelId,
         content: text,
-        enabledTools: conversationStore.enabledTools,
+        enabledTools: enabledTools.value,
         thinkingLevel: thinkingLevel.value,
       },
     });

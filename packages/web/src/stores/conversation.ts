@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import type { ChatMessage, AgentState, ConversationInfo, ToolCallInfo } from "../types/index.js";
 import { useSwarmStore } from "./swarm.js";
 import * as conversationsApi from "../api/conversations.js";
@@ -128,9 +128,6 @@ export const useConversationStore = defineStore("conversation", () => {
   const loading = ref(false);
   const loadingMessages = ref(false);
   const conversations = ref<ConversationInfo[]>(restoreConversationsCache());
-  const enabledTools = ref<string[]>([]);
-  const thinkingLevel = ref<string>("off");
-  const thinkModeEnabled = computed(() => thinkingLevel.value !== "off");
   const inputFocusRequestKey = ref(0);
   const runtimeStates = ref<Map<string, ConversationRuntimeState>>(
     new Map([[DRAFT_RUNTIME_ID, createEmptyRuntimeState()]]),
@@ -330,13 +327,6 @@ export const useConversationStore = defineStore("conversation", () => {
     return Array.from(new Set(normalized));
   }
 
-  function applyConversationPreferences(
-    preferences?: Partial<Pick<ConversationInfo, "enabledTools" | "thinkingLevel" | "directModel">> | null,
-  ) {
-    enabledTools.value = normalizeEnabledTools(preferences?.enabledTools);
-    thinkingLevel.value = preferences?.thinkingLevel ?? "off";
-  }
-
   function normalizeDirectModel(
     model: ConversationInfo["directModel"] | null | undefined,
   ): ConversationInfo["directModel"] | null {
@@ -357,6 +347,22 @@ export const useConversationStore = defineStore("conversation", () => {
     }
     const conversation = conversations.value.find((item) => item.id === conversationId);
     return normalizeDirectModel(conversation?.directModel);
+  }
+
+  function getEnabledTools(conversationId?: string | null): string[] {
+    if (!conversationId) {
+      return [];
+    }
+    const conversation = conversations.value.find((item) => item.id === conversationId);
+    return normalizeEnabledTools(conversation?.enabledTools);
+  }
+
+  function getThinkingLevel(conversationId?: string | null): string {
+    if (!conversationId) {
+      return "off";
+    }
+    const conversation = conversations.value.find((item) => item.id === conversationId);
+    return conversation?.thinkingLevel ?? "off";
   }
 
   function updateConversationInfo(id: string, patch: Partial<ConversationInfo>) {
@@ -605,15 +611,10 @@ export const useConversationStore = defineStore("conversation", () => {
     // If runtime already has messages, just switch to it without any API call
     const existingRuntime = runtimeStates.value.get(resolveRuntimeStateId(normalizedConversationId));
     if (existingRuntime && existingRuntime.messages.length > 0 && !existingRuntime.isActive && existingRuntime.streamingMessages.size === 0) {
-      const cachedConversation = conversations.value.find((item) => item.id === normalizedConversationId);
-      applyConversationPreferences(cachedConversation ?? null);
       requestInputFocus();
       return;
     }
 
-    // Apply cached preferences immediately while the full conversation loads.
-    const cachedConversation = conversations.value.find((item) => item.id === normalizedConversationId);
-    applyConversationPreferences(cachedConversation ?? null);
     getOrCreateRuntimeStateById(normalizedConversationId);
     requestInputFocus();
 
@@ -622,7 +623,6 @@ export const useConversationStore = defineStore("conversation", () => {
       // Fetch conversation info (always needed)
       const conversationRes = await conversationsApi.getConversation(normalizedConversationId);
 
-      applyConversationPreferences(conversationRes.data);
       updateConversationInfo(normalizedConversationId, conversationRes.data);
 
       if (conversationRes.data.swarmId.startsWith("__direct_")) {
@@ -809,41 +809,10 @@ export const useConversationStore = defineStore("conversation", () => {
     conversationId: string,
     patch: Partial<Pick<ConversationInfo, "enabledTools" | "thinkingLevel" | "directModel">>,
   ) {
+    updateConversationInfo(conversationId, patch);
     const res = await conversationsApi.updateConversationPreferences(conversationId, patch);
     updateConversationInfo(conversationId, res.data);
-    applyConversationPreferences(res.data);
-  }
-
-  function isToolEnabled(toolName: string): boolean {
-    return enabledTools.value.includes(toolName);
-  }
-
-  function setEnabledTools(nextTools: string[], persist = true, conversationId?: string | null) {
-    enabledTools.value = normalizeEnabledTools(nextTools);
-    if (persist && conversationId) {
-      void persistConversationPreferences(conversationId, { enabledTools: enabledTools.value }).catch(() => {
-        // ignore persistence failures; current UI state is still usable for this turn
-      });
-    }
-  }
-
-  function setClientToolEnabled(toolName: string, enabled: boolean, persist = true, conversationId?: string | null) {
-    const next = new Set(enabledTools.value);
-    if (enabled) {
-      next.add(toolName);
-    } else {
-      next.delete(toolName);
-    }
-    setEnabledTools(Array.from(next), persist, conversationId);
-  }
-
-  function setThinkingLevel(level: string, persist = true, conversationId?: string | null) {
-    thinkingLevel.value = level;
-    if (persist && conversationId) {
-      void persistConversationPreferences(conversationId, { thinkingLevel: level }).catch(() => {
-        // ignore persistence failures; current UI state is still usable for this turn
-      });
-    }
+    return res.data;
   }
 
   function setDirectModel(
@@ -880,11 +849,9 @@ export const useConversationStore = defineStore("conversation", () => {
 
     if (Array.isArray(raw.enabledTools)) {
       patch.enabledTools = normalizeEnabledTools(raw.enabledTools);
-      enabledTools.value = patch.enabledTools;
     }
     if (typeof raw.thinkingLevel === "string") {
       patch.thinkingLevel = raw.thinkingLevel;
-      thinkingLevel.value = raw.thinkingLevel;
     }
     if (raw.directModel && typeof raw.directModel === "object" && !Array.isArray(raw.directModel)) {
       const normalized = normalizeDirectModel(raw.directModel as ConversationInfo["directModel"]);
@@ -909,8 +876,6 @@ export const useConversationStore = defineStore("conversation", () => {
     loading.value = false;
     loadingMessages.value = false;
     conversations.value = [];
-    enabledTools.value = [];
-    thinkingLevel.value = "off";
     runtimeStates.value = new Map([[DRAFT_RUNTIME_ID, createEmptyRuntimeState()]]);
   }
 
@@ -922,9 +887,6 @@ export const useConversationStore = defineStore("conversation", () => {
     loading,
     loadingMessages,
     conversations,
-    enabledTools,
-    thinkModeEnabled,
-    thinkingLevel,
     inputFocusRequestKey,
     addMessage,
     upsertToolCall,
@@ -945,12 +907,11 @@ export const useConversationStore = defineStore("conversation", () => {
     deleteConversation,
     cacheConversation,
     clearConversationContext,
-    isToolEnabled,
-    setEnabledTools,
-    setClientToolEnabled,
-    setThinkingLevel,
+    updateConversationPreferences: persistConversationPreferences,
     setDirectModel,
     getDirectModel,
+    getEnabledTools,
+    getThinkingLevel,
     requestInputFocus,
     applyConversationSettingsFromServer,
     reset,

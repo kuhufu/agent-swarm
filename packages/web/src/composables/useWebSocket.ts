@@ -257,7 +257,7 @@ export function useWebSocket() {
         break;
 
       case "client_tool_execution_required":
-        void handleClientToolExecutionRequired(msg, conversationStore);
+        void handleClientToolExecutionRequired(msg, conversationStore, targetConversationId);
         break;
 
       // ── Swarm lifecycle ──
@@ -299,6 +299,7 @@ export function useWebSocket() {
   async function handleClientToolExecutionRequired(
     msg: WSMessage,
     conversationStore: ReturnType<typeof useConversationStore>,
+    conversationId: string | undefined,
   ) {
     const payload = msg.payload ?? {};
     const requestId = typeof payload.requestId === "string" ? payload.requestId : "";
@@ -312,7 +313,7 @@ export function useWebSocket() {
     const executed = await executeClientTool(
       toolName,
       params,
-      { enabledTools: conversationStore.enabledTools },
+      { enabledTools: conversationStore.getEnabledTools(conversationId) },
     );
 
     send({
