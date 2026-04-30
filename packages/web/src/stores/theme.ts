@@ -2,18 +2,24 @@ import { defineStore } from "pinia";
 import { ref, computed, watch } from "vue";
 
 export type ThemeMode = "dark" | "light" | "auto";
+const THEME_MODE_KEY = "theme-mode";
+const THEME_MODES: ThemeMode[] = ["auto", "light", "dark"];
+
+function restoreThemeMode(): ThemeMode {
+  const stored = localStorage.getItem(THEME_MODE_KEY);
+  return THEME_MODES.includes(stored as ThemeMode) ? stored as ThemeMode : "auto";
+}
 
 function getSystemTheme(): "dark" | "light" {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 export const useThemeStore = defineStore("theme", () => {
-  const mode = ref<ThemeMode>(
-    (localStorage.getItem("theme-mode") as ThemeMode) ?? "auto",
-  );
+  const mode = ref<ThemeMode>(restoreThemeMode());
+  const systemTheme = ref<"dark" | "light">(getSystemTheme());
 
   const resolvedTheme = computed(() =>
-    mode.value === "auto" ? getSystemTheme() : mode.value,
+    mode.value === "auto" ? systemTheme.value : mode.value,
   );
 
   function applyTheme(theme: "dark" | "light") {
@@ -21,17 +27,15 @@ export const useThemeStore = defineStore("theme", () => {
   }
 
   // Watch for mode changes and apply
-  watch(resolvedTheme, (val) => {
-    localStorage.setItem("theme-mode", mode.value);
-    applyTheme(val);
+  watch([mode, resolvedTheme], ([nextMode, nextTheme]) => {
+    localStorage.setItem(THEME_MODE_KEY, nextMode);
+    applyTheme(nextTheme);
   }, { immediate: true });
 
   // Listen for system theme changes when in auto mode
   const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
   function onSystemThemeChange() {
-    if (mode.value === "auto") {
-      applyTheme(getSystemTheme());
-    }
+    systemTheme.value = getSystemTheme();
   }
   mediaQuery.addEventListener("change", onSystemThemeChange);
 
@@ -40,9 +44,8 @@ export const useThemeStore = defineStore("theme", () => {
   }
 
   function cycleMode() {
-    const order: ThemeMode[] = ["auto", "light", "dark"];
-    const idx = order.indexOf(mode.value);
-    mode.value = order[(idx + 1) % order.length];
+    const idx = THEME_MODES.indexOf(mode.value);
+    mode.value = THEME_MODES[(idx + 1) % THEME_MODES.length];
   }
 
   return { mode, resolvedTheme, setMode, cycleMode };
