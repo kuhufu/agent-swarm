@@ -182,9 +182,10 @@ const formatTime = formatTimeShort;
 }
 
 .msg-assistant .msg-content {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 12px;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
 
 /* ── User (right-aligned) ── */
@@ -203,9 +204,10 @@ const formatTime = formatTimeShort;
 }
 
 .msg-user .msg-content {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.15));
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(139, 92, 246, 0.12));
+  border: 1px solid rgba(99, 102, 241, 0.25);
   border-radius: 16px 16px 4px 16px;
+  box-shadow: 0 2px 12px rgba(99,102,241,0.15);
 }
 
 /* ── Tool / System ── */
@@ -251,9 +253,9 @@ const formatTime = formatTimeShort;
 }
 
 .bot-avatar {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(99, 102, 241, 0.1);
   color: var(--color-accent-light);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
 .user-avatar-small {

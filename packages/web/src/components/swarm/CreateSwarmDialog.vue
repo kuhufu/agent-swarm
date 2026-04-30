@@ -418,8 +418,8 @@ onMounted(() => {
 .dialog-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px) saturate(1.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -436,7 +436,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: var(--shadow-dialog);
+  box-shadow: var(--shadow-dialog), inset 0 1px 0 rgba(255,255,255,0.05);
+  animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .dialog-header {
@@ -515,7 +516,7 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.025);
   border: 1px solid var(--color-border-subtle);
   border-radius: 12px;
   cursor: pointer;
@@ -523,13 +524,15 @@ onMounted(() => {
 }
 
 .mode-option:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.05);
   border-color: var(--color-border-hover);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .mode-option.active {
   background: rgba(99, 102, 241, 0.1);
   border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(99,102,241,0.1);
 }
 
 .mode-icon {

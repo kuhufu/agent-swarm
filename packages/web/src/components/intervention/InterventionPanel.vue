@@ -92,9 +92,10 @@ function submitEdit() {
 <style scoped>
 .intervention-panel {
   padding: 16px 24px;
-  background: rgba(245, 158, 11, 0.06);
-  border-top: 1px solid rgba(245, 158, 11, 0.15);
-  backdrop-filter: blur(12px);
+  background: rgba(245, 158, 11, 0.05);
+  border-top: 1px solid rgba(245, 158, 11, 0.18);
+  backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow: 0 -4px 20px rgba(245,158,11,0.06);
 }
 
 .intervention-header {

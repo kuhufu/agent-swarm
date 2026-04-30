@@ -136,6 +136,7 @@ function formatTokens(n: number): string {
   font-weight: 600;
   color: var(--color-text-primary);
   margin: 0 0 6px;
+  letter-spacing: -0.3px;
 }
 
 .subtitle {
@@ -156,6 +157,13 @@ function formatTokens(n: number): string {
   border-radius: 12px;
   background: var(--color-surface-2);
   border: 1px solid var(--color-border-subtle);
+  transition: all 0.2s;
+}
+
+.summary-card:hover {
+  border-color: var(--color-border-hover);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
 }
 
 .card-label {

@@ -147,8 +147,9 @@ function handleDelete(e: Event) {
 .swarm-name {
   margin: 0;
   color: var(--color-text-primary);
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
+  letter-spacing: -0.3px;
 }
 
 .swarm-meta {

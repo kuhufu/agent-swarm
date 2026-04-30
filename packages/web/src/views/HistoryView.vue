@@ -305,7 +305,7 @@ function getMessageLabel(message: ChatMessage, conversation: ConversationInfo): 
 .history-sidebar {
   width: 280px;
   background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(20px) saturate(1.3);
   border-right: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
@@ -323,6 +323,7 @@ function getMessageLabel(message: ChatMessage, conversation: ConversationInfo): 
   font-weight: 700;
   color: var(--color-text-primary);
   margin: 0 0 4px;
+  letter-spacing: -0.3px;
 }
 
 .sidebar-header p {
@@ -379,11 +380,14 @@ function getMessageLabel(message: ChatMessage, conversation: ConversationInfo): 
 .nav-item:hover {
   background: rgba(255, 255, 255, 0.05);
   color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
 }
 
 .nav-item.active {
   background: rgba(99, 102, 241, 0.12);
   color: var(--color-accent-light);
+  border-color: rgba(99, 102, 241, 0.2);
+  box-shadow: inset 2px 0 0 var(--color-accent);
 }
 
 .nav-item div {
@@ -416,7 +420,7 @@ function getMessageLabel(message: ChatMessage, conversation: ConversationInfo): 
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.06em;
 }
 
 .conv-nav-icon {

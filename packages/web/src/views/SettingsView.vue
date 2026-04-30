@@ -532,7 +532,7 @@ async function saveSettings() {
   width: 280px;
   border-right: 1px solid var(--color-border-subtle);
   background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(20px) saturate(1.3);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -546,6 +546,7 @@ async function saveSettings() {
   color: var(--color-text-primary);
   font-size: 18px;
   font-weight: 700;
+  letter-spacing: -0.3px;
 }
 
 .sidebar-header p {
@@ -568,7 +569,7 @@ async function saveSettings() {
   color: var(--color-text-muted);
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.06em;
   font-weight: 600;
 }
 
@@ -598,12 +599,14 @@ async function saveSettings() {
 .settings-item:hover {
   border-color: var(--color-border-hover);
   background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .settings-item.active {
   background: rgba(99, 102, 241, 0.12);
-  border-color: rgba(99, 102, 241, 0.3);
+  border-color: rgba(99, 102, 241, 0.2);
   color: var(--color-accent-light);
+  box-shadow: inset 2px 0 0 var(--color-accent);
 }
 
 .settings-item-top {

@@ -493,7 +493,7 @@ import { h } from "vue";
 .sidebar {
   width: 260px;
   background: var(--sidebar-bg);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(24px) saturate(1.4);
   border-right: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
@@ -501,58 +501,64 @@ import { h } from "vue";
   transition: background 0.3s ease;
 }
 
+/* ── Brand ── */
 .sidebar-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 20px 20px 16px;
+  gap: 10px;
+  padding: 18px 16px 14px;
   cursor: pointer;
   user-select: none;
 }
 
 .brand-icon {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--color-accent), #8b5cf6);
-  border-radius: 10px;
+  background: linear-gradient(135deg, var(--color-accent) 0%, #8b5cf6 100%);
+  border-radius: 9px;
   color: white;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+  flex-shrink: 0;
 }
 
 .brand-icon svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .brand-text {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--color-accent-light), #c084fc);
+  letter-spacing: -0.3px;
+  background: linear-gradient(135deg, var(--color-accent-light) 0%, #c084fc 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
+/* ── Nav ── */
 .sidebar-nav {
-  padding: 8px 12px;
+  padding: 6px 10px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  color: var(--color-text-secondary);
-  font-size: 14px;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  color: var(--color-text-muted);
+  font-size: 13.5px;
   font-weight: 500;
+  letter-spacing: -0.01em;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
   background: transparent;
   text-align: left;
@@ -565,41 +571,48 @@ import { h } from "vue";
 }
 
 .nav-item.active {
-  background: rgba(99, 102, 241, 0.12);
+  background: rgba(99, 102, 241, 0.1);
   color: var(--color-accent-light);
+  box-shadow: inset 2px 0 0 var(--color-accent);
 }
 
 .nav-icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
+  opacity: 0.8;
 }
 
+.nav-item.active .nav-icon {
+  opacity: 1;
+}
+
+/* ── Conversation section ── */
 .sidebar-section {
   flex: 1;
   min-height: 0;
-  padding: 8px 12px 12px;
+  padding: 8px 10px 10px;
   border-top: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 10.5px;
+  font-weight: 700;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
   padding: 0 4px;
 }
 
 .section-actions {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   align-items: center;
 }
 
@@ -607,7 +620,7 @@ import { h } from "vue";
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: none;
+  border: 1px solid transparent;
   background: transparent;
   font-size: 11px;
   font-weight: 500;
@@ -615,24 +628,29 @@ import { h } from "vue";
   padding: 3px 8px;
   border-radius: 6px;
   transition: all 0.15s;
+  letter-spacing: -0.01em;
 }
 
 .action-btn.direct {
   color: #4ade80;
-  border: 1px solid rgba(34, 197, 94, 0.25);
-  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.2);
+  background: rgba(34, 197, 94, 0.07);
 }
 
 .action-btn.direct:hover {
-  background: rgba(34, 197, 94, 0.15);
+  background: rgba(34, 197, 94, 0.13);
+  border-color: rgba(34, 197, 94, 0.3);
 }
 
 .action-btn.new {
   color: var(--color-accent-light);
+  border-color: rgba(99, 102, 241, 0.2);
+  background: rgba(99, 102, 241, 0.07);
 }
 
 .action-btn.new:hover {
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(99, 102, 241, 0.13);
+  border-color: rgba(99, 102, 241, 0.3);
 }
 
 .new-conv-btn {
@@ -644,75 +662,82 @@ import { h } from "vue";
   padding: 0;
 }
 
+/* ── Conversation list ── */
 .conversation-list {
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-.conversation-item {
-  position: relative;
-  background: transparent;
-  border-radius: 8px;
-  padding: 8px 10px;
-  text-align: left;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  transition: all 0.2s;
+  gap: 1px;
 }
 
 .conversation-day-divider {
   position: sticky;
   top: 0;
   z-index: 1;
-  margin-top: 8px;
-  margin-bottom: 4px;
-  padding: 4px 6px;
-  font-size: 11px;
-  font-weight: 600;
+  margin-top: 6px;
+  margin-bottom: 2px;
+  padding: 3px 6px;
+  font-size: 10px;
+  font-weight: 700;
   color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   background: var(--sidebar-bg);
-  backdrop-filter: blur(6px);
-  border-radius: 6px;
+  backdrop-filter: blur(8px);
+  border-radius: 5px;
+}
+
+.conversation-item {
+  position: relative;
+  background: transparent;
+  border-radius: 8px;
+  padding: 7px 9px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  transition: all 0.18s;
+  border: 1px solid transparent;
 }
 
 .conversation-item:hover {
   background: var(--glass-hover-bg);
+  border-color: var(--color-border-subtle);
 }
 
 .conversation-item.active {
-  background: rgba(99, 102, 241, 0.12);
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.15);
 }
 
 .conversation-main {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   flex: 1;
 }
 
 .conversation-title-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   min-width: 0;
 }
 
 .conversation-title {
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
   min-width: 0;
+  letter-spacing: -0.01em;
 }
 
 .conversation-item.active .conversation-title {
@@ -720,41 +745,42 @@ import { h } from "vue";
 }
 
 .mode-tag {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 600;
-  padding: 1px 6px;
+  padding: 1px 5px;
   border-radius: 4px;
   white-space: nowrap;
   flex-shrink: 0;
-  max-width: 100px;
+  max-width: 90px;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.5;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
 }
 
 .mode-tag.direct {
-  background: rgba(34, 197, 94, 0.12);
+  background: rgba(34, 197, 94, 0.1);
   color: #4ade80;
-  border: 1px solid rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.18);
 }
 
 .mode-tag.swarm {
-  background: rgba(99, 102, 241, 0.12);
+  background: rgba(99, 102, 241, 0.1);
   color: #818cf8;
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.18);
 }
 
 .conversation-time {
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 10.5px;
 }
 
 .conversation-more {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border: none;
   background: transparent;
-  border-radius: 6px;
+  border-radius: 5px;
   color: var(--color-text-muted);
   display: flex;
   align-items: center;
@@ -763,6 +789,7 @@ import { h } from "vue";
   flex-shrink: 0;
   opacity: 0;
   pointer-events: none;
+  transition: all 0.15s;
 }
 
 .conversation-item:hover .conversation-more,
@@ -778,20 +805,29 @@ import { h } from "vue";
 }
 
 .conversation-more svg {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
+}
+
+/* ── Floating menus ── */
+.conversation-menu-floating,
+.user-menu-floating {
+  position: fixed;
+  z-index: 3000;
+  background: var(--dropdown-bg);
+  border: 1px solid var(--color-border-default);
+  border-radius: 10px;
+  padding: 4px;
+  box-shadow: var(--shadow-dropdown);
+  backdrop-filter: blur(20px);
 }
 
 .conversation-menu-floating {
-  position: fixed;
-  z-index: 3000;
   min-width: 128px;
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 10px;
-  padding: 4px;
-  box-shadow: var(--shadow-menu);
-  backdrop-filter: blur(12px);
+}
+
+.user-menu-floating {
+  min-width: 140px;
 }
 
 .conversation-menu-item {
@@ -800,14 +836,18 @@ import { h } from "vue";
   background: transparent;
   color: var(--color-text-secondary);
   text-align: left;
-  font-size: 12px;
-  padding: 7px 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 7px 10px;
   border-radius: 6px;
   cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: -0.01em;
 }
 
 .conversation-menu-item:hover {
-  background: var(--glass-hover-bg);
+  background: var(--dropdown-hover);
+  color: var(--color-text-primary);
 }
 
 .conversation-menu-item.danger {
@@ -821,16 +861,18 @@ import { h } from "vue";
 .conversation-empty {
   color: var(--color-text-muted);
   font-size: 12px;
-  padding: 10px;
+  padding: 12px 8px;
+  text-align: center;
 }
 
+/* ── Footer ── */
 .sidebar-footer {
-  padding: 12px 16px;
+  padding: 10px 12px;
   border-top: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
+  gap: 6px;
 }
 
 .footer-row {
@@ -850,31 +892,33 @@ import { h } from "vue";
   border-radius: 8px;
   padding: 6px 10px;
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: all 0.15s;
   color: var(--color-text-secondary);
 }
 
 .auth-user-trigger:hover {
   border-color: var(--color-border-hover);
+  background: var(--glass-hover-bg);
 }
 
 .auth-user-trigger.active {
-  border-color: var(--color-border-hover);
-  background: var(--glass-hover-bg);
+  border-color: rgba(99, 102, 241, 0.3);
+  background: rgba(99, 102, 241, 0.06);
 }
 
 .auth-avatar {
   width: 24px;
   height: 24px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, var(--color-accent), #8b5cf6);
+  border-radius: 7px;
+  background: linear-gradient(135deg, var(--color-accent) 0%, #8b5cf6 100%);
   color: white;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
 }
 
 .auth-username {
@@ -886,30 +930,20 @@ import { h } from "vue";
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: left;
+  letter-spacing: -0.01em;
 }
 
 .auth-chevron {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   flex-shrink: 0;
-  opacity: 0.5;
+  opacity: 0.4;
   transition: transform 0.15s;
 }
 
 .auth-chevron.expanded {
   transform: rotate(180deg);
-}
-
-.user-menu-floating {
-  position: fixed;
-  z-index: 3000;
-  min-width: 140px;
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 10px;
-  padding: 4px;
-  box-shadow: var(--shadow-menu);
-  backdrop-filter: blur(12px);
+  opacity: 0.7;
 }
 
 .theme-toggle {
@@ -925,22 +959,23 @@ import { h } from "vue";
   border-radius: 8px;
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  transition: all 0.15s;
 }
 
 .theme-toggle:hover {
   background: var(--btn-secondary-hover-bg);
-  color: var(--color-accent);
-  border-color: var(--color-accent);
+  color: var(--color-accent-light);
+  border-color: rgba(99, 102, 241, 0.3);
 }
 
 .theme-toggle svg {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
 }
 
 .theme-label {
-  font-size: 12px;
+  font-size: 11.5px;
+  font-weight: 500;
   line-height: 1;
 }
 

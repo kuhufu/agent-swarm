@@ -258,15 +258,16 @@ function agentSystemPrompt(agent: AgentState): string {
   flex-direction: column;
   gap: 8px;
   padding: 14px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.025);
   border: 1px solid var(--color-border-subtle);
   border-radius: 12px;
   transition: all 0.2s;
 }
 
 .agent-card:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.045);
   border-color: var(--color-border-hover);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 .agent-card-header {

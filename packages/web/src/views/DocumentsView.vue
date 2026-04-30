@@ -680,11 +680,13 @@ function highlightMatch(text: string, query: string): string {
 
 .doc-card:hover {
   border-color: var(--color-border-hover);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .doc-card.selected {
   border-color: rgba(99, 102, 241, 0.25);
   background: rgba(99, 102, 241, 0.06);
+  box-shadow: inset 2px 0 0 var(--color-accent);
 }
 
 .doc-card-header {
