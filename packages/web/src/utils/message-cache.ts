@@ -2,7 +2,7 @@ import { deleteDB, openDB, type IDBPDatabase } from "idb";
 import type { ChatMessage } from "../types/index.js";
 
 export const MESSAGE_CACHE_DB_NAME = "agent-swarm-cache";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = "conversation-messages";
 
 interface CachedMessages {
@@ -17,9 +17,10 @@ function getDb(): Promise<IDBPDatabase> {
   if (!dbPromise) {
     dbPromise = openDB(MESSAGE_CACHE_DB_NAME, DB_VERSION, {
       upgrade(db) {
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: "conversationId" });
+        if (db.objectStoreNames.contains(STORE_NAME)) {
+          db.deleteObjectStore(STORE_NAME);
         }
+        db.createObjectStore(STORE_NAME, { keyPath: "conversationId" });
       },
     });
   }
@@ -33,7 +34,7 @@ export async function getCachedMessages(conversationId: string): Promise<CachedM
     if (!raw) return undefined;
     return {
       conversationId: raw.conversationId,
-      messages: typeof raw.messages === "string" ? JSON.parse(raw.messages) : raw.messages,
+      messages: raw.messages,
       maxCreatedAt: raw.maxCreatedAt,
     };
   } catch {
@@ -48,9 +49,10 @@ export async function setCachedMessages(
 ): Promise<void> {
   try {
     const db = await getDb();
+    const clean = JSON.parse(JSON.stringify(messages)) as ChatMessage[];
     await db.put(STORE_NAME, {
       conversationId,
-      messages: JSON.stringify(messages),
+      messages: clean,
       maxCreatedAt,
     });
   } catch (err) {

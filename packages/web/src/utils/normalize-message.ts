@@ -79,6 +79,10 @@ export function normalizeToolCalls(toolCalls: unknown): ToolCallInfo[] | undefin
 }
 
 export function parseMetadata(rawMetadata: unknown): Record<string, unknown> | null {
+  if (!rawMetadata) return null;
+  if (typeof rawMetadata === "object" && !Array.isArray(rawMetadata)) {
+    return rawMetadata as Record<string, unknown>;
+  }
   if (typeof rawMetadata !== "string" || rawMetadata.trim().length === 0) {
     return null;
   }
@@ -116,8 +120,12 @@ export function normalizeHistoryMessage(
   const timestamp = typeof message.timestamp === "number" ? message.timestamp : Date.now();
   const createdAt = typeof message.createdAt === "number" ? message.createdAt : undefined;
   const id = typeof message.id === "string" ? message.id : crypto.randomUUID();
-  const rawMetadata = typeof message.metadata === "string" ? message.metadata : undefined;
-  const metadata = rawMetadata ? parseMetadata(rawMetadata) : undefined;
+  const rawMetadata = message.metadata;
+  const metadata = typeof rawMetadata === "string"
+    ? (parseMetadata(rawMetadata) ?? undefined)
+    : (rawMetadata && typeof rawMetadata === "object" && !Array.isArray(rawMetadata)
+      ? (rawMetadata as Record<string, unknown>)
+      : undefined);
 
   return {
     id,
