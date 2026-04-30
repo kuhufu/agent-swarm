@@ -579,7 +579,9 @@ export const useConversationStore = defineStore("conversation", () => {
           matchedSwarm = swarmStore.swarms.find((item) => item.id === conversationRes.data.swarmId);
         }
         if (matchedSwarm) {
-          swarmStore.selectSwarm(matchedSwarm);
+          if (swarmStore.currentSwarm?.id !== matchedSwarm.id) {
+            swarmStore.selectSwarm(matchedSwarm);
+          }
         } else {
           swarmStore.clearSwarmSelection();
         }
