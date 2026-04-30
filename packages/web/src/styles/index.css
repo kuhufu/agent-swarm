@@ -157,6 +157,9 @@
       animation-duration: 0.01ms !important;
       transition-duration: 0.01ms !important;
     }
+    .streaming-indicator .dot {
+      animation-duration: 1.6s !important;
+    }
   }
 
   ::-webkit-scrollbar {
