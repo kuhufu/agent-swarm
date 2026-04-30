@@ -1,9 +1,8 @@
 import { defineStore } from "pinia";
-import { ref, watch } from "vue";
+import { ref } from "vue";
 import type { SwarmConfig } from "../types/index.js";
 import * as swarmApi from "../api/swarms.js";
 
-const CURRENT_SWARM_ID_KEY = "agent-swarm:currentSwarmId";
 const SWARMS_CACHE_KEY = "cached-swarms";
 
 export const useSwarmStore = defineStore("swarm", () => {
@@ -25,37 +24,18 @@ export const useSwarmStore = defineStore("swarm", () => {
     localStorage.setItem(SWARMS_CACHE_KEY, JSON.stringify(swarmList));
   }
 
-  // Persist currentSwarm id to localStorage
-  watch(currentSwarm, (swarm) => {
-    if (swarm) {
-      localStorage.setItem(CURRENT_SWARM_ID_KEY, swarm.id);
-    } else {
-      localStorage.removeItem(CURRENT_SWARM_ID_KEY);
-    }
-  });
-
   async function fetchSwarms() {
     loading.value = true;
     try {
       const res = await swarmApi.listSwarms();
       swarms.value = res.data;
       saveSwarmCache(res.data);
-      // Restore currentSwarm from localStorage if lost
-      if (!currentSwarm.value) {
-        const savedId = localStorage.getItem(CURRENT_SWARM_ID_KEY);
-        if (savedId) {
-          const found = swarms.value.find((s) => s.id === savedId);
-          if (found) {
-            currentSwarm.value = found;
-          } else {
-            localStorage.removeItem(CURRENT_SWARM_ID_KEY);
-          }
-        }
-      } else {
-        // Refresh currentSwarm from updated list
+      if (currentSwarm.value) {
         const updated = swarms.value.find((s) => s.id === currentSwarm.value!.id);
         if (updated) {
           currentSwarm.value = updated;
+        } else {
+          currentSwarm.value = null;
         }
       }
     } finally {
@@ -100,5 +80,11 @@ export const useSwarmStore = defineStore("swarm", () => {
     currentSwarm.value = null;
   }
 
-  return { swarms, currentSwarm, loading, fetchSwarms, createSwarm, updateSwarm, removeSwarm, selectSwarm, clearSwarmSelection };
+  function reset() {
+    swarms.value = [];
+    currentSwarm.value = null;
+    loading.value = false;
+  }
+
+  return { swarms, currentSwarm, loading, fetchSwarms, createSwarm, updateSwarm, removeSwarm, selectSwarm, clearSwarmSelection, reset };
 });

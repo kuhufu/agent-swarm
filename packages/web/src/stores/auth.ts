@@ -1,5 +1,10 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
+import { clearAllCaches } from "../utils/cache-keys.js";
+import { useAgentStore } from "./agents.js";
+import { useConversationStore } from "./conversation.js";
+import { useSettingsStore } from "./settings.js";
+import { useSwarmStore } from "./swarm.js";
 
 async function apiRequest(method: string, path: string, body?: unknown) {
   const token = localStorage.getItem("token");
@@ -43,15 +48,26 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
-  function clearAuthState() {
+  function resetClientStores() {
+    useConversationStore().reset();
+    useSwarmStore().reset();
+    useAgentStore().reset();
+    useSettingsStore().reset();
+  }
+
+  async function clearAuthState() {
     token.value = null;
     user.value = null;
     localStorage.removeItem("token");
     localStorage.removeItem("cached-user");
+    await clearAllCaches();
+    resetClientStores();
   }
 
   async function login(username: string, password: string) {
     const result = await apiRequest("POST", "/api/auth/login", { username, password });
+    await clearAllCaches();
+    resetClientStores();
     token.value = result.token;
     user.value = result.user;
     localStorage.setItem("token", result.token);
@@ -60,6 +76,8 @@ export const useAuthStore = defineStore("auth", () => {
 
   async function register(username: string, password: string) {
     const result = await apiRequest("POST", "/api/auth/register", { username, password });
+    await clearAllCaches();
+    resetClientStores();
     token.value = result.token;
     user.value = result.user;
     localStorage.setItem("token", result.token);
@@ -74,7 +92,7 @@ export const useAuthStore = defineStore("auth", () => {
     } catch {
       // ignore logout request failure and clear local session anyway
     } finally {
-      clearAuthState();
+      await clearAuthState();
     }
   }
 
@@ -85,7 +103,7 @@ export const useAuthStore = defineStore("auth", () => {
       user.value = result;
       saveUserCache(result);
     } catch {
-      clearAuthState();
+      await clearAuthState();
     }
   }
 

@@ -52,5 +52,11 @@ export const useSettingsStore = defineStore("settings", () => {
     }
   }
 
-  return { config, models, loading, fetchConfig, updateConfig };
+  function reset() {
+    config.value = null;
+    models.value = [];
+    loading.value = false;
+  }
+
+  return { config, models, loading, fetchConfig, updateConfig, reset };
 });

@@ -1,7 +1,7 @@
-import { openDB, type IDBPDatabase } from "idb";
+import { deleteDB, openDB, type IDBPDatabase } from "idb";
 import type { ChatMessage } from "../types/index.js";
 
-const DB_NAME = "agent-swarm-cache";
+export const MESSAGE_CACHE_DB_NAME = "agent-swarm-cache";
 const DB_VERSION = 1;
 const STORE_NAME = "conversation-messages";
 
@@ -15,7 +15,7 @@ let dbPromise: Promise<IDBPDatabase> | null = null;
 
 function getDb(): Promise<IDBPDatabase> {
   if (!dbPromise) {
-    dbPromise = openDB(DB_NAME, DB_VERSION, {
+    dbPromise = openDB(MESSAGE_CACHE_DB_NAME, DB_VERSION, {
       upgrade(db) {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           db.createObjectStore(STORE_NAME, { keyPath: "conversationId" });
@@ -62,6 +62,23 @@ export async function deleteCachedMessages(conversationId: string): Promise<void
   try {
     const db = await getDb();
     await db.delete(STORE_NAME, conversationId);
+  } catch {
+    // ignore cache delete failures
+  }
+}
+
+export async function clearMessageCache(): Promise<void> {
+  try {
+    const db = dbPromise ? await dbPromise : null;
+    db?.close();
+  } catch {
+    // ignore close failures
+  } finally {
+    dbPromise = null;
+  }
+
+  try {
+    await deleteDB(MESSAGE_CACHE_DB_NAME);
   } catch {
     // ignore cache delete failures
   }

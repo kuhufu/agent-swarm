@@ -133,6 +133,13 @@ export const useAgentStore = defineStore("agents", () => {
     persistCache();
   }
 
+  function reset() {
+    presets.value = [];
+    templates.value = [];
+    loading.value = false;
+    loaded.value = false;
+  }
+
   return {
     presets,
     templates,
@@ -149,5 +156,6 @@ export const useAgentStore = defineStore("agents", () => {
     createTemplate,
     updateTemplate,
     deleteTemplate,
+    reset,
   };
 });

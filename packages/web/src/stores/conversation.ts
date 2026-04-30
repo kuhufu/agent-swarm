@@ -36,6 +36,82 @@ function saveConversationsCache(list: ConversationInfo[]) {
   localStorage.setItem(CONVERSATIONS_CACHE_KEY, JSON.stringify(list));
 }
 
+function hasServerCreatedAt(message: ChatMessage): boolean {
+  return typeof message.createdAt === "number" && message.createdAt > 0;
+}
+
+function stableToolCallsKey(message: ChatMessage): string {
+  if (!Array.isArray(message.toolCalls) || message.toolCalls.length === 0) {
+    return "";
+  }
+  try {
+    return JSON.stringify(message.toolCalls);
+  } catch {
+    return "";
+  }
+}
+
+function logicalMessageKey(message: ChatMessage): string {
+  return [
+    message.role,
+    message.agentId ?? "",
+    message.content ?? "",
+    message.thinking ?? "",
+    stableToolCallsKey(message),
+  ].join("\u001f");
+}
+
+function isLikelyConfirmedLocalMessage(local: ChatMessage, remote: ChatMessage): boolean {
+  if (hasServerCreatedAt(local)) {
+    return false;
+  }
+  if (logicalMessageKey(local) !== logicalMessageKey(remote)) {
+    return false;
+  }
+  const localTimestamp = typeof local.timestamp === "number" ? local.timestamp : 0;
+  const remoteTimestamp = typeof remote.timestamp === "number" ? remote.timestamp : 0;
+  if (localTimestamp <= 0 || remoteTimestamp <= 0) {
+    return true;
+  }
+  return Math.abs(localTimestamp - remoteTimestamp) <= 10 * 60 * 1000;
+}
+
+function mergeCachedAndIncrementalMessages(
+  cachedMessages: ChatMessage[],
+  incrementalMessages: ChatMessage[],
+): ChatMessage[] {
+  if (cachedMessages.length === 0) {
+    return incrementalMessages;
+  }
+  if (incrementalMessages.length === 0) {
+    return cachedMessages;
+  }
+
+  const incrementalById = new Map(incrementalMessages.map((message) => [message.id, message]));
+  const merged: ChatMessage[] = [];
+
+  for (const cachedMessage of cachedMessages) {
+    const sameIdIncremental = incrementalById.get(cachedMessage.id);
+    if (sameIdIncremental) {
+      merged.push(sameIdIncremental);
+      continue;
+    }
+    if (incrementalMessages.some((message) => isLikelyConfirmedLocalMessage(cachedMessage, message))) {
+      continue;
+    }
+    merged.push(cachedMessage);
+  }
+
+  const mergedIds = new Set(merged.map((message) => message.id));
+  for (const incrementalMessage of incrementalMessages) {
+    if (!mergedIds.has(incrementalMessage.id)) {
+      merged.push(incrementalMessage);
+    }
+  }
+
+  return merged;
+}
+
 export const useConversationStore = defineStore("conversation", () => {
   const swarmStore = useSwarmStore();
   const DRAFT_RUNTIME_ID = "__draft__";
@@ -607,18 +683,10 @@ export const useConversationStore = defineStore("conversation", () => {
       const since = cached ? cached.maxCreatedAt : undefined;
       const messagesRes = await conversationsApi.getMessages(normalizedConversationId, since);
       const apiMessages = Array.isArray(messagesRes.data) ? messagesRes.data : [];
+      const mergedMessages = mergeCachedAndIncrementalMessages(cached?.messages ?? [], apiMessages);
 
       mutateRuntimeState(normalizedConversationId, (state) => {
-        if (since && cached && state.messages.length > 0) {
-          const existingIds = new Set(state.messages.map((m) => m.id));
-          const newMessages = normalizeHistoryMessages(
-            apiMessages.filter((m) => !existingIds.has(m.id)),
-            resolveAgentName,
-          );
-          state.messages = [...state.messages, ...newMessages];
-        } else {
-          state.messages = normalizeHistoryMessages(apiMessages, resolveAgentName);
-        }
+        state.messages = normalizeHistoryMessages(mergedMessages, resolveAgentName);
         state.streamingMessages = new Map();
         state.isActive = false;
       });
@@ -725,16 +793,15 @@ export const useConversationStore = defineStore("conversation", () => {
     }
   }
 
-  function cacheCurrentConversation() {
-    const conversationId = currentConversationId.value;
-    if (!conversationId) return;
-    const state = runtimeStates.value.get(conversationId);
+  function cacheConversation(conversationId?: string | null) {
+    const id = conversationId ?? currentConversationId.value;
+    if (!id) return;
+    const state = runtimeStates.value.get(id);
     if (!state) return;
-    const lastMsg = state.messages[state.messages.length - 1];
     const maxCreatedAt = state.messages.reduce(
       (max, m) => Math.max(max, m.createdAt ?? 0), 0,
     );
-    void setCachedMessages(conversationId, state.messages, maxCreatedAt);
+    void setCachedMessages(id, state.messages, maxCreatedAt);
   }
 
   async function deleteConversation(id: string) {
@@ -901,6 +968,17 @@ export const useConversationStore = defineStore("conversation", () => {
     }
   }
 
+  function reset() {
+    currentConversationId.value = null;
+    loading.value = false;
+    loadingMessages.value = false;
+    conversations.value = [];
+    enabledTools.value = [];
+    thinkingLevel.value = "off";
+    currentDirectModel.value = null;
+    runtimeStates.value = new Map([[DRAFT_RUNTIME_ID, createEmptyRuntimeState()]]);
+  }
+
   return {
     currentConversationId,
     messages,
@@ -933,7 +1011,7 @@ export const useConversationStore = defineStore("conversation", () => {
     fetchAllConversations,
     updateConversationTitle,
     deleteConversation,
-    cacheCurrentConversation,
+    cacheConversation,
     clearCurrentConversationContext,
     isToolEnabled,
     setEnabledTools,
@@ -942,5 +1020,6 @@ export const useConversationStore = defineStore("conversation", () => {
     setDirectModel,
     requestInputFocus,
     applyConversationSettingsFromServer,
+    reset,
   };
 });
