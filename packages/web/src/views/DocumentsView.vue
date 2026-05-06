@@ -22,6 +22,21 @@ const searchResults = ref<SearchResultItem[]>([]);
 const loading = ref(false);
 const searching = ref(false);
 const searchQuery = ref("");
+
+function docIconSvg(title: string): string {
+  const ext = (title.split(".").pop() ?? "").toLowerCase();
+  if (ext === "md" || ext === "markdown") {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>';
+  }
+  if (ext === "json") {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 12 12 15 9 18"/><polyline points="13 12 15 15 13 18"/></svg>';
+  }
+  if (ext === "html" || ext === "htm") {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 13l-2 2 2 2"/><path d="M14 13l2 2-2 2"/></svg>';
+  }
+  // txt or other — text lines icon
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/><path d="M17 17v5"/><path d="M14 19.5h6"/></svg>';
+}
 const selectedDoc = ref<Document | null>(null);
 const deletingId = ref<string | null>(null);
 const loadingDetail = ref(false);
@@ -429,12 +444,7 @@ function highlightMatch(text: string, query: string): string {
           @click="selectDocument(doc)"
         >
           <div class="doc-card-header">
-            <div class="doc-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-              </svg>
-            </div>
+            <div class="doc-icon" v-html="docIconSvg(doc.title)"></div>
             <div class="doc-title-row">
               <h3 class="doc-title">{{ doc.title }}</h3>
               <span class="badge badge-accent">{{ doc.source }}</span>
@@ -486,13 +496,8 @@ function highlightMatch(text: string, query: string): string {
         <div v-if="showPreview && selectedDoc" class="doc-panel card">
           <div class="doc-header">
             <div class="doc-title-area">
-              <div class="doc-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                </svg>
-              </div>
-              <div v-if="!isEditing" class="doc-title-text">
+            <div class="doc-icon" v-html="docIconSvg(selectedDoc.title)"></div>
+            <div v-if="!isEditing" class="doc-title-text">
                 <h2 class="doc-panel-title">{{ selectedDoc.title }}</h2>
                 <span class="doc-meta">
                   <span class="badge badge-accent">{{ selectedDoc.source }}</span>
