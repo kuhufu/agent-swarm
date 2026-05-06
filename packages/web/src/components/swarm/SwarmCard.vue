@@ -2,6 +2,7 @@
 import type { SwarmConfig } from "../../types/index.js";
 import { getModeConfig } from "../../constants/swarm-modes.js";
 import ModeIcon from "../common/ModeIcon.vue";
+import SvgIcon from "../common/SvgIcon.vue";
 
 const props = defineProps<{
   swarm: SwarmConfig;
@@ -37,16 +38,10 @@ function handleDelete(e: Event) {
       </div>
       <div class="card-actions">
         <button class="action-btn" @click="handleEdit">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-          </svg>
+          <SvgIcon name="edit" :size="14" />
         </button>
         <button class="action-btn danger" @click="handleDelete">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-          </svg>
+          <SvgIcon name="trash" :size="14" />
         </button>
       </div>
     </div>
@@ -73,9 +68,7 @@ function handleDelete(e: Event) {
 
     <div class="card-footer">
       <span class="swarm-id">{{ swarm.id }}</span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; color: var(--color-text-muted);">
-        <polyline points="9 18 15 12 9 6" />
-      </svg>
+      <SvgIcon name="chevronRight" :size="14" style="color: var(--color-text-muted);" />
     </div>
   </div>
 </template>

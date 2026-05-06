@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, reactive, computed, watch } from "vue";
+import SvgIcon from "../components/common/SvgIcon.vue";
 import { useSwarmStore } from "../stores/swarm.js";
 import { useSettingsStore } from "../stores/settings.js";
 import { useAgentStore } from "../stores/agents.js";
@@ -452,10 +453,7 @@ function clearModelSelection() {
         </div>
 
         <button class="btn-primary create-btn" @click="showDialog = true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
+          <SvgIcon name="plus" :size="14" />
           创建 Swarm
         </button>
 
@@ -520,18 +518,11 @@ function clearModelSelection() {
             </div>
             <div class="detail-actions">
               <button class="btn-primary" :disabled="!hasUnsavedChanges || !editForm.name || !editForm.agents.length" @click="handleSave">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                  <polyline points="17 21 17 13 7 13 7 21" />
-                  <polyline points="7 3 7 8 15 8" />
-                </svg>
+                <SvgIcon name="save" :size="14" />
                 保存
               </button>
               <button class="btn-danger" @click="handleDelete(selectedSwarm)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
+                <SvgIcon name="trash" :size="14" />
                 删除
               </button>
             </div>
@@ -590,11 +581,7 @@ function clearModelSelection() {
           <!-- Debate Config -->
           <div v-if="editForm.mode === 'debate'" class="detail-section">
             <h4 class="detail-section-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
-              </svg>
+              <SvgIcon name="swarm" :size="16" />
               辩论配置
             </h4>
             <div class="debate-config card">
@@ -640,10 +627,7 @@ function clearModelSelection() {
           <!-- Parallel Aggregator Config -->
           <div v-if="editForm.mode === 'parallel'" class="detail-section">
             <h4 class="detail-section-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-                <polyline points="16 18 22 12 16 6" />
-                <polyline points="8 6 2 12 8 18" />
-              </svg>
+              <SvgIcon name="jsExecute" :size="16" />
               聚合策略
             </h4>
             <div class="aggregator-config card">
@@ -687,19 +671,11 @@ function clearModelSelection() {
           <div class="detail-section">
             <div class="section-header">
               <h4 class="detail-section-title" style="margin-bottom: 0;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
+                <SvgIcon name="user" :size="16" />
                 Agent 列表 ({{ editForm.agents.length }})
               </h4>
               <button class="btn-secondary compact-btn" @click="startAddAgent">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
+                <SvgIcon name="plus" :size="14" />
                 添加 Agent
               </button>
             </div>
@@ -711,7 +687,7 @@ function clearModelSelection() {
                   <div class="dialog-header">
                     <h3>{{ editingAgentIndex !== null ? '编辑 Agent' : '添加 Agent' }}</h3>
                     <button class="close-btn" @click="resetAgentForm">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                      <SvgIcon name="close" />
                     </button>
                   </div>
                   <div class="dialog-body">
@@ -745,7 +721,7 @@ function clearModelSelection() {
                       <div class="model-chips">
                         <button v-for="sm in savedModels" :key="sm.id" class="model-chip" :class="{ active: agentForm.model.provider === sm.provider && agentForm.model.modelId === sm.modelId }" @click="selectModelForAgent(sm)">{{ sm.name }}</button>
                         <button class="model-chip" :class="{ active: showCustomModel }" @click="clearModelSelection">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                          <SvgIcon name="edit" :size="12" />
                           自定义
                         </button>
                       </div>
@@ -800,16 +776,10 @@ function clearModelSelection() {
                 </div>
                 <div class="agent-card-actions">
                   <button class="action-btn" @click.stop="startEditAgent(i)" title="编辑">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
+                    <SvgIcon name="edit" :size="14" />
                   </button>
                   <button class="action-btn danger" @click.stop="removeAgent(i)" title="删除">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
+                    <SvgIcon name="close" :size="14" />
                   </button>
                 </div>
               </div>

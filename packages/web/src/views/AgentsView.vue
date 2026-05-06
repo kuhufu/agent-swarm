@@ -4,6 +4,7 @@ import { useAgentStore } from "../stores/agents.js";
 import { useSettingsStore } from "../stores/settings.js";
 import type { PresetAgent, SavedModel } from "../types/index.js";
 import { showError } from "../utils/ui-feedback.js";
+import SvgIcon from "../components/common/SvgIcon.vue";
 
 interface AgentFormState {
   id: string;
@@ -341,10 +342,7 @@ onBeforeUnmount(() => {
         </div>
 
         <button class="btn-primary create-btn" @click="startCreatePreset">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
+          <SvgIcon name="plus" :size="14" />
           新建预设
         </button>
 
@@ -357,17 +355,7 @@ onBeforeUnmount(() => {
               <span class="preset-section-title">系统模板</span>
               <span class="preset-section-toggle-meta">
                 {{ agentStore.sortedTemplates.length }} 个
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  :class="{ expanded: showSystemTemplates }"
-                >
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
+                <SvgIcon name="chevronDown" :class="{ expanded: showSystemTemplates }" />
               </span>
             </button>
             <template v-if="showSystemTemplates">
@@ -406,11 +394,7 @@ onBeforeUnmount(() => {
                   aria-label="打开预设操作"
                   @click.stop="togglePresetActionMenu($event, preset.id)"
                 >
-                  <svg viewBox="0 0 24 24" fill="currentColor">
-                    <circle cx="5" cy="12" r="1.8" />
-                    <circle cx="12" cy="12" r="1.8" />
-                    <circle cx="19" cy="12" r="1.8" />
-                  </svg>
+                  <SvgIcon name="moreHorizontal" />
                 </button>
               </div>
             </div>
@@ -439,9 +423,7 @@ onBeforeUnmount(() => {
                   @click="showTemplateSelect = !showTemplateSelect"
                 >
                   从模板填充
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;">
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
+                  <SvgIcon name="chevronDown" :size="12" />
                 </button>
                 <div v-if="showTemplateSelect" class="template-dropdown">
                   <button

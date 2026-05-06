@@ -9,6 +9,7 @@ import { useWebSocket } from "../../composables/useWebSocket.js";
 import { formatTimeLocale } from "../../utils/format.js";
 import type { ConversationInfo } from "../../types/index.js";
 import { showError } from "../../utils/ui-feedback.js";
+import SvgIcon from "../common/SvgIcon.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -304,34 +305,19 @@ onBeforeUnmount(() => {
 
 <script lang="ts">
 function MessageIcon() {
-  return h("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", class: "nav-icon" }, [
-    h("path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" }),
-  ]);
+  return h(SvgIcon, { name: "chat", size: 16, class: "nav-icon" });
 }
 
 function HistoryIcon() {
-  return h("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", class: "nav-icon" }, [
-    h("path", { d: "M3 12a9 9 0 1 0 3-6.7" }),
-    h("path", { d: "M3 3v6h6" }),
-    h("path", { d: "M12 7v5l3 2" }),
-  ]);
+  return h(SvgIcon, { name: "history", size: 16, class: "nav-icon" });
 }
 
 function SwarmIcon() {
-  return h("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", class: "nav-icon" }, [
-    h("path", { d: "M12 2L2 7l10 5 10-5-10-5z" }),
-    h("path", { d: "M2 17l10 5 10-5" }),
-    h("path", { d: "M2 12l10 5 10-5" }),
-  ]);
+  return h(SvgIcon, { name: "swarm", size: 16, class: "nav-icon" });
 }
 
 function AgentsIcon() {
-  return h("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", class: "nav-icon" }, [
-    h("path", { d: "M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" }),
-    h("circle", { cx: "8.5", cy: "7", r: "4" }),
-    h("path", { d: "M23 21v-2a4 4 0 0 0-3-3.87" }),
-    h("path", { d: "M16 3.13a4 4 0 0 1 0 7.75" }),
-  ]);
+  return h(SvgIcon, { name: "user", size: 18, class: "nav-icon" });
 }
 
 function SettingsIcon() {
@@ -342,12 +328,7 @@ function SettingsIcon() {
 }
 
 function KnowledgeIcon() {
-  return h("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", class: "nav-icon" }, [
-    h("path", { d: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20" }),
-    h("path", { d: "M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" }),
-    h("line", { x1: "8", y1: "7", x2: "16", y2: "7" }),
-    h("line", { x1: "8", y1: "11", x2: "14", y2: "11" }),
-  ]);
+  return h(SvgIcon, { name: "book", size: 16, class: "nav-icon" });
 }
 
 import { h } from "vue";
@@ -357,11 +338,7 @@ import { h } from "vue";
   <aside class="sidebar">
     <div class="sidebar-brand" @click="navigateTo('/chat')">
       <div class="brand-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5z" />
-          <path d="M2 17l10 5 10-5" />
-          <path d="M2 12l10 5 10-5" />
-        </svg>
+        <SvgIcon name="swarm" :size="16" />
       </div>
       <span class="brand-text">Agent Swarm</span>
     </div>
@@ -384,16 +361,11 @@ import { h } from "vue";
         <span>会话</span>
         <div class="section-actions">
           <button class="action-btn direct" title="直接对话" @click="handleNewDirectConversation">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 13px; height: 13px;">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
+            <SvgIcon name="chat" :size="13" />
             直接对话
           </button>
           <button class="action-btn new" title="新 Swarm 对话" @click="handleNewConversation">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 13px; height: 13px;">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
+            <SvgIcon name="plus" :size="13" />
             新建
           </button>
         </div>
@@ -426,11 +398,7 @@ import { h } from "vue";
               title="更多操作"
               @click.stop="toggleConversationMenu($event, conv.id)"
             >
-              <svg viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="5" cy="12" r="2" />
-                <circle cx="12" cy="12" r="2" />
-                <circle cx="19" cy="12" r="2" />
-              </svg>
+              <SvgIcon name="moreHorizontal" :size="13" />
             </button>
           </div>
         </template>
@@ -443,9 +411,7 @@ import { h } from "vue";
         <button class="auth-user-trigger" :class="{ active: showUserMenu }" @click="toggleUserMenu">
           <div class="auth-avatar">{{ authStore.user?.username?.charAt(0)?.toUpperCase() }}</div>
           <span class="auth-username">{{ authStore.user?.username }}</span>
-          <svg class="auth-chevron" :class="{ expanded: showUserMenu }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
+          <SvgIcon name="chevronDown" class="auth-chevron" :class="{ expanded: showUserMenu }" :size="13" />
         </button>
         <button class="theme-toggle" @click="themeStore.cycleMode()" :title="currentThemeLabel">
         <svg v-if="themeStore.mode === 'auto'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon">

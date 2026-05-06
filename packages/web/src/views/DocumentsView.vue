@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { MessagePlugin } from "tdesign-vue-next";
+import SvgIcon from "../components/common/SvgIcon.vue";
 import { apiClient } from "../api/client.js";
 
 interface Document {
@@ -369,10 +370,7 @@ function highlightMatch(text: string, query: string): string {
       </div>
       <div class="header-actions">
         <div class="search-box">
-          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
+          <SvgIcon name="search" :size="16" class="search-icon" />
           <input
             v-model="searchQuery"
             class="search-input"
@@ -381,10 +379,7 @@ function highlightMatch(text: string, query: string): string {
           <span v-if="searching" class="search-spinner" />
         </div>
         <button class="btn-primary" @click="createNewDoc">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
+          <SvgIcon name="plus" :size="16" />
           新建文档
         </button>
         <input
@@ -396,11 +391,7 @@ function highlightMatch(text: string, query: string): string {
         />
         <button class="btn-secondary upload-btn" :disabled="uploading" @click="openFilePicker">
           <span v-if="uploading" class="spinner-mini" />
-          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
+          <SvgIcon v-else name="upload" :size="16" />
           上传文件
         </button>
       </div>
@@ -425,10 +416,7 @@ function highlightMatch(text: string, query: string): string {
       <p class="empty-title">知识库为空</p>
       <p class="empty-desc">新建文档，为 Agent 提供领域知识</p>
       <button class="btn-primary upload-cta" @click="createNewDoc">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-          <line x1="12" y1="5" x2="12" y2="19" />
-          <line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
+        <SvgIcon name="plus" :size="16" />
         新建第一篇文档
       </button>
     </div>
@@ -464,10 +452,7 @@ function highlightMatch(text: string, query: string): string {
                 @click.stop="selectAndEdit(doc)"
                 :title="'编辑文档'"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                </svg>
+                <SvgIcon name="edit" />
               </button>
               <button
                 class="btn-icon danger"
@@ -475,10 +460,7 @@ function highlightMatch(text: string, query: string): string {
                 @click.stop="handleDelete(doc.id)"
                 :title="'删除文档'"
               >
-                <svg v-if="deletingId !== doc.id" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
+                <SvgIcon v-if="deletingId !== doc.id" name="trash" />
                 <span v-else class="spinner-mini" />
               </button>
             </div>
@@ -519,30 +501,19 @@ function highlightMatch(text: string, query: string): string {
             <div class="doc-actions">
               <template v-if="isEditing">
                 <button class="btn-icon" @click="cancelEdit" title="取消编辑">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
+                  <SvgIcon name="close" />
                 </button>
                 <button class="btn-icon save-btn" :disabled="loading" @click="saveEdit" title="保存">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
+                  <SvgIcon name="check" />
                 </button>
               </template>
               <template v-else>
                 <button class="btn-icon" @click="startEdit" title="编辑">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 20h9" />
-                    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                  </svg>
+                  <SvgIcon name="edit" />
                 </button>
               </template>
               <button class="btn-icon" @click="closePreview" title="关闭">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
+                <SvgIcon name="close" />
               </button>
             </div>
           </div>

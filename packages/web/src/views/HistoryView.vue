@@ -9,6 +9,7 @@ import { formatTimeLong } from "../utils/format.js";
 import ModeIcon from "../components/common/ModeIcon.vue";
 import type { ConversationInfo, SwarmConfig, ChatMessage, ConversationEvent } from "../types/index.js";
 import { confirmDialog, showError } from "../utils/ui-feedback.js";
+import SvgIcon from "../components/common/SvgIcon.vue";
 
 const router = useRouter();
 const conversationStore = useConversationStore();
@@ -278,10 +279,7 @@ function formatEventOffset(event: ConversationEvent, events: ConversationEvent[]
         </div>
 
         <div class="search-box">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
+          <SvgIcon name="search" class="search-icon" :size="16" />
           <input
             v-model="searchQuery"
             class="input-field search-input"
@@ -300,9 +298,7 @@ function formatEventOffset(event: ConversationEvent, events: ConversationEvent[]
             @click="selectConv(conv)"
           >
             <div class="conv-nav-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
+              <SvgIcon name="chat" :size="16" />
             </div>
             <div>
               <span class="nav-label">{{ conv.title ?? "新对话" }}</span>
@@ -334,9 +330,7 @@ function formatEventOffset(event: ConversationEvent, events: ConversationEvent[]
           <div class="detail-header">
             <div class="detail-title-row">
               <div class="detail-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 22px; height: 22px;">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
+                <SvgIcon name="chat" :size="22" />
               </div>
               <div class="detail-title-info">
                 <h3 class="detail-title">{{ selectedConv.title ?? "新对话" }}</h3>
@@ -352,16 +346,11 @@ function formatEventOffset(event: ConversationEvent, events: ConversationEvent[]
             </div>
             <div class="detail-actions">
               <button class="btn-primary" @click="resumeConversation(selectedConv)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
+                <SvgIcon name="chat" :size="14" />
                 继续对话
               </button>
               <button class="btn-danger" @click="deleteConversation(selectedConv)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
+                <SvgIcon name="trash" :size="14" />
                 删除
               </button>
             </div>
@@ -370,9 +359,7 @@ function formatEventOffset(event: ConversationEvent, events: ConversationEvent[]
           <!-- Messages -->
           <div class="detail-section trace-section">
             <h4 class="detail-section-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-              </svg>
+              <SvgIcon name="pulse" :size="16" />
               执行 Trace
               <span v-if="selectedEvents" class="msg-count">{{ selectedEvents.length }} 条</span>
             </h4>
@@ -401,9 +388,7 @@ function formatEventOffset(event: ConversationEvent, events: ConversationEvent[]
 
           <div class="detail-section">
             <h4 class="detail-section-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
+              <SvgIcon name="chat" :size="16" />
               消息记录
               <span v-if="selectedMessages" class="msg-count">{{ selectedMessages.length }} 条</span>
             </h4>

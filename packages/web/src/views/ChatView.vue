@@ -11,6 +11,7 @@ import AgentStatus from "../components/chat/AgentStatus.vue";
 import ConversationTrace from "../components/chat/ConversationTrace.vue";
 import InterventionPanel from "../components/intervention/InterventionPanel.vue";
 import { showError } from "../utils/ui-feedback.js";
+import SvgIcon from "../components/common/SvgIcon.vue";
 
 const swarmStore = useSwarmStore();
 const conversationStore = useConversationStore();
@@ -171,13 +172,7 @@ async function handleForkConversation(messageId?: string) {
           @click="() => handleForkConversation()"
           title="创建分支对话"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-            <line x1="6" y1="3" x2="6" y2="15" />
-            <circle cx="18" cy="6" r="3" />
-            <circle cx="18" cy="18" r="3" />
-            <line x1="8.21" y1="13.89" x2="15" y2="9" />
-            <line x1="8.21" y1="10.11" x2="15" y2="15" />
-          </svg>
+          <SvgIcon name="fork" :size="14" />
           分支
         </button>
       </div>

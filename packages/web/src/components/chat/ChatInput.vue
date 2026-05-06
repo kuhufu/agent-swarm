@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref, computed, watch, nextTick } from "vue";
 import { useChat } from "../../composables/useChat.js";
 import { useSettingsStore } from "../../stores/settings.js";
 import { useConversationStore } from "../../stores/conversation.js";
+import SvgIcon from "../common/SvgIcon.vue";
 import type { SavedModel } from "../../types/index.js";
 
 const props = defineProps<{
@@ -391,19 +392,14 @@ function handleOutsideClick(event: MouseEvent) {
         :disabled="(isDirectMode ? !canSendDirect : !swarmId) || sending || !inputText.trim()"
         @click="handleSend"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="22" y1="2" x2="11" y2="13" />
-          <polygon points="22 2 15 22 11 13 2 9 22 2" />
-        </svg>
+        <SvgIcon name="send" />
       </button>
       <button
         v-else
         class="send-btn stop"
         @click="abort"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="6" y="6" width="12" height="12" rx="2" />
-        </svg>
+        <SvgIcon name="stop" />
       </button>
     </div>
     <div class="tool-options">
@@ -415,16 +411,10 @@ function handleOutsideClick(event: MouseEvent) {
           @mousedown="handleKeepTextareaFocusMouseDown"
           @click="toggleModelSelect"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-            <line x1="8" y1="21" x2="16" y2="21" />
-            <line x1="12" y1="17" x2="12" y2="21" />
-          </svg>
+          <SvgIcon name="monitor" :size="14" />
           <span v-if="canSendDirect" class="model-select-label">{{ selectedModelLabel }}</span>
           <span v-else class="model-select-label placeholder">选择模型</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; flex-shrink: 0;">
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
+          <SvgIcon name="chevronDown" :size="12" />
         </button>
         <!-- Dropdown -->
         <div v-if="showModelSelect" class="model-dropdown">
@@ -452,10 +442,7 @@ function handleOutsideClick(event: MouseEvent) {
           @mousedown="handleKeepTextareaFocusMouseDown"
           @click="handleToggleCurrentTimeTool"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
+          <SvgIcon name="clock" />
           <span>当前时间</span>
         </button>
         <button
@@ -464,10 +451,7 @@ function handleOutsideClick(event: MouseEvent) {
           @mousedown="handleKeepTextareaFocusMouseDown"
           @click="handleToggleJsExecutionTool"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="16 18 22 12 16 6" />
-            <polyline points="8 6 2 12 8 18" />
-          </svg>
+          <SvgIcon name="jsExecute" />
           <span>JS 执行</span>
         </button>
         <button
@@ -476,9 +460,7 @@ function handleOutsideClick(event: MouseEvent) {
           @mousedown="handleKeepTextareaFocusMouseDown"
           @click="handleToggleWorkspaceTool"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
-          </svg>
+          <SvgIcon name="folder" />
           <span>工作区</span>
         </button>
         <button
@@ -487,10 +469,7 @@ function handleOutsideClick(event: MouseEvent) {
           @mousedown="handleKeepTextareaFocusMouseDown"
           @click="searchToolEnabled = !searchToolEnabled"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
+          <SvgIcon name="search" />
           <span>搜索</span>
         </button>
         <button
@@ -499,12 +478,7 @@ function handleOutsideClick(event: MouseEvent) {
           @mousedown="handleKeepTextareaFocusMouseDown"
           @click="handleToggleRetrieveKnowledgeTool"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-            <line x1="8" y1="7" x2="16" y2="7" />
-            <line x1="8" y1="11" x2="14" y2="11" />
-          </svg>
+          <SvgIcon name="book" />
           <span>知识库</span>
         </button>
         <div class="think-level-select-inline">
@@ -518,9 +492,7 @@ function handleOutsideClick(event: MouseEvent) {
               <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
             <span>{{ thinkLevelLabel }}</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; flex-shrink: 0;">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
+            <SvgIcon name="chevronDown" :size="12" />
           </button>
           <div v-if="showThinkLevelSelect" class="think-level-dropdown">
             <button

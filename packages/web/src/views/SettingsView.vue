@@ -9,6 +9,7 @@ import ModelsTab from "../components/settings/ModelsTab.vue";
 import AgentTemplatesTab from "../components/settings/AgentTemplatesTab.vue";
 import CustomSelect from "../components/common/CustomSelect.vue";
 import { CACHE_KEYS } from "../utils/cache-keys.js";
+import SvgIcon from "../components/common/SvgIcon.vue";
 
 const settingsStore = useSettingsStore();
 const authStore = useAuthStore();
@@ -309,11 +310,7 @@ async function saveSettings() {
             >
               <div class="settings-item-top">
                 <span class="settings-nav-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-                    <line x1="8" y1="21" x2="16" y2="21" />
-                    <line x1="12" y1="17" x2="12" y2="21" />
-                  </svg>
+                  <SvgIcon name="monitor" />
                 </span>
                 <span class="settings-name">提供商配置</span>
               </div>
@@ -326,11 +323,7 @@ async function saveSettings() {
             >
               <div class="settings-item-top">
                 <span class="settings-nav-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                    <path d="M2 17l10 5 10-5" />
-                    <path d="M2 12l10 5 10-5" />
-                  </svg>
+                  <SvgIcon name="swarm" />
                 </span>
                 <span class="settings-name">模型管理</span>
               </div>
@@ -376,14 +369,8 @@ async function saveSettings() {
               :disabled="saving"
               @click="saveSettings"
             >
-              <svg v-if="!saved" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                <polyline points="17 21 17 13 7 13 7 21" />
-                <polyline points="7 3 7 8 15 8" />
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
+              <SvgIcon v-if="!saved" name="save" :size="14" />
+              <SvgIcon v-else name="check" :size="14" />
               {{ saved ? "已保存" : "保存设置" }}
             </button>
           </div>
@@ -391,10 +378,7 @@ async function saveSettings() {
           <div v-if="activeTab === 'providers'" class="tab-panel">
             <div class="providers-toolbar">
               <button class="btn-primary compact-btn" @click="openProviderDialog">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
+                <SvgIcon name="plus" :size="14" />
                 添加提供商
               </button>
             </div>
@@ -427,10 +411,7 @@ async function saveSettings() {
               <div class="dialog-header">
                 <h3>添加提供商</h3>
                 <button class="close-btn" @click="closeProviderDialog">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
+                  <SvgIcon name="close" />
                 </button>
               </div>
               <div class="dialog-body">
