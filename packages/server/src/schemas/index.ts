@@ -121,12 +121,14 @@ export const createConversationSchema = z.object({
   enabledTools: z.array(z.string()).optional(),
   thinkingLevel: z.enum(["xhigh", "high", "medium", "low", "off"]).optional(),
   directModel: directModelSchema.optional(),
+  comparisonModels: z.array(directModelSchema).optional(),
 });
 
 export const updateConversationPreferencesSchema = z.object({
   enabledTools: z.array(z.string()).optional(),
   thinkingLevel: z.enum(["xhigh", "high", "medium", "low", "off"]).optional(),
   directModel: directModelSchema.optional(),
+  comparisonModels: z.array(directModelSchema).optional(),
 });
 
 export const providerConfigSchema = z.object({

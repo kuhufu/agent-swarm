@@ -233,6 +233,10 @@ export class ParallelMode implements ModeExecutor {
     ctx: ModeExecutionContext,
   ): AsyncGenerator<SwarmEvent> {
     switch (aggregator.type) {
+      case "none": {
+        // Each agent's output is already yielded independently — no aggregation needed
+        break;
+      }
       case "merge": {
         // Merge all results into a single message
         const merged = Array.from(results.entries())

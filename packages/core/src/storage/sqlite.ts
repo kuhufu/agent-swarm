@@ -81,6 +81,7 @@ export class SqliteStorage implements IStorage {
         thinking_level TEXT NOT NULL DEFAULT 'off',
         direct_provider TEXT,
         direct_model_id TEXT,
+        comparison_models TEXT,
         context_reset_at INTEGER,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
@@ -261,6 +262,24 @@ export class SqliteStorage implements IStorage {
     return { provider, modelId };
   }
 
+  private normalizeComparisonModels(input: unknown): ConversationDirectModel[] | undefined {
+    if (!Array.isArray(input)) {
+      return undefined;
+    }
+    const models: ConversationDirectModel[] = [];
+    for (const item of input) {
+      if (typeof item === "object" && item !== null) {
+        const raw = item as Record<string, unknown>;
+        const provider = typeof raw.provider === "string" ? raw.provider.trim() : "";
+        const modelId = typeof raw.modelId === "string" ? raw.modelId.trim() : "";
+        if (provider && modelId) {
+          models.push({ provider, modelId });
+        }
+      }
+    }
+    return models.length > 0 ? models : undefined;
+  }
+
   private mapConversationRow(row: {
     id: string;
     swarmId: string;
@@ -269,12 +288,22 @@ export class SqliteStorage implements IStorage {
     thinkingLevel: string | null;
     directProvider: string | null;
     directModelId: string | null;
+    comparisonModels: string | null;
     contextResetAt: number | null;
     createdAt: number;
     updatedAt: number;
   }): Conversation {
     const directProvider = typeof row.directProvider === "string" ? row.directProvider.trim() : "";
     const directModelId = typeof row.directModelId === "string" ? row.directModelId.trim() : "";
+    let comparisonModels: ConversationDirectModel[] | undefined;
+    if (typeof row.comparisonModels === "string") {
+      try {
+        const parsed = JSON.parse(row.comparisonModels) as unknown;
+        comparisonModels = this.normalizeComparisonModels(parsed);
+      } catch {
+        comparisonModels = undefined;
+      }
+    }
     return {
       id: row.id,
       swarmId: row.swarmId,
@@ -284,6 +313,7 @@ export class SqliteStorage implements IStorage {
       directModel: (directProvider && directModelId)
         ? { provider: directProvider, modelId: directModelId }
         : undefined,
+      comparisonModels,
       contextResetAt: row.contextResetAt ?? undefined,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -309,6 +339,10 @@ export class SqliteStorage implements IStorage {
     }
     if (!columns.has("direct_model_id")) {
       this.rawDb.exec("ALTER TABLE conversations ADD COLUMN direct_model_id TEXT;");
+      schemaChanged = true;
+    }
+    if (!columns.has("comparison_models")) {
+      this.rawDb.exec("ALTER TABLE conversations ADD COLUMN comparison_models TEXT;");
       schemaChanged = true;
     }
     if (!columns.has("context_reset_at")) {
@@ -639,6 +673,9 @@ export class SqliteStorage implements IStorage {
     );
     const thinkingLevel = preferences?.thinkingLevel ?? DEFAULT_CONVERSATION_PREFERENCES.thinkingLevel ?? "off";
     const directModel = this.normalizeDirectModel(preferences?.directModel);
+    const comparisonModels = preferences?.comparisonModels !== undefined
+      ? this.normalizeComparisonModels(preferences.comparisonModels)
+      : undefined;
     const conv: Conversation = {
       id: crypto.randomUUID(),
       swarmId,
@@ -646,6 +683,7 @@ export class SqliteStorage implements IStorage {
       enabledTools,
       thinkingLevel,
       directModel,
+      comparisonModels,
       contextResetAt: undefined,
       createdAt: now,
       updatedAt: now,
@@ -659,6 +697,7 @@ export class SqliteStorage implements IStorage {
       thinkingLevel: conv.thinkingLevel,
       directProvider: conv.directModel?.provider ?? null,
       directModelId: conv.directModel?.modelId ?? null,
+      comparisonModels: conv.comparisonModels ? JSON.stringify(conv.comparisonModels) : null,
       contextResetAt: null,
       createdAt: conv.createdAt,
       updatedAt: conv.updatedAt,
@@ -707,6 +746,9 @@ export class SqliteStorage implements IStorage {
     const directModel = preferences.directModel !== undefined
       ? this.normalizeDirectModel(preferences.directModel)
       : current.directModel;
+    const comparisonModels = preferences.comparisonModels !== undefined
+      ? this.normalizeComparisonModels(preferences.comparisonModels)
+      : current.comparisonModels;
     const now = Date.now();
 
     this.getDb().update(conversationsTable)
@@ -715,6 +757,7 @@ export class SqliteStorage implements IStorage {
         thinkingLevel,
         directProvider: directModel?.provider ?? null,
         directModelId: directModel?.modelId ?? null,
+        comparisonModels: comparisonModels ? JSON.stringify(comparisonModels) : null,
         updatedAt: now,
       })
       .where(and(eq(conversationsTable.id, id), eq(conversationsTable.userId, userId)))
@@ -725,6 +768,7 @@ export class SqliteStorage implements IStorage {
       enabledTools,
       thinkingLevel,
       directModel,
+      comparisonModels,
       updatedAt: now,
     };
   }

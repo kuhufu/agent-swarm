@@ -14,6 +14,7 @@ export function useChat(conversationId: Ref<string | null>) {
   const inputText = ref("");
   const sending = ref(false);
   const draftDirectModel = ref<DirectModelSelection | null>(null);
+  const draftComparisonModels = ref<DirectModelSelection[]>([]);
   const draftEnabledTools = ref<string[]>([]);
   const draftThinkingLevel = ref<string>("off");
   const enabledTools = computed<string[]>(() => {
@@ -60,6 +61,30 @@ export function useChat(conversationId: Ref<string | null>) {
       draftDirectModel.value = value;
     },
   });
+  const isCompareMode = computed<boolean>(() => {
+    if (conversationId.value) {
+      return (conversationStore.getConversation(conversationId.value)?.comparisonModels?.length ?? 0) >= 2;
+    }
+    return draftComparisonModels.value.length >= 2;
+  });
+
+  const comparisonModels = computed<DirectModelSelection[]>({
+    get: (): DirectModelSelection[] => {
+      if (conversationId.value) {
+        return conversationStore.getConversation(conversationId.value)?.comparisonModels ?? [];
+      }
+      return draftComparisonModels.value;
+    },
+    set: (value: DirectModelSelection[]): void => {
+      if (conversationId.value) {
+        // persist via conversationStore
+        conversationStore.setComparisonModels(conversationId.value, value);
+        return;
+      }
+      draftComparisonModels.value = value;
+    },
+  });
+
   const currentTimeToolEnabled = computed({
     get: () => isToolEnabled("current_time"),
     set: (value: boolean) => setClientToolEnabled("current_time", value),
@@ -183,6 +208,36 @@ export function useChat(conversationId: Ref<string | null>) {
     inputText.value = "";
   }
 
+  function sendComparisonMessage() {
+    const text = inputText.value.trim();
+    const models = comparisonModels.value;
+    if (!text || sending.value || !connected.value || models.length < 2) return;
+
+    sending.value = true;
+    const runtimeConversationId = conversationId.value ?? undefined;
+    conversationStore.setActive(true, runtimeConversationId);
+
+    conversationStore.addMessage({
+      id: crypto.randomUUID(),
+      role: "user",
+      content: text,
+      timestamp: Date.now(),
+    }, runtimeConversationId);
+
+    send({
+      type: "send_message",
+      payload: {
+        conversationId: conversationId.value ?? undefined,
+        comparisonModels: models,
+        content: text,
+        enabledTools: enabledTools.value,
+        thinkingLevel: thinkingLevel.value,
+      },
+    });
+
+    inputText.value = "";
+  }
+
   function abort() {
     if (conversationId.value) {
       send({
@@ -220,10 +275,15 @@ export function useChat(conversationId: Ref<string | null>) {
     connect,
     sendMessage,
     sendDirectMessage,
+    sendComparisonMessage,
     abort,
     canClearContext,
     clearContext,
     directModel,
+    comparisonModels,
+    isCompareMode,
+    draftComparisonModels,
+    draftDirectModel,
     currentTimeToolEnabled,
     jsExecutionToolEnabled,
     searchToolEnabled,

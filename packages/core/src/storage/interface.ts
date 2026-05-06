@@ -44,6 +44,7 @@ export interface Conversation {
   enabledTools: string[];
   thinkingLevel: string;
   directModel?: ConversationDirectModel;
+  comparisonModels?: ConversationDirectModel[];
   contextResetAt?: number;
   createdAt: number;
   updatedAt: number;
@@ -58,6 +59,7 @@ export interface ConversationPreferences {
   enabledTools: string[];
   thinkingLevel?: string;
   directModel?: ConversationDirectModel;
+  comparisonModels?: ConversationDirectModel[];
 }
 
 export interface ConversationUsage {

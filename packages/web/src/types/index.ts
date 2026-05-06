@@ -61,6 +61,7 @@ export interface ConversationInfo {
   enabledTools: string[];
   thinkingLevel: string;
   directModel?: ModelConfig;
+  comparisonModels?: ModelConfig[];
   createdAt: number;
   updatedAt: number;
 }

@@ -42,8 +42,12 @@ const swarmId = computed(() => {
 });
 const isDirectMode = computed(() => {
   const conv = currentConversation.value;
-  if (conv) return conv.swarmId.startsWith("__direct_");
+  if (conv) return conv.swarmId.startsWith("__direct_") || conv.swarmId.startsWith("__compare_");
   return draftMode.value === "direct";
+});
+const isCompareMode = computed(() => {
+  const conv = currentConversation.value;
+  return conv ? conv.swarmId.startsWith("__compare_") : false;
 });
 const streamingMessages = computed(() =>
   Array.from(conversationStore.getStreamingMessages(routeConversationId.value).values()),
@@ -159,7 +163,8 @@ async function handleForkConversation() {
           <template v-else>
             <h2>{{ isDirectMode ? '直接对话' : '对话' }}</h2>
           </template>
-          <span v-if="isDirectMode" class="mode-badge direct">直接对话模式</span>
+          <span v-if="isCompareMode" class="mode-badge compare">模型对比模式</span>
+          <span v-else-if="isDirectMode" class="mode-badge direct">直接对话模式</span>
         </div>
         <button
           v-if="routeConversationId"
@@ -188,6 +193,7 @@ async function handleForkConversation() {
         :messages="messages"
         :streaming-messages="streamingMessages"
         :is-direct-mode="isDirectMode"
+        :is-compare-mode="isCompareMode"
         :conversation-id="routeConversationId"
         :swarm-id="swarmId"
         @select-swarm="handleSelectDraftSwarm"

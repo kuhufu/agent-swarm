@@ -85,6 +85,7 @@ export interface ConversationContextClearResult {
 export class AgentSwarm {
   private static readonly LLM_CONFIG_KEY = "llm_config";
   private static readonly DIRECT_SWARM_ID = "__direct_chat";
+  private static readonly COMPARISON_SWARM_ID = "__compare";
 
   private config: AgentSwarmRootConfig;
   private readonly eventLogLevel: EventLogLevel;
@@ -110,6 +111,10 @@ export class AgentSwarm {
 
   private getDirectSwarmId(userId: string): string {
     return `${AgentSwarm.DIRECT_SWARM_ID}_${userId}`;
+  }
+
+  private getComparisonSwarmId(userId: string): string {
+    return `${AgentSwarm.COMPARISON_SWARM_ID}_${userId}`;
   }
 
   private async ensureUserSeedData(userId: string): Promise<void> {
@@ -336,6 +341,61 @@ export class AgentSwarm {
       conv.id,
       normalizedUserId,
       directSwarm,
+      this.storage,
+      this.config.llm,
+      this.interventionHandler,
+      [],
+      this.eventLogLevel,
+      (context) => this.createToolRuntimeAvailability(context),
+    );
+  }
+
+  /**
+   * Create a comparison conversation that runs the same prompt against multiple models in parallel.
+   */
+  async createComparisonConversation(
+    userId: string,
+    models: Array<{ provider: string; modelId: string }>,
+    title?: string,
+    preferences?: Partial<ConversationPreferences>,
+  ): Promise<Conversation> {
+    this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
+
+    const swarmId = this.getComparisonSwarmId(normalizedUserId);
+    const agents = models.map((m, i) => ({
+      id: `compare-agent-${i}`,
+      name: `${m.provider}/${m.modelId}`,
+      description: `Comparison model: ${m.provider}/${m.modelId}`,
+      systemPrompt: "You are a helpful assistant.",
+      model: { provider: m.provider, modelId: m.modelId },
+    }));
+
+    const comparisonSwarm: SwarmConfig = {
+      id: swarmId,
+      name: `Comparison (${models.length} models)`,
+      mode: "parallel",
+      agents,
+      aggregator: { type: "none" },
+    };
+
+    this.swarmConfigs.set(swarmId, comparisonSwarm);
+
+    try {
+      await this.storage.saveSwarm(comparisonSwarm, normalizedUserId);
+    } catch {
+      // Keep in-memory config available even if persistence fails
+    }
+
+    const conv = await this.storage.createConversation(swarmId, normalizedUserId, title, {
+      ...preferences,
+      comparisonModels: models,
+    });
+
+    return new Conversation(
+      conv.id,
+      normalizedUserId,
+      comparisonSwarm,
       this.storage,
       this.config.llm,
       this.interventionHandler,
@@ -1114,6 +1174,10 @@ export class AgentSwarm {
       return swarmConfig;
     }
 
+    if (swarmConfig.id.startsWith("__compare_")) {
+      return this.applyConversationComparisonModels(swarmConfig, conversation);
+    }
+
     const directModel = conversation.directModel;
     if (!directModel || !swarmConfig.agents[0]) {
       return swarmConfig;
@@ -1136,6 +1200,32 @@ export class AgentSwarm {
         },
         ...restAgents,
       ],
+    };
+  }
+
+  private applyConversationComparisonModels(
+    swarmConfig: SwarmConfig,
+    conversation: StoredConversation,
+  ): SwarmConfig {
+    const models = conversation.comparisonModels;
+    if (!models || models.length === 0) {
+      return swarmConfig;
+    }
+
+    const agents = models.map((m, i) => ({
+      ...swarmConfig.agents[i]!,
+      id: `compare-agent-${i}`,
+      name: `${m.provider}/${m.modelId}`,
+      description: `Comparison model: ${m.provider}/${m.modelId}`,
+      model: { provider: m.provider, modelId: m.modelId },
+    }));
+
+    return {
+      ...swarmConfig,
+      name: `Comparison (${models.length} models)`,
+      mode: "parallel" as const,
+      agents,
+      aggregator: { type: "none" as const },
     };
   }
 }
