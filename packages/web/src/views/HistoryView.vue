@@ -101,10 +101,16 @@ async function deleteConversation(conv: ConversationInfo) {
 const formatTime = formatTimeLong;
 
 function getSwarmName(swarmId: string): string {
+  if (swarmId.startsWith("__direct_")) {
+    return "直接对话";
+  }
   return swarmStore.swarms.find((s: SwarmConfig) => s.id === swarmId)?.name ?? swarmId;
 }
 
 function getSwarmMode(swarmId: string): string {
+  if (swarmId.startsWith("__direct_")) {
+    return "direct";
+  }
   return swarmStore.swarms.find((s: SwarmConfig) => s.id === swarmId)?.mode ?? "router";
 }
 
@@ -483,7 +489,7 @@ function formatEventOffset(event: ConversationEvent, events: ConversationEvent[]
   pointer-events: none;
 }
 
-.search-input {
+.input-field.search-input {
   padding-left: 40px;
 }
 
