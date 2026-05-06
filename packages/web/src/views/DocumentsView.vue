@@ -30,6 +30,8 @@ const isEditing = ref(false);
 const isNewDoc = ref(false);
 const editTitle = ref("");
 const editContent = ref("");
+const fileInputRef = ref<HTMLInputElement | null>(null);
+const uploading = ref(false);
 
 const displayDocuments = computed<Document[]>(() => {
   const q = searchQuery.value.trim();
@@ -112,6 +114,43 @@ function createNewDoc() {
   isEditing.value = true;
   editTitle.value = tempDoc.title;
   editContent.value = "";
+}
+
+function openFilePicker() {
+  fileInputRef.value?.click();
+}
+
+async function handleFileSelected(event: Event) {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement)) {
+    return;
+  }
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file) {
+    return;
+  }
+
+  const form = new FormData();
+  form.append("file", file);
+
+  uploading.value = true;
+  try {
+    const resp = await apiClient<{ data: { id: string; title: string; chunks: number } }>("/documents/upload", {
+      method: "POST",
+      body: form,
+    });
+    await MessagePlugin.success(`已上传 ${resp.data.title}`);
+    await loadDocuments();
+    selectedDoc.value = await loadDocumentDetail(resp.data.id);
+    showPreview.value = true;
+    isEditing.value = false;
+    isNewDoc.value = false;
+  } catch (err: any) {
+    await MessagePlugin.error(err.message);
+  } finally {
+    uploading.value = false;
+  }
 }
 
 async function selectDocument(doc: Document) {
@@ -332,6 +371,22 @@ function highlightMatch(text: string, query: string): string {
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
           新建文档
+        </button>
+        <input
+          ref="fileInputRef"
+          class="file-input"
+          type="file"
+          accept=".txt,.md,.markdown,.json,.html,.htm"
+          @change="handleFileSelected"
+        />
+        <button class="btn-secondary upload-btn" :disabled="uploading" @click="openFilePicker">
+          <span v-if="uploading" class="spinner-mini" />
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          上传文件
         </button>
       </div>
     </header>
@@ -556,6 +611,16 @@ function highlightMatch(text: string, query: string): string {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.file-input {
+  display: none;
+}
+
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* ── Search ── */

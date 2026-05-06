@@ -45,6 +45,7 @@ agent-swarm/
 │   │   ├── auth-multi-tenant-isolation.md
 │   │   ├── conversation-fork.md
 │   │   ├── conversation-trace.md
+│   │   ├── document-file-upload.md
 │   │   └── message-markdown-rendering.md
 ├── agent-swarm.config.ts     # SDK 配置示例（示例文件，不会被 server 自动读取）
 └── README.md
@@ -168,7 +169,7 @@ pnpm --filter @agent-swarm/server test
 
 - `GET /api/documents`
 - `GET /api/documents/:id`
-- `POST /api/documents/upload`
+- `POST /api/documents/upload`：支持 JSON `{ filename, content }` 和 multipart `file` 上传；当前可解析 `txt/md/json/html`
 - `PUT /api/documents/:id`
 - `POST /api/documents/search`：`query` 支持空格分隔多关键词，按 OR 召回，例如 `认证 身份验证 Authentication`
 - `DELETE /api/documents/:id`
@@ -352,6 +353,7 @@ export default defineConfig({
 - [认证与多租户隔离](./docs/features/auth-multi-tenant-isolation.md)
 - [会话分支](./docs/features/conversation-fork.md)
 - [会话执行 Trace](./docs/features/conversation-trace.md)
+- [文档文件上传](./docs/features/document-file-upload.md)
 - [前端会话运行态分桶机制](./docs/architecture/frontend-conversation-runtime.md)
 - [消息 Markdown 渲染](./docs/features/message-markdown-rendering.md)
 

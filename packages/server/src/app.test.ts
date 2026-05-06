@@ -26,6 +26,7 @@ function createMockSwarm() {
   };
   const swarms = new Map<string, SwarmConfig>();
   const templates = new Map<string, any>();
+  const uploadedDocs: Array<{ title: string; source: string; content: string; chunks: number; userId: string }> = [];
 
   swarms.set("router_swarm", {
     id: "router_swarm",
@@ -114,6 +115,21 @@ function createMockSwarm() {
       return [];
     },
     getMessages: async () => [],
+    vectorStore: {
+      listDocuments: async () => [],
+      getDocument: async () => null,
+      deleteDocument: async () => undefined,
+      search: async () => [],
+      addDocument: async (doc: any, chunks: any[]) => {
+        uploadedDocs.push({
+          title: doc.title,
+          source: doc.source,
+          content: doc.content,
+          chunks: chunks.length,
+          userId: doc.userId,
+        });
+      },
+    },
     getLLMConfig: () => JSON.parse(JSON.stringify(llmConfig)) as LLMBackendConfig,
     updateLLMConfig: async (next: LLMBackendConfig) => { llmConfig = JSON.parse(JSON.stringify(next)) as LLMBackendConfig; return JSON.parse(JSON.stringify(llmConfig)) as LLMBackendConfig; },
   };
@@ -121,11 +137,12 @@ function createMockSwarm() {
   return {
     swarm: mock as unknown as AgentSwarm,
     usageCalls,
+    uploadedDocs,
   };
 }
 
 async function startTestServer() {
-  const { swarm, usageCalls } = createMockSwarm();
+  const { swarm, usageCalls, uploadedDocs } = createMockSwarm();
   const app = createApp(swarm);
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", () => resolve()));
@@ -136,6 +153,7 @@ async function startTestServer() {
   return {
     baseUrl,
     usageCalls,
+    uploadedDocs,
     close: async () => { await new Promise<void>((resolve, reject) => { server.close((err) => (err ? reject(err) : resolve())); }); },
   };
 }
@@ -368,6 +386,32 @@ describe("API routes", () => {
       expect(data.data).toHaveLength(1);
       expect(data.data[0]?.eventType).toBe("handoff");
       expect(JSON.parse(data.data[0]?.eventData ?? "{}").toAgentId).toBe("worker");
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("POST /api/documents/upload accepts multipart file uploads", async () => {
+    const server = await startTestServer();
+    try {
+      const form = new FormData();
+      form.append("file", new Blob(["# Hello\n\nKnowledge base content"], { type: "text/markdown" }), "hello.md");
+
+      const response = await fetch(`${server.baseUrl}/api/documents/upload`, {
+        method: "POST",
+        headers: withAuthHeaders(),
+        body: form,
+      });
+      const data = await response.json() as { data: { title: string; chunks: number } };
+      expect(response.status).toBe(201);
+      expect(data.data.title).toBe("hello.md");
+      expect(data.data.chunks).toBeGreaterThan(0);
+      expect(server.uploadedDocs[0]).toMatchObject({
+        title: "hello.md",
+        source: "hello.md",
+        content: "# Hello\n\nKnowledge base content",
+        userId: TEST_USER.id,
+      });
     } finally {
       await server.close();
     }

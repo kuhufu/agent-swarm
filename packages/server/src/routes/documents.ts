@@ -1,18 +1,113 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
+import type { Request } from "express";
 import type { AgentSwarm } from "@agent-swarm/core";
 import { resolveRequestUserId } from "../middleware/auth.js";
 
+interface UploadedFile {
+  fieldName: string;
+  filename: string;
+  contentType?: string;
+  data: Buffer;
+}
+
+interface MultipartPayload {
+  fields: Record<string, string>;
+  files: UploadedFile[];
+}
+
 function parseDocumentText(filename: string, buffer: Buffer): string {
   const ext = filename.toLowerCase().split(".").pop() ?? "";
-  if (ext === "txt" || ext === "md" || ext === "html" || ext === "htm") {
+  if (ext === "txt" || ext === "md" || ext === "markdown" || ext === "html" || ext === "htm") {
     return buffer.toString("utf-8");
   }
   if (ext === "json") {
     const obj = JSON.parse(buffer.toString("utf-8"));
     return typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
   }
-  return buffer.toString("utf-8");
+  if (ext === "pdf" || ext === "docx") {
+    throw new Error(`${ext.toUpperCase()} 解析暂未启用，请先上传 txt/md/json/html 文件`);
+  }
+  throw new Error(`不支持的文件类型：.${ext || "unknown"}`);
+}
+
+async function readRequestBody(req: Request, maxBytes = 10 * 1024 * 1024): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of req) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += buffer.length;
+    if (total > maxBytes) {
+      throw new Error("文件大小不能超过 10MB");
+    }
+    chunks.push(buffer);
+  }
+  return Buffer.concat(chunks);
+}
+
+function parseContentDisposition(value: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const part of value.split(";")) {
+    const [rawKey, ...rawValueParts] = part.trim().split("=");
+    if (!rawKey || rawValueParts.length === 0) continue;
+    const rawValue = rawValueParts.join("=");
+    result[rawKey.toLowerCase()] = rawValue.replace(/^"|"$/g, "");
+  }
+  return result;
+}
+
+function parseMultipartBody(contentType: string, body: Buffer): MultipartPayload {
+  const boundaryMatch = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(contentType);
+  const boundary = boundaryMatch?.[1] ?? boundaryMatch?.[2];
+  if (!boundary) {
+    throw new Error("缺少 multipart boundary");
+  }
+
+  const boundaryText = `--${boundary}`;
+  const raw = body.toString("binary");
+  const parts = raw.split(boundaryText).slice(1, -1);
+  const fields: Record<string, string> = {};
+  const files: UploadedFile[] = [];
+
+  for (const rawPart of parts) {
+    const trimmedPart = rawPart.replace(/^\r\n/, "").replace(/\r\n$/, "");
+    if (!trimmedPart) continue;
+
+    const headerEnd = trimmedPart.indexOf("\r\n\r\n");
+    if (headerEnd < 0) continue;
+
+    const rawHeaders = trimmedPart.slice(0, headerEnd);
+    const rawContent = trimmedPart.slice(headerEnd + 4);
+    const headers: Record<string, string> = {};
+    for (const line of rawHeaders.split("\r\n")) {
+      const separator = line.indexOf(":");
+      if (separator < 0) continue;
+      headers[line.slice(0, separator).trim().toLowerCase()] = line.slice(separator + 1).trim();
+    }
+
+    const disposition = headers["content-disposition"];
+    if (!disposition) continue;
+    const dispositionParams = parseContentDisposition(disposition);
+    const fieldName = dispositionParams.name;
+    if (!fieldName) continue;
+
+    const contentBuffer = Buffer.from(rawContent, "binary");
+    const filename = dispositionParams.filename
+      ? Buffer.from(dispositionParams.filename, "binary").toString("utf-8")
+      : undefined;
+    if (filename) {
+      files.push({
+        fieldName,
+        filename,
+        contentType: headers["content-type"],
+        data: contentBuffer,
+      });
+    } else {
+      fields[fieldName] = contentBuffer.toString("utf-8");
+    }
+  }
+
+  return { fields, files };
 }
 
 function splitTextIntoChunks(text: string, chunkSize = 500, overlap = 50): string[] {
@@ -62,18 +157,37 @@ export function documentRoutes(swarm: AgentSwarm): Router {
       const userId = resolveRequestUserId(req);
       if (!userId) return res.status(401).json({ error: "未登录" });
 
-      const { filename, content } = req.body ?? {};
-      if (!filename || !content) {
-        return res.status(400).json({ error: "filename 和 content 不能为空" });
-      }
-
       const store = swarm.vectorStore;
       if (!store) {
         return res.status(500).json({ error: "知识库未初始化" });
       }
 
+      const contentType = req.headers["content-type"] ?? "";
+      let filename: string;
+      let text: string;
+
+      if (contentType.includes("multipart/form-data")) {
+        const multipart = parseMultipartBody(contentType, await readRequestBody(req));
+        const file = multipart.files.find((item) => item.fieldName === "file") ?? multipart.files[0];
+        if (!file) {
+          return res.status(400).json({ error: "缺少上传文件" });
+        }
+        filename = (multipart.fields.title?.trim() || file.filename).trim();
+        text = parseDocumentText(file.filename, file.data);
+      } else {
+        const { filename: bodyFilename, content } = req.body ?? {};
+        if (!bodyFilename || !content) {
+          return res.status(400).json({ error: "filename 和 content 不能为空" });
+        }
+        filename = String(bodyFilename);
+        text = typeof content === "string" ? content : JSON.stringify(content);
+      }
+
+      if (!text.trim()) {
+        return res.status(400).json({ error: "文档内容不能为空" });
+      }
+
       const docId = randomUUID();
-      const text = typeof content === "string" ? content : JSON.stringify(content);
       const chunkTexts = splitTextIntoChunks(text);
       const chunks = chunkTexts.map((chunkText, i) => ({
         id: randomUUID(),
