@@ -15,20 +15,19 @@ Agent Swarm 是一个多 Agent 协作框架，基于 `@mariozechner/pi-agent-cor
 
 | 包 | 路径 | 职责 |
 |---|------|------|
-| `@agent-swarm/core` | `packages/core/` | 后端 SDK：协作模式、介入机制、存储、LLM 桥接、工具定义、Agent 预设管理 |
-| `@agent-swarm/server` | `packages/server/` | API 服务：Express REST + WebSocket，桥接 core 和前端 |
-| `@agent-swarm/web` | `packages/web/` | Vue 3 前端：对话 UI、Agent 状态可视化、Swarm/Agent 预设管理 |
-
-详细规格见 `spec.md`。
+| `@agent-swarm/core` | `packages/core/` | 后端 SDK：协作模式、介入机制、存储（SQLite + 向量存储）、LLM 桥接、工具定义（含 workspace Docker 容器）、日志、Agent 预设管理 |
+| `@agent-swarm/server` | `packages/server/` | API 服务：Express REST + WebSocket + Zod 校验，桥接 core 和前端 |
+| `@agent-swarm/web` | `packages/web/` | Vue 3 前端：对话 UI、Agent 状态可视化、Swarm/Agent 预设管理、文档知识库管理 |
 
 ---
 
 ## 技术栈
 
 - **语言**：TypeScript（strict 模式），ESM（`"type": "module"`）
-- **后端**：Node.js 18+、Express 4、ws 8、better-sqlite3 + drizzle-orm
+- **后端**：Node.js 18+、Express 4、ws 8、better-sqlite3 + drizzle-orm、Zod（校验）
 - **前端**：Vue 3.5+（Composition API + `<script setup>`）、Vite 6、Pinia 2、Vue Router 4、TDesign Vue Next、Tailwind CSS v4
 - **测试**：Vitest
+- **日志**：结构化 JSON 日志（自定义 logger，支持分级/上下文输出）
 - **Monorepo**：pnpm workspace，TypeScript project references
 
 ---
@@ -43,14 +42,16 @@ agent-swarm/
 │   │   │   ├── core/            # AgentSwarm 主类、Conversation、类型、配置、内置预设
 │   │   │   ├── modes/           # 5种协作模式：router/sequential/parallel/swarm/debate
 │   │   │   ├── intervention/    # 介入处理器和内置策略
-│   │   │   ├── storage/         # IStorage 接口 + SQLite 实现
+│   │   │   ├── storage/         # IStorage 接口 + SQLite + 向量存储实现
 │   │   │   ├── llm/             # LLM 配置管理 + pi-ai 桥接
+│   │   │   ├── logger/          # 结构化 JSON 日志
 │   │   │   └── tools/           # 工具定义、MCP、workspace 组合工具、运行时工具注入
 │   │   └── package.json
 │   ├── server/                  # @agent-swarm/server
 │   │   ├── src/
 │   │   │   ├── routes/          # REST API 路由
 │   │   │   ├── middleware/      # 错误处理中间件
+│   │   │   ├── schemas/         # Zod 校验 schema
 │   │   │   ├── app.ts           # Express 应用
 │   │   │   ├── ws.ts            # WebSocket 服务
 │   │   │   └── index.ts         # 入口
@@ -59,14 +60,18 @@ agent-swarm/
 │       ├── src/
 │       │   ├── api/             # HTTP 请求封装
 │       │   ├── composables/     # useWebSocket / useChat / useIntervention
-│       │   ├── stores/          # Pinia stores（swarm/agents/conversation/intervention/settings）
-│       │   ├── views/           # 页面组件（Chat/Swarms/Agents/History/Settings）
+│       │   ├── stores/          # Pinia stores（swarm/agents/conversation/intervention/settings/auth/theme）
+│       │   ├── views/           # 页面组件（Chat/Swarms/Agents/History/Settings/Documents/Login/Register/Usage）
 │       │   ├── components/      # 通用组件（layout/chat/intervention/swarm）
 │       │   ├── router/          # Vue Router 配置
 │       │   ├── types/           # 前端本地类型
+│       │   ├── constants/       # 常量定义（swarm modes 等）
+│       │   ├── tools/           # 客户端工具定义
+│       │   ├── utils/           # 工具函数
 │       │   └── styles/          # Tailwind 入口
 │       └── package.json
-├── spec.md                      # 完整规格书
+├── docs/                        # 架构文档与开发指南
+├── scripts/                     # 运维与开发辅助脚本
 ├── agent-swarm.config.ts        # 示例配置
 └── pnpm-workspace.yaml
 ```
@@ -82,7 +87,7 @@ pnpm dev:core              # 仅 SDK（tsc --watch）
 pnpm dev:server            # 仅 API 服务（tsx watch）
 pnpm dev:web               # 仅前端（vite）
 pnpm build                 # 构建所有包
-pnpm test                  # 运行 core 单元测试
+pnpm test                  # 运行 core + server 单元测试
 ```
 
 - 服务端默认端口：`3000`
@@ -104,7 +109,7 @@ pnpm test                  # 运行 core 单元测试
 ### 后端 (`@agent-swarm/core` + `@agent-swarm/server`)
 
 - 依赖方向：`server` → `core`，`core` 不依赖 `server` 或 `web`
-- 存储：通过 `IStorage` 接口抽象，默认 `SqliteStorage` 实现
+- 存储：通过 `IStorage` 接口抽象，默认 `SqliteStorage` + 向量存储实现
 - 事件：所有协作过程通过 `SwarmEvent` 类型的事件流暴露
 - 介入：通过 `InterventionHandler` 抽象类实现，内置 5 种策略
 - 工具注入：统一通过 `packages/core/src/tools/runtime.ts`；`Conversation` 按 `enabledTools` 决定启用，`AgentSwarm.createToolRuntimeAvailability()` 只提供可用工具资源，WebSocket 不创建具体工具
@@ -159,22 +164,20 @@ pnpm test                  # 运行 core 单元测试
 
 ## API 端点
 
-| 方法 | 路径 | 说明 |
+路由分组位于 `packages/server/src/routes/`，RESTful 风格，响应格式 `{ data: T }` 或 `{ error: string }`：
+
+| 分组 | 前缀 | 说明 |
 |------|------|------|
-| GET | `/api/health` | 健康检查 |
-| GET | `/api/swarms` | 列出所有 Swarm |
-| GET | `/api/swarms/:id` | 获取 Swarm 详情 |
-| GET | `/api/agents` | 列出所有 Agent 预设 |
-| GET | `/api/agents/:id` | 获取 Agent 预设详情 |
-| POST | `/api/agents` | 创建 Agent 预设 |
-| PUT | `/api/agents/:id` | 更新 Agent 预设（`id` 不可变） |
-| DELETE | `/api/agents/:id` | 删除 Agent 预设（内置预设只读） |
-| GET | `/api/conversations?swarmId=` | 列出对话 |
-| POST | `/api/conversations` | 创建对话 |
-| GET | `/api/conversations/:id/messages` | 获取消息 |
-| GET | `/api/config` | 获取 LLM 非敏感配置；`admin` 可见脱敏 API Key |
-| PUT | `/api/config` | 更新 LLM 配置（需要 `admin`） |
-| WS | `/ws` | WebSocket 连接 |
+| Auth | `/api/auth` | 注册、登录、登出、当前用户 |
+| Swarms | `/api/swarms` | CRUD |
+| Agents | `/api/agents` | Agent 预设 CRUD + 模板导入 |
+| Conversations | `/api/conversations` | CRUD、偏好设置、清空上下文、恢复、分支 |
+| Documents | `/api/documents` | 文档知识库 CRUD + 全文搜索 |
+| Templates | `/api/templates` | 系统 Agent 模板 CRUD |
+| Config | `/api/config` | LLM 配置读写（需 `admin`） |
+| Usage | `/api/usage`、`/api/llm` | 用量统计与 LLM 调用记录 |
+| Health | `/api/health` | 健康检查 |
+| WebSocket | `/ws` | 实时事件推送与消息收发 |
 
 ---
 
@@ -190,9 +193,23 @@ pnpm test                  # 运行 core 单元测试
 { type: "unsubscribe_conversation", payload: { conversationId: string } }
 { type: "abort", payload: { conversationId?: string } }
 { type: "intervention_decision", payload: { requestId: string, decision: InterventionDecision } }
+{ type: "client_tool_result", payload: { toolCallId: string, result: any } }
 ```
 
 同一个 WebSocket 连接可以订阅多个会话；服务端按 `conversationId` 广播事件并在订阅时校验用户权限。服务端跟踪每个连接上的多个活跃会话，`abort` 携带 `conversationId` 时只终止指定会话，未携带时终止该连接发起的全部活跃会话。
+
+---
+
+## 工具
+
+通过 `RuntimeTool` 组合机制注入 Agent。workspace 以组合工具模式将 11 个子工具统归 `"workspace"` 一个开关：
+
+| 工具组 | 子工具数 | 说明 |
+|--------|---------|------|
+| `workspace` | 11 | workspace_write_file / read_file / grep / list_files / run_container / list_containers / start_containers / stop_containers / restart_containers / remove_containers / pull_image |
+| `web_search` | 1 | Web 搜索（多 provider） |
+| `retrieve_knowledge` | 1 | 文档知识库检索 |
+| 其他内置 | — | route_to_agent / handoff / javascript_execute / current_time |
 
 ---
 
