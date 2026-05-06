@@ -7,7 +7,7 @@ import { getModeConfig } from "../constants/swarm-modes.js";
 import CreateSwarmDialog from "../components/swarm/CreateSwarmDialog.vue";
 import ModeIcon from "../components/common/ModeIcon.vue";
 import CustomSelect from "../components/common/CustomSelect.vue";
-import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, DebateConfig, PresetAgent } from "../types/index.js";
+import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, DebateConfig, PresetAgent, AggregationStrategy } from "../types/index.js";
 import { confirmDialog, showError } from "../utils/ui-feedback.js";
 
 const swarmStore = useSwarmStore();
@@ -24,6 +24,7 @@ const editForm = reactive<{
   mode: CollaborationMode;
   agents: SwarmAgentConfig[];
   debateConfig: DebateConfig | undefined;
+  aggregator: AggregationStrategy | undefined;
   maxTotalTurns: number | undefined;
   maxConcurrency: number | undefined;
 }>({
@@ -31,6 +32,7 @@ const editForm = reactive<{
   mode: "router",
   agents: [],
   debateConfig: undefined,
+  aggregator: undefined,
   maxTotalTurns: undefined,
   maxConcurrency: undefined,
 });
@@ -266,6 +268,7 @@ watch(selectedSwarm, (swarm) => {
     editForm.mode = swarm.mode;
     editForm.agents = swarm.agents.map((a) => ({ ...a, model: { ...a.model } }));
     editForm.debateConfig = swarm.debateConfig ? { ...swarm.debateConfig } : undefined;
+    editForm.aggregator = swarm.aggregator ? { ...swarm.aggregator } : undefined;
     editForm.maxTotalTurns = swarm.maxTotalTurns;
     editForm.maxConcurrency = swarm.maxConcurrency;
     syncRouterOrchestrator(swarm.orchestrator?.id);
@@ -295,6 +298,14 @@ async function handleCreate(swarm: SwarmConfig) {
   } catch (error) {
     alert(`创建失败：${getErrorMessage(error)}`);
   }
+}
+
+function setAggregatorType(type: AggregationStrategy["type"]) {
+  if (type === "none") editForm.aggregator = { type: "none" };
+  else if (type === "merge") editForm.aggregator = { type: "merge" };
+  else if (type === "vote") editForm.aggregator = { type: "vote", quorum: Math.min(editForm.agents.length, 2) };
+  else if (type === "best") editForm.aggregator = { type: "best", judgeAgent: editForm.agents[0]?.id ?? "" };
+  markDirty();
 }
 
 function handleSelect(swarm: SwarmConfig) {
@@ -339,6 +350,7 @@ async function handleSave() {
     mode: editForm.mode,
     agents: editForm.agents.map((a) => ({ ...a, model: { ...a.model } })),
     debateConfig: editForm.mode === "debate" ? editForm.debateConfig : undefined,
+    aggregator: editForm.mode === "parallel" ? editForm.aggregator : undefined,
     maxTotalTurns: editForm.maxTotalTurns,
     maxConcurrency: editForm.maxConcurrency,
     swarmContext: selectedSwarm.value?.swarmContext,
@@ -620,6 +632,52 @@ function clearModelSelection() {
                   :model-value="editForm.debateConfig?.judgeAgent ?? ''"
                   :options="[{ value: '', label: '选择 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]"
                   @update:model-value="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, judgeAgent: $event }; markDirty()"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Parallel Aggregator Config -->
+          <div v-if="editForm.mode === 'parallel'" class="detail-section">
+            <h4 class="detail-section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+                <polyline points="16 18 22 12 16 6" />
+                <polyline points="8 6 2 12 8 18" />
+              </svg>
+              聚合策略
+            </h4>
+            <div class="aggregator-config card">
+              <div class="form-row">
+                <label>策略类型</label>
+                <CustomSelect
+                  :model-value="editForm.aggregator?.type ?? 'none'"
+                  :options="[
+                    { value: 'none', label: '无聚合' },
+                    { value: 'merge', label: '合并结果' },
+                    { value: 'vote', label: '投票' },
+                    { value: 'best', label: '最佳选择' },
+                  ]"
+                  @update:model-value="setAggregatorType($event as AggregationStrategy['type'])"
+                />
+              </div>
+              <div v-if="editForm.aggregator?.type === 'vote'" class="form-row">
+                <label>法定人数</label>
+                <input
+                  type="number"
+                  :value="editForm.aggregator.quorum"
+                  class="input-field"
+                  min="1"
+                  :max="editForm.agents.length"
+                  style="width: 100px;"
+                  @input="editForm.aggregator = { type: 'vote', quorum: Math.min(Math.max(Number(($event.target as HTMLInputElement).value) || 1, 1), editForm.agents.length || 1) }; markDirty()"
+                />
+              </div>
+              <div v-if="editForm.aggregator?.type === 'best'" class="form-row">
+                <label>裁判 Agent</label>
+                <CustomSelect
+                  :model-value="editForm.aggregator.judgeAgent"
+                  :options="[{ value: '', label: '选择裁判 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]"
+                  @update:model-value="editForm.aggregator = { type: 'best', judgeAgent: $event }; markDirty()"
                 />
               </div>
             </div>

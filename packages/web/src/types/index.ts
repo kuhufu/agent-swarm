@@ -2,6 +2,13 @@
 // API Response Types
 // ============================================================================
 
+export type AggregationStrategy =
+  | { type: "none" }
+  | { type: "merge" }
+  | { type: "vote"; quorum: number }
+  | { type: "best"; judgeAgent: string }
+  | { type: "custom"; handler: string };
+
 export interface SwarmConfig {
   id: string;
   name: string;
@@ -9,6 +16,7 @@ export interface SwarmConfig {
   agents: SwarmAgentConfig[];
   orchestrator?: SwarmAgentConfig;
   debateConfig?: DebateConfig;
+  aggregator?: AggregationStrategy;
   maxTotalTurns?: number;
   maxConcurrency?: number;
   swarmContext?: SwarmContextConfig;

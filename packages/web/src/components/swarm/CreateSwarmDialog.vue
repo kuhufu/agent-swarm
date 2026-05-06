@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted } from "vue";
 import { useSettingsStore } from "../../stores/settings.js";
 import { useAgentStore } from "../../stores/agents.js";
 import { MODE_OPTIONS } from "../../constants/swarm-modes.js";
+import type { AggregationStrategy } from "../../types/index.js";
 import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, PresetAgent } from "../../types/index.js";
 import ModeIcon from "../common/ModeIcon.vue";
 import CustomSelect from "../common/CustomSelect.vue";
@@ -18,6 +19,9 @@ const name = ref("");
 const mode = ref<CollaborationMode>("router");
 const agents = reactive<SwarmAgentConfig[]>([]);
 const orchestratorId = ref("");
+const aggregatorType = ref<AggregationStrategy["type"]>("none");
+const aggregatorQuorum = ref(2);
+const aggregatorJudgeAgent = ref("");
 
 const showAgentForm = ref(false);
 const selectedPresetId = ref("");
@@ -222,6 +226,18 @@ function submit() {
       judgeAgent: agents[0]?.id ?? "",
     };
   }
+  if (mode.value === "parallel") {
+    if (aggregatorType.value === "none") {
+      swarm.aggregator = { type: "none" };
+    } else if (aggregatorType.value === "merge") {
+      swarm.aggregator = { type: "merge" };
+    } else if (aggregatorType.value === "vote") {
+      swarm.aggregator = { type: "vote", quorum: aggregatorQuorum.value };
+    } else if (aggregatorType.value === "best") {
+      const judgeAgent = aggregatorJudgeAgent.value || agents[0]?.id || "";
+      swarm.aggregator = { type: "best", judgeAgent };
+    }
+  }
   emit("create", swarm);
 }
 
@@ -400,6 +416,42 @@ onMounted(() => {
                 </svg>
               </button>
             </div>
+          </div>
+        </div>
+
+        <!-- Parallel Aggregator Config -->
+        <div v-if="mode === 'parallel'" class="form-section">
+          <label class="form-label">聚合策略</label>
+          <div class="form-row" style="margin-bottom: 8px;">
+            <CustomSelect
+              :model-value="aggregatorType"
+              :options="[
+                { value: 'none', label: '无聚合' },
+                { value: 'merge', label: '合并结果' },
+                { value: 'vote', label: '投票' },
+                { value: 'best', label: '最佳选择' },
+              ]"
+              @update:model-value="aggregatorType = $event as AggregationStrategy['type']"
+            />
+          </div>
+          <div v-if="aggregatorType === 'vote'" class="form-row" style="margin-bottom: 0;">
+            <label>法定人数</label>
+            <input
+              type="number"
+              v-model.number="aggregatorQuorum"
+              class="input-field"
+              min="1"
+              :max="agents.length"
+              style="width: 100px;"
+            />
+          </div>
+          <div v-if="aggregatorType === 'best'" class="form-row" style="margin-bottom: 0;">
+            <label>裁判 Agent</label>
+            <CustomSelect
+              :model-value="aggregatorJudgeAgent"
+              :options="[{ value: '', label: '选择裁判 Agent' }, ...agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]"
+              @update:model-value="aggregatorJudgeAgent = $event"
+            />
           </div>
         </div>
       </div>
