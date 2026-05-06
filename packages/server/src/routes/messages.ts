@@ -21,5 +21,21 @@ export function messageRoutes(swarm: AgentSwarm): Router {
     }
   });
 
+  router.get("/conversations/:id/events", async (req, res) => {
+    const userId = resolveRequestUserId(req);
+    if (!userId) return res.status(401).json({ error: "未登录" });
+
+    try {
+      const rawEventType = req.query.type;
+      const eventType = typeof rawEventType === "string" && rawEventType.trim().length > 0
+        ? rawEventType.trim()
+        : undefined;
+      const events = await swarm.getConversationEvents(req.params.id as string, userId, eventType);
+      res.json({ data: events });
+    } catch (err: any) {
+      res.status(404).json({ error: err.message });
+    }
+  });
+
   return router;
 }

@@ -24,6 +24,7 @@ const { disconnect } = useWebSocket();
 
 const navItems = computed(() => [
   { label: "对话", route: "/chat", icon: MessageIcon },
+  { label: "历史", route: "/history", icon: HistoryIcon },
   { label: "Swarm", route: "/swarms", icon: SwarmIcon },
   { label: "Agents", route: "/agents", icon: AgentsIcon },
   { label: "知识库", route: "/documents", icon: KnowledgeIcon },
@@ -305,6 +306,14 @@ onBeforeUnmount(() => {
 function MessageIcon() {
   return h("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", class: "nav-icon" }, [
     h("path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" }),
+  ]);
+}
+
+function HistoryIcon() {
+  return h("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", class: "nav-icon" }, [
+    h("path", { d: "M3 12a9 9 0 1 0 3-6.7" }),
+    h("path", { d: "M3 3v6h6" }),
+    h("path", { d: "M12 7v5l3 2" }),
   ]);
 }
 

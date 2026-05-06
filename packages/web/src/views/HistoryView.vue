@@ -7,7 +7,7 @@ import * as conversationsApi from "../api/conversations.js";
 import { getModeConfig } from "../constants/swarm-modes.js";
 import { formatTimeLong } from "../utils/format.js";
 import ModeIcon from "../components/common/ModeIcon.vue";
-import type { ConversationInfo, SwarmConfig, ChatMessage } from "../types/index.js";
+import type { ConversationInfo, SwarmConfig, ChatMessage, ConversationEvent } from "../types/index.js";
 import { confirmDialog, showError } from "../utils/ui-feedback.js";
 
 const router = useRouter();
@@ -16,7 +16,9 @@ const swarmStore = useSwarmStore();
 const searchQuery = ref("");
 const selectedConvId = ref<string | null>(null);
 const expandedMessages = reactive<Map<string, ChatMessage[]>>(new Map());
+const expandedEvents = reactive<Map<string, ConversationEvent[]>>(new Map());
 const loadingMessages = ref(false);
+const loadingEvents = ref(false);
 
 const filteredConversations = computed(() => {
   if (!searchQuery.value) return conversationStore.conversations;
@@ -32,6 +34,9 @@ const selectedConv = computed(() =>
 
 const selectedMessages = computed(() =>
   selectedConvId.value ? expandedMessages.get(selectedConvId.value) ?? null : null
+);
+const selectedEvents = computed(() =>
+  selectedConvId.value ? expandedEvents.get(selectedConvId.value) ?? null : null
 );
 
 onMounted(async () => {
@@ -49,6 +54,17 @@ async function selectConv(conv: ConversationInfo) {
       expandedMessages.set(conv.id, []);
     } finally {
       loadingMessages.value = false;
+    }
+  }
+  if (!expandedEvents.has(conv.id)) {
+    loadingEvents.value = true;
+    try {
+      const res = await conversationsApi.getEvents(conv.id);
+      expandedEvents.set(conv.id, res.data);
+    } catch {
+      expandedEvents.set(conv.id, []);
+    } finally {
+      loadingEvents.value = false;
     }
   }
 }
@@ -72,6 +88,7 @@ async function deleteConversation(conv: ConversationInfo) {
   try {
     await conversationStore.deleteConversation(conv.id);
     expandedMessages.delete(conv.id);
+    expandedEvents.delete(conv.id);
     if (selectedConvId.value === conv.id) {
       selectedConvId.value = null;
     }
@@ -155,6 +172,92 @@ function getMessageLabel(message: ChatMessage, conversation: ConversationInfo): 
     return metadataModelLabel ?? message.agentName ?? message.agentId ?? "助手";
   }
   return message.agentName ?? message.agentId ?? metadataModelLabel ?? "助手";
+}
+
+function parseEventData(event: ConversationEvent): Record<string, any> {
+  if (!event.eventData) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(event.eventData) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, any>
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function getEventLabel(event: ConversationEvent): string {
+  const labels: Record<string, string> = {
+    swarm_start: "开始",
+    swarm_end: "结束",
+    agent_start: "Agent 开始",
+    agent_end: "Agent 结束",
+    turn_start: "轮次开始",
+    turn_end: "轮次结束",
+    message_end: "消息完成",
+    tool_execution_end: "工具完成",
+    handoff: "交接",
+    intervention_required: "需要介入",
+    error: "错误",
+  };
+  return labels[event.eventType] ?? event.eventType;
+}
+
+function getEventTone(event: ConversationEvent): string {
+  if (event.eventType === "error") return "danger";
+  if (event.eventType === "intervention_required") return "warning";
+  if (event.eventType === "handoff") return "accent";
+  if (event.eventType.startsWith("tool_")) return "tool";
+  if (event.eventType === "swarm_start" || event.eventType === "swarm_end") return "system";
+  return "default";
+}
+
+function getEventAgent(event: ConversationEvent): string | null {
+  const data = parseEventData(event);
+  const agent = data.agentName ?? data.agentId ?? event.agentId;
+  return typeof agent === "string" && agent.trim() ? agent : null;
+}
+
+function getEventDetail(event: ConversationEvent): string {
+  const data = parseEventData(event);
+  if (event.eventType === "handoff") {
+    const from = typeof data.fromAgentId === "string" ? data.fromAgentId : "unknown";
+    const to = typeof data.toAgentId === "string" ? data.toAgentId : "unknown";
+    const reason = typeof data.reason === "string" && data.reason.trim() ? ` · ${data.reason}` : "";
+    return `${from} -> ${to}${reason}`;
+  }
+  if (event.eventType === "tool_execution_end") {
+    const toolName = typeof data.toolName === "string" ? data.toolName : "unknown tool";
+    return data.isError ? `${toolName} 执行失败` : `${toolName} 执行完成`;
+  }
+  if (event.eventType === "message_end") {
+    const role = typeof data.role === "string" ? data.role : "assistant";
+    return `${role} 消息已写入`;
+  }
+  if (event.eventType === "error") {
+    const error = data.error;
+    if (error && typeof error === "object" && typeof error.message === "string") {
+      return error.message;
+    }
+    return "运行过程中发生错误";
+  }
+  if (event.eventType === "swarm_end" && typeof data.finalMessage === "string" && data.finalMessage.trim()) {
+    return data.finalMessage;
+  }
+  return "";
+}
+
+function formatEventOffset(event: ConversationEvent, events: ConversationEvent[] | null): string {
+  const first = events?.[0]?.timestamp;
+  if (!first) {
+    return formatTime(event.timestamp);
+  }
+  const diff = Math.max(0, event.timestamp - first);
+  if (diff < 1000) return "+0.0s";
+  if (diff < 60_000) return `+${(diff / 1000).toFixed(1)}s`;
+  return `+${Math.floor(diff / 60_000)}m ${Math.floor((diff % 60_000) / 1000)}s`;
 }
 </script>
 
@@ -259,6 +362,37 @@ function getMessageLabel(message: ChatMessage, conversation: ConversationInfo): 
           </div>
 
           <!-- Messages -->
+          <div class="detail-section trace-section">
+            <h4 class="detail-section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+              执行 Trace
+              <span v-if="selectedEvents" class="msg-count">{{ selectedEvents.length }} 条</span>
+            </h4>
+
+            <div v-if="loadingEvents" class="detail-empty">Trace 加载中...</div>
+            <div v-else-if="selectedEvents && selectedEvents.length" class="trace-list">
+              <div
+                v-for="event in selectedEvents"
+                :key="event.id"
+                class="trace-item"
+                :class="getEventTone(event)"
+              >
+                <div class="trace-dot" />
+                <div class="trace-body">
+                  <div class="trace-row">
+                    <span class="trace-label">{{ getEventLabel(event) }}</span>
+                    <span v-if="getEventAgent(event)" class="trace-agent">{{ getEventAgent(event) }}</span>
+                    <span class="trace-time">{{ formatEventOffset(event, selectedEvents) }}</span>
+                  </div>
+                  <div v-if="getEventDetail(event)" class="trace-detail">{{ getEventDetail(event) }}</div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="detail-empty">暂无 Trace 事件</div>
+          </div>
+
           <div class="detail-section">
             <h4 class="detail-section-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
@@ -626,6 +760,119 @@ function getMessageLabel(message: ChatMessage, conversation: ConversationInfo): 
   background: rgba(255, 255, 255, 0.05);
   padding: 2px 8px;
   border-radius: 9999px;
+}
+
+/* Trace */
+.trace-section {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.trace-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.trace-item {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 10px;
+  position: relative;
+}
+
+.trace-item::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 18px;
+  bottom: -12px;
+  width: 1px;
+  background: var(--color-border-subtle);
+}
+
+.trace-item:last-child::before {
+  display: none;
+}
+
+.trace-dot {
+  width: 9px;
+  height: 9px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--color-text-muted);
+  box-shadow: 0 0 0 3px rgba(156, 163, 175, 0.12);
+}
+
+.trace-item.accent .trace-dot {
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+}
+
+.trace-item.tool .trace-dot {
+  background: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.16);
+}
+
+.trace-item.warning .trace-dot {
+  background: #fbbf24;
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.16);
+}
+
+.trace-item.danger .trace-dot {
+  background: #f87171;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.18);
+}
+
+.trace-item.system .trace-dot {
+  background: #34d399;
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.16);
+}
+
+.trace-body {
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.trace-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.trace-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.trace-agent {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.trace-time {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.trace-detail {
+  margin-top: 4px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-word;
 }
 
 /* Messages */

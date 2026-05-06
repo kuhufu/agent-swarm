@@ -8,6 +8,7 @@ import { forkConversation } from "../api/conversations.js";
 import MessageList from "../components/chat/MessageList.vue";
 import ChatInput from "../components/chat/ChatInput.vue";
 import AgentStatus from "../components/chat/AgentStatus.vue";
+import ConversationTrace from "../components/chat/ConversationTrace.vue";
 import InterventionPanel from "../components/intervention/InterventionPanel.vue";
 
 const swarmStore = useSwarmStore();
@@ -59,6 +60,7 @@ const currentConversationTitle = computed(() => {
 const active = computed(() => conversationStore.getIsActive(routeConversationId.value));
 const messages = computed(() => conversationStore.getMessages(routeConversationId.value));
 const agentStates = computed(() => Array.from(conversationStore.getAgentStates(routeConversationId.value).values()));
+const traceEvents = computed(() => conversationStore.getEvents(routeConversationId.value));
 
 onMounted(() => {
   swarmStore.fetchSwarms();
@@ -197,6 +199,7 @@ async function handleForkConversation() {
     </div>
     <aside class="chat-sidebar-right">
       <AgentStatus :agents="agentStates" :swarm-id="swarmId" />
+      <ConversationTrace :events="traceEvents" />
     </aside>
   </div>
 </template>
@@ -291,6 +294,16 @@ async function handleForkConversation() {
   padding: 20px;
   overflow-y: auto;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
+}
+
+.chat-sidebar-right :deep(.agent-status) {
+  height: auto;
+  min-height: 0;
+  flex: 0 0 auto;
 }
 
 @media (max-width: 1024px) {

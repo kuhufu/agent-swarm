@@ -22,6 +22,7 @@
 - Workspace 工具：`workspace_run_container` 通过 Docker 隔离执行命令，容器按会话 label 关联，并通过 `workspace_list_containers` / `workspace_remove_containers` 管理当前会话容器
 - 消息 Markdown 渲染：基于 `marked + marked-highlight + highlight.js + dompurify`，支持代码高亮与安全净化
 - 介入机制：支持工具调用/错误/handoff 等节点人工决策
+- 会话执行 Trace：事件按会话落库，聊天页右侧与历史对话详情可查看 Agent 生命周期、工具调用、handoff、介入与错误时间线
 - 事件分级落库：`eventLogLevel = none | key | full`（默认 `key`）
 - 提供商兼容参数：支持 `enable_thinking`（适配部分使用该字段控制思考开关的模型）
 
@@ -41,10 +42,8 @@ agent-swarm/
 │   ├── features/
 │   │   ├── agent-presets.md
 │   │   ├── auth-multi-tenant-isolation.md
+│   │   ├── conversation-trace.md
 │   │   └── message-markdown-rendering.md
-│   └── planning/
-│       ├── roadmap.md
-│       └── phase1-plan.md
 ├── agent-swarm.config.ts     # SDK 配置示例（示例文件，不会被 server 自动读取）
 └── README.md
 ```
@@ -155,11 +154,13 @@ pnpm --filter @agent-swarm/server test
 - `PATCH /api/conversations/:id/preferences`
 - `POST /api/conversations/:id/context/clear`
 - `POST /api/conversations/:id/resume`
+- `POST /api/conversations/:id/fork`
 - `DELETE /api/conversations/:id`
 
 ### 消息查询
 
 - `GET /api/conversations/:id/messages`
+- `GET /api/conversations/:id/events`：读取会话执行 Trace；可用 `?type=handoff` 按事件类型过滤
 
 ### 文档知识库
 
@@ -347,11 +348,9 @@ export default defineConfig({
 - [历史消息恢复上下文机制](./docs/architecture/context-recovery.md)
 - [Agent 预设管理与复用](./docs/features/agent-presets.md)
 - [认证与多租户隔离](./docs/features/auth-multi-tenant-isolation.md)
+- [会话执行 Trace](./docs/features/conversation-trace.md)
 - [前端会话运行态分桶机制](./docs/architecture/frontend-conversation-runtime.md)
 - [消息 Markdown 渲染](./docs/features/message-markdown-rendering.md)
-- [项目路线图](./docs/planning/roadmap.md)
-- [阶段一实施报告](./docs/planning/phase1-plan.md)
-- [阶段二实施计划](./docs/planning/phase2-plan.md)
 
 ## License
 

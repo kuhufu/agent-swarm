@@ -78,6 +78,28 @@ function createMockSwarm() {
     clearConversationContext: async (conversationId: string) => ({ conversationId, contextResetAt: Date.now() }),
     resumeConversation: async () => ({ getId: () => "conv_test" }),
     deleteConversation: async () => undefined,
+    getConversationEvents: async (conversationId: string, userId: string, eventType?: string) => {
+      if (conversationId !== "test_conv" && conversationId !== "conv_test") {
+        throw new Error("Conversation not found");
+      }
+      const events = [
+        {
+          id: "event_1",
+          agentId: "router_agent_1",
+          eventType: "agent_start",
+          eventData: JSON.stringify({ agentId: "router_agent_1", agentName: "Router Agent 1" }),
+          timestamp: 1,
+        },
+        {
+          id: "event_2",
+          agentId: "router_agent_1",
+          eventType: "handoff",
+          eventData: JSON.stringify({ fromAgentId: "router_agent_1", toAgentId: "worker" }),
+          timestamp: 2,
+        },
+      ];
+      return eventType ? events.filter((event) => event.eventType === eventType) : events;
+    },
     getConversationUsage: async (conversationId: string, userId: string) => {
       usageCalls.conversation.push({ conversationId, userId });
       return [];
@@ -330,6 +352,22 @@ describe("API routes", () => {
       expect(response.status).toBe(200);
       expect(data.data.conversationId).toBe("conv_test");
       expect(typeof data.data.contextResetAt).toBe("number");
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("GET /api/conversations/:id/events returns conversation trace events", async () => {
+    const server = await startTestServer();
+    try {
+      const response = await fetch(`${server.baseUrl}/api/conversations/test_conv/events?type=handoff`, {
+        headers: withAuthHeaders(),
+      });
+      const data = await response.json() as { data: Array<{ eventType: string; eventData: string }> };
+      expect(response.status).toBe(200);
+      expect(data.data).toHaveLength(1);
+      expect(data.data[0]?.eventType).toBe("handoff");
+      expect(JSON.parse(data.data[0]?.eventData ?? "{}").toAgentId).toBe("worker");
     } finally {
       await server.close();
     }

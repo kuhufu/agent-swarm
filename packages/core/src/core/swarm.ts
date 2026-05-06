@@ -1,5 +1,5 @@
 import type { SwarmConfig, AgentSwarmRootConfig, LLMBackendConfig, ApiProtocol, EventLogLevel, AgentPreset } from "./types.js";
-import type { IStorage, LLMCallRecord, LLMCallQuery, StoredUser, PublicUser } from "../storage/interface.js";
+import type { IStorage, LLMCallRecord, LLMCallQuery, StoredUser, PublicUser, StoredEvent } from "../storage/interface.js";
 import type { Conversation as StoredConversation, ConversationPreferences } from "../storage/interface.js";
 import type { StoredMessage } from "../storage/interface.js";
 import type { InterventionHandler } from "../intervention/handler.js";
@@ -509,6 +509,16 @@ export class AgentSwarm {
       throw new Error(`Conversation not found: ${conversationId}`);
     }
     return this.storage.getMessages(conversationId, since);
+  }
+
+  async getConversationEvents(conversationId: string, userId: string, eventType?: string): Promise<StoredEvent[]> {
+    this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
+    const conversation = await this.storage.getConversation(conversationId, normalizedUserId);
+    if (!conversation) {
+      throw new Error(`Conversation not found: ${conversationId}`);
+    }
+    return this.storage.getEvents(conversationId, eventType);
   }
 
   async getConversationUsage(conversationId: string, userId: string) {
