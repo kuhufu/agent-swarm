@@ -161,6 +161,7 @@ async function handleForkConversation() {
           </template>
           <span v-if="isDirectMode" class="mode-badge direct">直接对话模式</span>
         </div>
+        <div class="chat-header-spacer"></div>
         <button
           v-if="routeConversationId"
           class="new-chat-btn fork-btn"
@@ -175,13 +176,6 @@ async function handleForkConversation() {
             <line x1="8.21" y1="10.11" x2="15" y2="15" />
           </svg>
           分支
-        </button>
-        <button class="new-chat-btn" @click="handleNewConversation">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          新对话
         </button>
       </div>
       <MessageList
@@ -235,6 +229,10 @@ async function handleForkConversation() {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.chat-header-spacer {
+  flex: 1;
 }
 
 .chat-header h2 {
