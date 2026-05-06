@@ -2,6 +2,8 @@ import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import type { Request } from "express";
 import type { AgentSwarm } from "@agent-swarm/core";
+import { PDFParse } from "pdf-parse";
+import mammoth from "mammoth";
 import { resolveRequestUserId } from "../middleware/auth.js";
 
 interface UploadedFile {
@@ -16,7 +18,22 @@ interface MultipartPayload {
   files: UploadedFile[];
 }
 
-function parseDocumentText(filename: string, buffer: Buffer): string {
+async function parsePdfText(buffer: Buffer): Promise<string> {
+  const parser = new PDFParse({ data: buffer });
+  try {
+    const result = await parser.getText();
+    return result.text;
+  } finally {
+    await parser.destroy();
+  }
+}
+
+async function parseDocxText(buffer: Buffer): Promise<string> {
+  const result = await mammoth.extractRawText({ buffer });
+  return result.value;
+}
+
+async function parseDocumentText(filename: string, buffer: Buffer): Promise<string> {
   const ext = filename.toLowerCase().split(".").pop() ?? "";
   if (ext === "txt" || ext === "md" || ext === "markdown" || ext === "html" || ext === "htm") {
     return buffer.toString("utf-8");
@@ -25,8 +42,11 @@ function parseDocumentText(filename: string, buffer: Buffer): string {
     const obj = JSON.parse(buffer.toString("utf-8"));
     return typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
   }
-  if (ext === "pdf" || ext === "docx") {
-    throw new Error(`${ext.toUpperCase()} 解析暂未启用，请先上传 txt/md/json/html 文件`);
+  if (ext === "pdf") {
+    return parsePdfText(buffer);
+  }
+  if (ext === "docx") {
+    return parseDocxText(buffer);
   }
   throw new Error(`不支持的文件类型：.${ext || "unknown"}`);
 }
@@ -173,7 +193,7 @@ export function documentRoutes(swarm: AgentSwarm): Router {
           return res.status(400).json({ error: "缺少上传文件" });
         }
         filename = (multipart.fields.title?.trim() || file.filename).trim();
-        text = parseDocumentText(file.filename, file.data);
+        text = await parseDocumentText(file.filename, file.data);
       } else {
         const { filename: bodyFilename, content } = req.body ?? {};
         if (!bodyFilename || !content) {

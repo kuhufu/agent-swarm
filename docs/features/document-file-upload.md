@@ -13,10 +13,12 @@
 - `.md` / `.markdown`
 - `.json`
 - `.html` / `.htm`
+- `.pdf`
+- `.docx`
 
 上传后服务端会解析为文本，按现有 chunk 规则写入 SQLite FTS 知识库。`retrieve_knowledge` 工具可立即检索新文档。
 
-PDF 和 docx 需要额外解析库，当前接口会返回明确错误，避免把二进制内容误写入知识库。
+PDF 通过 `pdf-parse` 提取文本，docx 通过 `mammoth` 提取 raw text。若文件没有可提取文本，接口会拒绝写入。
 
 ## 限制
 

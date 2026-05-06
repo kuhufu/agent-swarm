@@ -376,7 +376,7 @@ function highlightMatch(text: string, query: string): string {
           ref="fileInputRef"
           class="file-input"
           type="file"
-          accept=".txt,.md,.markdown,.json,.html,.htm"
+          accept=".txt,.md,.markdown,.json,.html,.htm,.pdf,.docx"
           @change="handleFileSelected"
         />
         <button class="btn-secondary upload-btn" :disabled="uploading" @click="openFilePicker">

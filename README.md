@@ -169,7 +169,7 @@ pnpm --filter @agent-swarm/server test
 
 - `GET /api/documents`
 - `GET /api/documents/:id`
-- `POST /api/documents/upload`：支持 JSON `{ filename, content }` 和 multipart `file` 上传；当前可解析 `txt/md/json/html`
+- `POST /api/documents/upload`：支持 JSON `{ filename, content }` 和 multipart `file` 上传；当前可解析 `txt/md/json/html/pdf/docx`
 - `PUT /api/documents/:id`
 - `POST /api/documents/search`：`query` 支持空格分隔多关键词，按 OR 召回，例如 `认证 身份验证 Authentication`
 - `DELETE /api/documents/:id`
