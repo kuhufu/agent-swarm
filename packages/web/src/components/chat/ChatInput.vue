@@ -19,14 +19,10 @@ const {
   connect,
   sendMessage,
   sendDirectMessage,
-  sendComparisonMessage,
   abort,
   canClearContext,
   clearContext,
   directModel,
-  comparisonModels,
-  isCompareMode,
-  draftComparisonModels,
   currentTimeToolEnabled,
   jsExecutionToolEnabled,
   searchToolEnabled,
@@ -60,55 +56,12 @@ const thinkLevelLabel = computed(() => {
 
 const savedModels = computed<SavedModel[]>(() => settingsStore.models);
 
-// ── Comparison mode multi-select state ──
-const selectedComparisonModelIds = ref<Set<string>>(new Set());
-
-function toggleComparisonModel(sm: SavedModel) {
-  captureTextareaSelection();
-  const next = new Set(selectedComparisonModelIds.value);
-  if (next.has(sm.id)) {
-    next.delete(sm.id);
-  } else {
-    next.add(sm.id);
-  }
-  selectedComparisonModelIds.value = next;
-
-  if (next.size === 1) {
-    // Fall back to single model mode
-    const only = savedModels.value.find((m) => m.id === [...next][0]);
-    if (only) {
-      selectSavedModel(only);
-    }
-  } else if (next.size >= 2) {
-    // Switch to comparison mode
-    const models = savedModels.value
-      .filter((m) => next.has(m.id))
-      .map((m) => ({ provider: m.provider, modelId: m.modelId }));
-    comparisonModels.value = models;
-    directModel.value = null;
-  } else {
-    directModel.value = null;
-    selectedModelValue.value = "";
-  }
-}
-
-function isModelSelected(sm: SavedModel): boolean {
-  if (selectedComparisonModelIds.value.size >= 2) {
-    return selectedComparisonModelIds.value.has(sm.id);
-  }
-  return selectedModelValue.value === sm.id;
-}
-
 const canSendDirect = computed(() =>
-  (isCompareMode.value && comparisonModels.value.length >= 2)
-  || (directModel.value !== null && directModel.value.provider !== "" && directModel.value.modelId !== ""),
+  directModel.value !== null && directModel.value.provider !== "" && directModel.value.modelId !== "",
 );
 
-// Display name for currently selected model(s)
+// Display name for currently selected model
 const selectedModelLabel = computed(() => {
-  if (isCompareMode.value && comparisonModels.value.length >= 2) {
-    return `对比 (${comparisonModels.value.length} 个模型)`;
-  }
   if (!directModel.value) return "";
   const sm = savedModels.value.find(
     (m) => m.provider === directModel.value!.provider && m.modelId === directModel.value!.modelId,
@@ -220,11 +173,7 @@ function handleSend() {
   if (props.active) {
     abort();
   } else if (props.isDirectMode) {
-    if (isCompareMode.value) {
-      sendComparisonMessage();
-    } else {
-      sendDirectMessage();
-    }
+    sendDirectMessage();
   } else {
     sendMessage(props.swarmId);
   }
@@ -265,11 +214,7 @@ function handleKeydown(e: KeyboardEvent) {
     e.preventDefault();
     if (!props.active) {
       if (props.isDirectMode) {
-        if (isCompareMode.value) {
-          sendComparisonMessage();
-        } else {
-          sendDirectMessage();
-        }
+        sendDirectMessage();
       } else {
         sendMessage(props.swarmId);
       }
@@ -481,26 +426,16 @@ function handleOutsideClick(event: MouseEvent) {
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </button>
-        <!-- Dropdown (multi-select for comparison mode) -->
+        <!-- Dropdown -->
         <div v-if="showModelSelect" class="model-dropdown">
           <button
             v-for="sm in savedModels"
             :key="sm.id"
             class="model-dropdown-item"
-            :class="{ active: isModelSelected(sm) }"
+            :class="{ active: selectedModelValue === sm.id }"
             @mousedown="handleKeepTextareaFocusMouseDown"
-            @click="toggleComparisonModel(sm)"
+            @click="selectSavedModel(sm)"
           >
-            <svg
-              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              style="width: 14px; height: 14px; flex-shrink: 0; margin-right: 6px;"
-            >
-              <rect v-if="!isModelSelected(sm)" x="3" y="3" width="18" height="18" rx="3" />
-              <template v-else>
-                <rect x="3" y="3" width="18" height="18" rx="3" fill="currentColor" />
-                <polyline points="7 13 10 16 17 8" stroke="#fff" />
-              </template>
-            </svg>
             <span class="dropdown-model-name">{{ sm.name }}</span>
             <span class="dropdown-model-provider">{{ sm.provider }}</span>
           </button>

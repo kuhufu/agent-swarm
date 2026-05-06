@@ -9,7 +9,6 @@ const props = defineProps<{
   messages: ChatMessage[];
   streamingMessages: ChatMessage[];
   isDirectMode?: boolean;
-  isCompareMode?: boolean;
   conversationId?: string | null;
   swarmId?: string | null;
 }>();
@@ -299,7 +298,6 @@ onMounted(async () => {
         :message="entry.message"
         :streaming="entry.streaming"
         :is-direct-mode="isDirectMode"
-        :is-compare-mode="isCompareMode"
       />
     </div>
   </div>

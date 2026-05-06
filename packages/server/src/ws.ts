@@ -16,23 +16,22 @@ interface WSClient {
   pendingToolExecutions: Map<string, (result: any) => void>;
 }
 
-interface ModelRef {
-  provider: string;
-  modelId: string;
-}
-
 interface ConversationPreferencesPayload {
   enabledTools: string[];
   thinkingLevel?: string;
-  directModel?: ModelRef;
-  comparisonModels?: ModelRef[];
+  directModel?: {
+    provider: string;
+    modelId: string;
+  };
 }
 
 interface ConversationPreferencesPatch {
   enabledTools?: string[];
   thinkingLevel?: string;
-  directModel?: ModelRef;
-  comparisonModels?: ModelRef[];
+  directModel?: {
+    provider: string;
+    modelId: string;
+  };
 }
 
 const DEFAULT_CONVERSATION_PREFERENCES: ConversationPreferencesPayload = {
@@ -92,22 +91,6 @@ function parseConversationPreferencesPatch(payload: Record<string, unknown>): Co
     const modelId = typeof directModelRaw.modelId === "string" ? directModelRaw.modelId.trim() : "";
     if (provider && modelId) {
       patch.directModel = { provider, modelId };
-    }
-  }
-  if (Array.isArray(payload.comparisonModels)) {
-    const models: ModelRef[] = [];
-    for (const item of payload.comparisonModels) {
-      if (item && typeof item === "object" && !Array.isArray(item)) {
-        const raw = item as Record<string, unknown>;
-        const provider = typeof raw.provider === "string" ? raw.provider.trim() : "";
-        const modelId = typeof raw.modelId === "string" ? raw.modelId.trim() : "";
-        if (provider && modelId) {
-          models.push({ provider, modelId });
-        }
-      }
-    }
-    if (models.length > 0) {
-      patch.comparisonModels = models;
     }
   }
 
@@ -220,14 +203,8 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
         }
 
         const mergedPatch: ConversationPreferencesPatch = { ...preferencesPatch };
-        if (storedConversation.swarmId.startsWith("__direct_")) {
-          if (provider && modelId) {
-            mergedPatch.directModel = { provider, modelId };
-          }
-        } else if (storedConversation.swarmId.startsWith("__compare_")) {
-          if (preferencesPatch.comparisonModels) {
-            mergedPatch.comparisonModels = preferencesPatch.comparisonModels;
-          }
+        if (provider && modelId && storedConversation.swarmId.startsWith("__direct_")) {
+          mergedPatch.directModel = { provider, modelId };
         }
 
         if (
@@ -260,29 +237,6 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
           effectivePreferences = {
             enabledTools: initialPreferences.enabledTools ?? [],
             thinkingLevel: initialPreferences.thinkingLevel,
-          };
-        }
-      } else if (preferencesPatch.comparisonModels && preferencesPatch.comparisonModels.length >= 2) {
-        // Comparison mode — multiple models, parallel execution
-        const models = preferencesPatch.comparisonModels;
-        const initialPreferences: ConversationPreferencesPatch = {
-          enabledTools: preferencesPatch.enabledTools ?? DEFAULT_CONVERSATION_PREFERENCES.enabledTools,
-          thinkingLevel: preferencesPatch.thinkingLevel,
-          comparisonModels: models,
-        };
-        conversation = await swarm.createComparisonConversation(client.userId, models, undefined, initialPreferences);
-        storedConversation = await swarm.getConversation(conversation.getId(), client.userId);
-        if (storedConversation) {
-          effectivePreferences = {
-            enabledTools: storedConversation.enabledTools,
-            thinkingLevel: storedConversation.thinkingLevel,
-            ...(storedConversation.comparisonModels ? { comparisonModels: storedConversation.comparisonModels } : {}),
-          };
-        } else {
-          effectivePreferences = {
-            enabledTools: initialPreferences.enabledTools ?? [],
-            thinkingLevel: initialPreferences.thinkingLevel,
-            comparisonModels: initialPreferences.comparisonModels,
           };
         }
       } else if (provider && modelId) {
@@ -348,7 +302,6 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
           enabledTools: effectivePreferences.enabledTools,
           thinkingLevel: effectivePreferences.thinkingLevel,
           ...(effectivePreferences.directModel ? { directModel: effectivePreferences.directModel } : {}),
-          ...(effectivePreferences.comparisonModels ? { comparisonModels: effectivePreferences.comparisonModels } : {}),
         },
       };
       send(client, createdPacket);

@@ -7,7 +7,6 @@ import type { AgentTool } from "@mariozechner/pi-agent-core";
 export type CollaborationMode = "router" | "sequential" | "parallel" | "swarm" | "debate";
 
 export type AggregationStrategy =
-  | { type: "none" }
   | { type: "merge" }
   | { type: "vote"; quorum: number }
   | { type: "best"; judgeAgent: string }

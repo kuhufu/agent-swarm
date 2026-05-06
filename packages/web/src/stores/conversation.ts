@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import type { ChatMessage, AgentState, ConversationInfo, ToolCallInfo, ModelConfig } from "../types/index.js";
+import type { ChatMessage, AgentState, ConversationInfo, ToolCallInfo } from "../types/index.js";
 import { useSwarmStore } from "./swarm.js";
 import * as conversationsApi from "../api/conversations.js";
 import {
@@ -895,36 +895,12 @@ export const useConversationStore = defineStore("conversation", () => {
 
   async function persistConversationPreferences(
     conversationId: string,
-    patch: Partial<Pick<ConversationInfo, "enabledTools" | "thinkingLevel" | "directModel" | "comparisonModels">>,
+    patch: Partial<Pick<ConversationInfo, "enabledTools" | "thinkingLevel" | "directModel">>,
   ) {
     updateConversationInfo(conversationId, patch);
     const res = await conversationsApi.updateConversationPreferences(conversationId, patch);
     updateConversationInfo(conversationId, res.data);
     return res.data;
-  }
-
-  function getConversation(conversationId?: string | null): ConversationInfo | undefined {
-    if (!conversationId) return undefined;
-    return conversations.value.find((item) => item.id === conversationId);
-  }
-
-  function setComparisonModels(
-    conversationId: string | null | undefined,
-    models: ModelConfig[],
-    persist = true,
-  ) {
-    const validModels = models.filter((m) => m.provider && m.modelId);
-    if (validModels.length < 2) return;
-
-    if (conversationId) {
-      updateConversationInfo(conversationId, { comparisonModels: validModels });
-    }
-
-    if (persist && conversationId) {
-      void persistConversationPreferences(conversationId, { comparisonModels: validModels }).catch(() => {
-        // ignore persistence failures
-      });
-    }
   }
 
   function setDirectModel(
@@ -971,14 +947,6 @@ export const useConversationStore = defineStore("conversation", () => {
         patch.directModel = normalized;
       }
     }
-    if (Array.isArray(raw.comparisonModels)) {
-      const models = raw.comparisonModels.filter(
-        (m: unknown) => m && typeof m === "object" && "provider" in (m as Record<string, unknown>) && "modelId" in (m as Record<string, unknown>),
-      );
-      if (models.length >= 2) {
-        patch.comparisonModels = models as ModelConfig[];
-      }
-    }
 
     if (
       conversationId
@@ -986,7 +954,6 @@ export const useConversationStore = defineStore("conversation", () => {
         patch.enabledTools !== undefined
         || patch.thinkingLevel !== undefined
         || patch.directModel !== undefined
-        || patch.comparisonModels !== undefined
       )
     ) {
       updateConversationInfo(conversationId, patch);
@@ -1031,8 +998,6 @@ export const useConversationStore = defineStore("conversation", () => {
     updateConversationPreferences: persistConversationPreferences,
     setDirectModel,
     getDirectModel,
-    setComparisonModels,
-    getConversation,
     getEnabledTools,
     getThinkingLevel,
     requestInputFocus,
