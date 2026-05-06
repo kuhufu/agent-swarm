@@ -48,6 +48,14 @@ const interventionPointSchema = z.enum([
 
 const interventionStrategySchema = z.enum(["auto", "confirm", "review", "edit", "reject"]);
 
+const aggregationStrategySchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("none") }),
+  z.object({ type: z.literal("merge") }),
+  z.object({ type: z.literal("vote"), quorum: z.number().int().min(1) }),
+  z.object({ type: z.literal("best"), judgeAgent: z.string().min(1) }),
+  z.object({ type: z.literal("custom"), handler: z.string().min(1) }),
+]);
+
 const interventionsSchema = z.partialRecord(interventionPointSchema, interventionStrategySchema);
 const swarmContextSchema = z.object({
   mode: z.enum(["handoff_only", "summary"]),
@@ -62,7 +70,7 @@ export const createSwarmSchema = z.object({
   mode: z.union([z.string(), z.object({ type: z.string() })]),
   agents: z.array(agentConfigSchema).min(1, "至少需要一个 Agent"),
   orchestrator: agentConfigSchema.optional(),
-  aggregator: agentConfigSchema.optional(),
+  aggregator: aggregationStrategySchema.optional(),
   debateConfig: debatableConfigSchema.optional(),
   pipeline: z.array(pipelineStepSchema).optional(),
   interventions: interventionsSchema.optional(),
@@ -77,7 +85,7 @@ export const updateSwarmSchema = z.object({
   mode: z.union([z.string(), z.object({ type: z.string() })]).optional(),
   agents: z.array(agentConfigSchema).min(1, "至少需要一个 Agent").optional(),
   orchestrator: agentConfigSchema.optional(),
-  aggregator: agentConfigSchema.optional(),
+  aggregator: aggregationStrategySchema.optional(),
   debateConfig: debatableConfigSchema.optional(),
   pipeline: z.array(pipelineStepSchema).optional(),
   interventions: interventionsSchema.optional(),
