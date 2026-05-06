@@ -278,6 +278,68 @@ describe("AgentSwarm persistence", () => {
     cleanupDb(dbPath);
   });
 
+  it("forks conversation history up to a selected message", async () => {
+    const dbPath = createTestDbPath("fork-message");
+    cleanupDb(dbPath);
+
+    const swarm = new AgentSwarm({
+      config: createRootConfig(dbPath, [createSwarmConfig("default_swarm")]),
+    });
+    await swarm.init();
+
+    const source = await swarm.createConversation(TEST_USER_ID, "default_swarm", "source");
+    const storage = (swarm as unknown as {
+      storage: {
+        appendMessage: (
+          conversationId: string,
+          message: {
+            id: string;
+            role: string;
+            content?: string;
+            timestamp: number;
+            createdAt?: number;
+          },
+        ) => Promise<void>;
+      };
+    }).storage;
+
+    await storage.appendMessage(source.getId(), {
+      id: "msg-1",
+      role: "user",
+      content: "one",
+      timestamp: 1,
+      createdAt: 1,
+    });
+    await storage.appendMessage(source.getId(), {
+      id: "msg-2",
+      role: "assistant",
+      content: "two",
+      timestamp: 2,
+      createdAt: 2,
+    });
+    await storage.appendMessage(source.getId(), {
+      id: "msg-3",
+      role: "user",
+      content: "three",
+      timestamp: 3,
+      createdAt: 3,
+    });
+
+    const forked = await swarm.forkConversation(source.getId(), { messageId: "msg-2" }, TEST_USER_ID);
+    const forkedMessages = await swarm.getMessages(forked.getId(), TEST_USER_ID);
+
+    expect(forkedMessages.map((message) => message.content)).toEqual(["one", "two"]);
+    expect(forkedMessages.map((message) => message.id)).not.toContain("msg-1");
+    expect(forkedMessages.map((message) => message.id)).not.toContain("msg-2");
+
+    await expect(
+      swarm.forkConversation(source.getId(), { messageId: "missing" }, TEST_USER_ID),
+    ).rejects.toThrow("Message not found");
+
+    await swarm.close();
+    cleanupDb(dbPath);
+  });
+
   it("keeps agent presets isolated when different users reuse the same id", async () => {
     const dbPath = createTestDbPath("preset-id-isolation");
     cleanupDb(dbPath);

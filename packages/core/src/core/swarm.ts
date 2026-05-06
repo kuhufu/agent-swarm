@@ -235,7 +235,7 @@ export class AgentSwarm {
    */
   async forkConversation(
     sourceConversationId: string,
-    options: { swarmId?: string; title?: string },
+    options: { swarmId?: string; title?: string; messageId?: string },
     userId: string,
   ): Promise<Conversation> {
     this.ensureInitialized();
@@ -248,6 +248,14 @@ export class AgentSwarm {
     if (!swarmConfig) throw new Error(`Target swarm not found: ${swarmId}`);
 
     const sourceMessages = await this.storage.getMessages(sourceConversationId);
+    let messagesToCopy = sourceMessages;
+    if (options.messageId) {
+      const messageIndex = sourceMessages.findIndex((message) => message.id === options.messageId);
+      if (messageIndex < 0) {
+        throw new Error(`Message not found: ${options.messageId}`);
+      }
+      messagesToCopy = sourceMessages.slice(0, messageIndex + 1);
+    }
 
     const newConv = await this.storage.createConversation(
       swarmId,
@@ -261,15 +269,23 @@ export class AgentSwarm {
     );
 
     // Replicate messages with new IDs
-    for (const msg of sourceMessages) {
+    for (const msg of messagesToCopy) {
       await this.storage.appendMessage(newConv.id, {
         ...msg,
         id: crypto.randomUUID(),
       });
     }
 
-    // Preserve context reset boundary
-    if (source.contextResetAt) {
+    // Preserve context reset boundary only when it still applies to copied history.
+    const lastCopiedMessage = messagesToCopy[messagesToCopy.length - 1];
+    const lastCopiedCreatedAt = lastCopiedMessage
+      ? (lastCopiedMessage.createdAt ?? lastCopiedMessage.timestamp)
+      : undefined;
+    if (
+      source.contextResetAt
+      && typeof lastCopiedCreatedAt === "number"
+      && lastCopiedCreatedAt >= source.contextResetAt
+    ) {
       await this.storage.updateConversationContextReset(newConv.id, source.contextResetAt, normalizedUserId);
     }
 

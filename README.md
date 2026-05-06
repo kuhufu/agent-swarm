@@ -17,6 +17,7 @@
 - 输入体验优化：重复点击“新对话/直接对话”、切换模型、启停工具、点击 `chat-input` 非交互区后会自动聚焦输入框且保持光标
 - 历史消息持久化：SQLite 存储，支持恢复会话上下文
 - 上下文清空：保留历史消息，仅重置后续模型上下文
+- 会话分支：支持整段会话分支，也支持从指定消息创建分支用于对比调试
 - 多租户隔离：`swarms / conversations / agent presets / documents / usage analytics` 按 `userId` 严格隔离；首个注册用户自动成为 `admin`
 - 工具运行时：`packages/core/src/tools/runtime.ts` 统一把模式工具、前端桥接工具、WebSearch、MCP 和运行时工具注入 Agent
 - Workspace 工具：`workspace_run_container` 通过 Docker 隔离执行命令，容器按会话 label 关联，并通过 `workspace_list_containers` / `workspace_remove_containers` 管理当前会话容器
@@ -42,6 +43,7 @@ agent-swarm/
 │   ├── features/
 │   │   ├── agent-presets.md
 │   │   ├── auth-multi-tenant-isolation.md
+│   │   ├── conversation-fork.md
 │   │   ├── conversation-trace.md
 │   │   └── message-markdown-rendering.md
 ├── agent-swarm.config.ts     # SDK 配置示例（示例文件，不会被 server 自动读取）
@@ -154,7 +156,7 @@ pnpm --filter @agent-swarm/server test
 - `PATCH /api/conversations/:id/preferences`
 - `POST /api/conversations/:id/context/clear`
 - `POST /api/conversations/:id/resume`
-- `POST /api/conversations/:id/fork`
+- `POST /api/conversations/:id/fork`：可选 `messageId`，只复制到指定消息为止
 - `DELETE /api/conversations/:id`
 
 ### 消息查询
@@ -348,6 +350,7 @@ export default defineConfig({
 - [历史消息恢复上下文机制](./docs/architecture/context-recovery.md)
 - [Agent 预设管理与复用](./docs/features/agent-presets.md)
 - [认证与多租户隔离](./docs/features/auth-multi-tenant-isolation.md)
+- [会话分支](./docs/features/conversation-fork.md)
 - [会话执行 Trace](./docs/features/conversation-trace.md)
 - [前端会话运行态分桶机制](./docs/architecture/frontend-conversation-runtime.md)
 - [消息 Markdown 渲染](./docs/features/message-markdown-rendering.md)

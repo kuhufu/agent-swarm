@@ -90,7 +90,10 @@ export function clearConversationContext(conversationId: string) {
   });
 }
 
-export function forkConversation(conversationId: string, payload: { swarmId?: string; title?: string } = {}) {
+export function forkConversation(
+  conversationId: string,
+  payload: { swarmId?: string; title?: string; messageId?: string } = {},
+) {
   return apiClient<ConversationDetailResponse>(`/conversations/${conversationId}/fork`, {
     method: "POST",
     body: JSON.stringify(payload),

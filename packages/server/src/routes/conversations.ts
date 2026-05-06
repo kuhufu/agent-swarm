@@ -137,8 +137,8 @@ export function conversationRoutes(swarm: AgentSwarm): Router {
     if (!userId) return res.status(401).json({ error: "未登录" });
 
     try {
-      const { swarmId, title } = req.body ?? {};
-      const conversation = await swarm.forkConversation(req.params.id as string, { swarmId, title }, userId);
+      const { swarmId, title, messageId } = req.body ?? {};
+      const conversation = await swarm.forkConversation(req.params.id as string, { swarmId, title, messageId }, userId);
       const info = await swarm.getConversation(conversation.getId(), userId);
       if (!info) return res.status(500).json({ error: "无法加载已创建的分支会话" });
       res.status(201).json({ data: info });

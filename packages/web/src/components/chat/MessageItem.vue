@@ -12,6 +12,9 @@ const props = defineProps<{
   streaming?: boolean;
   isDirectMode?: boolean;
 }>();
+const emit = defineEmits<{
+  fork: [messageId: string];
+}>();
 
 const hasRenderableContent = computed(() => props.message.content.trim().length > 0);
 
@@ -70,6 +73,13 @@ function roleClass(role: string): string {
 }
 
 const formatTime = formatTimeShort;
+
+function handleFork() {
+  if (props.streaming) {
+    return;
+  }
+  emit("fork", props.message.id);
+}
 </script>
 
 <template>
@@ -159,6 +169,21 @@ const formatTime = formatTimeShort;
           <span class="dot" />
         </span>
         <span v-else class="timestamp">{{ formatTime(message.timestamp) }}</span>
+        <button
+          v-if="!streaming"
+          class="msg-action-btn"
+          type="button"
+          title="从此消息创建分支"
+          @click="handleFork"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="6" y1="3" x2="6" y2="15" />
+            <circle cx="18" cy="6" r="3" />
+            <circle cx="18" cy="18" r="3" />
+            <line x1="8.21" y1="13.89" x2="15" y2="9" />
+            <line x1="8.21" y1="10.11" x2="15" y2="15" />
+          </svg>
+        </button>
       </div>
     </div>
   </div>
@@ -413,12 +438,47 @@ const formatTime = formatTimeShort;
   align-items: center;
   gap: 6px;
   padding: 0 4px;
-  height: 16px;
+  min-height: 22px;
+  opacity: 0.72;
+}
+
+.message-item:hover .msg-footer {
+  opacity: 1;
 }
 
 .timestamp {
   font-size: 11px;
   color: var(--color-text-muted);
+}
+
+.msg-action-btn {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.16s ease, color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.message-item:hover .msg-action-btn {
+  opacity: 1;
+}
+
+.msg-action-btn:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.msg-action-btn svg {
+  width: 13px;
+  height: 13px;
 }
 
 .streaming-indicator {

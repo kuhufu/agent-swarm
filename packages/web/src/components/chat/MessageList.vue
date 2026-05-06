@@ -14,6 +14,7 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
   selectSwarm: [swarmId: string];
+  forkMessage: [messageId: string];
 }>();
 
 const swarmStore = useSwarmStore();
@@ -57,6 +58,17 @@ function messageRenderKey(entry: RenderEntry): string {
     return `streaming:${entry.message.agentId ?? entry.message.id}`;
   }
   return entry.message.id;
+}
+
+function messageForkId(entry: RenderEntry): string {
+  return entry.message.id.split("+").at(-1) ?? entry.message.id;
+}
+
+function handleForkMessage(entry: RenderEntry) {
+  if (entry.streaming) {
+    return;
+  }
+  emit("forkMessage", messageForkId(entry));
 }
 
 function resolveSwarmAgentName(agentId?: string): string | undefined {
@@ -298,6 +310,7 @@ onMounted(async () => {
         :message="entry.message"
         :streaming="entry.streaming"
         :is-direct-mode="isDirectMode"
+        @fork="handleForkMessage(entry)"
       />
     </div>
   </div>

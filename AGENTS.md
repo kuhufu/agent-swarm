@@ -171,7 +171,7 @@ pnpm test                  # 运行 core + server 单元测试
 | Auth | `/api/auth` | 注册、登录、登出、当前用户 |
 | Swarms | `/api/swarms` | CRUD |
 | Agents | `/api/agents` | Agent 预设 CRUD + 模板导入 |
-| Conversations | `/api/conversations` | CRUD、偏好设置、清空上下文、恢复、分支、消息查询与执行 Trace |
+| Conversations | `/api/conversations` | CRUD、偏好设置、清空上下文、恢复、整段/指定消息分支、消息查询与执行 Trace |
 | Documents | `/api/documents` | 文档知识库 CRUD + 全文搜索 |
 | Templates | `/api/templates` | 系统 Agent 模板 CRUD |
 | Config | `/api/config` | LLM 配置读写（需 `admin`） |

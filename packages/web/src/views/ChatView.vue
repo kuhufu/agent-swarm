@@ -10,6 +10,7 @@ import ChatInput from "../components/chat/ChatInput.vue";
 import AgentStatus from "../components/chat/AgentStatus.vue";
 import ConversationTrace from "../components/chat/ConversationTrace.vue";
 import InterventionPanel from "../components/intervention/InterventionPanel.vue";
+import { showError } from "../utils/ui-feedback.js";
 
 const swarmStore = useSwarmStore();
 const conversationStore = useConversationStore();
@@ -128,11 +129,11 @@ function handleSelectDraftSwarm(swarmId: string) {
   }
 }
 
-async function handleForkConversation() {
+async function handleForkConversation(messageId?: string) {
   const convId = routeConversationId.value;
   if (!convId) return;
   try {
-    const res = await forkConversation(convId);
+    const res = await forkConversation(convId, messageId ? { messageId } : {});
     const forked = res.data;
     if (!forked?.id) {
       throw new Error("分支会话创建失败");
@@ -145,7 +146,7 @@ async function handleForkConversation() {
     }
     void router.push(`/chat/${forked.id}`);
   } catch (err) {
-    console.error("Fork failed:", err instanceof Error ? err.message : err);
+    showError(err instanceof Error ? err.message : "分支会话创建失败");
   }
 }
 </script>
@@ -167,7 +168,7 @@ async function handleForkConversation() {
         <button
           v-if="routeConversationId"
           class="new-chat-btn fork-btn"
-          @click="handleForkConversation"
+          @click="() => handleForkConversation()"
           title="创建分支对话"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
@@ -187,6 +188,7 @@ async function handleForkConversation() {
         :conversation-id="routeConversationId"
         :swarm-id="swarmId"
         @select-swarm="handleSelectDraftSwarm"
+        @fork-message="handleForkConversation"
       />
       <InterventionPanel />
       <ChatInput
