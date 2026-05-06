@@ -686,6 +686,9 @@ function formatEventOffset(event: ConversationEvent, events: ConversationEvent[]
 }
 
 .swarm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 3px 10px;
   border-radius: 9999px;
   font-size: 12px;
