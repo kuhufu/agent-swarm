@@ -84,7 +84,7 @@ export type { ToolRuntimeOptions, ToolRuntimeInput, ToolRuntimeAvailability, Run
 export { WorkspaceManager, createWorkspaceManager } from "./tools/workspace/manager.js";
 export { createWorkspaceTools } from "./tools/workspace/tool-set.js";
 export { createGrepTool } from "./tools/workspace/grep.js";
-export { createListWorkspaceContainersTool, createStartWorkspaceContainersTool, createStopWorkspaceContainersTool, createRestartWorkspaceContainersTool, createRemoveWorkspaceContainersTool } from "./tools/workspace/containers.js";
+export { createListWorkspaceContainersTool, createStartWorkspaceContainersTool, createStopWorkspaceContainersTool, createRestartWorkspaceContainersTool, createRemoveWorkspaceContainersTool, createPullWorkspaceImageTool } from "./tools/workspace/containers.js";
 export { MCPClient } from "./tools/mcp/client.js";
 export type { MCPServerConfig, MCPTransport, MCPTool, MCPServerStatus } from "./tools/mcp/client.js";
 export { createMCPToolProvider, createAllMCPTools } from "./tools/mcp/tool-provider.js";

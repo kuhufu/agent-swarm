@@ -154,6 +154,9 @@ export function createRestartWorkspaceContainersTool(
 // ── workspace_run_container ──────────────────────────────────────────
 
 const ExecuteFileParams = Type.Object({
+  image: Type.Optional(Type.String({
+    description: "Docker 镜像名，例如 python:3.11、node:22-alpine。不传时使用默认镜像（AGENT_SWARM_WORKSPACE_IMAGE 环境变量或 node:22-alpine）。首次使用某镜像时 Docker 会自动拉取；大镜像可先用 workspace_pull_image 工具拉取。",
+  })),
   command: Type.String({
     description: "在新的 Docker 容器内执行的 shell 命令。工作区挂载在 /workspace，默认工作目录也是 /workspace。例如: 'node app.js'、'npm test'、'sh script.sh'。不要使用需要交互输入的命令。不要用本工具运行 curl/http.get 去访问另一个后台服务：每次调用都是新容器，默认禁网，容器内 localhost 只指向这个新容器自己，不是已启动的服务容器，也不是宿主机。",
   }),
@@ -212,6 +215,13 @@ interface PortMapping {
 
 const DEFAULT_TIMEOUT_MS = 10000;
 const DEFAULT_DOCKER_IMAGE = "node:22-alpine";
+const IMAGE_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*(:[a-zA-Z0-9._-]+)?$/;
+
+function validateImage(image: string): void {
+  if (!image || !IMAGE_REGEX.test(image)) {
+    throw new Error(`无效的镜像名: "${image}"。镜像名必须为 Docker 合法格式`);
+  }
+}
 
 type SpawnFn = (
   command: string,
@@ -234,13 +244,19 @@ export function createRunWorkspaceContainerTool(
   return {
     name: "workspace_run_container",
     label: "执行命令",
-    description: "在新的 Docker 隔离容器中执行命令。工作区挂载到 /workspace。默认禁用网络；如需启动 Web 服务，使用 ports 显式把容器内监听端口映射到宿主机（同时绑定 IPv4 127.0.0.1 和 IPv6 ::1），并设置 background=true。注意：containerPort 必须等于应用代码实际监听端口；如果只是想换浏览器访问端口，只改 hostPort，不要改代码里的监听端口。不要用本工具再启动一个 node/curl 请求去访问后台服务；新容器内的 localhost 不是后台服务容器。启动成功后直接把 http://localhost:<hostPort> 告诉用户访问。",
+    description: "在新的 Docker 隔离容器中执行命令。工作区挂载到 /workspace。可通过 image 参数指定容器镜像（如 python:3.11），不传则使用默认镜像（AGENT_SWARM_WORKSPACE_IMAGE 环境变量或 node:22-alpine）。默认禁用网络；如需启动 Web 服务，使用 ports 显式把容器内监听端口映射到宿主机（同时绑定 IPv4 127.0.0.1 和 IPv6 ::1），并设置 background=true。注意：containerPort 必须等于应用代码实际监听端口；如果只是想换浏览器访问端口，只改 hostPort，不要改代码里的监听端口。不要用本工具再启动一个 node/curl 请求去访问后台服务；新容器内的 localhost 不是后台服务容器。启动成功后直接把 http://localhost:<hostPort> 告诉用户访问。",
     parameters: ExecuteFileParams,
     execute: async (toolCallId, params, signal?: AbortSignal) => {
       await workspace.ensureDir();
       const hostCwd = params.cwd ? await workspace.checkPath(params.cwd) : workspace.baseDir;
       const containerCwd = toContainerCwd(workspace.baseDir, hostCwd);
       const containerName = createContainerName(workspace.conversationId, toolCallId);
+
+      const paramsImage = params.image;
+      if (paramsImage !== undefined) {
+        validateImage(paramsImage);
+      }
+      const dockerImage = paramsImage ?? options.dockerImage ?? process.env.AGENT_SWARM_WORKSPACE_IMAGE ?? DEFAULT_DOCKER_IMAGE;
 
       const timeoutMs = params.timeoutMs ?? DEFAULT_TIMEOUT_MS;
       const command = params.command.trim();
@@ -414,6 +430,135 @@ export function createRunWorkspaceContainerTool(
               aborted,
               timedOut,
             },
+          });
+        });
+      });
+    },
+  };
+}
+
+// ── workspace_pull_image ──────────────────────────────────────────────
+
+const PullImageParams = Type.Object({
+  image: Type.String({
+    description: "要拉取的 Docker 镜像名，例如 python:3.11、pytorch/pytorch:latest。",
+  }),
+  timeoutMs: Type.Optional(Type.Number({
+    description: "拉取超时（毫秒），默认 120000（2分钟），最大 600000（10分钟）。大镜像可能需要更长时间。",
+    minimum: 1000,
+    maximum: 600000,
+  })),
+});
+
+interface PullImageDetails {
+  image: string;
+  success: boolean;
+  message: string;
+}
+
+interface PullImageToolOptions {
+  spawn?: SpawnFn;
+}
+
+export function createPullWorkspaceImageTool(
+  workspace: WorkspaceManager,
+  options: PullImageToolOptions = {},
+): AgentTool<typeof PullImageParams, PullImageDetails> {
+  const spawn = options.spawn ?? nodeSpawn;
+  return {
+    name: "workspace_pull_image",
+    label: "拉取镜像",
+    description: "拉取 Docker 镜像到本地，供 workspace_run_container 工具使用。对于体积较大的镜像（如 python:3.11、pytorch/pytorch），建议先拉取再执行命令，避免 run_container 超时。拉取后可在 workspace_run_container 的 image 参数中引用。",
+    parameters: PullImageParams,
+    execute: async (_toolCallId, params, signal?: AbortSignal) => {
+      const image = params.image.trim();
+      validateImage(image);
+
+      const timeoutMs = params.timeoutMs ?? 120_000;
+      const child = spawn("docker", ["pull", image], {
+        shell: false,
+        detached: true,
+      });
+
+      let stdout = "";
+      let stderr = "";
+      let settled = false;
+      let aborted = false;
+      let timedOut = false;
+
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        killDockerClient(child, "SIGTERM");
+      }, timeoutMs);
+
+      const forceKillTimeout = setTimeout(() => {
+        if (!settled && (timedOut || aborted)) {
+          killDockerClient(child, "SIGKILL");
+        }
+      }, timeoutMs + 1000);
+
+      const onAbort = () => {
+        aborted = true;
+        killDockerClient(child, "SIGTERM");
+        setTimeout(() => {
+          if (!settled) {
+            killDockerClient(child, "SIGKILL");
+          }
+        }, 1000);
+      };
+
+      if (signal?.aborted) {
+        onAbort();
+      } else {
+        signal?.addEventListener("abort", onAbort, { once: true });
+      }
+
+      child.stdout?.on("data", (data: Buffer) => {
+        stdout += data.toString("utf-8");
+      });
+      child.stderr?.on("data", (data: Buffer) => {
+        stderr += data.toString("utf-8");
+      });
+
+      return new Promise<AgentToolResult<PullImageDetails>>((resolve, reject) => {
+        child.on("error", (err: Error) => {
+          clearTimeout(timeout);
+          clearTimeout(forceKillTimeout);
+          signal?.removeEventListener("abort", onAbort);
+          reject(new Error(`拉取镜像失败: ${err.message}`));
+        });
+
+        child.on("close", (code: number | null) => {
+          settled = true;
+          clearTimeout(timeout);
+          clearTimeout(forceKillTimeout);
+          signal?.removeEventListener("abort", onAbort);
+
+          if (timedOut) {
+            resolve({
+              content: [{ type: "text", text: `镜像 ${image} 拉取超时` }],
+              details: { image, success: false, message: "拉取超时" },
+            });
+            return;
+          }
+          if (aborted) {
+            resolve({
+              content: [{ type: "text", text: `镜像 ${image} 拉取已取消` }],
+              details: { image, success: false, message: "已取消" },
+            });
+            return;
+          }
+          if (code === 0) {
+            resolve({
+              content: [{ type: "text", text: `镜像 ${image} 拉取成功` }],
+              details: { image, success: true, message: "拉取成功" },
+            });
+            return;
+          }
+          const lastLine = stderr.split("\n").filter(Boolean).pop() ?? "";
+          resolve({
+            content: [{ type: "text", text: `镜像 ${image} 拉取失败: ${lastLine}` }],
+            details: { image, success: false, message: lastLine },
           });
         });
       });

@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import type { ChildProcess, SpawnOptionsWithoutStdio } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { createRunWorkspaceContainerTool, createRemoveWorkspaceContainersTool, createListWorkspaceContainersTool, createStartWorkspaceContainersTool, createStopWorkspaceContainersTool, createRestartWorkspaceContainersTool } from "./containers.js";
+import { createRunWorkspaceContainerTool, createRemoveWorkspaceContainersTool, createListWorkspaceContainersTool, createStartWorkspaceContainersTool, createStopWorkspaceContainersTool, createRestartWorkspaceContainersTool, createPullWorkspaceImageTool } from "./containers.js";
 import { WorkspaceManager, createWorkspaceManager } from "./manager.js";
 
 describe("workspace container tools", () => {
@@ -347,6 +347,46 @@ describe("workspace_run_container tool", () => {
     expect(result.details.ports).toEqual([{ containerPort: 3000, hostPort: 3100 }]);
   });
 
+  it("uses the image parameter when provided", async () => {
+    const workspace = createWorkspaceManager(`test-image-param-${crypto.randomUUID()}`);
+    const { spawn, calls } = createSpawnMock();
+    const tool = createRunWorkspaceContainerTool(workspace, { spawn });
+
+    await tool.execute("call-1", { command: "python main.py", image: "python:3.11" });
+
+    expect(calls[0].args).toContain("python:3.11");
+    expect(calls[0].args).not.toContain("node:22-alpine");
+  });
+
+  it("falls back to options.dockerImage when no image param", async () => {
+    const workspace = createWorkspaceManager(`test-fallback-${crypto.randomUUID()}`);
+    const { spawn, calls } = createSpawnMock();
+    const tool = createRunWorkspaceContainerTool(workspace, {
+      dockerImage: "custom:test",
+      spawn,
+    });
+
+    await tool.execute("call-1", { command: "ls" });
+
+    expect(calls[0].args).toContain("custom:test");
+  });
+
+  it("rejects invalid image names", async () => {
+    const workspace = createWorkspaceManager(`test-invalid-image-${crypto.randomUUID()}`);
+    const { spawn } = createSpawnMock();
+    const tool = createRunWorkspaceContainerTool(workspace, { spawn });
+
+    await expect(tool.execute("call-1", { command: "ls", image: "" }))
+      .rejects
+      .toThrow("无效的镜像名");
+    await expect(tool.execute("call-1", { command: "ls", image: " " }))
+      .rejects
+      .toThrow("无效的镜像名");
+    await expect(tool.execute("call-1", { command: "ls", image: "$(rm -rf /)" }))
+      .rejects
+      .toThrow("无效的镜像名");
+  });
+
   it("returns the real exit result when a background container exits during startup wait", async () => {
     const workspace = createWorkspaceManager(`test-background-exit-${crypto.randomUUID()}`);
     const { spawn, calls } = createSpawnMock(false);
@@ -368,5 +408,70 @@ describe("workspace_run_container tool", () => {
     expect(result.details.exitCode).toBe(1);
     expect(result.details.background).toBe(true);
     expect(result.details.stderr).toContain("Cannot find module");
+  });
+});
+
+// ── workspace_pull_image tests ────────────────────────────────────────
+
+describe("workspace_pull_image tool", () => {
+  it("pulls a docker image and returns success", async () => {
+    const workspace = createWorkspaceManager(`test-pull-${crypto.randomUUID()}`);
+    const { spawn, calls } = createSpawnMock();
+    const tool = createPullWorkspaceImageTool(workspace, { spawn });
+
+    const result = await tool.execute("pull-1", { image: "python:3.11" });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].command).toBe("docker");
+    expect(calls[0].args).toEqual(["pull", "python:3.11"]);
+    expect(result.details.success).toBe(true);
+    expect(result.details.image).toBe("python:3.11");
+  });
+
+  it("rejects invalid image names", async () => {
+    const workspace = createWorkspaceManager(`test-pull-invalid-${crypto.randomUUID()}`);
+    const { spawn } = createSpawnMock();
+    const tool = createPullWorkspaceImageTool(workspace, { spawn });
+
+    await expect(tool.execute("pull-1", { image: "" }))
+      .rejects
+      .toThrow("无效的镜像名");
+    await expect(tool.execute("pull-1", { image: "$(rm -rf)" }))
+      .rejects
+      .toThrow("无效的镜像名");
+  });
+
+  it("reports pull failure", async () => {
+    const workspace = createWorkspaceManager(`test-pull-fail-${crypto.randomUUID()}`);
+    const calls: SpawnCall[] = [];
+    const spawn = (command: string, args: string[], options: SpawnOptionsWithoutStdio): ChildProcess => {
+      const child = new FakeChildProcess(20000);
+      calls.push({ command, args, options, child });
+      queueMicrotask(() => {
+        child.stderr.write("manifest for nonexistent:latest not found");
+        child.close(1);
+      });
+      return child as unknown as ChildProcess;
+    };
+    const tool = createPullWorkspaceImageTool(workspace, { spawn });
+
+    const result = await tool.execute("pull-1", { image: "nonexistent:latest" });
+
+    expect(result.details.success).toBe(false);
+    expect(result.details.message).toContain("not found");
+  });
+
+  it("reports timeout", async () => {
+    const workspace = createWorkspaceManager(`test-pull-timeout-${crypto.randomUUID()}`);
+    const { spawn, calls } = createSpawnMock(false);
+    const tool = createPullWorkspaceImageTool(workspace, { spawn });
+
+    const result = await tool.execute("pull-1", { image: "python:3.11", timeoutMs: 100 });
+
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    expect(calls[0].child.killed).toBe(true);
+    expect(result.details.success).toBe(false);
+    expect(result.details.message).toBe("拉取超时");
   });
 });
