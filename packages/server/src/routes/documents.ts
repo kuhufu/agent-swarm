@@ -217,7 +217,7 @@ export function documentRoutes(swarm: AgentSwarm): Router {
       }));
 
       await store.addDocument(
-        { id: docId, userId, title: filename, source: filename, content: text, createdAt: Date.now() },
+        { id: docId, userId, title: filename, source: "upload", content: text, createdAt: Date.now() },
         chunks,
       );
 
@@ -266,7 +266,7 @@ export function documentRoutes(swarm: AgentSwarm): Router {
           id: documentId,
           userId,
           title: filename,
-          source: filename,
+          source: existing.source ?? "manual",
           content: text,
           createdAt: existing.createdAt,
         },
