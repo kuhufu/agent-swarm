@@ -3,6 +3,7 @@ import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { MessagePlugin } from "tdesign-vue-next";
 import { useAuthStore } from "../stores/auth.js";
+import SvgIcon from "../components/common/SvgIcon.vue";
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -68,20 +69,14 @@ async function handleRegister() {
           <div class="form-field">
             <label>用户名</label>
             <div class="input-wrap">
-              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
+              <SvgIcon class="input-icon" name="user" :size="15" />
               <input v-model="username" class="input-field" placeholder="至少 2 个字符" autocomplete="username" :disabled="loading" />
             </div>
           </div>
           <div class="form-field">
             <label>密码</label>
             <div class="input-wrap">
-              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
+              <SvgIcon class="input-icon" name="lock" :size="15" />
               <input v-model="password" class="input-field" type="password" placeholder="至少 6 个字符" autocomplete="new-password" :disabled="loading" />
             </div>
           </div>
@@ -99,10 +94,7 @@ async function handleRegister() {
           <button class="auth-btn" type="submit" :disabled="loading">
             <span v-if="loading" class="btn-spinner" />
             <span>{{ loading ? "注册中..." : "创建账户" }}</span>
-            <svg v-if="!loading" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
+            <SvgIcon v-if="!loading" name="arrowRight" :size="16" />
           </button>
         </form>
 

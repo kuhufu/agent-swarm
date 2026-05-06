@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from "vue";
 import type { ConversationEvent } from "../../types/index.js";
+import SvgIcon from "../common/SvgIcon.vue";
 
 const props = defineProps<{
   events: ConversationEvent[];
@@ -142,16 +143,12 @@ function eventOffset(event: ConversationEvent): string {
   <section class="trace-panel" :class="{ collapsed: !expanded }">
     <button class="trace-header" type="button" @click="expanded = !expanded">
       <h3>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-        </svg>
+        <SvgIcon name="pulse" :size="16" />
         执行 Trace
       </h3>
       <span class="trace-header-meta">
         <span v-if="events.length" class="trace-count">{{ events.length }}</span>
-        <svg class="trace-chevron" :class="{ expanded }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
+        <SvgIcon class="trace-chevron" :class="{ expanded }" name="chevronDown" :size="14" />
       </span>
     </button>
 

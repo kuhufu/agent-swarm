@@ -2,6 +2,7 @@
 import { reactive, ref, computed } from "vue";
 import { MessagePlugin } from "tdesign-vue-next";
 import CustomSelect from "../common/CustomSelect.vue";
+import SvgIcon from "../common/SvgIcon.vue";
 import type { SavedModel, ModelInfo } from "../../types/index.js";
 import * as configApi from "../../api/config.js";
 
@@ -169,10 +170,7 @@ async function testModel(provider: string, modelId: string) {
 
     <div class="models-toolbar">
       <button class="btn-primary compact-btn" @click="openModelDialog">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-          <line x1="12" y1="5" x2="12" y2="19" />
-          <line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
+        <SvgIcon name="plus" :size="14" />
         添加模型
       </button>
     </div>
@@ -183,10 +181,7 @@ async function testModel(provider: string, modelId: string) {
           <div class="dialog-header">
             <h3>添加模型</h3>
             <button class="close-btn" @click="closeModelDialog">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
+              <SvgIcon name="close" :size="16" />
             </button>
           </div>
 
@@ -282,10 +277,7 @@ async function testModel(provider: string, modelId: string) {
             {{ testingMap[modelTestKey(model.provider, model.modelId)] ? "测试中..." : "测试" }}
           </button>
           <button class="remove-btn" @click="emit('remove', i)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <SvgIcon name="close" :size="14" />
           </button>
         </div>
       </div>

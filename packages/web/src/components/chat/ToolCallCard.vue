@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import type { ToolCallInfo } from "../../types/index.js";
+import SvgIcon from "../common/SvgIcon.vue";
 
 const props = defineProps<{
   toolCall: ToolCallInfo;
@@ -30,18 +31,7 @@ const status = computed(() => {
       <span :class="['tool-status', status.cls]">
         {{ status.label }}
       </span>
-      <svg
-        class="expand-icon"
-        :class="{ rotated: expanded }"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <polyline points="6 9 12 15 18 9" />
-      </svg>
+      <SvgIcon class="expand-icon" :class="{ rotated: expanded }" name="chevronDown" :size="14" />
     </div>
     <div v-if="expanded" class="tool-details">
       <div class="tool-section">

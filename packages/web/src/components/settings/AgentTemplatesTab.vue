@@ -4,6 +4,7 @@ import { MessagePlugin } from "tdesign-vue-next";
 import { useAgentStore } from "../../stores/agents.js";
 import type { PresetAgent, SavedModel } from "../../types/index.js";
 import { showError } from "../../utils/ui-feedback.js";
+import SvgIcon from "../common/SvgIcon.vue";
 
 interface TemplateFormState {
   id: string;
@@ -311,11 +312,7 @@ onBeforeUnmount(() => {
               aria-label="打开模板操作"
               @click.stop="toggleActionMenu($event, template.id)"
             >
-              <svg viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="5" cy="12" r="1.8" />
-                <circle cx="12" cy="12" r="1.8" />
-                <circle cx="19" cy="12" r="1.8" />
-              </svg>
+              <SvgIcon name="moreHorizontal" :size="15" />
             </button>
           </div>
         </div>

@@ -7,6 +7,7 @@ import type { AggregationStrategy } from "../../types/index.js";
 import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, PresetAgent } from "../../types/index.js";
 import ModeIcon from "../common/ModeIcon.vue";
 import CustomSelect from "../common/CustomSelect.vue";
+import SvgIcon from "../common/SvgIcon.vue";
 
 const emit = defineEmits<{
   (e: "create", swarm: SwarmConfig): void;
@@ -260,10 +261,7 @@ onMounted(() => {
           <p class="dialog-subtitle">配置多 Agent 协作集群</p>
         </div>
         <button class="close-btn" @click="emit('close')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+          <SvgIcon name="close" :size="16" />
         </button>
       </div>
 
@@ -309,14 +307,8 @@ onMounted(() => {
           <div class="section-header">
             <label class="form-label">Agents ({{ agents.length }})</label>
             <button class="btn-secondary" style="padding: 6px 12px; font-size: 13px;" @click="showAgentForm = !showAgentForm">
-              <svg v-if="!showAgentForm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
+              <SvgIcon v-if="!showAgentForm" name="plus" :size="14" />
+              <SvgIcon v-else name="close" :size="14" />
               {{ showAgentForm ? '取消' : '添加 Agent' }}
             </button>
           </div>
@@ -327,7 +319,7 @@ onMounted(() => {
               <div class="sub-dialog-header">
                 <h4>添加 Agent</h4>
                 <button class="close-btn" @click="showAgentForm = false">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  <SvgIcon name="close" :size="16" />
                 </button>
               </div>
               <div class="sub-dialog-body">
@@ -361,7 +353,7 @@ onMounted(() => {
                   <div class="model-chips">
                     <button v-for="sm in savedModels" :key="sm.id" class="model-chip" :class="{ active: agentForm.model.provider === sm.provider && agentForm.model.modelId === sm.modelId }" @click="selectModelForAgent(sm)">{{ sm.name }}</button>
                     <button class="model-chip" :class="{ active: showCustomModel }" @click="clearModelSelection">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                      <SvgIcon name="edit" :size="12" />
                       自定义
                     </button>
                   </div>
@@ -410,10 +402,7 @@ onMounted(() => {
                 </div>
               </div>
               <button class="remove-btn" @click="removeAgent(i)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
+                <SvgIcon name="close" :size="14" />
               </button>
             </div>
           </div>

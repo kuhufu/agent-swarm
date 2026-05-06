@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useIntervention } from "../../composables/useIntervention.js";
+import SvgIcon from "../common/SvgIcon.vue";
 
 const { hasPending, nextIntervention, approve, reject, edit } = useIntervention();
 const editValue = ref("");
@@ -55,30 +56,20 @@ function submitEdit() {
 
     <div class="intervention-actions">
       <button class="btn-primary" @click="approve(nextIntervention.requestId)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
+        <SvgIcon name="check" :size="14" />
         批准
       </button>
       <button class="btn-secondary" @click="reject(nextIntervention.requestId)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
+        <SvgIcon name="close" :size="14" />
         拒绝
       </button>
       <button v-if="!showEdit" class="btn-secondary" @click="handleEdit">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-        </svg>
+        <SvgIcon name="edit" :size="14" />
         编辑
       </button>
       <template v-else>
         <button class="btn-primary" @click="submitEdit">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
+          <SvgIcon name="check" :size="14" />
           确认编辑
         </button>
         <button class="btn-secondary" @click="showEdit = false">

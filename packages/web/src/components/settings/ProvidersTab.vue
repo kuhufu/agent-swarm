@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { reactive, computed } from "vue";
 import CustomSelect from "../common/CustomSelect.vue";
+import SvgIcon from "../common/SvgIcon.vue";
 import type { ApiProtocol, ProviderConfig } from "../../types/index.js";
 
 const props = defineProps<{
@@ -57,10 +58,7 @@ function getEffectiveProtocol(id: string): ApiProtocol {
             <span class="provider-name">{{ p.id }}</span>
           </div>
           <button class="remove-btn" @click="emit('remove', p.id)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <SvgIcon name="close" :size="14" />
           </button>
         </div>
 

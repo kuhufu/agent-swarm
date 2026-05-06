@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from "vue";
+import SvgIcon from "./SvgIcon.vue";
 
 const props = defineProps<{
   modelValue: string;
@@ -54,9 +55,7 @@ function close() {
   <div class="custom-select">
     <button ref="triggerRef" class="select-trigger" type="button" @click="toggle">
       <span class="select-value" :class="{ placeholder: !modelValue }">{{ selectedLabel }}</span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="select-arrow" :class="{ open }">
-        <polyline points="6 9 12 15 18 9" />
-      </svg>
+      <SvgIcon class="select-arrow" :class="{ open }" name="chevronDown" :size="14" />
     </button>
     <Teleport to="body">
       <div v-if="open" class="select-overlay" @click="close" />
