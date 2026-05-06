@@ -202,7 +202,23 @@ export class Conversation {
 
   // ── Private ──
 
+  private agentNameByAgentId(): Map<string, string> {
+    const map = new Map<string, string>();
+    for (const agent of this.swarmConfig.agents) {
+      map.set(agent.id, agent.name);
+    }
+    return map;
+  }
+
+  private ensureAgentName(event: SwarmEvent): void {
+    if ("agentId" in event && typeof (event as any).agentId === "string" && !(event as any).agentName) {
+      (event as any).agentName = this.agentNameByAgentId().get((event as any).agentId) ?? (event as any).agentId;
+    }
+  }
+
   private emit(event: SwarmEvent) {
+    this.ensureAgentName(event);
+
     if (this.shouldPersistEvent(event)) {
       void this.storage.logEvent(this.id, {
         id: crypto.randomUUID(),
