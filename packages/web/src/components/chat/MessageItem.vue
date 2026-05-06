@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import type { ChatMessage } from "../../types/index.js";
 import { agentColor } from "../../utils/agent-color.js";
 import { formatTimeShort } from "../../utils/format.js";
@@ -73,6 +73,27 @@ function roleClass(role: string): string {
 }
 
 const formatTime = formatTimeShort;
+
+const copySuccess = ref(false);
+
+async function handleCopy() {
+  try {
+    await navigator.clipboard.writeText(props.message.content);
+    copySuccess.value = true;
+    setTimeout(() => { copySuccess.value = false; }, 1500);
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = props.message.content;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+    copySuccess.value = true;
+    setTimeout(() => { copySuccess.value = false; }, 1500);
+  }
+}
 
 function handleFork() {
   if (props.streaming) {
@@ -169,6 +190,25 @@ function handleFork() {
           <span class="dot" />
         </span>
         <span v-else class="timestamp">{{ formatTime(message.timestamp) }}</span>
+        <button
+          v-if="!streaming"
+          class="msg-action-btn"
+          type="button"
+          title="复制消息"
+          @click="handleCopy"
+        >
+          <template v-if="copySuccess">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </template>
+          <template v-else>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+          </template>
+        </button>
         <button
           v-if="!streaming"
           class="msg-action-btn"
