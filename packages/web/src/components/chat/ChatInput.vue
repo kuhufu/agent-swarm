@@ -27,6 +27,7 @@ const {
   currentTimeToolEnabled,
   jsExecutionToolEnabled,
   searchToolEnabled,
+  webFetchToolEnabled,
   retrieveKnowledgeToolEnabled,
   workspaceToolEnabled,
   thinkingLevel,
@@ -42,6 +43,9 @@ const showModelSelect = ref(false);
 // ── Thinking level state ──
 const showThinkLevelSelect = ref(false);
 
+// ── Tools dropdown state ──
+const showToolsDropdown = ref(false);
+
 const THINKING_LEVELS = [
   { value: "xhigh", label: "最高" },
   { value: "high", label: "高" },
@@ -49,6 +53,16 @@ const THINKING_LEVELS = [
   { value: "low", label: "低" },
   { value: "off", label: "关闭" },
 ] as const;
+
+const activeToolCount = computed(() => {
+  let count = 0;
+  if (currentTimeToolEnabled.value) count++;
+  if (jsExecutionToolEnabled.value) count++;
+  if (workspaceToolEnabled.value) count++;
+  if (webFetchToolEnabled.value) count++;
+  if (retrieveKnowledgeToolEnabled.value) count++;
+  return count;
+});
 
 const thinkLevelLabel = computed(() => {
   const found = THINKING_LEVELS.find((l) => l.value === thinkingLevel.value);
@@ -232,47 +246,39 @@ function selectSavedModel(sm: SavedModel) {
   requestTextareaFocus();
 }
 
-function handleToggleCurrentTimeTool() {
+function handleToggleToolsDropdown() {
   captureTextareaSelection();
-  currentTimeToolEnabled.value = !currentTimeToolEnabled.value;
+  showToolsDropdown.value = !showToolsDropdown.value;
   requestTextareaFocus();
 }
 
-function handleToggleRetrieveKnowledgeTool() {
+function toggleToolFromDropdown(toggleFn: () => void) {
   captureTextareaSelection();
-  retrieveKnowledgeToolEnabled.value = !retrieveKnowledgeToolEnabled.value;
-  requestTextareaFocus();
+  toggleFn();
 }
 
-function handleToggleJsExecutionTool() {
-  captureTextareaSelection();
-  jsExecutionToolEnabled.value = !jsExecutionToolEnabled.value;
-  requestTextareaFocus();
-}
-
-function handleToggleWorkspaceTool() {
-  captureTextareaSelection();
-  workspaceToolEnabled.value = !workspaceToolEnabled.value;
-  requestTextareaFocus();
-}
+function toggleCurrentTimeTool() { currentTimeToolEnabled.value = !currentTimeToolEnabled.value; }
+function toggleJsExecutionTool() { jsExecutionToolEnabled.value = !jsExecutionToolEnabled.value; }
+function toggleWorkspaceTool() { workspaceToolEnabled.value = !workspaceToolEnabled.value; }
+function toggleWebFetchTool() { webFetchToolEnabled.value = !webFetchToolEnabled.value; }
+function toggleRetrieveKnowledgeTool() { retrieveKnowledgeToolEnabled.value = !retrieveKnowledgeToolEnabled.value; }
 
 function handleToggleThinkLevel() {
   captureTextareaSelection();
-  showModelSelect.value = false;
+  showToolsDropdown.value = false;
   showThinkLevelSelect.value = !showThinkLevelSelect.value;
-  requestTextareaFocus();
-}
-
-function toggleModelSelect() {
-  captureTextareaSelection();
-  showThinkLevelSelect.value = false;
-  showModelSelect.value = !showModelSelect.value;
   requestTextareaFocus();
 }
 
 function selectThinkingLevel(level: string) {
   thinkingLevel.value = level;
   showThinkLevelSelect.value = false;
+}
+
+function toggleModelSelect() {
+  captureTextareaSelection();
+  showThinkLevelSelect.value = false;
+  showModelSelect.value = !showModelSelect.value;
   requestTextareaFocus();
 }
 
@@ -352,16 +358,23 @@ onUnmounted(() => {
 function handleOutsideClick(event: MouseEvent) {
   const target = event.target as Node;
   if (!target) return;
-  if (showThinkLevelSelect.value || showModelSelect.value) {
-    const thinkContainer = (document.querySelector(".think-level-select-inline") as HTMLElement);
-    const modelContainer = (document.querySelector(".model-select-inline") as HTMLElement);
-    if (
-      thinkContainer && !thinkContainer.contains(target)
-      && modelContainer && !modelContainer.contains(target)
-    ) {
-      showThinkLevelSelect.value = false;
-      showModelSelect.value = false;
-    }
+  const thinkContainer = (document.querySelector(".think-level-select-inline") as HTMLElement);
+  const modelContainer = (document.querySelector(".model-select-inline") as HTMLElement);
+  const toolsContainer = (document.querySelector(".tools-dropdown-inline") as HTMLElement);
+  if (
+    (showThinkLevelSelect.value || showModelSelect.value)
+    && thinkContainer && !thinkContainer.contains(target)
+    && modelContainer && !modelContainer.contains(target)
+  ) {
+    showThinkLevelSelect.value = false;
+    showModelSelect.value = false;
+  }
+  if (showToolsDropdown.value && toolsContainer && !toolsContainer.contains(target)) {
+    showToolsDropdown.value = false;
+  }
+  // Close think level dropdown if clicked outside
+  if (showThinkLevelSelect.value && thinkContainer && !thinkContainer.contains(target)) {
+    showThinkLevelSelect.value = false;
   }
 }
 </script>
@@ -438,33 +451,6 @@ function handleOutsideClick(event: MouseEvent) {
       <div class="tool-toggles-right">
         <button
           class="tool-btn"
-          :class="{ active: currentTimeToolEnabled }"
-          @mousedown="handleKeepTextareaFocusMouseDown"
-          @click="handleToggleCurrentTimeTool"
-        >
-          <SvgIcon name="clock" />
-          <span>当前时间</span>
-        </button>
-        <button
-          class="tool-btn"
-          :class="{ active: jsExecutionToolEnabled }"
-          @mousedown="handleKeepTextareaFocusMouseDown"
-          @click="handleToggleJsExecutionTool"
-        >
-          <SvgIcon name="jsExecute" />
-          <span>JS 执行</span>
-        </button>
-        <button
-          class="tool-btn"
-          :class="{ active: workspaceToolEnabled }"
-          @mousedown="handleKeepTextareaFocusMouseDown"
-          @click="handleToggleWorkspaceTool"
-        >
-          <SvgIcon name="folder" />
-          <span>工作区</span>
-        </button>
-        <button
-          class="tool-btn"
           :class="{ active: searchToolEnabled }"
           @mousedown="handleKeepTextareaFocusMouseDown"
           @click="searchToolEnabled = !searchToolEnabled"
@@ -472,15 +458,7 @@ function handleOutsideClick(event: MouseEvent) {
           <SvgIcon name="search" />
           <span>搜索</span>
         </button>
-        <button
-          class="tool-btn"
-          :class="{ active: retrieveKnowledgeToolEnabled }"
-          @mousedown="handleKeepTextareaFocusMouseDown"
-          @click="handleToggleRetrieveKnowledgeTool"
-        >
-          <SvgIcon name="book" />
-          <span>知识库</span>
-        </button>
+        <!-- Thinking level (not an agent tool) -->
         <div class="think-level-select-inline">
           <button
             class="tool-btn"
@@ -508,13 +486,86 @@ function handleOutsideClick(event: MouseEvent) {
             </button>
           </div>
         </div>
+        <div class="tools-dropdown-inline">
+          <button
+            class="tool-btn"
+            :class="{ active: activeToolCount > 0 }"
+            @mousedown="handleKeepTextareaFocusMouseDown"
+            @click="handleToggleToolsDropdown"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <span>工具</span>
+            <span v-if="activeToolCount > 0" class="tool-badge">{{ activeToolCount }}</span>
+            <SvgIcon name="chevronDown" :size="12" />
+          </button>
+          <div v-if="showToolsDropdown" class="tools-dropdown">
+            <button
+              class="tools-dropdown-item"
+              :class="{ active: currentTimeToolEnabled }"
+              @mousedown="handleKeepTextareaFocusMouseDown"
+              @click="toggleToolFromDropdown(toggleCurrentTimeTool)"
+            >
+              <SvgIcon name="clock" :size="14" />
+              <span class="dropdown-tool-label">当前时间</span>
+              <span class="dropdown-tool-state">{{ currentTimeToolEnabled ? '开' : '关' }}</span>
+            </button>
+            <button
+              class="tools-dropdown-item"
+              :class="{ active: jsExecutionToolEnabled }"
+              @mousedown="handleKeepTextareaFocusMouseDown"
+              @click="toggleToolFromDropdown(toggleJsExecutionTool)"
+            >
+              <SvgIcon name="jsExecute" :size="14" />
+              <span class="dropdown-tool-label">JS 执行</span>
+              <span class="dropdown-tool-state">{{ jsExecutionToolEnabled ? '开' : '关' }}</span>
+            </button>
+            <button
+              class="tools-dropdown-item"
+              :class="{ active: workspaceToolEnabled }"
+              @mousedown="handleKeepTextareaFocusMouseDown"
+              @click="toggleToolFromDropdown(toggleWorkspaceTool)"
+            >
+              <SvgIcon name="folder" :size="14" />
+              <span class="dropdown-tool-label">工作区</span>
+              <span class="dropdown-tool-state">{{ workspaceToolEnabled ? '开' : '关' }}</span>
+            </button>
+            <button
+              class="tools-dropdown-item"
+              :class="{ active: webFetchToolEnabled }"
+              @mousedown="handleKeepTextareaFocusMouseDown"
+              @click="toggleToolFromDropdown(toggleWebFetchTool)"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
+                <path d="M13.5 2C13.5 2 19 5 19 12C19 19 13.5 22 13.5 22" />
+                <path d="M2 12h18M6 8l-4 4 4 4" />
+              </svg>
+              <span class="dropdown-tool-label">抓取网页</span>
+              <span class="dropdown-tool-state">{{ webFetchToolEnabled ? '开' : '关' }}</span>
+            </button>
+            <button
+              class="tools-dropdown-item"
+              :class="{ active: retrieveKnowledgeToolEnabled }"
+              @mousedown="handleKeepTextareaFocusMouseDown"
+              @click="toggleToolFromDropdown(toggleRetrieveKnowledgeTool)"
+            >
+              <SvgIcon name="book" :size="14" />
+              <span class="dropdown-tool-label">知识库</span>
+              <span class="dropdown-tool-state">{{ retrieveKnowledgeToolEnabled ? '开' : '关' }}</span>
+            </button>
+          </div>
+        </div>
+        <!-- Clear context (not an agent tool) -->
         <button
           class="tool-btn warn"
           :class="{ disabled: !canClearContext }"
           :title="clearContextTooltip"
+          @mousedown="handleKeepTextareaFocusMouseDown"
           @click="handleClearContext"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
             <polyline points="3 6 5 6 21 6" />
             <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
             <path d="M10 11v6M14 11v6" />
@@ -719,15 +770,111 @@ function handleOutsideClick(event: MouseEvent) {
   text-align: center;
 }
 
+/* ── Tools dropdown ── */
+.tools-dropdown-inline {
+  position: relative;
+  display: inline-flex;
+}
+
+.tool-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--color-accent-light);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.tools-dropdown {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  z-index: 50;
+  background: var(--dropdown-bg);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-dropdown);
+  padding: 4px;
+}
+
+.tools-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+  font-size: 13px;
+  text-align: left;
+  color: var(--color-text-secondary);
+}
+
+.tools-dropdown-item:hover {
+  background: var(--dropdown-hover);
+}
+
+.tools-dropdown-item.active {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--color-accent-light);
+}
+
+.tools-dropdown-item.warn {
+  color: #fbbf24;
+}
+
+.tools-dropdown-item.warn:hover:not(.disabled) {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fcd34d;
+}
+
+.tools-dropdown-item.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.dropdown-tool-label {
+  flex: 1;
+  font-weight: 500;
+}
+
+.dropdown-tool-state {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.tools-dropdown-item.active .dropdown-tool-state {
+  color: rgba(129, 140, 248, 0.6);
+}
+
+.tools-dropdown-separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--color-border-subtle);
+}
+
 /* ── Thinking level selector ── */
 .think-level-select-inline {
   position: relative;
   display: inline-flex;
 }
+
 .think-level-select-inline .tool-btn {
   width: 80px;
   gap: 2px;
 }
+
 .think-level-select-inline .tool-btn span:nth-child(2) {
   display: inline-block;
   width: 28px;

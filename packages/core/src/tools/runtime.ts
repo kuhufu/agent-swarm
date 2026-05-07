@@ -2,6 +2,8 @@ import type { AgentTool } from "@mariozechner/pi-agent-core";
 import type { SwarmAgentConfig, SwarmConfig } from "../core/types.js";
 import type { WebSearchConfig } from "./web-search.js";
 import { createWebSearchTool } from "./web-search.js";
+import type { WebFetchConfig } from "./web-fetch.js";
+import { createWebFetchTool } from "./web-fetch.js";
 import type { ClientToolDefinition, ClientToolExecutionResult } from "./client-bridge.js";
 import { createClientBridgeTool } from "./client-bridge.js";
 import { createHandoffTool } from "./handoff.js";
@@ -18,12 +20,14 @@ export interface ToolRuntimeOptions {
     request: { toolName: string; toolCallId: string; params: unknown },
   ) => Promise<ClientToolExecutionResult>;
   webSearchConfig?: WebSearchConfig;
+  webFetchConfig?: WebFetchConfig;
   mcpTools?: AgentTool<any>[];
   runtimeTools?: RuntimeTool[];
 }
 
 export interface ToolRuntimeAvailability {
   webSearchConfig?: WebSearchConfig;
+  webFetchConfig?: WebFetchConfig;
   mcpTools?: AgentTool<any>[];
   runtimeTools?: RuntimeTool[];
 }
@@ -60,6 +64,7 @@ export function createToolRuntimeOptions(input: ToolRuntimeInput = {}): ToolRunt
     enabledTools: normalizeEnabledTools(input.enabledTools),
     clientToolExecutor: input.clientToolExecutor ?? defaultClientToolExecutor,
     webSearchConfig: input.webSearchConfig,
+    webFetchConfig: input.webFetchConfig,
     mcpTools: input.mcpTools,
     runtimeTools: input.runtimeTools,
   };
@@ -114,6 +119,10 @@ export function createRuntimeTools(
 
   if (enabledTools.has("web_search")) {
     tools.push(createWebSearchTool(runtimeOptions.webSearchConfig ?? { provider: "duckduckgo" }));
+  }
+
+  if (enabledTools.has("web_fetch")) {
+    tools.push(createWebFetchTool(runtimeOptions.webFetchConfig));
   }
 
   if (enabledTools.has("mcp")) {

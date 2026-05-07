@@ -72,6 +72,10 @@ export function useChat(conversationId: Ref<string | null>) {
     get: () => isToolEnabled("web_search"),
     set: (value: boolean) => setClientToolEnabled("web_search", value),
   });
+  const webFetchToolEnabled = computed({
+    get: () => isToolEnabled("web_fetch"),
+    set: (value: boolean) => setClientToolEnabled("web_fetch", value),
+  });
   const retrieveKnowledgeToolEnabled = computed({
     get: () => isToolEnabled("retrieve_knowledge"),
     set: (value: boolean) => setClientToolEnabled("retrieve_knowledge", value),
@@ -227,6 +231,7 @@ export function useChat(conversationId: Ref<string | null>) {
     currentTimeToolEnabled,
     jsExecutionToolEnabled,
     searchToolEnabled,
+    webFetchToolEnabled,
     retrieveKnowledgeToolEnabled,
     workspaceToolEnabled,
     thinkingLevel,

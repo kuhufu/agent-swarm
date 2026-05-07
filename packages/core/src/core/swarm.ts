@@ -14,6 +14,7 @@ import { resolveModelFromProvider } from "../llm/provider.js";
 import type { Logger } from "../logger/types.js";
 import { ConsoleLogger } from "../logger/console-logger.js";
 import type { WebSearchConfig } from "../tools/web-search.js";
+import type { WebFetchConfig } from "../tools/web-fetch.js";
 import { MCPClient } from "../tools/mcp/client.js";
 import type { MCPServerConfig } from "../tools/mcp/client.js";
 import type { IVectorStore } from "../storage/vector-store.js";
@@ -31,6 +32,7 @@ export interface AgentSwarmOptions {
   interventionHandler?: InterventionHandler;
   logger?: Logger;
   webSearchConfig?: WebSearchConfig;
+  webFetchConfig?: WebFetchConfig;
   mcpServers?: MCPServerConfig[];
   vectorStore?: IVectorStore;
 }
@@ -96,6 +98,7 @@ export class AgentSwarm {
   private _initialized = false;
   public readonly logger: Logger;
   public readonly webSearchConfig?: WebSearchConfig;
+  public readonly webFetchConfig?: WebFetchConfig;
   public readonly mcpClient: MCPClient;
   public readonly vectorStore?: IVectorStore;
   private readonly mcpServerConfigs?: MCPServerConfig[];
@@ -155,6 +158,7 @@ export class AgentSwarm {
     this.interventionHandler = options.interventionHandler;
     this.logger = options.logger ?? new ConsoleLogger();
     this.webSearchConfig = options.webSearchConfig;
+    this.webFetchConfig = options.webFetchConfig;
     this.mcpClient = new MCPClient();
     this.mcpServerConfigs = options.mcpServers;
     this.vectorStore = options.vectorStore;
@@ -420,6 +424,7 @@ export class AgentSwarm {
 
     return {
       webSearchConfig: this.webSearchConfig,
+      webFetchConfig: this.webFetchConfig,
       mcpTools: createAllMCPTools(this.mcpClient),
       runtimeTools,
     };

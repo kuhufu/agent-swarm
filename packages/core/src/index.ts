@@ -78,6 +78,8 @@ export { createClientBridgeTool } from "./tools/client-bridge.js";
 export type { ClientToolDefinition, ClientToolExecutionResult } from "./tools/client-bridge.js";
 export { createWebSearchTool } from "./tools/web-search.js";
 export type { WebSearchConfig, SearchProvider } from "./tools/web-search.js";
+export { createWebFetchTool } from "./tools/web-fetch.js";
+export type { WebFetchConfig, WebFetchResult } from "./tools/web-fetch.js";
 export { createRetrieveKnowledgeTool } from "./tools/retrieve-knowledge.js";
 export { createRuntimeTool, createToolRuntimeOptions, withRuntimeTools, createRuntimeTools, createClientToolDefinitions, normalizeEnabledTools } from "./tools/runtime.js";
 export type { ToolRuntimeOptions, ToolRuntimeInput, ToolRuntimeAvailability, RuntimeTool } from "./tools/runtime.js";
