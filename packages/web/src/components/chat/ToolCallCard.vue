@@ -70,6 +70,7 @@ function extractKnowledgeReferences(result: unknown): KnowledgeReference[] | nul
 }
 
 const expanded = ref(false);
+const copiedReferenceKey = ref<string | null>(null);
 const isKnowledgeTool = computed(() => props.toolCall.name === "retrieve_knowledge");
 const knowledgeReferences = computed(() => isKnowledgeTool.value
   ? extractKnowledgeReferences(props.toolCall.result)
@@ -88,6 +89,37 @@ const status = computed(() => {
   }
   return { label: "运行中", cls: "running" };
 });
+
+function referenceKey(reference: KnowledgeReference, index: number): string {
+  return `${reference.documentId ?? reference.title}-${reference.chunkIndex ?? index}-${index}`;
+}
+
+async function copyText(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return;
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  }
+}
+
+async function handleCopyReference(reference: KnowledgeReference, index: number) {
+  const key = referenceKey(reference, index);
+  await copyText(reference.content);
+  copiedReferenceKey.value = key;
+  setTimeout(() => {
+    if (copiedReferenceKey.value === key) {
+      copiedReferenceKey.value = null;
+    }
+  }, 1500);
+}
 </script>
 
 <template>
@@ -130,7 +162,7 @@ const status = computed(() => {
         <div v-if="knowledgeReferences && knowledgeReferences.length > 0" class="knowledge-list">
           <article
             v-for="(reference, index) in knowledgeReferences"
-            :key="`${reference.title}-${reference.chunkIndex ?? index}-${index}`"
+            :key="referenceKey(reference, index)"
             class="knowledge-reference"
           >
             <header class="reference-header">
@@ -151,6 +183,17 @@ const status = computed(() => {
                   <span v-if="reference.score !== undefined">相关度 {{ reference.score.toFixed(3) }}</span>
                 </div>
               </div>
+              <button
+                class="reference-copy"
+                type="button"
+                title="复制引用片段"
+                @click.stop="handleCopyReference(reference, index)"
+              >
+                <SvgIcon
+                  :name="copiedReferenceKey === referenceKey(reference, index) ? 'check' : 'copy'"
+                  :size="13"
+                />
+              </button>
             </header>
             <p class="reference-content">{{ reference.content }}</p>
           </article>
@@ -351,6 +394,7 @@ pre {
 
 .reference-meta {
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .reference-title {
@@ -379,6 +423,27 @@ pre {
   color: var(--color-text-muted);
   font-size: 11px;
   line-height: 1.4;
+}
+
+.reference-copy {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.reference-copy:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .reference-content {
