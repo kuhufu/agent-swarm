@@ -459,6 +459,18 @@ function handleFork() {
   border-top: 1px solid var(--color-border-subtle);
 }
 
+.markdown-content :deep(.katex) {
+  color: var(--color-text-primary);
+  font-size: 1.04em;
+}
+
+.markdown-content :deep(.katex-display) {
+  margin: 10px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0;
+}
+
 /* ── Footer / Timestamp ── */
 .msg-footer {
   display: flex;

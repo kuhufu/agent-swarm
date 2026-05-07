@@ -1,23 +1,10 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { renderMarkdown } from "../../composables/useMarkdown.js";
 
 const props = defineProps<{
   content: string;
 }>();
-
-function renderMarkdown(text: string): string {
-  return text
-    // Code blocks
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="lang-$1">$2</code></pre>')
-    // Inline code
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    // Bold
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    // Italic
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    // Line breaks
-    .replace(/\n/g, "<br>");
-}
 
 const renderedContent = computed(() => renderMarkdown(props.content));
 </script>
@@ -55,5 +42,17 @@ const renderedContent = computed(() => renderMarkdown(props.content));
 
 .markdown-renderer :deep(strong) {
   color: #e0e0e0;
+}
+
+.markdown-renderer :deep(.katex) {
+  color: #f8fafc;
+  font-size: 1.04em;
+}
+
+.markdown-renderer :deep(.katex-display) {
+  margin: 10px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0;
 }
 </style>
