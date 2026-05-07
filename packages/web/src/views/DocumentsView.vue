@@ -76,10 +76,13 @@ const displayDocuments = computed<Document[]>(() => {
   return docs;
 });
 
-function getMatchSnippet(docId: string): string | null {
+function getMatchResult(docId: string): SearchResultItem | null {
   if (!searchQuery.value.trim()) return null;
-  const match = searchResults.value.find((r) => r.document.id === docId);
-  return match ? match.chunk.content : null;
+  return searchResults.value.find((r) => r.document.id === docId) ?? null;
+}
+
+function getMatchSnippet(docId: string): string | null {
+  return getMatchResult(docId)?.chunk.content ?? null;
 }
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -142,11 +145,15 @@ function routeChunkIndex(): number | null {
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
-function updateDocumentRoute(docId: string | null) {
+function updateDocumentRoute(docId: string | null, chunkIndex?: number | null) {
   const nextQuery = { ...route.query };
   if (docId) {
     nextQuery.doc = docId;
-    delete nextQuery.chunk;
+    if (typeof chunkIndex === "number") {
+      nextQuery.chunk = String(chunkIndex);
+    } else {
+      delete nextQuery.chunk;
+    }
   } else {
     delete nextQuery.doc;
     delete nextQuery.chunk;
@@ -285,7 +292,13 @@ async function handleFileSelected(event: Event) {
 }
 
 async function selectDocument(doc: Document) {
+  const match = getMatchResult(doc.id);
   if (selectedDoc.value?.id === doc.id) {
+    if (match && routeChunk.value?.index !== match.chunk.index) {
+      routeChunk.value = match.chunk;
+      updateDocumentRoute(doc.id, match.chunk.index);
+      return;
+    }
     if (isNewDoc.value) return;
     selectedDoc.value = null;
     showPreview.value = false;
@@ -312,8 +325,8 @@ async function selectDocument(doc: Document) {
   try {
     selectedDoc.value = await loadDocumentDetail(doc.id);
     showPreview.value = true;
-    routeChunk.value = null;
-    updateDocumentRoute(doc.id);
+    routeChunk.value = match?.chunk ?? null;
+    updateDocumentRoute(doc.id, match?.chunk.index ?? null);
   } catch (err: any) {
     await MessagePlugin.error(err.message);
   } finally {
