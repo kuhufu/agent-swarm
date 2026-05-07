@@ -4,6 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { MessagePlugin } from "tdesign-vue-next";
 import SvgIcon from "../components/common/SvgIcon.vue";
 import { apiClient } from "../api/client.js";
+import { confirmDialog } from "../utils/ui-feedback.js";
 
 interface Document {
   id: string;
@@ -507,6 +508,17 @@ async function handleDelete(id: string) {
       isNewDoc.value = false;
       updateDocumentRoute(null);
     }
+    return;
+  }
+  const targetDoc = documents.value.find((doc) => doc.id === id);
+  const confirmed = await confirmDialog({
+    header: "删除文档",
+    body: `确定要删除文档 "${targetDoc?.title ?? "未命名文档"}" 吗？`,
+    confirmText: "删除",
+    cancelText: "取消",
+    theme: "danger",
+  });
+  if (!confirmed) {
     return;
   }
   deletingId.value = id;
