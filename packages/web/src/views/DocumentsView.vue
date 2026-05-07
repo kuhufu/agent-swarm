@@ -60,6 +60,7 @@ const editTitle = ref("");
 const editContent = ref("");
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const uploading = ref(false);
+const copiedDocument = ref(false);
 
 const displayDocuments = computed<Document[]>(() => {
   const q = searchQuery.value.trim();
@@ -236,6 +237,33 @@ async function doSearch(query: string) {
 function clearSearch() {
   searchQuery.value = "";
   searchResults.value = [];
+}
+
+async function copyText(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return;
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  }
+}
+
+async function copySelectedDocument() {
+  if (!selectedDoc.value?.content) {
+    return;
+  }
+  await copyText(selectedDoc.value.content);
+  copiedDocument.value = true;
+  setTimeout(() => {
+    copiedDocument.value = false;
+  }, 1500);
 }
 
 function createNewDoc() {
@@ -682,6 +710,14 @@ function highlightMatch(text: string, query: string): string {
                 </button>
               </template>
               <template v-else>
+                <button
+                  class="btn-icon"
+                  :disabled="!selectedDoc.content"
+                  @click="copySelectedDocument"
+                  title="复制全文"
+                >
+                  <SvgIcon :name="copiedDocument ? 'check' : 'copy'" />
+                </button>
                 <button class="btn-icon" @click="startEdit" title="编辑">
                   <SvgIcon name="edit" />
                 </button>
