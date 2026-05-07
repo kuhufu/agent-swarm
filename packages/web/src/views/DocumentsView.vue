@@ -43,7 +43,6 @@ const searchResults = ref<SearchResultItem[]>([]);
 const loading = ref(false);
 const uploading = ref(false);
 const generatingWiki = ref(false);
-const manualSource = ref({ filename: "", content: "" });
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const visibleDocuments = computed(() => {
@@ -151,31 +150,6 @@ function clearSearch() {
   searchResults.value = [];
 }
 
-async function uploadManualDocument() {
-  if (!manualSource.value.filename.trim() || !manualSource.value.content.trim()) {
-    showError("文档标题和内容不能为空");
-    return;
-  }
-  uploading.value = true;
-  try {
-    const response = await apiClient<{ data: { id: string } }>("/documents/upload", {
-      method: "POST",
-      body: JSON.stringify({
-        filename: manualSource.value.filename,
-        content: manualSource.value.content,
-      }),
-    });
-    manualSource.value = { filename: "", content: "" };
-    await loadDocuments();
-    await selectDocument(response.data.id);
-    showSuccess("文档已保存");
-  } catch (error) {
-    showError(error instanceof Error ? error.message : "保存文档失败");
-  } finally {
-    uploading.value = false;
-  }
-}
-
 async function uploadFile(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
@@ -277,20 +251,6 @@ async function generateWikiFromDocument() {
     </aside>
 
     <main class="documents-main">
-      <section class="upload-panel">
-        <div>
-          <h2>添加源文件</h2>
-          <p>文档会用于知识库检索，也可以从这里生成 Wiki。</p>
-        </div>
-        <div class="manual-upload">
-          <input v-model="manualSource.filename" class="text-input" type="text" placeholder="文档标题">
-          <textarea v-model="manualSource.content" class="source-textarea" placeholder="粘贴文档内容" />
-          <button class="primary-btn" type="button" :disabled="uploading" @click="uploadManualDocument">
-            {{ uploading ? "保存中..." : "保存文档" }}
-          </button>
-        </div>
-      </section>
-
       <section v-if="selectedDoc" class="document-detail">
         <div class="detail-toolbar">
           <div>
@@ -354,7 +314,6 @@ async function generateWikiFromDocument() {
 }
 
 .documents-sidebar,
-.upload-panel,
 .document-detail {
   border: 1px solid var(--color-border-subtle);
   border-radius: 10px;
@@ -371,8 +330,7 @@ async function generateWikiFromDocument() {
 }
 
 .sidebar-header,
-.detail-toolbar,
-.upload-panel {
+.detail-toolbar {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -400,24 +358,32 @@ h3 {
 }
 
 .sidebar-header p,
-.detail-toolbar p,
-.upload-panel p {
+.detail-toolbar p {
   margin-top: 5px;
   color: var(--color-text-muted);
   font-size: 13px;
 }
 
 .search-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 36px 36px;
+  display: flex;
   gap: 8px;
   margin-top: 16px;
 }
 
-.search-input,
-.text-input,
-.source-textarea {
+.search-row .search-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-row .icon-btn {
+  flex-shrink: 0;
+}
+
+.search-input {
   width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 0 11px;
   border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.22);
@@ -425,18 +391,7 @@ h3 {
   font: inherit;
   font-size: 13px;
   outline: none;
-}
-
-.search-input,
-.text-input {
-  height: 36px;
-  padding: 0 11px;
-}
-
-.source-textarea {
-  min-height: 90px;
-  padding: 10px 11px;
-  resize: vertical;
+  box-sizing: border-box;
 }
 
 .document-list {
@@ -480,19 +435,6 @@ h3 {
   grid-template-rows: auto minmax(0, 1fr);
   gap: 18px;
   overflow: hidden;
-}
-
-.upload-panel {
-  padding: 16px;
-}
-
-.manual-upload {
-  grid-column: 1 / -1;
-  width: 100%;
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) auto;
-  gap: 10px;
-  margin-top: 12px;
 }
 
 .document-detail {
@@ -576,7 +518,6 @@ h3 {
 }
 
 .icon-btn,
-.primary-btn,
 .secondary-btn,
 .danger-btn {
   min-height: 36px;
@@ -588,6 +529,7 @@ h3 {
   border: 1px solid var(--color-border-subtle);
   cursor: pointer;
   font-size: 13px;
+  box-sizing: border-box;
 }
 
 .icon-btn {
@@ -599,13 +541,6 @@ h3 {
 
 .icon-btn.muted {
   color: var(--color-text-muted);
-}
-
-.primary-btn {
-  padding: 0 14px;
-  color: #fff;
-  background: var(--color-accent);
-  border-color: transparent;
 }
 
 .secondary-btn {
@@ -641,8 +576,5 @@ button:disabled {
     overflow: visible;
   }
 
-  .manual-upload {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

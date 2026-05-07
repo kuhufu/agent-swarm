@@ -388,19 +388,6 @@ function sourcePreview(source: SourceDocument): string {
     </aside>
 
     <main class="wiki-main">
-      <section class="ingest-panel">
-        <div class="ingest-copy">
-          <h2>从文档生成 Wiki</h2>
-          <p>先在文档中管理来源文件，再从文档详情生成可编辑的知识页面、要点和来源引用。</p>
-        </div>
-        <div class="ingest-actions">
-          <button class="secondary-btn" type="button" @click="openDocumentsTab">
-            <SvgIcon name="book" :size="15" />
-            打开文档
-          </button>
-        </div>
-      </section>
-
       <section v-if="editing" class="editor-panel">
         <div class="detail-toolbar">
           <h2>{{ selectedPage ? "编辑页面" : "新建页面" }}</h2>
@@ -430,6 +417,10 @@ function sourcePreview(source: SourceDocument): string {
             <p>{{ selectedPage.summary }}</p>
           </div>
           <div class="toolbar-actions">
+            <button class="secondary-btn" type="button" @click="openDocumentsTab">
+              <SvgIcon name="book" :size="15" />
+              打开文档
+            </button>
             <button
               class="secondary-btn"
               type="button"
@@ -532,8 +523,18 @@ function sourcePreview(source: SourceDocument): string {
       </section>
 
       <section v-else class="detail-panel empty-detail">
-        <SvgIcon name="book" :size="32" />
-        <h2>选择或生成一个 Wiki 页面</h2>
+        <div class="detail-toolbar">
+          <div>
+            <h2>选择或生成一个 Wiki 页面</h2>
+            <p>从文档列表中选取来源文档生成知识页面。</p>
+          </div>
+          <div class="toolbar-actions">
+            <button class="secondary-btn" type="button" @click="openDocumentsTab">
+              <SvgIcon name="book" :size="15" />
+              打开文档
+            </button>
+          </div>
+        </div>
       </section>
     </main>
   </div>
@@ -553,7 +554,6 @@ function sourcePreview(source: SourceDocument): string {
 }
 
 .wiki-sidebar,
-.ingest-panel,
 .editor-panel,
 .detail-panel {
   border: 1px solid var(--color-border-subtle);
@@ -570,13 +570,25 @@ function sourcePreview(source: SourceDocument): string {
   overflow: hidden;
 }
 
-.sidebar-header,
-.detail-toolbar,
-.ingest-panel {
+.sidebar-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+}
+
+.detail-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 12px;
+  margin-bottom: -12px;
+  background: var(--color-surface-2);
+  border-radius: 10px 10px 0 0;
 }
 
 h1,
@@ -602,8 +614,7 @@ h3 {
 }
 
 .sidebar-header p,
-.detail-toolbar p,
-.ingest-copy p {
+.detail-toolbar p {
   margin-top: 5px;
   color: var(--color-text-muted);
   font-size: 13px;
@@ -611,10 +622,18 @@ h3 {
 }
 
 .search-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 36px 36px;
+  display: flex;
   gap: 8px;
   margin-top: 16px;
+}
+
+.search-row .search-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-row .icon-btn {
+  flex-shrink: 0;
 }
 
 .search-input,
@@ -702,24 +721,10 @@ h3 {
   overflow: hidden;
 }
 
-.ingest-panel {
-  padding: 16px;
-}
-
-.ingest-actions,
 .toolbar-actions {
   display: flex;
-  flex-wrap: wrap;
   gap: 8px;
-}
-
-.manual-ingest {
-  grid-column: 1 / -1;
-  width: 100%;
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) auto;
-  gap: 10px;
-  margin-top: 12px;
+  flex-shrink: 0;
 }
 
 .file-input {
@@ -990,10 +995,6 @@ button:disabled {
   .editor-panel,
   .detail-panel {
     overflow: visible;
-  }
-
-  .manual-ingest {
-    grid-template-columns: 1fr;
   }
 }
 </style>
