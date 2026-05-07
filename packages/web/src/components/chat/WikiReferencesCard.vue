@@ -78,7 +78,7 @@ defineProps<{
         <header class="wiki-reference-header">
           <RouterLink
             class="wiki-title"
-            :to="{ name: 'documents', query: { wiki: reference.page.id } }"
+            :to="{ name: 'wiki', query: { wiki: reference.page.id } }"
             @click.stop
           >
             {{ reference.page.title }}

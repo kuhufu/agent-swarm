@@ -17,7 +17,7 @@ Agent Swarm 是一个多 Agent 协作框架，基于 `@mariozechner/pi-agent-cor
 |---|------|------|
 | `@agent-swarm/core` | `packages/core/` | 后端 SDK：协作模式、介入机制、存储（SQLite + 向量存储 + Wiki 存储）、LLM 桥接、工具定义（含 workspace Docker 容器）、日志、Agent 预设管理 |
 | `@agent-swarm/server` | `packages/server/` | API 服务：Express REST + WebSocket + Zod 校验，桥接 core 和前端 |
-| `@agent-swarm/web` | `packages/web/` | Vue 3 前端：对话 UI、Agent 状态可视化、Swarm/Agent 预设管理、LLM Wiki 管理 |
+| `@agent-swarm/web` | `packages/web/` | Vue 3 前端：对话 UI、Agent 状态可视化、Swarm/Agent 预设管理、文档与 LLM Wiki 管理 |
 
 ---
 
@@ -172,8 +172,8 @@ pnpm test                  # 运行 core + server 单元测试
 | Swarms | `/api/swarms` | CRUD |
 | Agents | `/api/agents` | Agent 预设 CRUD + 模板导入 |
 | Conversations | `/api/conversations` | CRUD、偏好设置、清空上下文、恢复、整段/指定消息分支、消息查询与执行 Trace |
-| Wiki | `/api/wiki` | LLM Wiki 页面 CRUD、搜索、资料入库生成、按来源重新生成 |
-| Documents | `/api/documents` | 来源资料与旧文档知识库 CRUD、全文搜索、文档 chunk 查询；上传支持 JSON 内容和 multipart 文本文件 |
+| Wiki | `/api/wiki` | LLM Wiki 页面 CRUD、搜索、资料入库生成、从已有文档生成、按来源重新生成 |
+| Documents | `/api/documents` | 文档知识库 CRUD、全文搜索、文档 chunk 查询；上传支持 JSON 内容和 multipart 文本文件 |
 | Templates | `/api/templates` | 系统 Agent 模板 CRUD |
 | Config | `/api/config` | LLM 配置读写（需 `admin`） |
 | Usage | `/api/usage`、`/api/llm` | 用量统计与 LLM 调用记录 |
@@ -210,7 +210,7 @@ pnpm test                  # 运行 core + server 单元测试
 | `workspace` | 11 | workspace_write_file / read_file / grep / list_files / run_container / list_containers / start_containers / stop_containers / restart_containers / remove_containers / pull_image |
 | `web_search` | 1 | Web 搜索（多 provider） |
 | `search_wiki` | 1 | LLM Wiki 页面检索 |
-| `retrieve_knowledge` | 1 | 旧文档知识库检索 |
+| `retrieve_knowledge` | 1 | 文档知识库检索 |
 | 其他内置 | — | route_to_agent / handoff / javascript_execute / current_time |
 
 ---

@@ -22,8 +22,8 @@
 - 工具运行时：`packages/core/src/tools/runtime.ts` 统一把模式工具、前端桥接工具、WebSearch、MCP 和运行时工具注入 Agent
 - Workspace 工具：`workspace_run_container` 通过 Docker 隔离执行命令，容器按会话 label 关联，并通过 `workspace_list_containers` / `workspace_remove_containers` 管理当前会话容器
 - 消息 Markdown 渲染：基于 `marked + marked-highlight + highlight.js + KaTeX + dompurify`，支持代码高亮、数学公式与安全净化
-- LLM Wiki：上传资料后生成可编辑 Wiki 页面、支撑要点和关联页面；`search_wiki` 工具会在聊天工具卡中展示命中的 Wiki 引用
-- 旧知识库引用回显：`retrieve_knowledge` 工具结果会在聊天工具卡中展示命中文档、片段和相关度，并可跳转到来源资料
+- 文档与 Wiki：文档 tab 管理来源文件和知识库检索，Wiki tab 基于文档生成可编辑页面、支撑要点和关联页面
+- 知识引用回显：`search_wiki` 和 `retrieve_knowledge` 工具结果会在聊天工具卡中展示命中页面、文档片段和相关度，并可跳转到对应来源
 - 前端 JS 执行回显：`javascript_execute` 工具结果会在聊天工具卡中结构化展示返回值、日志和执行代码
 - 介入机制：支持工具调用/错误/handoff 等节点人工决策
 - 会话执行 Trace：事件按会话落库，聊天页右侧与历史对话详情可查看 Agent 生命周期、工具调用、handoff、介入与错误时间线
@@ -178,8 +178,9 @@ pnpm --filter @agent-swarm/server test
 - `POST /api/wiki/pages/:id/regenerate`：基于页面来源资料重新生成并合并 Wiki 页面
 - `POST /api/wiki/search`
 - `POST /api/wiki/ingest-document`：支持 JSON `{ filename, content }` 和 multipart `file` 上传；生成 Wiki 页面并保留原始资料为来源
+- `POST /api/wiki/ingest-document/:documentId`：从已有文档生成 Wiki 页面，不重复写入来源文件
 
-### 来源资料与旧文档检索
+### 文档与知识库检索
 
 - `GET /api/documents`
 - `GET /api/documents/:id`

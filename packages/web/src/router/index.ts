@@ -47,6 +47,11 @@ const router = createRouter({
       name: "documents",
       component: () => import("../views/DocumentsView.vue"),
     },
+    {
+      path: "/wiki",
+      name: "wiki",
+      component: () => import("../views/WikiView.vue"),
+    },
   ],
 });
 

@@ -565,7 +565,7 @@ function handleOutsideClick(event: MouseEvent) {
               @click="toggleToolFromDropdown(toggleRetrieveKnowledgeTool)"
             >
               <SvgIcon name="book" :size="14" />
-              <span class="dropdown-tool-label">旧知识库</span>
+              <span class="dropdown-tool-label">知识库</span>
               <span class="dropdown-tool-state">{{ retrieveKnowledgeToolEnabled ? '开' : '关' }}</span>
             </button>
           </div>

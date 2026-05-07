@@ -167,6 +167,32 @@ export function wikiRoutes(swarm: AgentSwarm): Router {
     }
   });
 
+  router.post("/wiki/ingest-document/:documentId", async (req, res) => {
+    try {
+      const userId = resolveRequestUserId(req);
+      if (!userId) return res.status(401).json({ error: "未登录" });
+      if (!swarm.wikiStore) return res.status(404).json({ error: "Wiki 未初始化" });
+      if (!swarm.vectorStore) return res.status(404).json({ error: "来源资料未初始化" });
+
+      const documentId = req.params.documentId as string;
+      const doc = await swarm.vectorStore.getDocument(documentId, userId);
+      if (!doc?.content?.trim()) {
+        return res.status(404).json({ error: "来源资料不存在或内容为空" });
+      }
+
+      const result = await swarm.generateWikiPagesFromDocument({
+        userId,
+        documentId,
+        title: doc.title,
+        content: doc.content,
+      });
+
+      res.status(201).json({ data: { documentId, ...result } });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return router;
 }
 

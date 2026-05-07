@@ -554,6 +554,39 @@ describe("API routes", () => {
     }
   });
 
+  it("POST /api/wiki/ingest-document/:documentId generates wiki from an existing document", async () => {
+    const server = await startTestServer();
+    try {
+      const uploadResponse = await fetch(`${server.baseUrl}/api/documents/upload`, {
+        method: "POST",
+        headers: withAuthHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          filename: "支付回调",
+          content: "支付回调需要校验签名并保证幂等。",
+        }),
+      });
+      const uploadData = await uploadResponse.json() as { data: { id: string } };
+
+      const response = await fetch(`${server.baseUrl}/api/wiki/ingest-document/${uploadData.data.id}`, {
+        method: "POST",
+        headers: withAuthHeaders(),
+      });
+      const data = await response.json() as { data: { documentId: string; pages: any[]; generatedBy: string } };
+
+      expect(response.status).toBe(201);
+      expect(data.data.documentId).toBe(uploadData.data.id);
+      expect(data.data.generatedBy).toBe("fallback");
+      expect(data.data.pages[0]).toMatchObject({
+        title: "支付回调",
+        sourceDocumentIds: [uploadData.data.id],
+      });
+      expect(server.uploadedDocs).toHaveLength(1);
+      expect(server.wikiPages).toHaveLength(1);
+    } finally {
+      await server.close();
+    }
+  });
+
   it("POST /api/wiki/search returns user-scoped wiki pages", async () => {
     const server = await startTestServer();
     try {

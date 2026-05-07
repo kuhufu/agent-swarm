@@ -14,7 +14,7 @@ export function useChat(conversationId: Ref<string | null>) {
   const inputText = ref("");
   const sending = ref(false);
   const draftDirectModel = ref<DirectModelSelection | null>(null);
-  const draftEnabledTools = ref<string[]>(["current_time", "javascript_execute", "web_fetch", "search_wiki"]);
+  const draftEnabledTools = ref<string[]>(["current_time", "javascript_execute", "web_fetch", "search_wiki", "retrieve_knowledge"]);
   const draftThinkingLevel = ref<string>("off");
   const enabledTools = computed<string[]>(() => {
     if (conversationId.value) {
