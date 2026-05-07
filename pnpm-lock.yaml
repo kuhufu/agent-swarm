@@ -11,11 +11,11 @@ importers:
   packages/core:
     dependencies:
       '@mariozechner/pi-agent-core':
-        specifier: ^0.70.2
-        version: 0.70.2(zod@4.3.6)
+        specifier: ^0.73.0
+        version: 0.73.0(zod@4.4.3)
       '@mariozechner/pi-ai':
-        specifier: ^0.70.2
-        version: 0.70.2(zod@4.3.6)
+        specifier: ^0.73.0
+        version: 0.73.0(zod@4.4.3)
       '@sinclair/typebox':
         specifier: ^0.34.0
         version: 0.34.49
@@ -160,8 +160,8 @@ importers:
 
 packages:
 
-  /@anthropic-ai/sdk@0.90.0(zod@4.3.6):
-    resolution: {integrity: sha512-MzZtPabJF1b0FTDl6Z6H5ljphPwACLGP13lu8MTiB8jXaW/YXlpOp+Po2cVou3MPM5+f5toyLnul9whKCy7fBg==}
+  /@anthropic-ai/sdk@0.91.1(zod@4.4.3):
+    resolution: {integrity: sha512-LAmu761tSN9r66ixvmciswUj/ZC+1Q4iAfpedTfSVLeswRwnY3n2Nb6Tsk+cLPP28aLOPWeMgIuTuCcMC6W/iw==}
     hasBin: true
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
@@ -170,7 +170,7 @@ packages:
         optional: true
     dependencies:
       json-schema-to-ts: 3.1.1
-      zod: 4.3.6
+      zod: 4.4.3
     dev: false
 
   /@aws-crypto/crc32@5.2.0:
@@ -1682,11 +1682,11 @@ packages:
       '@jridgewell/sourcemap-codec': 1.5.5
     dev: true
 
-  /@mariozechner/pi-agent-core@0.70.2(zod@4.3.6):
-    resolution: {integrity: sha512-g1hIdKyDwmQOoBGO0R4OhpemKeMENeK0vE5FJtuQKqEcsdCAkVBgZAK6aZUARYZVxMA718JS6WPLFWoddzjD7g==}
+  /@mariozechner/pi-agent-core@0.73.0(zod@4.4.3):
+    resolution: {integrity: sha512-ugcpvq0X9fr9fTSK29/3S4+KU/eeVMrBb7ZU3HqiF3xD7I1GlgumLj4FYmDrYSEA6+rzgNWlJUKwjKh9o0Z6AA==}
     engines: {node: '>=20.0.0'}
     dependencies:
-      '@mariozechner/pi-ai': 0.70.2(zod@4.3.6)
+      '@mariozechner/pi-ai': 0.73.0(zod@4.4.3)
       typebox: 1.1.33
     transitivePeerDependencies:
       - '@modelcontextprotocol/sdk'
@@ -1698,22 +1698,22 @@ packages:
       - zod
     dev: false
 
-  /@mariozechner/pi-ai@0.70.2(zod@4.3.6):
-    resolution: {integrity: sha512-+30LRPjXsXF+oI96DvGWMbdPGeqoLJvadh6UPev7wx2DzhC9FEqXkQcoMZ0usbCm7E9pl8ua8a9s/pQ5ikaUbg==}
+  /@mariozechner/pi-ai@0.73.0(zod@4.4.3):
+    resolution: {integrity: sha512-phKOpcde/ssz6UYszkmaGJ9LF9mgt/AP8LrtSwsfap+kMSeFfSQ2/mCSBT1mLJ2BqVuff9uXs1/+op1aQeaafQ==}
     engines: {node: '>=20.0.0'}
     hasBin: true
     dependencies:
-      '@anthropic-ai/sdk': 0.90.0(zod@4.3.6)
+      '@anthropic-ai/sdk': 0.91.1(zod@4.4.3)
       '@aws-sdk/client-bedrock-runtime': 3.1033.0
       '@google/genai': 1.50.1
       '@mistralai/mistralai': 2.2.0
       chalk: 5.6.2
-      openai: 6.26.0(zod@4.3.6)
+      openai: 6.26.0(zod@4.4.3)
       partial-json: 0.1.7
       proxy-agent: 6.5.0
       typebox: 1.1.33
       undici: 7.25.0
-      zod-to-json-schema: 3.25.2(zod@4.3.6)
+      zod-to-json-schema: 3.25.2(zod@4.4.3)
     transitivePeerDependencies:
       - '@modelcontextprotocol/sdk'
       - aws-crt
@@ -1728,8 +1728,8 @@ packages:
     resolution: {integrity: sha512-JQUGIXjFWnw/J9LpTSf/ZXwVW3Sh8FBAcfTo5QvAHqkl4CfSiIwnjRJhMoAFcP6ncCe84YPU1ncDGX+p3OXnfg==}
     dependencies:
       ws: 8.20.0
-      zod: 4.3.6
-      zod-to-json-schema: 3.25.2(zod@4.3.6)
+      zod: 4.4.3
+      zod-to-json-schema: 3.25.2(zod@4.4.3)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -1850,7 +1850,7 @@ packages:
     dependencies:
       '@emnapi/core': 1.10.0
       '@emnapi/runtime': 1.10.0
-      '@tybys/wasm-util': 0.10.1
+      '@tybys/wasm-util': 0.10.2
     dev: true
     optional: true
 
@@ -2855,8 +2855,8 @@ packages:
     resolution: {integrity: sha512-C5Mc6rdnsaJDjO3UpGW/CQTHtCKaYlScZTly4JIu97Jxo/odCiH0ITnDXSJPTOrEKk/ycSZ0AOgTmkDtkOsvIA==}
     dev: false
 
-  /@tybys/wasm-util@0.10.1:
-    resolution: {integrity: sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==}
+  /@tybys/wasm-util@0.10.2:
+    resolution: {integrity: sha512-RoBvJ2X0wuKlWFIjrwffGw1IqZHKQqzIchKaadZZfnNpsAYp2mM0h36JtPCjNDAHGgYez/15uMBpfGwchhiMgg==}
     requiresBuild: true
     dependencies:
       tslib: 2.8.1
@@ -4673,7 +4673,7 @@ packages:
       wrappy: 1.0.2
     dev: false
 
-  /openai@6.26.0(zod@4.3.6):
+  /openai@6.26.0(zod@4.4.3):
     resolution: {integrity: sha512-zd23dbWTjiJ6sSAX6s0HrCZi41JwTA1bQVs0wLQPZ2/5o2gxOJA5wh7yOAUgwYybfhDXyhwlpeQf7Mlgx8EOCA==}
     hasBin: true
     peerDependencies:
@@ -4685,7 +4685,7 @@ packages:
       zod:
         optional: true
     dependencies:
-      zod: 4.3.6
+      zod: 4.4.3
     dev: false
 
   /option@0.2.4:
@@ -5695,14 +5695,18 @@ packages:
     engines: {node: '>=4.0'}
     dev: false
 
-  /zod-to-json-schema@3.25.2(zod@4.3.6):
+  /zod-to-json-schema@3.25.2(zod@4.4.3):
     resolution: {integrity: sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA==}
     peerDependencies:
       zod: ^3.25.28 || ^4
     dependencies:
-      zod: 4.3.6
+      zod: 4.4.3
     dev: false
 
   /zod@4.3.6:
     resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
+    dev: false
+
+  /zod@4.4.3:
+    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
     dev: false
