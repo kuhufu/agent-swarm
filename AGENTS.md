@@ -172,7 +172,7 @@ pnpm test                  # 运行 core + server 单元测试
 | Swarms | `/api/swarms` | CRUD |
 | Agents | `/api/agents` | Agent 预设 CRUD + 模板导入 |
 | Conversations | `/api/conversations` | CRUD、偏好设置、清空上下文、恢复、整段/指定消息分支、消息查询与执行 Trace |
-| Documents | `/api/documents` | 文档知识库 CRUD + 全文搜索；上传支持 JSON 内容和 multipart 文本文件 |
+| Documents | `/api/documents` | 文档知识库 CRUD、全文搜索、文档 chunk 查询；上传支持 JSON 内容和 multipart 文本文件 |
 | Templates | `/api/templates` | 系统 Agent 模板 CRUD |
 | Config | `/api/config` | LLM 配置读写（需 `admin`） |
 | Usage | `/api/usage`、`/api/llm` | 用量统计与 LLM 调用记录 |

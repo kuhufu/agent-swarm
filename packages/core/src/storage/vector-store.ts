@@ -25,6 +25,7 @@ export interface IVectorStore {
   init(): Promise<void>;
   addDocument(doc: Document, chunks: DocumentChunk[]): Promise<void>;
   getDocument(documentId: string, userId: string): Promise<Document | null>;
+  listDocumentChunks(documentId: string, userId: string): Promise<DocumentChunk[]>;
   deleteDocument(documentId: string, userId: string): Promise<void>;
   search(query: string, topK: number | undefined, userId: string): Promise<SearchResult[]>;
   listDocuments(userId: string): Promise<Document[]>;

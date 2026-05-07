@@ -117,6 +117,27 @@ export class SQLiteVectorStore implements IVectorStore {
     };
   }
 
+  async listDocumentChunks(documentId: string, userId: string): Promise<DocumentChunk[]> {
+    const normalizedUserId = this.requireUserId(userId);
+    const rows = this.db.prepare(`
+      SELECT c.id, c.document_id, c.content, c.idx, c.metadata
+      FROM rag_chunks c
+      JOIN rag_documents d ON c.document_id = d.id
+      WHERE c.document_id = ? AND d.user_id = ?
+      ORDER BY c.idx ASC
+    `).all(documentId, normalizedUserId) as Array<{
+      id: string; document_id: string; content: string; idx: number; metadata: string | null;
+    }>;
+
+    return rows.map((row) => ({
+      id: row.id,
+      documentId: row.document_id,
+      content: row.content,
+      index: row.idx,
+      metadata: JSON.parse(row.metadata ?? "{}"),
+    }));
+  }
+
   async deleteDocument(documentId: string, userId: string): Promise<void> {
     this.db.transaction(() => {
       this.db.prepare(`

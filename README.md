@@ -22,7 +22,7 @@
 - 工具运行时：`packages/core/src/tools/runtime.ts` 统一把模式工具、前端桥接工具、WebSearch、MCP 和运行时工具注入 Agent
 - Workspace 工具：`workspace_run_container` 通过 Docker 隔离执行命令，容器按会话 label 关联，并通过 `workspace_list_containers` / `workspace_remove_containers` 管理当前会话容器
 - 消息 Markdown 渲染：基于 `marked + marked-highlight + highlight.js + dompurify`，支持代码高亮与安全净化
-- 知识库引用回显：`retrieve_knowledge` 工具结果会在聊天工具卡中展示命中文档、片段和相关度
+- 知识库引用回显：`retrieve_knowledge` 工具结果会在聊天工具卡中展示命中文档、片段和相关度，并可跳转到文档详情
 - 介入机制：支持工具调用/错误/handoff 等节点人工决策
 - 会话执行 Trace：事件按会话落库，聊天页右侧与历史对话详情可查看 Agent 生命周期、工具调用、handoff、介入与错误时间线
 - 事件分级落库：`eventLogLevel = none | key | full`（默认 `key`）
@@ -170,6 +170,7 @@ pnpm --filter @agent-swarm/server test
 
 - `GET /api/documents`
 - `GET /api/documents/:id`
+- `GET /api/documents/:id/chunks`
 - `POST /api/documents/upload`：支持 JSON `{ filename, content }` 和 multipart `file` 上传；当前可解析 `txt/md/json/html/pdf/docx`
 - `PUT /api/documents/:id`
 - `POST /api/documents/search`：`query` 支持空格分隔多关键词，按 OR 召回，例如 `认证 身份验证 Authentication`

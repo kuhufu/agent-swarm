@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { RouterLink } from "vue-router";
 import type { ToolCallInfo } from "../../types/index.js";
 import SvgIcon from "../common/SvgIcon.vue";
 
@@ -8,6 +9,7 @@ const props = defineProps<{
 }>();
 
 interface KnowledgeReference {
+  documentId?: string;
   title: string;
   source?: string;
   chunkIndex?: number;
@@ -41,6 +43,9 @@ function normalizeKnowledgeReference(value: unknown): KnowledgeReference | null 
   }
 
   return {
+    documentId: typeof document?.id === "string" && document.id.trim().length > 0
+      ? document.id
+      : undefined,
     title,
     source: typeof document?.source === "string" && document.source.trim().length > 0
       ? document.source
@@ -131,7 +136,15 @@ const status = computed(() => {
             <header class="reference-header">
               <span class="reference-index">{{ index + 1 }}</span>
               <div class="reference-meta">
-                <div class="reference-title">{{ reference.title }}</div>
+                <RouterLink
+                  v-if="reference.documentId"
+                  class="reference-title reference-link"
+                  :to="{ name: 'documents', query: { doc: reference.documentId, chunk: reference.chunkIndex } }"
+                  @click.stop
+                >
+                  {{ reference.title }}
+                </RouterLink>
+                <div v-else class="reference-title">{{ reference.title }}</div>
                 <div class="reference-subtitle">
                   <span v-if="reference.source">{{ reference.source }}</span>
                   <span v-if="reference.chunkIndex !== undefined">片段 #{{ reference.chunkIndex + 1 }}</span>
@@ -341,11 +354,21 @@ pre {
 }
 
 .reference-title {
+  display: inline-block;
   color: var(--color-text-primary);
   font-size: 13px;
   font-weight: 600;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.reference-link {
+  text-decoration: none;
+  transition: color 0.16s ease;
+}
+
+.reference-link:hover {
+  color: var(--color-accent-light);
 }
 
 .reference-subtitle {

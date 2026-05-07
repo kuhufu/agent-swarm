@@ -242,6 +242,25 @@ export function documentRoutes(swarm: AgentSwarm): Router {
     }
   });
 
+  router.get("/documents/:id/chunks", async (req, res) => {
+    try {
+      const userId = resolveRequestUserId(req);
+      if (!userId) return res.status(401).json({ error: "未登录" });
+
+      const store = swarm.vectorStore;
+      if (!store) return res.status(404).json({ error: "知识库未初始化" });
+
+      const documentId = req.params.id as string;
+      const doc = await store.getDocument(documentId, userId);
+      if (!doc) return res.status(404).json({ error: "文档不存在" });
+
+      const chunks = await store.listDocumentChunks(documentId, userId);
+      res.json({ data: chunks });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   router.put("/documents/:id", async (req, res) => {
     try {
       const userId = resolveRequestUserId(req);

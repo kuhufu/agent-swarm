@@ -26,7 +26,15 @@ function createMockSwarm() {
   };
   const swarms = new Map<string, SwarmConfig>();
   const templates = new Map<string, any>();
-  const uploadedDocs: Array<{ title: string; source: string; content: string; chunks: number; userId: string }> = [];
+  const uploadedDocs: Array<{
+    id: string;
+    title: string;
+    source: string;
+    content: string;
+    chunks: number;
+    chunksData: Array<{ id: string; documentId: string; content: string; index: number }>;
+    userId: string;
+  }> = [];
 
   swarms.set("router_swarm", {
     id: "router_swarm",
@@ -117,15 +125,24 @@ function createMockSwarm() {
     getMessages: async () => [],
     vectorStore: {
       listDocuments: async () => [],
-      getDocument: async () => null,
+      getDocument: async (documentId: string, userId: string) => {
+        const doc = uploadedDocs.find((item) => item.id === documentId && item.userId === userId);
+        return doc
+          ? { id: doc.id, userId: doc.userId, title: doc.title, source: doc.source, content: doc.content, createdAt: 1 }
+          : null;
+      },
+      listDocumentChunks: async (documentId: string, userId: string) =>
+        uploadedDocs.find((item) => item.id === documentId && item.userId === userId)?.chunksData ?? [],
       deleteDocument: async () => undefined,
       search: async () => [],
       addDocument: async (doc: any, chunks: any[]) => {
         uploadedDocs.push({
+          id: doc.id,
           title: doc.title,
           source: doc.source,
           content: doc.content,
           chunks: chunks.length,
+          chunksData: chunks,
           userId: doc.userId,
         });
       },
@@ -408,9 +425,39 @@ describe("API routes", () => {
       expect(data.data.chunks).toBeGreaterThan(0);
       expect(server.uploadedDocs[0]).toMatchObject({
         title: "hello.md",
-        source: "hello.md",
+        source: "upload",
         content: "# Hello\n\nKnowledge base content",
         userId: TEST_USER.id,
+      });
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("GET /api/documents/:id/chunks returns chunks for the current user", async () => {
+    const server = await startTestServer();
+    try {
+      const form = new FormData();
+      form.append("file", new Blob(["引用片段内容"], { type: "text/plain" }), "reference.txt");
+
+      const uploadResponse = await fetch(`${server.baseUrl}/api/documents/upload`, {
+        method: "POST",
+        headers: withAuthHeaders(),
+        body: form,
+      });
+      const uploadData = await uploadResponse.json() as { data: { id: string } };
+
+      const response = await fetch(`${server.baseUrl}/api/documents/${uploadData.data.id}/chunks`, {
+        headers: withAuthHeaders(),
+      });
+      const data = await response.json() as { data: Array<{ documentId: string; content: string; index: number }> };
+
+      expect(response.status).toBe(200);
+      expect(data.data).toHaveLength(1);
+      expect(data.data[0]).toMatchObject({
+        documentId: uploadData.data.id,
+        content: "引用片段内容",
+        index: 0,
       });
     } finally {
       await server.close();

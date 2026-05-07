@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { MessagePlugin } from "tdesign-vue-next";
 import SvgIcon from "../components/common/SvgIcon.vue";
 import { apiClient } from "../api/client.js";
@@ -18,11 +19,20 @@ interface SearchResultItem {
   score: number;
 }
 
+interface DocumentChunk {
+  id: string;
+  documentId: string;
+  content: string;
+  index: number;
+}
+
 const documents = ref<Document[]>([]);
 const searchResults = ref<SearchResultItem[]>([]);
 const loading = ref(false);
 const searching = ref(false);
 const searchQuery = ref("");
+const route = useRoute();
+const router = useRouter();
 
 function docIconSvg(title: string): string {
   const ext = (title.split(".").pop() ?? "").toLowerCase();
@@ -42,6 +52,8 @@ const selectedDoc = ref<Document | null>(null);
 const deletingId = ref<string | null>(null);
 const loadingDetail = ref(false);
 const showPreview = ref(false);
+const routeChunk = ref<DocumentChunk | null>(null);
+const loadingRouteChunk = ref(false);
 const isEditing = ref(false);
 const isNewDoc = ref(false);
 const editTitle = ref("");
@@ -82,8 +94,15 @@ watch(searchQuery, (q) => {
   searchTimer = setTimeout(() => doSearch(trimmed), 300);
 });
 
-onMounted(() => loadDocuments());
+onMounted(async () => {
+  await loadDocuments();
+  await openRouteDocument();
+});
 onUnmounted(() => { if (searchTimer) clearTimeout(searchTimer); });
+
+watch(() => [route.query.doc, route.query.chunk], () => {
+  void openRouteDocument();
+});
 
 async function loadDocuments() {
   loading.value = true;
@@ -98,6 +117,98 @@ async function loadDocuments() {
 async function loadDocumentDetail(id: string): Promise<Document> {
   const resp = await apiClient<{ data: Document }>(`/documents/${id}`);
   return resp.data;
+}
+
+async function loadDocumentChunks(id: string): Promise<DocumentChunk[]> {
+  const resp = await apiClient<{ data: DocumentChunk[] }>(`/documents/${id}/chunks`);
+  return resp.data ?? [];
+}
+
+function routeDocumentId(): string | null {
+  const raw = route.query.doc;
+  if (Array.isArray(raw)) {
+    return typeof raw[0] === "string" && raw[0].trim().length > 0 ? raw[0] : null;
+  }
+  return typeof raw === "string" && raw.trim().length > 0 ? raw : null;
+}
+
+function routeChunkIndex(): number | null {
+  const raw = route.query.chunk;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function updateDocumentRoute(docId: string | null) {
+  const nextQuery = { ...route.query };
+  if (docId) {
+    nextQuery.doc = docId;
+    delete nextQuery.chunk;
+  } else {
+    delete nextQuery.doc;
+    delete nextQuery.chunk;
+  }
+  void router.replace({ name: "documents", query: nextQuery });
+}
+
+function clearRouteChunk() {
+  routeChunk.value = null;
+  const nextQuery = { ...route.query };
+  delete nextQuery.chunk;
+  void router.replace({ name: "documents", query: nextQuery });
+}
+
+async function openRouteDocument() {
+  const docId = routeDocumentId();
+  if (!docId || docId.startsWith("__new__")) {
+    routeChunk.value = null;
+    return;
+  }
+  const chunkIndex = routeChunkIndex();
+  const routeChunkMatches = chunkIndex === null
+    ? routeChunk.value === null
+    : routeChunk.value?.index === chunkIndex;
+  if (selectedDoc.value?.id === docId && showPreview.value && routeChunkMatches) {
+    return;
+  }
+
+  loadingDetail.value = true;
+  try {
+    const detail = await loadDocumentDetail(docId);
+    selectedDoc.value = detail;
+    showPreview.value = true;
+    isEditing.value = false;
+    isNewDoc.value = false;
+    await openRouteChunk(docId, chunkIndex);
+  } catch (err: any) {
+    updateDocumentRoute(null);
+    await MessagePlugin.error(err.message);
+  } finally {
+    loadingDetail.value = false;
+  }
+}
+
+async function openRouteChunk(docId: string, chunkIndex: number | null) {
+  if (chunkIndex === null) {
+    routeChunk.value = null;
+    return;
+  }
+
+  loadingRouteChunk.value = true;
+  try {
+    const chunks = await loadDocumentChunks(docId);
+    routeChunk.value = chunks.find((chunk) => chunk.index === chunkIndex) ?? null;
+    if (!routeChunk.value) {
+      clearRouteChunk();
+    }
+  } catch {
+    routeChunk.value = null;
+  } finally {
+    loadingRouteChunk.value = false;
+  }
 }
 
 async function doSearch(query: string) {
@@ -126,10 +237,12 @@ function createNewDoc() {
   documents.value.unshift(tempDoc);
   selectedDoc.value = tempDoc;
   showPreview.value = true;
+  routeChunk.value = null;
   isNewDoc.value = true;
   isEditing.value = true;
   editTitle.value = tempDoc.title;
   editContent.value = "";
+  updateDocumentRoute(null);
 }
 
 function openFilePicker() {
@@ -160,8 +273,10 @@ async function handleFileSelected(event: Event) {
     await loadDocuments();
     selectedDoc.value = await loadDocumentDetail(resp.data.id);
     showPreview.value = true;
+    routeChunk.value = null;
     isEditing.value = false;
     isNewDoc.value = false;
+    updateDocumentRoute(resp.data.id);
   } catch (err: any) {
     await MessagePlugin.error(err.message);
   } finally {
@@ -174,17 +289,21 @@ async function selectDocument(doc: Document) {
     if (isNewDoc.value) return;
     selectedDoc.value = null;
     showPreview.value = false;
+    routeChunk.value = null;
     isEditing.value = false;
     isNewDoc.value = false;
+    updateDocumentRoute(null);
     return;
   }
   if (doc.id.startsWith("__new__")) {
     selectedDoc.value = doc;
     showPreview.value = true;
+    routeChunk.value = null;
     isEditing.value = true;
     isNewDoc.value = true;
     editTitle.value = doc.title;
     editContent.value = doc.content ?? "";
+    updateDocumentRoute(null);
     return;
   }
   isEditing.value = false;
@@ -193,6 +312,8 @@ async function selectDocument(doc: Document) {
   try {
     selectedDoc.value = await loadDocumentDetail(doc.id);
     showPreview.value = true;
+    routeChunk.value = null;
+    updateDocumentRoute(doc.id);
   } catch (err: any) {
     await MessagePlugin.error(err.message);
   } finally {
@@ -206,8 +327,10 @@ function closePreview() {
   }
   showPreview.value = false;
   selectedDoc.value = null;
+  routeChunk.value = null;
   isEditing.value = false;
   isNewDoc.value = false;
+  updateDocumentRoute(null);
 }
 
 async function startEdit() {
@@ -222,10 +345,12 @@ async function selectAndEdit(doc: Document) {
   if (doc.id.startsWith("__new__")) {
     selectedDoc.value = doc;
     showPreview.value = true;
+    routeChunk.value = null;
     isEditing.value = true;
     isNewDoc.value = true;
     editTitle.value = doc.title;
     editContent.value = doc.content ?? "";
+    updateDocumentRoute(null);
     return;
   }
   isEditing.value = false;
@@ -234,9 +359,11 @@ async function selectAndEdit(doc: Document) {
   try {
     selectedDoc.value = await loadDocumentDetail(doc.id);
     showPreview.value = true;
+    routeChunk.value = null;
     editTitle.value = selectedDoc.value.title;
     editContent.value = selectedDoc.value.content ?? "";
     isEditing.value = true;
+    updateDocumentRoute(doc.id);
   } catch (err: any) {
     await MessagePlugin.error(err.message);
   } finally {
@@ -249,7 +376,9 @@ function cancelEdit() {
     documents.value = documents.value.filter(d => d.id !== selectedDoc.value?.id);
     showPreview.value = false;
     selectedDoc.value = null;
+    routeChunk.value = null;
     isNewDoc.value = false;
+    updateDocumentRoute(null);
   }
   isEditing.value = false;
   editTitle.value = "";
@@ -279,6 +408,9 @@ async function saveEdit() {
       const created = documents.value[0];
       if (created) {
         selectedDoc.value = await loadDocumentDetail(created.id);
+        showPreview.value = true;
+        routeChunk.value = null;
+        updateDocumentRoute(created.id);
       }
     } else {
       await apiClient(`/documents/${selectedDoc.value.id}`, {
@@ -290,6 +422,7 @@ async function saveEdit() {
       });
       await MessagePlugin.success("文档已更新");
       selectedDoc.value = await loadDocumentDetail(selectedDoc.value.id);
+      clearRouteChunk();
       await loadDocuments();
     }
     isEditing.value = false;
@@ -306,8 +439,10 @@ async function handleDelete(id: string) {
     if (selectedDoc.value?.id === id) {
       selectedDoc.value = null;
       showPreview.value = false;
+      routeChunk.value = null;
       isEditing.value = false;
       isNewDoc.value = false;
+      updateDocumentRoute(null);
     }
     return;
   }
@@ -318,8 +453,10 @@ async function handleDelete(id: string) {
     if (selectedDoc.value?.id === id) {
       selectedDoc.value = null;
       showPreview.value = false;
+      routeChunk.value = null;
       isEditing.value = false;
       isNewDoc.value = false;
+      updateDocumentRoute(null);
     }
     await loadDocuments();
   } catch (err: any) {
@@ -522,21 +659,34 @@ function highlightMatch(text: string, query: string): string {
               <div class="loading-spinner" />
               <p>加载中...</p>
             </div>
-            <textarea
-              v-else-if="isEditing"
-              v-model="editContent"
-              class="doc-textarea"
-              placeholder="文档内容"
-              :disabled="loading"
-            ></textarea>
-            <textarea
-              v-else-if="selectedDoc.content"
-              class="doc-textarea readonly"
-              :value="selectedDoc.content"
-              readonly
-            ></textarea>
-            <div v-else class="doc-empty">
-              <p>暂无文档内容</p>
+            <div v-else class="doc-content-body">
+              <div v-if="loadingRouteChunk" class="route-chunk-card">
+                <span class="search-spinner" />
+                <span>定位引用片段...</span>
+              </div>
+              <div v-else-if="routeChunk" class="route-chunk-card">
+                <div class="route-chunk-header">
+                  <span>聊天引用片段 #{{ routeChunk.index + 1 }}</span>
+                  <button class="route-chunk-close" type="button" @click="clearRouteChunk">清除</button>
+                </div>
+                <p>{{ routeChunk.content }}</p>
+              </div>
+              <textarea
+                v-if="isEditing"
+                v-model="editContent"
+                class="doc-textarea"
+                placeholder="文档内容"
+                :disabled="loading"
+              ></textarea>
+              <textarea
+                v-else-if="selectedDoc.content"
+                class="doc-textarea readonly"
+                :value="selectedDoc.content"
+                readonly
+              ></textarea>
+              <div v-else class="doc-empty">
+                <p>暂无文档内容</p>
+              </div>
             </div>
           </div>
         </div>
@@ -874,9 +1024,62 @@ function highlightMatch(text: string, query: string): string {
   overflow: hidden;
 }
 
+.doc-content-body {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.route-chunk-card {
+  flex: 0 0 auto;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.route-chunk-card p {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.route-chunk-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.route-chunk-close {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.route-chunk-close:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+}
+
 .doc-textarea {
   width: 100%;
   height: 100%;
+  flex: 1 1 auto;
   min-height: 200px;
   margin: 0;
   padding: 0;
