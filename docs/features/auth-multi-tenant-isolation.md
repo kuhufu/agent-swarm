@@ -44,7 +44,8 @@ node scripts/set-user-role.mjs ./packages/server/data/agent-swarm.db <username> 
 - `swarms`
 - `conversations`
 - `agent presets`
-- `documents`（知识库）
+- `wiki pages`
+- `documents`（来源资料与旧知识库）
 - `usage analytics`（用量统计）
 
 对应列表/查询/创建/更新/删除操作均传递用户上下文，避免跨用户可见或误操作。
@@ -53,7 +54,21 @@ node scripts/set-user-role.mjs ./packages/server/data/agent-swarm.db <username> 
 
 Swarm 内 Agent 使用 `(swarmId, agentId)` 作为业务键；不同 Swarm 可以复用相同 Agent ID，消息与事件仅保存 Agent 字符串标识，不再依赖全局 Agent 外键。
 
-## 文档知识库隔离
+## Wiki 与来源资料隔离
+
+Wiki 页面、支撑要点和关联页面均写入 `userId`，以下接口均按当前用户过滤：
+
+- `GET /api/wiki/pages`
+- `GET /api/wiki/pages/:id`
+- `POST /api/wiki/pages`
+- `PUT /api/wiki/pages/:id`
+- `DELETE /api/wiki/pages/:id`
+- `POST /api/wiki/search`
+- `POST /api/wiki/ingest-document`
+
+聊天运行时启用 `search_wiki` 后，服务端会按当前 WebSocket 用户创建 Wiki 检索工具；Agent 调用该工具时同样传入当前 `userId`，不会检索其他用户的 Wiki 页面。
+
+## 来源资料与旧文档检索隔离
 
 文档上传会写入 `userId`，以下接口均按当前用户过滤：
 

@@ -1,51 +1,55 @@
-# 文档文件上传
+# LLM Wiki 与来源资料
 
-知识库支持两种写入方式：
+知识库主体验已替换为 LLM Wiki。用户默认管理的是 Wiki 页面、支撑要点和关联页面；原始上传文件保留为来源资料，用于引用、回溯和旧检索 fallback。
 
-- 手动新建/编辑文档，前端以 JSON `{ filename, content }` 调用 `POST /api/documents/upload`。
-- 选择本地文件上传，前端以 `multipart/form-data` 调用同一接口，文件字段名为 `file`。
+## 写入方式
 
-## 支持格式
+- 粘贴资料：前端以 JSON `{ filename, content }` 调用 `POST /api/wiki/ingest-document`。
+- 上传文件：前端以 `multipart/form-data` 调用同一接口，文件字段名为 `file`。
+- 手动维护页面：通过 `POST /api/wiki/pages` 和 `PUT /api/wiki/pages/:id` 创建或编辑 Wiki 页面。
 
-当前内置解析支持：
+支持解析 `.txt`、`.md`、`.markdown`、`.json`、`.html`、`.htm`、`.pdf`、`.docx`。PDF 通过 `pdf-parse` 提取文本，docx 通过 `mammoth` 提取 raw text。
 
-- `.txt`
-- `.md` / `.markdown`
-- `.json`
-- `.html` / `.htm`
-- `.pdf`
-- `.docx`
+## 入库流程
 
-上传后服务端会解析为文本，按现有 chunk 规则写入 SQLite FTS 知识库。`retrieve_knowledge` 工具可立即检索新文档。
+`/api/wiki/ingest-document` 会先把原始资料写入旧的 `SQLiteVectorStore`，作为来源资料保留；随后调用 LLM 把资料整理为 1-5 个 Wiki 页面。页面包含：
 
-PDF 通过 `pdf-parse` 提取文本，docx 通过 `mammoth` 提取 raw text。若文件没有可提取文本，接口会拒绝写入。
+- `title` / `summary` / `content`
+- `aliases` / `tags`
+- `claims`：来自原文的支撑要点
+- `links`：相关页面建议
 
-## 聊天引用回显
+LLM 生成使用设置里保存的第一个模型。如果未配置模型或调用失败，系统会退化为基础模式：用原文标题和段落创建一个可编辑 Wiki 页面。
 
-Agent 调用 `retrieve_knowledge` 后，工具返回的 `details` 会保留命中文档、片段序号、内容和相关度。聊天消息里的工具卡会把这些结果渲染为“知识库引用”，用于直接查看回答参考了哪些文档片段。
+## 检索与工具
 
-实时 WebSocket 事件与历史消息恢复共用同一个工具卡展示逻辑；未命中时显示空引用状态，不再展开原始 JSON。
+聊天工具优先使用 `search_wiki`。该工具检索 `wiki_pages` 的标题、摘要、正文、别名和标签，并返回命中的页面与支撑要点。聊天工具卡会展示 Wiki 引用，并可跳转到 `/documents?wiki=<pageId>` 查看页面。
 
-每条引用可直接复制命中的片段内容，复制成功后按钮会短暂显示完成状态。
+旧的 `retrieve_knowledge` 仍保留为“旧知识库”工具，用于直接检索原始 chunk。新会话默认启用 `search_wiki`，不默认启用 `retrieve_knowledge`。
 
-引用标题会链接到 `/documents?doc=<documentId>&chunk=<chunkIndex>`，打开知识库页并自动展开对应文档详情，同时在正文上方显示命中的引用片段。知识库页选中文档时也会同步 `doc` 查询参数，刷新页面后可恢复当前文档。
+## API
 
-前端通过 `GET /api/documents/:id/chunks` 读取文档片段，服务端会先校验文档属于当前用户再返回 chunks。
+- `GET /api/wiki/pages`
+- `GET /api/wiki/pages/:id`
+- `POST /api/wiki/pages`
+- `PUT /api/wiki/pages/:id`
+- `DELETE /api/wiki/pages/:id`
+- `POST /api/wiki/search`
+- `POST /api/wiki/ingest-document`
 
-在知识库页执行全文搜索后，点击命中文档也会把命中的 chunk 同步到详情面板和 URL，便于从搜索结果定位到具体上下文。
+旧来源资料接口仍可用：
 
-知识库搜索结果摘要会在插入高亮标签前转义文档内容，避免上传文档中的 HTML 被浏览器当作页面结构渲染。
-
-搜索框输入内容后会显示清空按钮，点击后清除查询词与当前搜索结果。
-
-文档详情面板支持复制当前文档全文，复制成功后按钮会短暂显示完成状态。
-
-文档详情面板支持导出当前文档内容为本地文本文件，文件名沿用文档标题并过滤非法文件名字符。
-
-删除已保存文档前会弹出确认框，确认后才调用删除接口。
+- `GET /api/documents`
+- `GET /api/documents/:id`
+- `GET /api/documents/:id/chunks`
+- `POST /api/documents/upload`
+- `PUT /api/documents/:id`
+- `POST /api/documents/search`
+- `DELETE /api/documents/:id`
 
 ## 限制
 
 - 单文件大小上限：10MB。
 - 空文本会被拒绝。
-- 文档按当前登录用户隔离。
+- Wiki 页面、来源资料和检索均按当前登录用户隔离。
+- 第一版不会自动合并同名页面；重复资料可能生成相近页面，需要用户手动编辑整理。

@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { createApp } from "./app.js";
 import { createWSServer } from "./ws.js";
-import { AgentSwarm, ConsoleLogger, SQLiteVectorStore } from "@agent-swarm/core";
+import { AgentSwarm, ConsoleLogger, SQLiteVectorStore, SQLiteWikiStore } from "@agent-swarm/core";
 
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
 
@@ -13,6 +13,8 @@ async function main() {
   // Initialize vector store for RAG
   const vectorStore = new SQLiteVectorStore(dbPath.replace(".db", "-rag.db"));
   await vectorStore.init();
+  const wikiStore = new SQLiteWikiStore(dbPath.replace(".db", "-wiki.db"));
+  await wikiStore.init();
 
   const swarm = new AgentSwarm({
     config: {
@@ -27,6 +29,7 @@ async function main() {
     },
     logger,
     vectorStore,
+    wikiStore,
   });
 
   await swarm.init();

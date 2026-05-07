@@ -28,7 +28,7 @@ const navItems = computed(() => [
   { label: "历史", route: "/history", icon: HistoryIcon },
   { label: "Swarm", route: "/swarms", icon: SwarmIcon },
   { label: "Agents", route: "/agents", icon: AgentsIcon },
-  { label: "知识库", route: "/documents", icon: KnowledgeIcon },
+  { label: "Wiki", route: "/documents", icon: KnowledgeIcon },
   ...(authStore.user?.role === "admin" ? [{ label: "设置", route: "/settings", icon: SettingsIcon }] : []),
 ]);
 

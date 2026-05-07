@@ -40,3 +40,7 @@ export function confirmDialog(options: ConfirmOptions): Promise<boolean> {
 export function showError(message: string) {
   MessagePlugin.error(message);
 }
+
+export function showSuccess(message: string) {
+  MessagePlugin.success(message);
+}

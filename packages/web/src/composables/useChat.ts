@@ -14,7 +14,7 @@ export function useChat(conversationId: Ref<string | null>) {
   const inputText = ref("");
   const sending = ref(false);
   const draftDirectModel = ref<DirectModelSelection | null>(null);
-  const draftEnabledTools = ref<string[]>(["current_time", "javascript_execute", "web_fetch"]);
+  const draftEnabledTools = ref<string[]>(["current_time", "javascript_execute", "web_fetch", "search_wiki"]);
   const draftThinkingLevel = ref<string>("off");
   const enabledTools = computed<string[]>(() => {
     if (conversationId.value) {
@@ -79,6 +79,10 @@ export function useChat(conversationId: Ref<string | null>) {
   const retrieveKnowledgeToolEnabled = computed({
     get: () => isToolEnabled("retrieve_knowledge"),
     set: (value: boolean) => setClientToolEnabled("retrieve_knowledge", value),
+  });
+  const wikiToolEnabled = computed({
+    get: () => isToolEnabled("search_wiki"),
+    set: (value: boolean) => setClientToolEnabled("search_wiki", value),
   });
   const workspaceToolEnabled = computed({
     get: () => isToolEnabled("workspace"),
@@ -233,6 +237,7 @@ export function useChat(conversationId: Ref<string | null>) {
     searchToolEnabled,
     webFetchToolEnabled,
     retrieveKnowledgeToolEnabled,
+    wikiToolEnabled,
     workspaceToolEnabled,
     thinkingLevel,
   };

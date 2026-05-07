@@ -1,237 +1,155 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { MessagePlugin } from "tdesign-vue-next";
-import SvgIcon from "../components/common/SvgIcon.vue";
 import { apiClient } from "../api/client.js";
-import { confirmDialog } from "../utils/ui-feedback.js";
+import SvgIcon from "../components/common/SvgIcon.vue";
+import { showError, showSuccess } from "../utils/ui-feedback.js";
 
-interface Document {
-  id: string;
-  title: string;
-  source: string;
-  content?: string;
-  createdAt: number;
+interface WikiClaim {
+  id?: string;
+  text: string;
+  sourceDocumentId?: string;
+  sourceChunkIndex?: number;
+  confidence?: number;
 }
 
-interface SearchResultItem {
-  chunk: { id: string; documentId: string; content: string; index: number };
-  document: Document;
+interface WikiLink {
+  id?: string;
+  toTitle: string;
+  relation: string;
+}
+
+interface WikiPage {
+  id: string;
+  title: string;
+  summary: string;
+  content: string;
+  aliases: string[];
+  tags: string[];
+  status: "draft" | "active" | "stale";
+  sourceDocumentIds: string[];
+  claims?: WikiClaim[];
+  links?: WikiLink[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+interface WikiSearchResult {
+  page: WikiPage;
+  claims: WikiClaim[];
   score: number;
 }
 
-interface DocumentChunk {
-  id: string;
-  documentId: string;
-  content: string;
-  index: number;
-}
-
-const documents = ref<Document[]>([]);
-const searchResults = ref<SearchResultItem[]>([]);
-const loading = ref(false);
-const searching = ref(false);
-const searchQuery = ref("");
 const route = useRoute();
 const router = useRouter();
 
-function docIconSvg(title: string): string {
-  const ext = (title.split(".").pop() ?? "").toLowerCase();
-  if (ext === "md" || ext === "markdown") {
-    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>';
-  }
-  if (ext === "json") {
-    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 12 12 15 9 18"/><polyline points="13 12 15 15 13 18"/></svg>';
-  }
-  if (ext === "html" || ext === "htm") {
-    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 13l-2 2 2 2"/><path d="M14 13l2 2-2 2"/></svg>';
-  }
-  // txt or other — text lines icon
-  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/><path d="M17 17v5"/><path d="M14 19.5h6"/></svg>';
-}
-const selectedDoc = ref<Document | null>(null);
-const deletingId = ref<string | null>(null);
-const loadingDetail = ref(false);
-const showPreview = ref(false);
-const routeChunk = ref<DocumentChunk | null>(null);
-const loadingRouteChunk = ref(false);
-const isEditing = ref(false);
-const isNewDoc = ref(false);
-const editTitle = ref("");
-const editContent = ref("");
-const fileInputRef = ref<HTMLInputElement | null>(null);
-const uploading = ref(false);
-const copiedDocument = ref(false);
+const pages = ref<WikiPage[]>([]);
+const selectedPage = ref<WikiPage | null>(null);
+const searchQuery = ref("");
+const searchResults = ref<WikiSearchResult[]>([]);
+const loading = ref(false);
+const saving = ref(false);
+const ingesting = ref(false);
+const editing = ref(false);
+const draft = ref({
+  title: "",
+  summary: "",
+  content: "",
+  aliases: "",
+  tags: "",
+});
+const manualSource = ref({
+  filename: "",
+  content: "",
+});
+const fileInput = ref<HTMLInputElement | null>(null);
 
-const displayDocuments = computed<Document[]>(() => {
-  const q = searchQuery.value.trim();
-  if (!q) return documents.value;
-  // Deduplicate by document ID from search results
-  const seen = new Set<string>();
-  const docs: Document[] = [];
-  for (const r of searchResults.value) {
-    if (!seen.has(r.document.id)) {
-      seen.add(r.document.id);
-      docs.push(r.document);
-    }
+const visiblePages = computed(() => {
+  if (searchResults.value.length > 0) {
+    return searchResults.value.map((result) => result.page);
   }
-  return docs;
+  return pages.value;
 });
 
-function getMatchResult(docId: string): SearchResultItem | null {
-  if (!searchQuery.value.trim()) return null;
-  return searchResults.value.find((r) => r.document.id === docId) ?? null;
-}
-
-function getMatchSnippet(docId: string): string | null {
-  return getMatchResult(docId)?.chunk.content ?? null;
-}
-
-let searchTimer: ReturnType<typeof setTimeout> | null = null;
-
-watch(searchQuery, (q) => {
-  if (searchTimer) clearTimeout(searchTimer);
-  const trimmed = q.trim();
-  if (!trimmed) {
-    searchResults.value = [];
-    return;
-  }
-  searchTimer = setTimeout(() => doSearch(trimmed), 300);
-});
+const selectedClaims = computed(() => selectedPage.value?.claims ?? []);
+const selectedLinks = computed(() => selectedPage.value?.links ?? []);
+const selectedTags = computed(() => selectedPage.value?.tags ?? []);
+const selectedAliases = computed(() => selectedPage.value?.aliases ?? []);
 
 onMounted(async () => {
-  await loadDocuments();
-  await openRouteDocument();
-});
-onUnmounted(() => { if (searchTimer) clearTimeout(searchTimer); });
-
-watch(() => [route.query.doc, route.query.chunk], () => {
-  void openRouteDocument();
+  await loadPages();
+  await openRouteWikiPage();
 });
 
-async function loadDocuments() {
+watch(() => route.query.wiki, () => {
+  void openRouteWikiPage();
+});
+
+async function loadPages() {
   loading.value = true;
   try {
-    const resp = await apiClient<{ data: Document[] }>("/documents");
-    documents.value = resp.data ?? [];
+    const response = await apiClient<{ data: WikiPage[] }>("/wiki/pages");
+    pages.value = response.data ?? [];
+    if (!selectedPage.value && pages.value[0]) {
+      await selectPage(pages.value[0].id);
+    }
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "加载 Wiki 失败");
   } finally {
     loading.value = false;
   }
 }
 
-async function loadDocumentDetail(id: string): Promise<Document> {
-  const resp = await apiClient<{ data: Document }>(`/documents/${id}`);
-  return resp.data;
+async function openRouteWikiPage() {
+  const id = typeof route.query.wiki === "string" ? route.query.wiki : "";
+  if (!id) return;
+  await selectPage(id, false);
 }
 
-async function loadDocumentChunks(id: string): Promise<DocumentChunk[]> {
-  const resp = await apiClient<{ data: DocumentChunk[] }>(`/documents/${id}/chunks`);
-  return resp.data ?? [];
-}
-
-function routeDocumentId(): string | null {
-  const raw = route.query.doc;
-  if (Array.isArray(raw)) {
-    return typeof raw[0] === "string" && raw[0].trim().length > 0 ? raw[0] : null;
-  }
-  return typeof raw === "string" && raw.trim().length > 0 ? raw : null;
-}
-
-function routeChunkIndex(): number | null {
-  const raw = route.query.chunk;
-  const value = Array.isArray(raw) ? raw[0] : raw;
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return null;
-  }
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
-}
-
-function updateDocumentRoute(docId: string | null, chunkIndex?: number | null) {
-  const nextQuery = { ...route.query };
-  if (docId) {
-    nextQuery.doc = docId;
-    if (typeof chunkIndex === "number") {
-      nextQuery.chunk = String(chunkIndex);
-    } else {
-      delete nextQuery.chunk;
+async function selectPage(id: string, syncRoute = true) {
+  try {
+    const response = await apiClient<{ data: WikiPage }>(`/wiki/pages/${id}`);
+    selectedPage.value = response.data;
+    editing.value = false;
+    fillDraft(response.data);
+    if (syncRoute) {
+      void router.replace({ name: "documents", query: { ...route.query, wiki: id } });
     }
-  } else {
-    delete nextQuery.doc;
-    delete nextQuery.chunk;
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "打开 Wiki 页面失败");
   }
-  void router.replace({ name: "documents", query: nextQuery });
 }
 
-function clearRouteChunk() {
-  routeChunk.value = null;
-  const nextQuery = { ...route.query };
-  delete nextQuery.chunk;
-  void router.replace({ name: "documents", query: nextQuery });
+function fillDraft(page: WikiPage) {
+  draft.value = {
+    title: page.title,
+    summary: page.summary,
+    content: page.content,
+    aliases: page.aliases.join(", "),
+    tags: page.tags.join(", "),
+  };
 }
 
-async function openRouteDocument() {
-  const docId = routeDocumentId();
-  if (!docId || docId.startsWith("__new__")) {
-    routeChunk.value = null;
+async function searchWiki() {
+  const query = searchQuery.value.trim();
+  if (!query) {
+    searchResults.value = [];
     return;
   }
-  const chunkIndex = routeChunkIndex();
-  const routeChunkMatches = chunkIndex === null
-    ? routeChunk.value === null
-    : routeChunk.value?.index === chunkIndex;
-  if (selectedDoc.value?.id === docId && showPreview.value && routeChunkMatches) {
-    return;
-  }
-
-  loadingDetail.value = true;
+  loading.value = true;
   try {
-    const detail = await loadDocumentDetail(docId);
-    selectedDoc.value = detail;
-    showPreview.value = true;
-    isEditing.value = false;
-    isNewDoc.value = false;
-    await openRouteChunk(docId, chunkIndex);
-  } catch (err: any) {
-    updateDocumentRoute(null);
-    await MessagePlugin.error(err.message);
-  } finally {
-    loadingDetail.value = false;
-  }
-}
-
-async function openRouteChunk(docId: string, chunkIndex: number | null) {
-  if (chunkIndex === null) {
-    routeChunk.value = null;
-    return;
-  }
-
-  loadingRouteChunk.value = true;
-  try {
-    const chunks = await loadDocumentChunks(docId);
-    routeChunk.value = chunks.find((chunk) => chunk.index === chunkIndex) ?? null;
-    if (!routeChunk.value) {
-      clearRouteChunk();
-    }
-  } catch {
-    routeChunk.value = null;
-  } finally {
-    loadingRouteChunk.value = false;
-  }
-}
-
-async function doSearch(query: string) {
-  searching.value = true;
-  try {
-    const resp = await apiClient<{ data: SearchResultItem[] }>("/documents/search", {
+    const response = await apiClient<{ data: WikiSearchResult[] }>("/wiki/search", {
       method: "POST",
       body: JSON.stringify({ query, topK: 20 }),
     });
-    searchResults.value = resp.data ?? [];
-  } catch {
-    searchResults.value = [];
+    searchResults.value = response.data ?? [];
+    if (searchResults.value[0]) {
+      await selectPage(searchResults.value[0].page.id);
+    }
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "搜索 Wiki 失败");
   } finally {
-    searching.value = false;
+    loading.value = false;
   }
 }
 
@@ -240,1159 +158,624 @@ function clearSearch() {
   searchResults.value = [];
 }
 
-async function copyText(text: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return;
-  } catch {
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.style.position = "fixed";
-    textarea.style.opacity = "0";
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand("copy");
-    document.body.removeChild(textarea);
-  }
+function startCreate() {
+  selectedPage.value = null;
+  editing.value = true;
+  draft.value = { title: "", summary: "", content: "", aliases: "", tags: "" };
 }
 
-async function copySelectedDocument() {
-  if (!selectedDoc.value?.content) {
-    return;
-  }
-  await copyText(selectedDoc.value.content);
-  copiedDocument.value = true;
-  setTimeout(() => {
-    copiedDocument.value = false;
-  }, 1500);
+function startEdit() {
+  if (!selectedPage.value) return;
+  fillDraft(selectedPage.value);
+  editing.value = true;
 }
 
-function exportSelectedDocument() {
-  if (!selectedDoc.value?.content) {
-    return;
-  }
-  const rawTitle = selectedDoc.value.title.trim() || "document.txt";
-  const filename = rawTitle.replace(/[\\/:*?"<>|]+/g, "_");
-  const blob = new Blob([selectedDoc.value.content], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
-
-function createNewDoc() {
-  const tempDoc: Document = {
-    id: `__new__${Date.now()}`,
-    title: "未命名文档",
-    source: "manual",
-    content: "",
-    createdAt: Date.now(),
+async function savePage() {
+  const payload = {
+    title: draft.value.title,
+    summary: draft.value.summary,
+    content: draft.value.content,
+    aliases: splitCsv(draft.value.aliases),
+    tags: splitCsv(draft.value.tags),
   };
-  documents.value.unshift(tempDoc);
-  selectedDoc.value = tempDoc;
-  showPreview.value = true;
-  routeChunk.value = null;
-  isNewDoc.value = true;
-  isEditing.value = true;
-  editTitle.value = tempDoc.title;
-  editContent.value = "";
-  updateDocumentRoute(null);
-}
-
-function openFilePicker() {
-  fileInputRef.value?.click();
-}
-
-async function handleFileSelected(event: Event) {
-  const input = event.target;
-  if (!(input instanceof HTMLInputElement)) {
-    return;
-  }
-  const file = input.files?.[0];
-  input.value = "";
-  if (!file) {
-    return;
-  }
-
-  const form = new FormData();
-  form.append("file", file);
-
-  uploading.value = true;
+  saving.value = true;
   try {
-    const resp = await apiClient<{ data: { id: string; title: string; chunks: number } }>("/documents/upload", {
+    if (selectedPage.value) {
+      const response = await apiClient<{ data: WikiPage }>(`/wiki/pages/${selectedPage.value.id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+      selectedPage.value = response.data;
+    } else {
+      const response = await apiClient<{ data: WikiPage }>("/wiki/pages", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      selectedPage.value = response.data;
+    }
+    editing.value = false;
+    await loadPages();
+    if (selectedPage.value) {
+      await selectPage(selectedPage.value.id);
+    }
+    showSuccess("Wiki 页面已保存");
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "保存 Wiki 页面失败");
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function deletePage() {
+  if (!selectedPage.value) return;
+  if (!window.confirm(`删除 Wiki 页面“${selectedPage.value.title}”？`)) return;
+  const pageId = selectedPage.value.id;
+  try {
+    await apiClient(`/wiki/pages/${pageId}`, { method: "DELETE" });
+    selectedPage.value = null;
+    await loadPages();
+    showSuccess("Wiki 页面已删除");
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "删除 Wiki 页面失败");
+  }
+}
+
+async function ingestManualSource() {
+  if (!manualSource.value.filename.trim() || !manualSource.value.content.trim()) {
+    showError("资料标题和内容不能为空");
+    return;
+  }
+  ingesting.value = true;
+  try {
+    const response = await apiClient<{ data: { pages: WikiPage[]; generatedBy: string } }>("/wiki/ingest-document", {
+      method: "POST",
+      body: JSON.stringify({
+        filename: manualSource.value.filename,
+        content: manualSource.value.content,
+      }),
+    });
+    manualSource.value = { filename: "", content: "" };
+    await loadPages();
+    const firstPage = response.data.pages[0];
+    if (firstPage) await selectPage(firstPage.id);
+    showSuccess(response.data.generatedBy === "llm" ? "已生成 Wiki 页面" : "已使用基础模式生成 Wiki 页面");
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "生成 Wiki 失败");
+  } finally {
+    ingesting.value = false;
+  }
+}
+
+async function ingestFile(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  ingesting.value = true;
+  try {
+    const form = new FormData();
+    form.append("file", file);
+    const response = await apiClient<{ data: { pages: WikiPage[]; generatedBy: string } }>("/wiki/ingest-document", {
       method: "POST",
       body: form,
     });
-    await MessagePlugin.success(`已上传 ${resp.data.title}`);
-    await loadDocuments();
-    selectedDoc.value = await loadDocumentDetail(resp.data.id);
-    showPreview.value = true;
-    routeChunk.value = null;
-    isEditing.value = false;
-    isNewDoc.value = false;
-    updateDocumentRoute(resp.data.id);
-  } catch (err: any) {
-    await MessagePlugin.error(err.message);
+    await loadPages();
+    const firstPage = response.data.pages[0];
+    if (firstPage) await selectPage(firstPage.id);
+    showSuccess(response.data.generatedBy === "llm" ? "文件已生成 Wiki 页面" : "文件已使用基础模式生成 Wiki 页面");
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "导入文件失败");
   } finally {
-    uploading.value = false;
+    ingesting.value = false;
+    if (fileInput.value) fileInput.value.value = "";
   }
 }
 
-async function selectDocument(doc: Document) {
-  const match = getMatchResult(doc.id);
-  if (selectedDoc.value?.id === doc.id) {
-    if (match && routeChunk.value?.index !== match.chunk.index) {
-      routeChunk.value = match.chunk;
-      updateDocumentRoute(doc.id, match.chunk.index);
-      return;
-    }
-    if (isNewDoc.value) return;
-    selectedDoc.value = null;
-    showPreview.value = false;
-    routeChunk.value = null;
-    isEditing.value = false;
-    isNewDoc.value = false;
-    updateDocumentRoute(null);
-    return;
-  }
-  if (doc.id.startsWith("__new__")) {
-    selectedDoc.value = doc;
-    showPreview.value = true;
-    routeChunk.value = null;
-    isEditing.value = true;
-    isNewDoc.value = true;
-    editTitle.value = doc.title;
-    editContent.value = doc.content ?? "";
-    updateDocumentRoute(null);
-    return;
-  }
-  isEditing.value = false;
-  isNewDoc.value = false;
-  loadingDetail.value = true;
-  try {
-    selectedDoc.value = await loadDocumentDetail(doc.id);
-    showPreview.value = true;
-    routeChunk.value = match?.chunk ?? null;
-    updateDocumentRoute(doc.id, match?.chunk.index ?? null);
-  } catch (err: any) {
-    await MessagePlugin.error(err.message);
-  } finally {
-    loadingDetail.value = false;
-  }
-}
-
-function closePreview() {
-  if (isNewDoc.value) {
-    documents.value = documents.value.filter(d => d.id !== selectedDoc.value?.id);
-  }
-  showPreview.value = false;
-  selectedDoc.value = null;
-  routeChunk.value = null;
-  isEditing.value = false;
-  isNewDoc.value = false;
-  updateDocumentRoute(null);
-}
-
-async function startEdit() {
-  if (!selectedDoc.value) return;
-  editTitle.value = selectedDoc.value.title;
-  editContent.value = selectedDoc.value.content ?? "";
-  isEditing.value = true;
-  isNewDoc.value = false;
-}
-
-async function selectAndEdit(doc: Document) {
-  if (doc.id.startsWith("__new__")) {
-    selectedDoc.value = doc;
-    showPreview.value = true;
-    routeChunk.value = null;
-    isEditing.value = true;
-    isNewDoc.value = true;
-    editTitle.value = doc.title;
-    editContent.value = doc.content ?? "";
-    updateDocumentRoute(null);
-    return;
-  }
-  isEditing.value = false;
-  isNewDoc.value = false;
-  loadingDetail.value = true;
-  try {
-    selectedDoc.value = await loadDocumentDetail(doc.id);
-    showPreview.value = true;
-    routeChunk.value = null;
-    editTitle.value = selectedDoc.value.title;
-    editContent.value = selectedDoc.value.content ?? "";
-    isEditing.value = true;
-    updateDocumentRoute(doc.id);
-  } catch (err: any) {
-    await MessagePlugin.error(err.message);
-  } finally {
-    loadingDetail.value = false;
-  }
-}
-
-function cancelEdit() {
-  if (isNewDoc.value) {
-    documents.value = documents.value.filter(d => d.id !== selectedDoc.value?.id);
-    showPreview.value = false;
-    selectedDoc.value = null;
-    routeChunk.value = null;
-    isNewDoc.value = false;
-    updateDocumentRoute(null);
-  }
-  isEditing.value = false;
-  editTitle.value = "";
-  editContent.value = "";
-}
-
-async function saveEdit() {
-  if (!selectedDoc.value) return;
-  if (!editTitle.value.trim() || !editContent.value.trim()) {
-    await MessagePlugin.warning("标题和内容不能为空");
-    return;
-  }
-  loading.value = true;
-  try {
-    if (isNewDoc.value) {
-      await apiClient("/documents/upload", {
-        method: "POST",
-        body: JSON.stringify({
-          filename: editTitle.value.trim(),
-          content: editContent.value,
-        }),
-      });
-      await MessagePlugin.success("文档已创建");
-      isNewDoc.value = false;
-      await loadDocuments();
-      // Select the newly created doc
-      const created = documents.value[0];
-      if (created) {
-        selectedDoc.value = await loadDocumentDetail(created.id);
-        showPreview.value = true;
-        routeChunk.value = null;
-        updateDocumentRoute(created.id);
-      }
-    } else {
-      await apiClient(`/documents/${selectedDoc.value.id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          filename: editTitle.value.trim(),
-          content: editContent.value,
-        }),
-      });
-      await MessagePlugin.success("文档已更新");
-      selectedDoc.value = await loadDocumentDetail(selectedDoc.value.id);
-      clearRouteChunk();
-      await loadDocuments();
-    }
-    isEditing.value = false;
-  } catch (err: any) {
-    await MessagePlugin.error(err.message);
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function handleDelete(id: string) {
-  if (id.startsWith("__new__")) {
-    documents.value = documents.value.filter(d => d.id !== id);
-    if (selectedDoc.value?.id === id) {
-      selectedDoc.value = null;
-      showPreview.value = false;
-      routeChunk.value = null;
-      isEditing.value = false;
-      isNewDoc.value = false;
-      updateDocumentRoute(null);
-    }
-    return;
-  }
-  const targetDoc = documents.value.find((doc) => doc.id === id);
-  const confirmed = await confirmDialog({
-    header: "删除文档",
-    body: `确定要删除文档 "${targetDoc?.title ?? "未命名文档"}" 吗？`,
-    confirmText: "删除",
-    cancelText: "取消",
-    theme: "danger",
-  });
-  if (!confirmed) {
-    return;
-  }
-  deletingId.value = id;
-  try {
-    await apiClient(`/documents/${id}`, { method: "DELETE" });
-    await MessagePlugin.success("文档已删除");
-    if (selectedDoc.value?.id === id) {
-      selectedDoc.value = null;
-      showPreview.value = false;
-      routeChunk.value = null;
-      isEditing.value = false;
-      isNewDoc.value = false;
-      updateDocumentRoute(null);
-    }
-    await loadDocuments();
-  } catch (err: any) {
-    await MessagePlugin.error(err.message);
-  } finally {
-    deletingId.value = null;
-  }
-}
-
-function formatDate(ts: number): string {
-  const date = new Date(ts);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const hours = diff / 3_600_000;
-  if (hours < 24) {
-    return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
-  }
-  if (hours < 48) return "昨天";
-  return date.toLocaleDateString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-  });
-}
-
-function truncate(str: string, max: number): string {
-  return str.length > max ? str.slice(0, max) + "…" : str;
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function highlightMatch(text: string, query: string): string {
-  const safeText = escapeHtml(text);
-  const escapedQuery = escapeHtml(query).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  if (!escapedQuery) return safeText;
-  return safeText.replace(new RegExp(`(${escapedQuery})`, "gi"), "<mark>$1</mark>");
+function splitCsv(value: string): string[] {
+  return value.split(/[,，]/).map((item) => item.trim()).filter(Boolean);
 }
 </script>
 
 <template>
-  <div class="documents-view">
-    <!-- Header -->
-    <header class="view-header">
-      <div class="header-left">
-        <h1 class="section-title">知识库</h1>
-        <span class="count-badge" v-if="searchQuery">
-          搜索到 {{ displayDocuments.length }} 篇
-        </span>
-        <span class="count-badge" v-else-if="documents.length">
-          {{ documents.length }} 篇文档
-        </span>
-      </div>
-      <div class="header-actions">
-        <div class="search-box">
-          <SvgIcon name="search" :size="16" class="search-icon" />
-          <input
-            v-model="searchQuery"
-            class="search-input"
-            placeholder="搜索文档内容..."
-          />
-          <button
-            v-if="searchQuery"
-            class="search-clear-btn"
-            type="button"
-            title="清空搜索"
-            @click="clearSearch"
-          >
-            <SvgIcon name="close" :size="12" />
-          </button>
-          <span v-if="searching" class="search-spinner" />
+  <div class="wiki-view">
+    <aside class="wiki-sidebar">
+      <div class="sidebar-header">
+        <div>
+          <h1>LLM Wiki</h1>
+          <p>{{ pages.length }} 个知识页面</p>
         </div>
-        <button class="btn-primary" @click="createNewDoc">
+        <button class="icon-btn" type="button" title="新建页面" @click="startCreate">
           <SvgIcon name="plus" :size="16" />
-          新建文档
         </button>
+      </div>
+
+      <div class="search-row">
         <input
-          ref="fileInputRef"
-          class="file-input"
-          type="file"
-          accept=".txt,.md,.markdown,.json,.html,.htm,.pdf,.docx"
-          @change="handleFileSelected"
-        />
-        <button class="btn-secondary upload-btn" :disabled="uploading" @click="openFilePicker">
-          <span v-if="uploading" class="spinner-mini" />
-          <SvgIcon v-else name="upload" :size="16" />
-          上传文件
+          v-model="searchQuery"
+          class="search-input"
+          type="search"
+          placeholder="搜索概念、标签或问题"
+          @keyup.enter="searchWiki"
+        >
+        <button class="icon-btn" type="button" title="搜索" @click="searchWiki">
+          <SvgIcon name="search" :size="15" />
+        </button>
+        <button v-if="searchResults.length" class="icon-btn muted" type="button" title="清除搜索" @click="clearSearch">
+          <SvgIcon name="close" :size="15" />
         </button>
       </div>
-    </header>
 
-    <!-- Document list -->
-    <div v-if="loading && !documents.length" class="loading-state">
-      <div class="loading-spinner" />
-      <p>加载中...</p>
-    </div>
-
-    <div v-else-if="!documents.length" class="empty-state">
-      <div class="empty-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-          <line x1="16" y1="13" x2="8" y2="13" />
-          <line x1="16" y1="17" x2="8" y2="17" />
-          <polyline points="10 9 9 9 8 9" />
-        </svg>
-      </div>
-      <p class="empty-title">知识库为空</p>
-      <p class="empty-desc">新建文档，为 Agent 提供领域知识</p>
-      <button class="btn-primary upload-cta" @click="createNewDoc">
-        <SvgIcon name="plus" :size="16" />
-        新建第一篇文档
-      </button>
-    </div>
-
-    <div v-else class="doc-layout">
-      <!-- Document list -->
-      <div class="doc-list" :class="{ 'with-preview': showPreview }">
-        <div
-          v-for="doc in displayDocuments"
-          :key="doc.id"
-          class="card doc-card"
-          :class="{ selected: selectedDoc?.id === doc.id }"
-          @click="selectDocument(doc)"
+      <div class="page-list">
+        <button
+          v-for="page in visiblePages"
+          :key="page.id"
+          class="page-list-item"
+          :class="{ active: selectedPage?.id === page.id }"
+          type="button"
+          @click="selectPage(page.id)"
         >
-          <div class="doc-card-header">
-            <div class="doc-icon" v-html="docIconSvg(doc.title)"></div>
-            <div class="doc-title-row">
-              <h3 class="doc-title">{{ doc.title }}</h3>
-              <span class="badge badge-accent">{{ doc.source }}</span>
-            </div>
-          </div>
-
-          <!-- Search result snippet -->
-          <div v-if="searchQuery && getMatchSnippet(doc.id)" class="doc-snippet">
-            <pre class="doc-content" v-html="highlightMatch(truncate(getMatchSnippet(doc.id)!, 300), searchQuery)" />
-          </div>
-
-          <div class="doc-card-footer">
-            <span class="doc-date">{{ formatDate(doc.createdAt) }}</span>
-            <div class="doc-actions">
-              <button
-                class="btn-icon"
-                @click.stop="selectAndEdit(doc)"
-                :title="'编辑文档'"
-              >
-                <SvgIcon name="edit" />
-              </button>
-              <button
-                class="btn-icon danger"
-                :disabled="deletingId === doc.id"
-                @click.stop="handleDelete(doc.id)"
-                :title="'删除文档'"
-              >
-                <SvgIcon v-if="deletingId !== doc.id" name="trash" />
-                <span v-else class="spinner-mini" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="searchQuery && !displayDocuments.length" class="empty-state small">
-          <p class="empty-title">{{ searching ? "搜索中..." : "没有匹配的文档" }}</p>
-          <p class="empty-desc">试试换个关键词</p>
+          <span class="page-title">{{ page.title }}</span>
+          <span class="page-summary">{{ page.summary }}</span>
+        </button>
+        <div v-if="!loading && visiblePages.length === 0" class="empty-list">
+          没有 Wiki 页面
         </div>
       </div>
+    </aside>
 
-      <!-- Document preview panel -->
-      <transition name="doc-slide">
-        <div v-if="showPreview && selectedDoc" class="doc-panel card">
-          <div class="doc-header">
-            <div class="doc-title-area">
-            <div class="doc-icon" v-html="docIconSvg(selectedDoc.title)"></div>
-            <div v-if="!isEditing" class="doc-title-text">
-                <h2 class="doc-panel-title">{{ selectedDoc.title }}</h2>
-                <span class="doc-meta">
-                  <span class="badge badge-accent">{{ selectedDoc.source }}</span>
-                  <span class="doc-date">{{ formatDate(selectedDoc.createdAt) }}</span>
-                </span>
-              </div>
-              <div v-else class="doc-title-text">
-                <input
-                  v-model="editTitle"
-                  class="edit-title-input"
-                  placeholder="文档标题"
-                />
-                <span class="doc-meta">
-                  <span class="badge badge-accent">{{ selectedDoc.source }}</span>
-                  <span class="doc-date">{{ formatDate(selectedDoc.createdAt) }}</span>
-                </span>
-              </div>
-            </div>
-            <div class="doc-actions">
-              <template v-if="isEditing">
-                <button class="btn-icon" @click="cancelEdit" title="取消编辑">
-                  <SvgIcon name="close" />
-                </button>
-                <button class="btn-icon save-btn" :disabled="loading" @click="saveEdit" title="保存">
-                  <SvgIcon name="check" />
-                </button>
-              </template>
-              <template v-else>
-                <button
-                  class="btn-icon"
-                  :disabled="!selectedDoc.content"
-                  @click="copySelectedDocument"
-                  title="复制全文"
-                >
-                  <SvgIcon :name="copiedDocument ? 'check' : 'copy'" />
-                </button>
-                <button
-                  class="btn-icon"
-                  :disabled="!selectedDoc.content"
-                  @click="exportSelectedDocument"
-                  title="导出文档"
-                >
-                  <SvgIcon name="download" />
-                </button>
-                <button class="btn-icon" @click="startEdit" title="编辑">
-                  <SvgIcon name="edit" />
-                </button>
-              </template>
-              <button class="btn-icon" @click="closePreview" title="关闭">
-                <SvgIcon name="close" />
-              </button>
-            </div>
-          </div>
-          <div class="doc-body">
-            <div v-if="loadingDetail" class="doc-loading">
-              <div class="loading-spinner" />
-              <p>加载中...</p>
-            </div>
-            <div v-else class="doc-content-body">
-              <div v-if="loadingRouteChunk" class="route-chunk-card">
-                <span class="search-spinner" />
-                <span>定位引用片段...</span>
-              </div>
-              <div v-else-if="routeChunk" class="route-chunk-card">
-                <div class="route-chunk-header">
-                  <span>聊天引用片段 #{{ routeChunk.index + 1 }}</span>
-                  <button class="route-chunk-close" type="button" @click="clearRouteChunk">清除</button>
-                </div>
-                <p>{{ routeChunk.content }}</p>
-              </div>
-              <textarea
-                v-if="isEditing"
-                v-model="editContent"
-                class="doc-textarea"
-                placeholder="文档内容"
-                :disabled="loading"
-              ></textarea>
-              <textarea
-                v-else-if="selectedDoc.content"
-                class="doc-textarea readonly"
-                :value="selectedDoc.content"
-                readonly
-              ></textarea>
-              <div v-else class="doc-empty">
-                <p>暂无文档内容</p>
-              </div>
-            </div>
+    <main class="wiki-main">
+      <section class="ingest-panel">
+        <div class="ingest-copy">
+          <h2>导入资料生成 Wiki</h2>
+          <p>上传文件或粘贴资料，系统会生成可编辑的知识页面、要点和来源引用。</p>
+        </div>
+        <div class="ingest-actions">
+          <input ref="fileInput" class="file-input" type="file" accept=".txt,.md,.markdown,.json,.html,.htm,.pdf,.docx" @change="ingestFile">
+          <button class="secondary-btn" type="button" :disabled="ingesting" @click="fileInput?.click()">
+            <SvgIcon name="upload" :size="15" />
+            导入文件
+          </button>
+        </div>
+        <div class="manual-ingest">
+          <input v-model="manualSource.filename" class="text-input" type="text" placeholder="资料标题">
+          <textarea v-model="manualSource.content" class="source-textarea" placeholder="粘贴资料内容" />
+          <button class="primary-btn" type="button" :disabled="ingesting" @click="ingestManualSource">
+            {{ ingesting ? "生成中..." : "生成 Wiki" }}
+          </button>
+        </div>
+      </section>
+
+      <section v-if="editing" class="editor-panel">
+        <div class="detail-toolbar">
+          <h2>{{ selectedPage ? "编辑页面" : "新建页面" }}</h2>
+          <div class="toolbar-actions">
+            <button class="secondary-btn" type="button" @click="editing = false">取消</button>
+            <button class="primary-btn" type="button" :disabled="saving" @click="savePage">
+              {{ saving ? "保存中..." : "保存" }}
+            </button>
           </div>
         </div>
-      </transition>
-    </div>
+        <label class="field-label">标题</label>
+        <input v-model="draft.title" class="text-input" type="text">
+        <label class="field-label">摘要</label>
+        <textarea v-model="draft.summary" class="summary-textarea" />
+        <label class="field-label">正文</label>
+        <textarea v-model="draft.content" class="content-textarea" />
+        <label class="field-label">别名</label>
+        <input v-model="draft.aliases" class="text-input" type="text" placeholder="用逗号分隔">
+        <label class="field-label">标签</label>
+        <input v-model="draft.tags" class="text-input" type="text" placeholder="用逗号分隔">
+      </section>
+
+      <section v-else-if="selectedPage" class="detail-panel">
+        <div class="detail-toolbar">
+          <div>
+            <h2>{{ selectedPage.title }}</h2>
+            <p>{{ selectedPage.summary }}</p>
+          </div>
+          <div class="toolbar-actions">
+            <button class="secondary-btn" type="button" @click="startEdit">
+              <SvgIcon name="edit" :size="14" />
+              编辑
+            </button>
+            <button class="danger-btn" type="button" @click="deletePage">
+              <SvgIcon name="trash" :size="14" />
+              删除
+            </button>
+          </div>
+        </div>
+
+        <div v-if="selectedTags.length || selectedAliases.length" class="meta-row">
+          <span v-for="tag in selectedTags" :key="`tag-${tag}`" class="tag">{{ tag }}</span>
+          <span v-for="alias in selectedAliases" :key="`alias-${alias}`" class="alias">{{ alias }}</span>
+        </div>
+
+        <article class="wiki-content">
+          <pre>{{ selectedPage.content }}</pre>
+        </article>
+
+        <section class="evidence-section">
+          <h3>支撑要点</h3>
+          <div v-if="selectedClaims.length" class="claim-list">
+            <div v-for="claim in selectedClaims" :key="claim.id ?? claim.text" class="claim-item">
+              <p>{{ claim.text }}</p>
+              <span v-if="claim.sourceDocumentId">来源 {{ claim.sourceDocumentId.slice(0, 8) }}</span>
+            </div>
+          </div>
+          <div v-else class="empty-block">暂无支撑要点</div>
+        </section>
+
+        <section class="evidence-section">
+          <h3>关联页面</h3>
+          <div v-if="selectedLinks.length" class="link-list">
+            <span v-for="link in selectedLinks" :key="link.id ?? `${link.relation}-${link.toTitle}`">
+              {{ link.toTitle }} · {{ link.relation }}
+            </span>
+          </div>
+          <div v-else class="empty-block">暂无关联页面</div>
+        </section>
+      </section>
+
+      <section v-else class="detail-panel empty-detail">
+        <SvgIcon name="book" :size="32" />
+        <h2>选择或生成一个 Wiki 页面</h2>
+      </section>
+    </main>
   </div>
 </template>
 
 <style scoped>
-.documents-view {
-  height: 100%;
+.wiki-view {
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 18px;
+  padding: 24px;
+  color: var(--color-text-primary);
+}
+
+.wiki-sidebar,
+.ingest-panel,
+.editor-panel,
+.detail-panel {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+}
+
+.wiki-sidebar {
+  min-height: calc(100dvh - 48px);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  padding: 24px 32px;
+  padding: 16px;
 }
 
-/* ── Header ── */
-.view-header {
+.sidebar-header,
+.detail-toolbar,
+.ingest-panel {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 24px;
+  gap: 16px;
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+h1,
+h2,
+h3,
+p {
+  margin: 0;
 }
 
-.header-left .section-title {
-  margin-bottom: 0;
+h1 {
+  font-size: 20px;
+  line-height: 1.2;
 }
 
-.count-badge {
-  font-size: 12px;
-  font-weight: 500;
+h2 {
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+h3 {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.sidebar-header p,
+.detail-toolbar p,
+.ingest-copy p {
+  margin-top: 5px;
   color: var(--color-text-muted);
-  background: var(--glass-bg);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 999px;
-  padding: 3px 10px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-.header-actions {
+.search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px 36px;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.search-input,
+.text-input,
+.summary-textarea,
+.content-textarea,
+.source-textarea {
+  width: 100%;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.search-input,
+.text-input {
+  height: 36px;
+  padding: 0 11px;
+}
+
+.summary-textarea,
+.source-textarea {
+  min-height: 90px;
+  padding: 10px 11px;
+  resize: vertical;
+}
+
+.content-textarea {
+  min-height: 300px;
+  padding: 10px 11px;
+  resize: vertical;
+  font-family: var(--font-mono);
+}
+
+.page-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  overflow-y: auto;
+}
+
+.page-list-item {
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  text-align: left;
+  cursor: pointer;
+}
+
+.page-list-item.active {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.page-title {
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.page-summary {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.wiki-main {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  min-width: 0;
+}
+
+.ingest-panel {
+  padding: 16px;
+}
+
+.ingest-actions,
+.toolbar-actions {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.manual-ingest {
+  grid-column: 1 / -1;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .file-input {
   display: none;
 }
 
-.upload-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.editor-panel,
+.detail-panel {
+  padding: 18px;
 }
 
-/* ── Search ── */
-.search-box {
-  position: relative;
-}
-
-.search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
+.field-label {
+  display: block;
+  margin: 14px 0 6px;
   color: var(--color-text-muted);
-  pointer-events: none;
-}
-
-.search-input {
-  width: 240px;
-  padding: 8px 58px 8px 36px;
-  background: var(--input-bg);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-primary);
-  font-size: 13px;
-  outline: none;
-}
-
-.search-input:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.search-input::placeholder {
-  color: var(--color-text-muted);
-}
-
-.search-clear-btn {
-  position: absolute;
-  right: 30px;
-  top: 50%;
-  width: 22px;
-  height: 22px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transform: translateY(-50%);
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: all 0.16s ease;
-}
-
-.search-clear-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--color-text-primary);
-}
-
-.search-spinner {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-border-subtle);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-/* ── Upload CTA ── */
-.upload-cta {
-  margin-top: 8px;
-}
-
-/* ── Loading ── */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 80px 0;
-  color: var(--color-text-muted);
-  font-size: 13px;
-  gap: 12px;
-}
-
-.loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--color-border-subtle);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ── Empty state ── */
-.empty-state.small {
-  padding: 40px 0;
-}
-
-.empty-state.small .empty-title {
-  font-size: 14px;
-}
-
-.empty-state.small .empty-desc {
   font-size: 12px;
+  font-weight: 700;
 }
 
-/* ── Document layout ── */
-.doc-layout {
+.meta-row,
+.wiki-tags,
+.link-list {
   display: flex;
-  gap: 16px;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+  flex-wrap: wrap;
+  gap: 7px;
 }
 
-.doc-list {
-  flex: 0 0 420px;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-  align-content: start;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.doc-list.with-preview {
-  grid-template-columns: 1fr;
-}
-
-.doc-card {
-  padding: 16px 20px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.doc-card:hover {
-  border-color: var(--color-border-hover);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-}
-
-.doc-card.selected {
-  border-color: rgba(99, 102, 241, 0.25);
-  background: rgba(99, 102, 241, 0.06);
-  box-shadow: inset 2px 0 0 var(--color-accent);
-}
-
-.doc-card-header {
-  display: flex;
-  gap: 12px;
-  min-width: 0;
-}
-
-.doc-icon {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--empty-icon-bg);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  color: var(--color-text-muted);
-  flex-shrink: 0;
-}
-
-.doc-icon svg {
-  width: 18px;
-  height: 18px;
-}
-
-.doc-title-row {
-  min-width: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.doc-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.doc-title-row .badge {
-  align-self: flex-start;
-}
-
-/* ── Document snippet (search) ── */
-.doc-snippet {
+.meta-row {
   margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--color-border-subtle);
 }
 
-.doc-content {
-  margin: 0;
-  font-family: var(--font-mono);
+.tag,
+.alias,
+.link-list span {
+  padding: 4px 8px;
+  border-radius: 999px;
   font-size: 12px;
-  line-height: 1.6;
-  color: var(--color-text-secondary);
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
-.doc-content :deep(mark) {
-  background: rgba(251, 191, 36, 0.25);
-  color: #fde68a;
-  border-radius: 2px;
-  padding: 0 1px;
-}
-
-/* ── Doc panel ── */
-.doc-panel {
-  flex: 1 1 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  padding: 0;
-  min-height: 0;
-}
-
-.doc-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  flex-shrink: 0;
-  height: 76px;
-  box-sizing: border-box;
-}
-
-.doc-title-area {
-  display: flex;
-  gap: 12px;
-  min-width: 0;
-  flex: 1;
-}
-
-.doc-title-text {
-  min-width: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.doc-title-text h2,
-.doc-title-text input {
-  margin: 0 !important;
-}
-
-.doc-panel-title {
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.375;
-  color: var(--color-text-primary);
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.doc-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.doc-panel-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-  margin-left: 12px;
-}
-
-.doc-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px 24px;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.doc-content-body {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.route-chunk-card {
-  flex: 0 0 auto;
-  padding: 12px 14px;
-  border-radius: 8px;
-  background: rgba(99, 102, 241, 0.08);
+.tag {
+  color: var(--color-accent-light);
+  background: rgba(99, 102, 241, 0.11);
   border: 1px solid rgba(99, 102, 241, 0.18);
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  line-height: 1.65;
 }
 
-.route-chunk-card p {
-  margin: 8px 0 0;
+.alias,
+.link-list span {
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.wiki-content {
+  margin-top: 18px;
+}
+
+.wiki-content pre {
+  margin: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-
-.route-chunk-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: var(--color-text-primary);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.route-chunk-close {
-  flex: 0 0 auto;
-  padding: 3px 8px;
-  border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--color-text-muted);
-  font-size: 11px;
-  cursor: pointer;
-  transition: all 0.16s ease;
-}
-
-.route-chunk-close:hover {
-  color: var(--color-text-primary);
-  border-color: var(--color-border-hover);
-}
-
-.doc-textarea {
-  width: 100%;
-  height: 100%;
-  flex: 1 1 auto;
-  min-height: 200px;
-  margin: 0;
-  padding: 0;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--color-text-primary);
-  background: transparent;
-  border: none;
-  outline: none;
-  resize: none;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.doc-textarea.readonly {
-  cursor: default;
   color: var(--color-text-secondary);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.75;
 }
 
-.edit-title-input {
-  width: 100%;
-  padding: 0;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.375;
-  color: var(--color-text-primary);
-  background: transparent;
-  border: none;
-  outline: none;
-  margin: 0;
-  height: auto;
+.evidence-section {
+  margin-top: 22px;
 }
 
-.edit-title-input:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+.claim-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
 }
 
-.save-btn {
-  color: var(--color-accent);
+.claim-item,
+.empty-block,
+.empty-list {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.16);
+  padding: 10px 12px;
 }
 
-.save-btn:hover {
-  background: rgba(99, 102, 241, 0.1);
-}
-
-.doc-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 80px 0;
-  color: var(--color-text-muted);
+.claim-item p {
+  color: var(--color-text-secondary);
   font-size: 13px;
-  gap: 12px;
+  line-height: 1.55;
 }
 
-.doc-empty {
-  display: flex;
+.claim-item span,
+.empty-block,
+.empty-list {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.claim-item span {
+  display: inline-block;
+  margin-top: 5px;
+  font-family: var(--font-mono);
+}
+
+.link-list {
+  margin-top: 10px;
+}
+
+.empty-detail {
+  min-height: 320px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  color: var(--color-text-muted);
+}
+
+.icon-btn,
+.primary-btn,
+.secondary-btn,
+.danger-btn {
+  min-height: 36px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 80px 0;
-  color: var(--color-text-muted);
-  font-size: 13px;
-}
-
-/* ── Card footer ── */
-.doc-card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 14px;
-  padding-top: 10px;
-  border-top: 1px solid var(--color-border-subtle);
-}
-
-.doc-date {
-  font-size: 11px;
-  color: var(--color-text-muted);
-}
-
-.doc-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.btn-icon {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  color: var(--color-text-muted);
+  gap: 7px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-subtle);
   cursor: pointer;
+  font-size: 13px;
 }
 
-.btn-icon:hover {
-  background: var(--btn-secondary-bg);
-  color: var(--color-text-primary);
+.icon-btn {
+  width: 36px;
+  padding: 0;
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.04);
 }
 
-.btn-icon.danger:hover {
-  background: var(--btn-danger-bg);
+.icon-btn.muted {
+  color: var(--color-text-muted);
+}
+
+.primary-btn {
+  padding: 0 14px;
+  color: #fff;
+  background: var(--color-accent);
+  border-color: transparent;
+}
+
+.secondary-btn {
+  padding: 0 12px;
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.danger-btn {
+  padding: 0 12px;
   color: var(--color-danger);
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.18);
 }
 
-.btn-icon svg {
-  width: 14px;
-  height: 14px;
-}
-
-.btn-icon:disabled {
+button:disabled {
+  opacity: 0.55;
   cursor: not-allowed;
-  opacity: 0.6;
 }
 
-.spinner-mini {
-  display: block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-border-subtle);
-  border-top-color: var(--color-danger);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-/* ── Transitions ── */
-.doc-slide-enter-active,
-.doc-slide-leave-active {
-  transition: all 0.3s ease;
-}
-
-.doc-slide-enter-from,
-.doc-slide-leave-to {
-  opacity: 0;
-  transform: translateX(20px);
-}
-
-/* ── Responsive ── */
-@media (max-width: 768px) {
-  .documents-view {
+@media (max-width: 960px) {
+  .wiki-view {
+    grid-template-columns: 1fr;
     padding: 16px;
   }
 
-  .view-header {
-    flex-direction: column;
-    align-items: flex-start;
+  .wiki-sidebar {
+    min-height: auto;
   }
 
-  .header-actions {
-    width: 100%;
-  }
-
-  .search-input {
-    width: 100%;
-    flex: 1;
-  }
-
-  .doc-layout {
-    flex-direction: column;
-  }
-
-  .doc-list {
-    flex: none;
+  .manual-ingest {
     grid-template-columns: 1fr;
-    max-height: none;
-    width: 100%;
-  }
-
-  .doc-list.with-preview {
-    max-height: 40vh;
-  }
-
-  .doc-panel {
-    flex: none;
-    min-height: 40vh;
   }
 }
 </style>

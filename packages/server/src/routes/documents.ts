@@ -6,14 +6,14 @@ import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
 import { resolveRequestUserId } from "../middleware/auth.js";
 
-interface UploadedFile {
+export interface UploadedFile {
   fieldName: string;
   filename: string;
   contentType?: string;
   data: Buffer;
 }
 
-interface MultipartPayload {
+export interface MultipartPayload {
   fields: Record<string, string>;
   files: UploadedFile[];
 }
@@ -33,7 +33,7 @@ async function parseDocxText(buffer: Buffer): Promise<string> {
   return result.value;
 }
 
-async function parseDocumentText(filename: string, buffer: Buffer): Promise<string> {
+export async function parseDocumentText(filename: string, buffer: Buffer): Promise<string> {
   const ext = filename.toLowerCase().split(".").pop() ?? "";
   if (ext === "txt" || ext === "md" || ext === "markdown" || ext === "html" || ext === "htm") {
     return buffer.toString("utf-8");
@@ -51,7 +51,7 @@ async function parseDocumentText(filename: string, buffer: Buffer): Promise<stri
   throw new Error(`不支持的文件类型：.${ext || "unknown"}`);
 }
 
-async function readRequestBody(req: Request, maxBytes = 10 * 1024 * 1024): Promise<Buffer> {
+export async function readRequestBody(req: Request, maxBytes = 10 * 1024 * 1024): Promise<Buffer> {
   const chunks: Buffer[] = [];
   let total = 0;
   for await (const chunk of req) {
@@ -76,7 +76,7 @@ function parseContentDisposition(value: string): Record<string, string> {
   return result;
 }
 
-function parseMultipartBody(contentType: string, body: Buffer): MultipartPayload {
+export function parseMultipartBody(contentType: string, body: Buffer): MultipartPayload {
   const boundaryMatch = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(contentType);
   const boundary = boundaryMatch?.[1] ?? boundaryMatch?.[2];
   if (!boundary) {

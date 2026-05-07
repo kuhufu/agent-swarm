@@ -29,6 +29,7 @@ const {
   searchToolEnabled,
   webFetchToolEnabled,
   retrieveKnowledgeToolEnabled,
+  wikiToolEnabled,
   workspaceToolEnabled,
   thinkingLevel,
 } = useChat(computed(() => props.conversationId ?? null));
@@ -60,6 +61,7 @@ const activeToolCount = computed(() => {
   if (jsExecutionToolEnabled.value) count++;
   if (workspaceToolEnabled.value) count++;
   if (webFetchToolEnabled.value) count++;
+  if (wikiToolEnabled.value) count++;
   if (retrieveKnowledgeToolEnabled.value) count++;
   return count;
 });
@@ -262,6 +264,7 @@ function toggleJsExecutionTool() { jsExecutionToolEnabled.value = !jsExecutionTo
 function toggleWorkspaceTool() { workspaceToolEnabled.value = !workspaceToolEnabled.value; }
 function toggleWebFetchTool() { webFetchToolEnabled.value = !webFetchToolEnabled.value; }
 function toggleRetrieveKnowledgeTool() { retrieveKnowledgeToolEnabled.value = !retrieveKnowledgeToolEnabled.value; }
+function toggleWikiTool() { wikiToolEnabled.value = !wikiToolEnabled.value; }
 
 function handleToggleThinkLevel() {
   captureTextareaSelection();
@@ -547,12 +550,22 @@ function handleOutsideClick(event: MouseEvent) {
             </button>
             <button
               class="tools-dropdown-item"
+              :class="{ active: wikiToolEnabled }"
+              @mousedown="handleKeepTextareaFocusMouseDown"
+              @click="toggleToolFromDropdown(toggleWikiTool)"
+            >
+              <SvgIcon name="book" :size="14" />
+              <span class="dropdown-tool-label">Wiki</span>
+              <span class="dropdown-tool-state">{{ wikiToolEnabled ? '开' : '关' }}</span>
+            </button>
+            <button
+              class="tools-dropdown-item"
               :class="{ active: retrieveKnowledgeToolEnabled }"
               @mousedown="handleKeepTextareaFocusMouseDown"
               @click="toggleToolFromDropdown(toggleRetrieveKnowledgeTool)"
             >
               <SvgIcon name="book" :size="14" />
-              <span class="dropdown-tool-label">知识库</span>
+              <span class="dropdown-tool-label">旧知识库</span>
               <span class="dropdown-tool-state">{{ retrieveKnowledgeToolEnabled ? '开' : '关' }}</span>
             </button>
           </div>

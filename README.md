@@ -18,11 +18,12 @@
 - 历史消息持久化：SQLite 存储，支持恢复会话上下文
 - 上下文清空：保留历史消息，仅重置后续模型上下文
 - 会话分支：支持整段会话分支，也支持从指定消息创建分支用于对比调试
-- 多租户隔离：`swarms / conversations / agent presets / documents / usage analytics` 按 `userId` 严格隔离；首个注册用户自动成为 `admin`
+- 多租户隔离：`swarms / conversations / agent presets / documents / wiki / usage analytics` 按 `userId` 严格隔离；首个注册用户自动成为 `admin`
 - 工具运行时：`packages/core/src/tools/runtime.ts` 统一把模式工具、前端桥接工具、WebSearch、MCP 和运行时工具注入 Agent
 - Workspace 工具：`workspace_run_container` 通过 Docker 隔离执行命令，容器按会话 label 关联，并通过 `workspace_list_containers` / `workspace_remove_containers` 管理当前会话容器
 - 消息 Markdown 渲染：基于 `marked + marked-highlight + highlight.js + KaTeX + dompurify`，支持代码高亮、数学公式与安全净化
-- 知识库引用回显：`retrieve_knowledge` 工具结果会在聊天工具卡中展示命中文档、片段和相关度，并可跳转到文档详情
+- LLM Wiki：上传资料后生成可编辑 Wiki 页面、支撑要点和关联页面；`search_wiki` 工具会在聊天工具卡中展示命中的 Wiki 引用
+- 旧知识库引用回显：`retrieve_knowledge` 工具结果会在聊天工具卡中展示命中文档、片段和相关度，并可跳转到来源资料
 - 前端 JS 执行回显：`javascript_execute` 工具结果会在聊天工具卡中结构化展示返回值、日志和执行代码
 - 介入机制：支持工具调用/错误/handoff 等节点人工决策
 - 会话执行 Trace：事件按会话落库，聊天页右侧与历史对话详情可查看 Agent 生命周期、工具调用、handoff、介入与错误时间线
@@ -167,7 +168,17 @@ pnpm --filter @agent-swarm/server test
 - `GET /api/conversations/:id/messages`
 - `GET /api/conversations/:id/events`：读取会话执行 Trace；可用 `?type=handoff` 按事件类型过滤
 
-### 文档知识库
+### LLM Wiki
+
+- `GET /api/wiki/pages`
+- `GET /api/wiki/pages/:id`
+- `POST /api/wiki/pages`
+- `PUT /api/wiki/pages/:id`
+- `DELETE /api/wiki/pages/:id`
+- `POST /api/wiki/search`
+- `POST /api/wiki/ingest-document`：支持 JSON `{ filename, content }` 和 multipart `file` 上传；生成 Wiki 页面并保留原始资料为来源
+
+### 来源资料与旧文档检索
 
 - `GET /api/documents`
 - `GET /api/documents/:id`

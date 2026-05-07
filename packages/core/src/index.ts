@@ -69,6 +69,8 @@ export { AutoStrategy, ConfirmStrategy, ReviewStrategy, EditStrategy, RejectStra
 export { SqliteStorage } from "./storage/sqlite.js";
 export { SQLiteVectorStore } from "./storage/vector-store-sqlite.js";
 export type { IVectorStore, Document, DocumentChunk, SearchResult } from "./storage/vector-store.js";
+export { SQLiteWikiStore } from "./storage/wiki-store-sqlite.js";
+export type { IWikiStore, WikiPage, WikiClaim, WikiLink, WikiPageDetail, WikiSearchResult, WikiPageInput } from "./storage/wiki-store.js";
 
 // Tools
 export { createRouteToAgentTool, routeToAgentTool } from "./tools/route-to-agent.js";
@@ -81,6 +83,7 @@ export type { WebSearchConfig, SearchProvider } from "./tools/web-search.js";
 export { createWebFetchTool } from "./tools/web-fetch.js";
 export type { WebFetchConfig, WebFetchResult } from "./tools/web-fetch.js";
 export { createRetrieveKnowledgeTool } from "./tools/retrieve-knowledge.js";
+export { createSearchWikiTool } from "./tools/search-wiki.js";
 export { createRuntimeTool, createToolRuntimeOptions, withRuntimeTools, createRuntimeTools, createClientToolDefinitions, normalizeEnabledTools } from "./tools/runtime.js";
 export type { ToolRuntimeOptions, ToolRuntimeInput, ToolRuntimeAvailability, RuntimeTool } from "./tools/runtime.js";
 export { WorkspaceManager, createWorkspaceManager } from "./tools/workspace/manager.js";

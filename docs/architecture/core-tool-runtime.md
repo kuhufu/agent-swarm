@@ -1,6 +1,6 @@
 # Core Tool Runtime
 
-`packages/core/src/tools/runtime.ts` 是 Agent 工具注入的统一入口。`Conversation` 负责根据当前会话的 `enabledTools` 决定启用哪些工具；`AgentSwarm.createToolRuntimeAvailability()` 只提供本会话可用的工具资源，例如 WebSearch 配置、MCP 工具、知识库工具和 workspace 组合工具。
+`packages/core/src/tools/runtime.ts` 是 Agent 工具注入的统一入口。`Conversation` 负责根据当前会话的 `enabledTools` 决定启用哪些工具；`AgentSwarm.createToolRuntimeAvailability()` 只提供本会话可用的工具资源，例如 WebSearch 配置、MCP 工具、Wiki/知识库工具和 workspace 组合工具。
 
 ## 入口
 
@@ -20,13 +20,14 @@
 3. 前端桥接工具：`enabledTools` 包含 `current_time` 或 `javascript_execute` 时注入。
 4. 服务端内置工具：`enabledTools` 包含 `web_search` 时注入 `createWebSearchTool()`。
 5. MCP 工具：`enabledTools` 包含 `mcp` 时注入所有已发现 MCP 工具。
-6. 运行时工具：`runtimeTools` 中工具 id 出现在 `enabledTools` 时注入其展开后的所有 `AgentTool`。
+6. 运行时工具：`runtimeTools` 中工具 id 出现在 `enabledTools` 时注入其展开后的所有 `AgentTool`，包括 `search_wiki`、`retrieve_knowledge` 和 `workspace`。
 
 ## 新增工具约定
 
 运行时只区分一种工具抽象：`RuntimeTool`。单个工具和多个底层 `AgentTool` 组成的能力都使用这个抽象，只是 `agentTools` 长度不同。
 
-- 单个能力：`createRuntimeTool(createRetrieveKnowledgeTool(...))`，默认使用底层工具名 `retrieve_knowledge` 作为启用 id。
+- 单个能力：`createRuntimeTool(createSearchWikiTool(...))`，默认使用底层工具名 `search_wiki` 作为启用 id。
+- 旧文档检索能力：`createRuntimeTool(createRetrieveKnowledgeTool(...))`，默认使用底层工具名 `retrieve_knowledge` 作为启用 id。
 - 组合能力：`createWorkspaceTool(workspace)` 返回 id 为 `workspace` 的 `RuntimeTool`，展开后包含 `workspace_write_file`、`workspace_read_file`、`workspace_list_files`、`workspace_run_container`、`workspace_list_containers`、`workspace_remove_containers`。
 
 WebSocket 层只传递用户选择的 `enabledTools` 和前端工具执行器。它不创建具体工具，也不判断工具是否启用。

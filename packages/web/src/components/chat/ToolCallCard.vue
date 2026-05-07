@@ -5,6 +5,7 @@ import SvgIcon from "../common/SvgIcon.vue";
 import SectionLabel from "./SectionLabel.vue";
 import JavascriptExecutionCard, { extractJavascriptExecution } from "./JavascriptExecutionCard.vue";
 import KnowledgeReferencesCard, { extractKnowledgeReferences, extractQueryText } from "./KnowledgeReferencesCard.vue";
+import WikiReferencesCard, { extractWikiReferences } from "./WikiReferencesCard.vue";
 
 const props = defineProps<{
   toolCall: ToolCallInfo;
@@ -12,11 +13,16 @@ const props = defineProps<{
 
 const expanded = ref(false);
 const isKnowledgeTool = computed(() => props.toolCall.name === "retrieve_knowledge");
+const isWikiTool = computed(() => props.toolCall.name === "search_wiki");
 const isJavascriptTool = computed(() => props.toolCall.name === "javascript_execute");
 const knowledgeReferences = computed(() => isKnowledgeTool.value
   ? extractKnowledgeReferences(props.toolCall.result)
   : null);
 const hasKnowledgeResult = computed(() => isKnowledgeTool.value && props.toolCall.result !== undefined);
+const wikiReferences = computed(() => isWikiTool.value
+  ? extractWikiReferences(props.toolCall.result)
+  : null);
+const hasWikiResult = computed(() => isWikiTool.value && props.toolCall.result !== undefined);
 const javascriptExecution = computed(() => isJavascriptTool.value
   ? extractJavascriptExecution(props.toolCall.result, props.toolCall.arguments)
   : null);
@@ -55,6 +61,10 @@ const status = computed(() => {
         v-if="hasKnowledgeResult"
         :references="knowledgeReferences ?? []"
         :query-text="queryText"
+      />
+      <WikiReferencesCard
+        v-else-if="hasWikiResult"
+        :references="wikiReferences ?? []"
       />
       <JavascriptExecutionCard
         v-else-if="hasJavascriptResult && javascriptExecution"

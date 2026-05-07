@@ -10,6 +10,7 @@ import { messageRoutes } from "./routes/messages.js";
 import { configRoutes } from "./routes/config.js";
 import { usageRoutes } from "./routes/usage.js";
 import { documentRoutes } from "./routes/documents.js";
+import { wikiRoutes } from "./routes/wiki.js";
 import { authRoutes } from "./routes/auth.js";
 import { templateRoutes } from "./routes/templates.js";
 import { authMiddleware } from "./middleware/auth.js";
@@ -41,6 +42,7 @@ export function createApp(swarm: AgentSwarm): Express {
   app.use("/api", messageRoutes(swarm));
   app.use("/api", usageRoutes(swarm));
   app.use("/api", documentRoutes(swarm));
+  app.use("/api", wikiRoutes(swarm));
   app.use("/api/templates", templateRoutes(swarm));
 
   // Error handler
