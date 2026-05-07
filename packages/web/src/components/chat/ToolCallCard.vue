@@ -3,6 +3,8 @@ import { computed, ref } from "vue";
 import { RouterLink } from "vue-router";
 import type { ToolCallInfo } from "../../types/index.js";
 import SvgIcon from "../common/SvgIcon.vue";
+import hljs from "highlight.js/lib/common";
+import "highlight.js/styles/github-dark.css";
 
 const props = defineProps<{
   toolCall: ToolCallInfo;
@@ -303,7 +305,7 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
 
           <details v-if="javascriptExecution.code" class="js-code-details" @click.stop>
             <summary>查看代码</summary>
-            <pre class="js-code-pre">{{ javascriptExecution.code }}</pre>
+            <pre class="js-code-pre" v-html="hljs.highlight(javascriptExecution.code, { language: 'javascript' }).value" />
           </details>
         </div>
       </div>
