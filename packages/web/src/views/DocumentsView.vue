@@ -233,6 +233,11 @@ async function doSearch(query: string) {
   }
 }
 
+function clearSearch() {
+  searchQuery.value = "";
+  searchResults.value = [];
+}
+
 function createNewDoc() {
   const tempDoc: Document = {
     id: `__new__${Date.now()}`,
@@ -536,6 +541,15 @@ function highlightMatch(text: string, query: string): string {
             class="search-input"
             placeholder="搜索文档内容..."
           />
+          <button
+            v-if="searchQuery"
+            class="search-clear-btn"
+            type="button"
+            title="清空搜索"
+            @click="clearSearch"
+          >
+            <SvgIcon name="close" :size="12" />
+          </button>
           <span v-if="searching" class="search-spinner" />
         </div>
         <button class="btn-primary" @click="createNewDoc">
@@ -790,7 +804,7 @@ function highlightMatch(text: string, query: string): string {
 
 .search-input {
   width: 240px;
-  padding: 8px 14px 8px 36px;
+  padding: 8px 58px 8px 36px;
   background: var(--input-bg);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-sm);
@@ -806,6 +820,29 @@ function highlightMatch(text: string, query: string): string {
 
 .search-input::placeholder {
   color: var(--color-text-muted);
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 30px;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-50%);
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.search-clear-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-primary);
 }
 
 .search-spinner {
