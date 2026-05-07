@@ -23,6 +23,7 @@
 - Workspace 工具：`workspace_run_container` 通过 Docker 隔离执行命令，容器按会话 label 关联，并通过 `workspace_list_containers` / `workspace_remove_containers` 管理当前会话容器
 - 消息 Markdown 渲染：基于 `marked + marked-highlight + highlight.js + KaTeX + dompurify`，支持代码高亮、数学公式与安全净化
 - 知识库引用回显：`retrieve_knowledge` 工具结果会在聊天工具卡中展示命中文档、片段和相关度，并可跳转到文档详情
+- 前端 JS 执行回显：`javascript_execute` 工具结果会在聊天工具卡中结构化展示返回值、日志和执行代码
 - 介入机制：支持工具调用/错误/handoff 等节点人工决策
 - 会话执行 Trace：事件按会话落库，聊天页右侧与历史对话详情可查看 Agent 生命周期、工具调用、handoff、介入与错误时间线
 - 事件分级落库：`eventLogLevel = none | key | full`（默认 `key`）

@@ -31,6 +31,16 @@
 
 WebSocket 层只传递用户选择的 `enabledTools` 和前端工具执行器。它不创建具体工具，也不判断工具是否启用。
 
+## 前端桥接工具结果
+
+`javascript_execute` 在浏览器内执行，工具结果的 `details` 固定保留：
+
+- `code`：本次执行的 JavaScript 代码。
+- `result`：返回值或错误消息的字符串化结果。
+- `logs`：`console.log/info/warn/error` 捕获到的日志数组。
+
+聊天工具卡会优先读取这组结构化字段，并把返回值、日志和代码分区展示；实时 WebSocket 事件和历史消息恢复都使用同一套展示逻辑。若历史记录中 `details` 已被合并到工具结果根对象，前端也会兼容读取。
+
 ## Swarm handoff 协议
 
 `handoff` 是 `swarm` 模式的内置调度协议，不是普通工具副作用。Agent 调用 `handoff` 只是在提出交接请求；`SwarmMode` 会完成目标校验、`on_handoff` 介入审批、循环保护和事件记录，审批通过后才中断当前 Agent 并把控制权交给目标 Agent。
