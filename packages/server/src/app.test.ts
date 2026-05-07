@@ -35,6 +35,7 @@ function createMockSwarm() {
     chunksData: Array<{ id: string; documentId: string; content: string; index: number }>;
     userId: string;
   }> = [];
+  const wikiPages: any[] = [];
 
   swarms.set("router_swarm", {
     id: "router_swarm",
@@ -147,6 +148,62 @@ function createMockSwarm() {
         });
       },
     },
+    wikiStore: {
+      listPages: async (userId: string) => wikiPages.filter((page) => page.userId === userId),
+      getPage: async (pageId: string, userId: string) => wikiPages.find((page) => page.id === pageId && page.userId === userId) ?? null,
+      createPage: async (userId: string, input: any) => {
+        const page = {
+          id: `wiki_${wikiPages.length + 1}`,
+          userId,
+          title: input.title,
+          summary: input.summary,
+          content: input.content,
+          aliases: input.aliases ?? [],
+          tags: input.tags ?? [],
+          status: input.status ?? "active",
+          sourceDocumentIds: input.sourceDocumentIds ?? [],
+          claims: input.claims ?? [],
+          links: input.links ?? [],
+          createdAt: 1,
+          updatedAt: 1,
+        };
+        wikiPages.push(page);
+        return page;
+      },
+      updatePage: async (pageId: string, userId: string, input: any) => {
+        const index = wikiPages.findIndex((page) => page.id === pageId && page.userId === userId);
+        if (index < 0) throw new Error("Wiki page not found");
+        wikiPages[index] = { ...wikiPages[index], ...input, id: pageId, userId };
+        return wikiPages[index];
+      },
+      deletePage: async (pageId: string, userId: string) => {
+        const index = wikiPages.findIndex((page) => page.id === pageId && page.userId === userId);
+        if (index >= 0) wikiPages.splice(index, 1);
+      },
+      search: async (query: string, _topK: number | undefined, userId: string) =>
+        wikiPages
+          .filter((page) => page.userId === userId && `${page.title} ${page.summary} ${page.content}`.includes(query))
+          .map((page) => ({ page, claims: page.claims ?? [], score: 1 })),
+    },
+    generateWikiPagesFromDocument: async (input: any) => {
+      const page = {
+        id: `wiki_${wikiPages.length + 1}`,
+        userId: input.userId,
+        title: input.title,
+        summary: input.content.slice(0, 80),
+        content: input.content,
+        aliases: [],
+        tags: ["generated"],
+        status: "active",
+        sourceDocumentIds: [input.documentId],
+        claims: [{ text: input.content.slice(0, 120), sourceDocumentId: input.documentId }],
+        links: [],
+        createdAt: 1,
+        updatedAt: 1,
+      };
+      wikiPages.push(page);
+      return { pages: [page], generatedBy: "fallback" };
+    },
     getLLMConfig: () => JSON.parse(JSON.stringify(llmConfig)) as LLMBackendConfig,
     updateLLMConfig: async (next: LLMBackendConfig) => { llmConfig = JSON.parse(JSON.stringify(next)) as LLMBackendConfig; return JSON.parse(JSON.stringify(llmConfig)) as LLMBackendConfig; },
   };
@@ -155,11 +212,12 @@ function createMockSwarm() {
     swarm: mock as unknown as AgentSwarm,
     usageCalls,
     uploadedDocs,
+    wikiPages,
   };
 }
 
 async function startTestServer() {
-  const { swarm, usageCalls, uploadedDocs } = createMockSwarm();
+  const { swarm, usageCalls, uploadedDocs, wikiPages } = createMockSwarm();
   const app = createApp(swarm);
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", () => resolve()));
@@ -171,6 +229,7 @@ async function startTestServer() {
     baseUrl,
     usageCalls,
     uploadedDocs,
+    wikiPages,
     close: async () => { await new Promise<void>((resolve, reject) => { server.close((err) => (err ? reject(err) : resolve())); }); },
   };
 }
@@ -459,6 +518,57 @@ describe("API routes", () => {
         content: "引用片段内容",
         index: 0,
       });
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("POST /api/wiki/ingest-document generates wiki pages and stores source document", async () => {
+    const server = await startTestServer();
+    try {
+      const response = await fetch(`${server.baseUrl}/api/wiki/ingest-document`, {
+        method: "POST",
+        headers: withAuthHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          filename: "登录态校验",
+          content: "登录态校验要求认证中间件先校验 token。",
+        }),
+      });
+      const data = await response.json() as { data: { documentId: string; pages: any[]; generatedBy: string } };
+
+      expect(response.status).toBe(201);
+      expect(data.data.generatedBy).toBe("fallback");
+      expect(data.data.pages[0].title).toBe("登录态校验");
+      expect(server.uploadedDocs[0]?.id).toBe(data.data.documentId);
+      expect(server.wikiPages).toHaveLength(1);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("POST /api/wiki/search returns user-scoped wiki pages", async () => {
+    const server = await startTestServer();
+    try {
+      await fetch(`${server.baseUrl}/api/wiki/pages`, {
+        method: "POST",
+        headers: withAuthHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          title: "认证中间件",
+          summary: "认证中间件校验 token。",
+          content: "认证中间件在业务路由前校验 token。",
+          tags: ["auth"],
+        }),
+      });
+
+      const response = await fetch(`${server.baseUrl}/api/wiki/search`, {
+        method: "POST",
+        headers: withAuthHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({ query: "token" }),
+      });
+      const data = await response.json() as { data: Array<{ page: { title: string } }> };
+
+      expect(response.status).toBe(200);
+      expect(data.data[0]?.page.title).toBe("认证中间件");
     } finally {
       await server.close();
     }

@@ -18,7 +18,7 @@ import type { WebFetchConfig } from "../tools/web-fetch.js";
 import { MCPClient } from "../tools/mcp/client.js";
 import type { MCPServerConfig } from "../tools/mcp/client.js";
 import type { IVectorStore } from "../storage/vector-store.js";
-import type { IWikiStore, WikiPageDetail, WikiPageInput } from "../storage/wiki-store.js";
+import type { IWikiStore, WikiClaim, WikiLink, WikiPage, WikiPageDetail, WikiPageInput } from "../storage/wiki-store.js";
 import type { ToolRuntimeAvailability } from "../tools/runtime.js";
 import { createRuntimeTool } from "../tools/runtime.js";
 import { createAllMCPTools } from "../tools/mcp/tool-provider.js";
@@ -865,13 +865,58 @@ export class AgentSwarm {
 
     const drafts = await this.generateWikiDrafts(input.title, text, input.documentId);
     const pages: WikiPageDetail[] = [];
+    const existingPages = await this.wikiStore.listPages(normalizedUserId);
     for (const draft of drafts.pages) {
-      pages.push(await this.wikiStore.createPage(normalizedUserId, draft));
+      const matched = await this.findMatchingWikiPage(normalizedUserId, draft, existingPages);
+      if (matched) {
+        const updated = await this.wikiStore.updatePage(
+          matched.id,
+          normalizedUserId,
+          mergeWikiPage(matched, draft, input.documentId),
+        );
+        pages.push(updated);
+        const index = existingPages.findIndex((page) => page.id === updated.id);
+        if (index >= 0) {
+          existingPages[index] = updated;
+        }
+        continue;
+      }
+
+      const created = await this.wikiStore.createPage(normalizedUserId, draft);
+      pages.push(created);
+      existingPages.push(created);
     }
     return {
       pages,
       generatedBy: drafts.generatedBy,
     };
+  }
+
+  private async findMatchingWikiPage(
+    userId: string,
+    draft: WikiPageInput,
+    existingPages: WikiPage[],
+  ): Promise<WikiPageDetail | null> {
+    const draftKeys = new Set([
+      normalizeWikiKey(draft.title),
+      ...(draft.aliases ?? []).map(normalizeWikiKey),
+    ].filter(Boolean));
+
+    const matched = existingPages.find((page) => {
+      const pageKeys = [
+        normalizeWikiKey(page.title),
+        ...page.aliases.map(normalizeWikiKey),
+      ].filter(Boolean);
+      return pageKeys.some((key) => draftKeys.has(key));
+    });
+
+    if (!matched) {
+      return null;
+    }
+    if (!this.wikiStore) {
+      return null;
+    }
+    return this.wikiStore.getPage(matched.id, userId);
   }
 
   private async generateWikiDrafts(
@@ -1397,4 +1442,84 @@ function normalizeWikiLinkDraft(value: unknown): NonNullable<WikiPageInput["link
     ? raw.relation
     : "related";
   return { toTitle, relation };
+}
+
+function mergeWikiPage(existing: WikiPageDetail, draft: WikiPageInput, documentId: string): Partial<WikiPageInput> {
+  const mergedContent = existing.content.includes(draft.content)
+    ? existing.content
+    : [
+      existing.content,
+      `## 来源补充 ${documentId.slice(0, 8)}`,
+      draft.content,
+    ].join("\n\n");
+
+  return {
+    title: existing.title,
+    summary: mergeSummary(existing.summary, draft.summary),
+    content: mergedContent,
+    aliases: uniqueStrings([...existing.aliases, ...(draft.aliases ?? [])]),
+    tags: uniqueStrings([...existing.tags, ...(draft.tags ?? [])]),
+    status: "active",
+    sourceDocumentIds: uniqueStrings([...existing.sourceDocumentIds, documentId, ...(draft.sourceDocumentIds ?? [])]),
+    claims: mergeClaims(existing.claims, draft.claims ?? []),
+    links: mergeLinks(existing.links, draft.links ?? []),
+  };
+}
+
+function mergeSummary(existing: string, incoming: string): string {
+  const normalizedIncoming = incoming.trim();
+  if (!normalizedIncoming || existing.includes(normalizedIncoming)) {
+    return existing;
+  }
+  if (normalizeWikiKey(existing) === normalizeWikiKey(normalizedIncoming)) {
+    return existing;
+  }
+  return `${existing}\n${normalizedIncoming}`.slice(0, 800);
+}
+
+function uniqueStrings(values: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const normalized = value.trim();
+    const key = normalizeWikiKey(normalized);
+    if (!normalized || seen.has(key)) continue;
+    seen.add(key);
+    result.push(normalized);
+  }
+  return result;
+}
+
+function mergeClaims(
+  existing: WikiClaim[],
+  incoming: NonNullable<WikiPageInput["claims"]>,
+): Array<Omit<WikiClaim, "id" | "pageId"> | WikiClaim> {
+  const seen = new Set<string>();
+  const result: Array<Omit<WikiClaim, "id" | "pageId"> | WikiClaim> = [];
+  for (const claim of [...existing, ...incoming]) {
+    const key = normalizeWikiKey(claim.text);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push(claim);
+  }
+  return result;
+}
+
+function mergeLinks(
+  existing: WikiLink[],
+  incoming: NonNullable<WikiPageInput["links"]>,
+): Array<(Omit<WikiLink, "id" | "fromPageId" | "toPageId"> & { toPageId?: string }) | WikiLink> {
+  const seen = new Set<string>();
+  const result: Array<(Omit<WikiLink, "id" | "fromPageId" | "toPageId"> & { toPageId?: string }) | WikiLink> = [];
+  for (const link of [...existing, ...incoming]) {
+    const key = `${normalizeWikiKey(link.relation)}:${normalizeWikiKey(link.toTitle)}`;
+    if (!link.toTitle.trim() || seen.has(key)) continue;
+    seen.add(key);
+    result.push(link);
+  }
+  return result;
+}
+
+function normalizeWikiKey(value: string): string {
+  return value.trim().toLocaleLowerCase().replace(/\s+/g, " ");
 }

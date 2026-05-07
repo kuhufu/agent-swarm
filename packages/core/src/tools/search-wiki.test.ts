@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { rmSync } from "node:fs";
+import { AgentSwarm } from "../core/swarm.js";
 import { SQLiteWikiStore } from "../storage/wiki-store-sqlite.js";
 import { createSearchWikiTool } from "./search-wiki.js";
 
@@ -53,7 +54,55 @@ describe("SQLiteWikiStore", () => {
     const result = await tool.execute("tool-call-1", { query: "身份验证", topK: 3 });
 
     expect(result.content[0]?.type).toBe("text");
-    expect(result.content[0]?.text).toContain("登录态校验");
+    const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+    expect(text).toContain("登录态校验");
     expect(result.details.length).toBeGreaterThan(0);
+  });
+});
+
+describe("AgentSwarm wiki ingestion", () => {
+  const storagePath = testDbPath();
+  const wikiPath = testDbPath();
+  const wikiStore = new SQLiteWikiStore(wikiPath);
+  const swarm = new AgentSwarm({
+    config: {
+      llm: { apiKeys: {} },
+      storage: { type: "sqlite", path: storagePath },
+      swarms: [],
+    },
+    wikiStore,
+  });
+
+  beforeAll(async () => {
+    await wikiStore.init();
+    await swarm.init();
+  });
+
+  afterAll(async () => {
+    await swarm.close();
+    for (const path of [storagePath, `${storagePath}-wal`, `${storagePath}-shm`, wikiPath, `${wikiPath}-wal`, `${wikiPath}-shm`]) {
+      rmSync(path, { force: true });
+    }
+  });
+
+  it("merges repeated document ingestion into an existing wiki page", async () => {
+    const first = await swarm.generateWikiPagesFromDocument({
+      userId: USER,
+      documentId: "doc-auth-1",
+      title: "登录态校验",
+      content: "登录态校验要求认证中间件先校验 token。",
+    });
+    const second = await swarm.generateWikiPagesFromDocument({
+      userId: USER,
+      documentId: "doc-auth-2",
+      title: "登录态校验",
+      content: "登录态校验还需要确认用户没有被禁用。",
+    });
+
+    expect(first.pages[0]?.id).toBe(second.pages[0]?.id);
+    expect(second.pages[0]?.content).toContain("用户没有被禁用");
+    expect(second.pages[0]?.sourceDocumentIds).toEqual(["doc-auth-1", "doc-auth-2"]);
+    const pages = await wikiStore.listPages(USER);
+    expect(pages).toHaveLength(1);
   });
 });
