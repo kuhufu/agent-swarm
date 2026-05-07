@@ -205,6 +205,15 @@ export const ICONS: Record<string, IconDef> = {
       { d: "M7 3v5h8" },
     ],
   },
+  refresh: {
+    viewBox: "0 0 24 24",
+    paths: [
+      { d: "M21 2v6h-6" },
+      { d: "M3 12a9 9 0 0115-6.7L21 8" },
+      { d: "M3 22v-6h6" },
+      { d: "M21 12a9 9 0 01-15 6.7L3 16" },
+    ],
+  },
   wrench: {
     viewBox: "0 0 24 24",
     paths: [

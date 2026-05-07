@@ -186,6 +186,14 @@ function createMockSwarm() {
           .map((page) => ({ page, claims: page.claims ?? [], score: 1 })),
     },
     generateWikiPagesFromDocument: async (input: any) => {
+      const existing = wikiPages.find((page) => page.userId === input.userId && page.title === input.title);
+      if (existing) {
+        existing.summary = input.content.slice(0, 80);
+        existing.content = input.content;
+        existing.sourceDocumentIds = Array.from(new Set([...existing.sourceDocumentIds, input.documentId]));
+        existing.claims = [{ text: input.content.slice(0, 120), sourceDocumentId: input.documentId }];
+        return { pages: [existing], generatedBy: "fallback" };
+      }
       const page = {
         id: `wiki_${wikiPages.length + 1}`,
         userId: input.userId,
@@ -569,6 +577,35 @@ describe("API routes", () => {
 
       expect(response.status).toBe(200);
       expect(data.data[0]?.page.title).toBe("认证中间件");
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("POST /api/wiki/pages/:id/regenerate rebuilds from source documents", async () => {
+    const server = await startTestServer();
+    try {
+      const ingestResponse = await fetch(`${server.baseUrl}/api/wiki/ingest-document`, {
+        method: "POST",
+        headers: withAuthHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          filename: "认证中间件",
+          content: "认证中间件在业务路由前校验 token。",
+        }),
+      });
+      const ingestData = await ingestResponse.json() as { data: { pages: any[] } };
+      const pageId = ingestData.data.pages[0].id;
+
+      const response = await fetch(`${server.baseUrl}/api/wiki/pages/${pageId}/regenerate`, {
+        method: "POST",
+        headers: withAuthHeaders(),
+      });
+      const data = await response.json() as { data: { page: { id: string; title: string }; generatedBy: string } };
+
+      expect(response.status).toBe(200);
+      expect(data.data.generatedBy).toBe("fallback");
+      expect(data.data.page.id).toBe(pageId);
+      expect(data.data.page.title).toBe("认证中间件");
     } finally {
       await server.close();
     }

@@ -175,6 +175,7 @@ pnpm --filter @agent-swarm/server test
 - `POST /api/wiki/pages`
 - `PUT /api/wiki/pages/:id`
 - `DELETE /api/wiki/pages/:id`
+- `POST /api/wiki/pages/:id/regenerate`：基于页面来源资料重新生成并合并 Wiki 页面
 - `POST /api/wiki/search`
 - `POST /api/wiki/ingest-document`：支持 JSON `{ filename, content }` 和 multipart `file` 上传；生成 Wiki 页面并保留原始资料为来源
 

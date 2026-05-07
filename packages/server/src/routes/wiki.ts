@@ -67,6 +67,43 @@ export function wikiRoutes(swarm: AgentSwarm): Router {
     }
   });
 
+  router.post("/wiki/pages/:id/regenerate", async (req, res) => {
+    try {
+      const userId = resolveRequestUserId(req);
+      if (!userId) return res.status(401).json({ error: "未登录" });
+      if (!swarm.wikiStore) return res.status(404).json({ error: "Wiki 未初始化" });
+
+      const page = await swarm.wikiStore.getPage(req.params.id as string, userId);
+      if (!page) return res.status(404).json({ error: "Wiki 页面不存在" });
+      if (!swarm.vectorStore) return res.status(404).json({ error: "来源资料未初始化" });
+
+      const sourceDocuments = [];
+      for (const sourceDocumentId of page.sourceDocumentIds) {
+        const doc = await swarm.vectorStore.getDocument(sourceDocumentId, userId);
+        if (doc?.content?.trim()) {
+          sourceDocuments.push(doc);
+        }
+      }
+      if (sourceDocuments.length === 0) {
+        return res.status(400).json({ error: "没有可用于重新生成的来源资料" });
+      }
+
+      const combinedContent = sourceDocuments
+        .map((doc) => [`# ${doc.title}`, doc.content].join("\n\n"))
+        .join("\n\n---\n\n");
+      const result = await swarm.generateWikiPagesFromDocument({
+        userId,
+        documentId: sourceDocuments[0]?.id ?? page.sourceDocumentIds[0] ?? page.id,
+        title: page.title,
+        content: combinedContent,
+      });
+      const updated = await swarm.wikiStore.getPage(page.id, userId);
+      res.json({ data: { ...result, page: updated ?? result.pages[0] ?? page } });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   router.post("/wiki/search", async (req, res) => {
     try {
       const userId = resolveRequestUserId(req);

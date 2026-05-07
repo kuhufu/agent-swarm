@@ -50,6 +50,7 @@ const searchResults = ref<WikiSearchResult[]>([]);
 const loading = ref(false);
 const saving = ref(false);
 const ingesting = ref(false);
+const regenerating = ref(false);
 const editing = ref(false);
 const draft = ref({
   title: "",
@@ -220,6 +221,26 @@ async function deletePage() {
   }
 }
 
+async function regeneratePage() {
+  if (!selectedPage.value || regenerating.value) return;
+  regenerating.value = true;
+  try {
+    const response = await apiClient<{ data: { page: WikiPage; generatedBy: string } }>(
+      `/wiki/pages/${selectedPage.value.id}/regenerate`,
+      { method: "POST" },
+    );
+    selectedPage.value = response.data.page;
+    fillDraft(response.data.page);
+    await loadPages();
+    await selectPage(response.data.page.id);
+    showSuccess(response.data.generatedBy === "llm" ? "Wiki 页面已重新生成" : "已使用基础模式刷新 Wiki 页面");
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "重新生成 Wiki 页面失败");
+  } finally {
+    regenerating.value = false;
+  }
+}
+
 async function ingestManualSource() {
   if (!manualSource.value.filename.trim() || !manualSource.value.content.trim()) {
     showError("资料标题和内容不能为空");
@@ -373,6 +394,15 @@ function splitCsv(value: string): string[] {
             <p>{{ selectedPage.summary }}</p>
           </div>
           <div class="toolbar-actions">
+            <button
+              class="secondary-btn"
+              type="button"
+              :disabled="regenerating || selectedPage.sourceDocumentIds.length === 0"
+              @click="regeneratePage"
+            >
+              <SvgIcon name="refresh" :size="14" />
+              {{ regenerating ? "生成中..." : "重新生成" }}
+            </button>
             <button class="secondary-btn" type="button" @click="startEdit">
               <SvgIcon name="edit" :size="14" />
               编辑
