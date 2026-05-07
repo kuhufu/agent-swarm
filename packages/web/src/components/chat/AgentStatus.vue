@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import SvgIcon from "../common/SvgIcon.vue";
 import { useSwarmStore } from "../../stores/swarm.js";
 import { agentColor } from "../../utils/agent-color.js";
 import { MODE_LABEL_ZH } from "../../constants/swarm-modes.js";
@@ -88,12 +89,7 @@ function agentSystemPrompt(agent: AgentState): string {
   <div class="agent-status">
     <div class="status-section">
       <h3>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
+        <SvgIcon name="user" :size="16" />
         AGENT 状态
       </h3>
 
