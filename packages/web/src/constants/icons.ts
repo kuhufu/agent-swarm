@@ -100,6 +100,14 @@ export const ICONS: Record<string, IconDef> = {
       { d: "M12 3v12" },
     ],
   },
+  download: {
+    viewBox: "0 0 24 24",
+    paths: [
+      { d: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" },
+      { d: "M7 10l5 5 5-5" },
+      { d: "M12 15V3" },
+    ],
+  },
   user: {
     viewBox: "0 0 24 24",
     paths: [

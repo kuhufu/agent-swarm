@@ -266,6 +266,23 @@ async function copySelectedDocument() {
   }, 1500);
 }
 
+function exportSelectedDocument() {
+  if (!selectedDoc.value?.content) {
+    return;
+  }
+  const rawTitle = selectedDoc.value.title.trim() || "document.txt";
+  const filename = rawTitle.replace(/[\\/:*?"<>|]+/g, "_");
+  const blob = new Blob([selectedDoc.value.content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 function createNewDoc() {
   const tempDoc: Document = {
     id: `__new__${Date.now()}`,
@@ -717,6 +734,14 @@ function highlightMatch(text: string, query: string): string {
                   title="复制全文"
                 >
                   <SvgIcon :name="copiedDocument ? 'check' : 'copy'" />
+                </button>
+                <button
+                  class="btn-icon"
+                  :disabled="!selectedDoc.content"
+                  @click="exportSelectedDocument"
+                  title="导出文档"
+                >
+                  <SvgIcon name="download" />
                 </button>
                 <button class="btn-icon" @click="startEdit" title="编辑">
                   <SvgIcon name="edit" />
