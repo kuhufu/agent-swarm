@@ -14,6 +14,7 @@ Workspace 产物是按会话隔离的工作区文件视图，用于把 `workspac
 - 单文件三点菜单操作：预览、下载、加入文档、标记或取消最终结果、删除。
 - 多选产物后批量打包下载、加入文档、标记或取消最终结果、删除。
 - 整个工作区打包下载。
+- `workspace_write_file` 写入历史记录，后端保留每个文件最近 20 个版本快照。
 - 手动刷新列表。
 
 `workspace_write_file` 工具结果会返回 `artifact: true`、`path`、`size`、`kind`、`language` 和 `previewable`。聊天工具卡识别这组结构化字段后展示为产物卡片，点击“查看”会切换到产物 tab 并打开对应文件。
@@ -22,8 +23,10 @@ Workspace 产物是按会话隔离的工作区文件视图，用于把 `workspac
 
 所有接口都需要当前用户拥有对应会话：
 
-- `GET /api/conversations/:id/workspace/files`：列出当前会话 workspace 文件，返回路径、文件名、大小、类型、预览能力、更新时间和下载地址。
+- `GET /api/conversations/:id/workspace/files`：列出当前会话 workspace 文件，返回路径、文件名、大小、类型、预览能力、更新时间、下载地址和版本数量。
 - `GET /api/conversations/:id/workspace/files/content?path=...`：读取文件预览内容，使用 `WorkspaceManager.readFile()` 的大小和行数限制，过长内容会返回 `truncated: true`。
+- `GET /api/conversations/:id/workspace/files/versions?path=...`：读取指定文件的版本记录，按更新时间倒序返回。
+- `GET /api/conversations/:id/workspace/files/versions/content?path=...&versionId=...`：读取指定版本快照内容，过长内容会返回 `truncated: true`。
 - `GET /api/conversations/:id/workspace/files/download?path=...`：下载指定文件。
 - `POST /api/conversations/:id/workspace/files/download-zip`：请求体 `{ paths: string[] }`，把多个产物打包为 zip 下载。
 - `POST /api/conversations/:id/workspace/files/import-document`：请求体 `{ path: string }`，读取产物文本内容并写入文档知识库，来源标记为 `workspace_artifact`。

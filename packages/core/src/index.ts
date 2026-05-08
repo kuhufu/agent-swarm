@@ -87,7 +87,7 @@ export { createSearchWikiTool } from "./tools/search-wiki.js";
 export { createRuntimeTool, createToolRuntimeOptions, withRuntimeTools, createRuntimeTools, createClientToolDefinitions, normalizeEnabledTools } from "./tools/runtime.js";
 export type { ToolRuntimeOptions, ToolRuntimeInput, ToolRuntimeAvailability, RuntimeTool } from "./tools/runtime.js";
 export { WorkspaceManager, createWorkspaceManager } from "./tools/workspace/manager.js";
-export type { FileInfo, GrepMatch, WorkspaceContainerInfo } from "./tools/workspace/manager.js";
+export type { FileInfo, GrepMatch, WorkspaceContainerInfo, WorkspaceFileVersion } from "./tools/workspace/manager.js";
 export { createWorkspaceTools } from "./tools/workspace/tool-set.js";
 export { createGrepTool } from "./tools/workspace/grep.js";
 export { createListWorkspaceContainersTool, createStartWorkspaceContainersTool, createStopWorkspaceContainersTool, createRestartWorkspaceContainersTool, createRemoveWorkspaceContainersTool, createPullWorkspaceImageTool } from "./tools/workspace/containers.js";

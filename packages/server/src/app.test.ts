@@ -480,6 +480,7 @@ describe("API routes", () => {
     const workspace = new WorkspaceManager("conv_test");
     const artifactPath = `reports/artifact-${Date.now()}.txt`;
     try {
+      await workspace.writeFile(artifactPath, "workspace artifact draft");
       await workspace.writeFile(artifactPath, "workspace artifact content");
       await workspace.writeFile("src/example.ts", "export const answer: number = 42;\n");
       await workspace.writeFile("easyfanyi/.gitignore", "node_modules\n");
@@ -487,7 +488,7 @@ describe("API routes", () => {
       const listResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files`, {
         headers: withAuthHeaders(),
       });
-      const listData = await listResponse.json() as { data: Array<{ path: string; kind: string; previewable: boolean; downloadUrl: string; final: boolean }> };
+      const listData = await listResponse.json() as { data: Array<{ path: string; kind: string; previewable: boolean; downloadUrl: string; final: boolean; versionCount: number }> };
       const artifact = listData.data.find((item) => item.path === artifactPath);
 
       expect(listResponse.status).toBe(200);
@@ -495,6 +496,7 @@ describe("API routes", () => {
         path: artifactPath,
         kind: "text",
         previewable: true,
+        versionCount: 2,
       });
       expect(artifact?.downloadUrl).toContain("/api/conversations/conv_test/workspace/files/download");
 
@@ -522,6 +524,21 @@ describe("API routes", () => {
         language: "typescript",
         content: "export const answer: number = 42;\n",
       });
+
+      const versionsResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/versions?path=${encodeURIComponent(artifactPath)}`, {
+        headers: withAuthHeaders(),
+      });
+      const versionsData = await versionsResponse.json() as { data: Array<{ id: string; path: string; size: number }> };
+      expect(versionsResponse.status).toBe(200);
+      expect(versionsData.data).toHaveLength(2);
+      expect(versionsData.data[0]).toMatchObject({ path: artifactPath, size: Buffer.byteLength("workspace artifact content") });
+
+      const versionContentResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/versions/content?path=${encodeURIComponent(artifactPath)}&versionId=${encodeURIComponent(versionsData.data[1]?.id ?? "")}`, {
+        headers: withAuthHeaders(),
+      });
+      const versionContentData = await versionContentResponse.json() as { data: { content: string } };
+      expect(versionContentResponse.status).toBe(200);
+      expect(versionContentData.data.content).toBe("workspace artifact draft");
 
       const finalResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/final`, {
         method: "PATCH",

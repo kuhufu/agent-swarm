@@ -127,13 +127,64 @@ export function conversationRoutes(swarm: AgentSwarm): Router {
         workspace.listFiles(),
         readArtifactMetadata(workspace),
       ]);
+      const visibleFiles = files.filter((file) => file.path !== ARTIFACT_METADATA_PATH);
+      const versionCounts = new Map<string, number>();
+      await Promise.all(visibleFiles.map(async (file) => {
+        versionCounts.set(file.path, (await workspace.listFileVersions(file.path)).length);
+      }));
       res.json({
-        data: files
-          .filter((file) => file.path !== ARTIFACT_METADATA_PATH)
-          .map((file) => toArtifactFile(req.params.id as string, file, metadata.finalPaths)),
+        data: visibleFiles.map((file) => toArtifactFile(req.params.id as string, file, metadata.finalPaths, versionCounts.get(file.path) ?? 0)),
       });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.get("/:id/workspace/files/versions", async (req, res) => {
+    const userId = resolveRequestUserId(req);
+    if (!userId) return res.status(401).json({ error: "未登录" });
+
+    try {
+      const conversation = await swarm.getConversation(req.params.id as string, userId);
+      if (!conversation) return res.status(404).json({ error: "会话不存在" });
+
+      const path = typeof req.query.path === "string" ? req.query.path : "";
+      if (!path || path === ARTIFACT_METADATA_PATH) return res.status(400).json({ error: "path 不能为空" });
+
+      const workspace = new WorkspaceManager(req.params.id as string);
+      await workspace.readFileBuffer(path);
+      res.json({ data: await workspace.listFileVersions(path) });
+    } catch (err: any) {
+      res.status(404).json({ error: err.message });
+    }
+  });
+
+  router.get("/:id/workspace/files/versions/content", async (req, res) => {
+    const userId = resolveRequestUserId(req);
+    if (!userId) return res.status(401).json({ error: "未登录" });
+
+    try {
+      const conversation = await swarm.getConversation(req.params.id as string, userId);
+      if (!conversation) return res.status(404).json({ error: "会话不存在" });
+
+      const path = typeof req.query.path === "string" ? req.query.path : "";
+      const versionId = typeof req.query.versionId === "string" ? req.query.versionId : "";
+      if (!path || path === ARTIFACT_METADATA_PATH || !versionId) return res.status(400).json({ error: "path 和 versionId 不能为空" });
+
+      const workspace = new WorkspaceManager(req.params.id as string);
+      const result = await workspace.readFileVersion(path, versionId);
+      res.json({
+        data: {
+          path,
+          versionId,
+          content: result.content,
+          size: result.size,
+          truncated: result.truncated,
+          ...inferArtifactMeta(path),
+        },
+      });
+    } catch (err: any) {
+      res.status(404).json({ error: err.message });
     }
   });
 
@@ -359,9 +410,10 @@ interface ArtifactFile {
   updatedAt?: number;
   downloadUrl: string;
   final: boolean;
+  versionCount: number;
 }
 
-function toArtifactFile(conversationId: string, file: FileInfo, finalPaths: string[]): ArtifactFile {
+function toArtifactFile(conversationId: string, file: FileInfo, finalPaths: string[], versionCount: number): ArtifactFile {
   return {
     path: file.path,
     name: basename(file.path),
@@ -370,6 +422,7 @@ function toArtifactFile(conversationId: string, file: FileInfo, finalPaths: stri
     updatedAt: file.updatedAt,
     downloadUrl: `/api/conversations/${encodeURIComponent(conversationId)}/workspace/files/download?path=${encodeURIComponent(file.path)}`,
     final: finalPaths.includes(file.path),
+    versionCount,
     ...inferArtifactMeta(file.path),
   };
 }

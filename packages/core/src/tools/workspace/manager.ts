@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, writeFile, readFile, readdir, stat, rm, realpath } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
@@ -7,12 +8,23 @@ const WORKSPACE_ROOT = join(tmpdir(), "agent-workspaces");
 const MAX_FILE_SIZE = 1_048_576; // 1MB
 const MAX_WORKSPACE_SIZE = 52_428_800; // 50MB
 const MAX_READ_SIZE = 10240; // 10KB
+const WORKSPACE_HISTORY_PATH = ".agent-swarm-history.json";
+const WORKSPACE_VERSION_DIR = ".agent-swarm-versions";
+const MAX_HISTORY_PER_FILE = 20;
 
 export interface FileInfo {
   path: string;
   size: number;
   createdAt?: number;
   updatedAt?: number;
+}
+
+export interface WorkspaceFileVersion {
+  id: string;
+  path: string;
+  size: number;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface GrepMatch {
@@ -104,7 +116,7 @@ export class WorkspaceManager {
     return realBase;
   }
 
-  async writeFile(relativePath: string, content: string): Promise<FileInfo> {
+  async writeFile(relativePath: string, content: string, options?: { recordHistory?: boolean }): Promise<FileInfo> {
     await this.ensureDir();
     const fullPath = await this.checkPath(relativePath);
 
@@ -116,12 +128,31 @@ export class WorkspaceManager {
     await writeFile(fullPath, content, "utf-8");
 
     const fileStat = await stat(fullPath);
-    return {
+    const file = {
       path: relativePath,
       size: fileStat.size,
       createdAt: fileStat.birthtimeMs,
       updatedAt: fileStat.mtimeMs,
     };
+    if (options?.recordHistory !== false && !isInternalWorkspacePath(relativePath)) {
+      await this.recordFileVersion(file, content);
+    }
+    return file;
+  }
+
+  async listFileVersions(relativePath: string): Promise<WorkspaceFileVersion[]> {
+    const history = await this.readHistory();
+    return history.versions
+      .filter((version) => version.path === relativePath)
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  async readFileVersion(relativePath: string, versionId: string): Promise<{ content: string; size: number; truncated: boolean }> {
+    const version = (await this.listFileVersions(relativePath)).find((item) => item.id === versionId);
+    if (!version) {
+      throw new Error(`版本不存在: ${versionId}`);
+    }
+    return this.readFile(join(WORKSPACE_VERSION_DIR, version.id), 2000);
   }
 
   async readFile(relativePath: string, maxLines?: number): Promise<{ content: string; size: number; truncated: boolean }> {
@@ -192,6 +223,9 @@ export class WorkspaceManager {
     const entries = await readdir(target, { withFileTypes: true });
     for (const entry of entries) {
       const entryPath = join(target, entry.name);
+      if (isInternalWorkspacePath(entry.name)) {
+        continue;
+      }
       if (entry.isDirectory()) {
         const subFiles = await this.collectFiles(entryPath, join(relativePath ?? "", entry.name));
         results.push(...subFiles);
@@ -217,6 +251,9 @@ export class WorkspaceManager {
       for (const entry of entries) {
         const entryPath = join(dir, entry.name);
         const relPath = join(prefix, entry.name);
+        if (isInternalWorkspacePath(relPath)) {
+          continue;
+        }
         if (entry.isDirectory()) {
           const sub = await this.collectFiles(entryPath, relPath);
           results.push(...sub);
@@ -245,11 +282,73 @@ export class WorkspaceManager {
     }
   }
 
+  private async recordFileVersion(file: FileInfo, content: string): Promise<void> {
+    const versionId = `${Date.now()}-${randomUUID()}`;
+    const versionPath = await this.checkPath(join(WORKSPACE_VERSION_DIR, versionId));
+    await mkdir(dirname(versionPath), { recursive: true });
+    await writeFile(versionPath, content, "utf-8");
+
+    const history = await this.readHistory();
+    history.versions.push({
+      id: versionId,
+      path: file.path,
+      size: file.size,
+      createdAt: Date.now(),
+      updatedAt: file.updatedAt ?? Date.now(),
+    });
+
+    const keptVersions: WorkspaceFileVersion[] = [];
+    const removedVersionIds = new Set<string>();
+    const versionsByPath = new Map<string, WorkspaceFileVersion[]>();
+    for (const version of history.versions) {
+      const versions = versionsByPath.get(version.path) ?? [];
+      versions.push(version);
+      versionsByPath.set(version.path, versions);
+    }
+    for (const versions of versionsByPath.values()) {
+      const sorted = versions.sort((a, b) => b.updatedAt - a.updatedAt);
+      keptVersions.push(...sorted.slice(0, MAX_HISTORY_PER_FILE));
+      for (const removed of sorted.slice(MAX_HISTORY_PER_FILE)) {
+        removedVersionIds.add(removed.id);
+      }
+    }
+    history.versions = keptVersions.sort((a, b) => a.path.localeCompare(b.path) || b.updatedAt - a.updatedAt);
+    await this.writeHistory(history);
+
+    for (const id of removedVersionIds) {
+      await rm(await this.checkPath(join(WORKSPACE_VERSION_DIR, id)), { force: true });
+    }
+  }
+
+  private async readHistory(): Promise<{ versions: WorkspaceFileVersion[] }> {
+    try {
+      const fullPath = await this.checkPath(WORKSPACE_HISTORY_PATH);
+      const content = await readFile(fullPath, "utf-8");
+      const parsed = JSON.parse(content) as { versions?: Partial<WorkspaceFileVersion>[] };
+      return {
+        versions: Array.isArray(parsed.versions)
+          ? parsed.versions.flatMap((item) => normalizeWorkspaceFileVersion(item))
+          : [],
+      };
+    } catch {
+      return { versions: [] };
+    }
+  }
+
+  private async writeHistory(history: { versions: WorkspaceFileVersion[] }): Promise<void> {
+    const fullPath = await this.checkPath(WORKSPACE_HISTORY_PATH);
+    await writeFile(fullPath, JSON.stringify(history, null, 2), "utf-8");
+  }
+
   async grep(pattern: string, options?: { include?: string; maxResults?: number }): Promise<GrepMatch[]> {
     const args = ["-rn"];
     if (options?.include) {
       args.push("--include", options.include);
     }
+    args.push(
+      `--exclude=${WORKSPACE_HISTORY_PATH}`,
+      `--exclude-dir=${WORKSPACE_VERSION_DIR}`,
+    );
     args.push(pattern, ".");
 
     return new Promise((resolve) => {
@@ -449,4 +548,28 @@ function dockerStdout(args: string[]): Promise<string> {
 
 export function createWorkspaceManager(conversationId: string): WorkspaceManager {
   return new WorkspaceManager(conversationId);
+}
+
+function normalizeWorkspaceFileVersion(input: Partial<WorkspaceFileVersion>): WorkspaceFileVersion[] {
+  if (
+    typeof input.id !== "string"
+    || typeof input.path !== "string"
+    || typeof input.size !== "number"
+    || typeof input.createdAt !== "number"
+    || typeof input.updatedAt !== "number"
+  ) {
+    return [];
+  }
+  return [{
+    id: input.id,
+    path: input.path,
+    size: input.size,
+    createdAt: input.createdAt,
+    updatedAt: input.updatedAt,
+  }];
+}
+
+function isInternalWorkspacePath(path: string): boolean {
+  const firstSegment = path.split("/")[0];
+  return firstSegment === WORKSPACE_HISTORY_PATH || firstSegment === WORKSPACE_VERSION_DIR;
 }
