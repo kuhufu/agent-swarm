@@ -28,7 +28,9 @@
 
 - 单个能力：`createRuntimeTool(createSearchWikiTool(...))`，默认使用底层工具名 `search_wiki` 作为启用 id。
 - 旧文档检索能力：`createRuntimeTool(createRetrieveKnowledgeTool(...))`，默认使用底层工具名 `retrieve_knowledge` 作为启用 id。
-- 组合能力：`createWorkspaceTool(workspace)` 返回 id 为 `workspace` 的 `RuntimeTool`，展开后包含 `workspace_write_file`、`workspace_read_file`、`workspace_list_files`、`workspace_run_container`、`workspace_list_containers`、`workspace_remove_containers`。
+- 组合能力：`createWorkspaceTool(workspace)` 返回 id 为 `workspace` 的 `RuntimeTool`，展开后包含 `workspace_write_file`、`workspace_read_file`、`workspace_grep`、`workspace_list_files`、`workspace_run_container`、`workspace_list_containers`、`workspace_start_containers`、`workspace_stop_containers`、`workspace_restart_containers`、`workspace_remove_containers`、`workspace_pull_image`。
+
+Workspace 文件类工具会返回统一的协作上下文：`workspace_list_files` 在文本结果中列出具体路径树，`workspace_grep` 返回 `matchedPaths`，`workspace_read_file` 和 `workspace_write_file` 返回文件类型/语言/预览能力，四者都会在 `details.nextActions` 中给出可衔接的下一步工具和参数示例。这样 Agent 可以稳定地从列目录或搜索结果继续读取文件、写回产物，或用 `workspace_run_container` 做验证。
 
 WebSocket 层只传递用户选择的 `enabledTools` 和前端工具执行器。它不创建具体工具，也不判断工具是否启用。
 

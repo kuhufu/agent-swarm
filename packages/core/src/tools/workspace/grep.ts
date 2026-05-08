@@ -1,6 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { WorkspaceManager, GrepMatch } from "./manager.js";
+import { buildWorkspaceNextActions, summarizeGrepMatches, type WorkspaceNextAction } from "./context.js";
 
 const GrepParams = Type.Object({
   pattern: Type.String({ description: "搜索模式（正则表达式）" }),
@@ -17,6 +18,8 @@ const GrepParams = Type.Object({
 interface GrepDetails {
   matches: GrepMatch[];
   total: number;
+  matchedPaths: string[];
+  nextActions: WorkspaceNextAction[];
 }
 
 export function createGrepTool(
@@ -35,19 +38,40 @@ export function createGrepTool(
 
       if (matches.length === 0) {
         return {
-          content: [{ type: "text", text: "未找到匹配内容。" }],
-          details: { matches: [], total: 0 },
+          content: [{
+            type: "text",
+            text: [
+              "未找到匹配内容。",
+              "可调整 pattern、include 或先用 workspace_list_files 查看路径范围。",
+            ].join("\n"),
+          }],
+          details: {
+            matches: [],
+            total: 0,
+            matchedPaths: [],
+            nextActions: buildWorkspaceNextActions({}),
+          },
         };
       }
 
+      const matchedPaths = [...new Set(matches.map((match) => match.path))].sort();
       const text = [
-        `找到 ${matches.length} 处匹配:`,
-        ...matches.map((m) => `  ${m.path}:${m.line}  ${m.content}`),
+        `找到 ${matches.length} 处匹配，涉及 ${matchedPaths.length} 个文件:`,
+        summarizeGrepMatches(matches),
+        "后续可用 workspace_read_file 读取 matchedPaths 中的文件，或用更精确 pattern 继续搜索。",
       ].join("\n");
 
       return {
         content: [{ type: "text", text }],
-        details: { matches, total: matches.length },
+        details: {
+          matches,
+          total: matches.length,
+          matchedPaths,
+          nextActions: buildWorkspaceNextActions({
+            paths: matchedPaths,
+            hasMatches: true,
+          }),
+        },
       };
     },
   };

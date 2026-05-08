@@ -1,6 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { WorkspaceManager } from "./manager.js";
+import { buildWorkspaceNextActions, formatWorkspaceSize, inferWorkspaceFileMeta, type WorkspaceNextAction } from "./context.js";
 
 const WriteFileParams = Type.Object({
   path: Type.String({ description: "写入路径（相对于工作区根目录）" }),
@@ -14,6 +15,7 @@ interface WriteFileDetails {
   kind: string;
   language?: string;
   previewable: boolean;
+  nextActions: WorkspaceNextAction[];
 }
 
 export function createWriteFileTool(
@@ -31,95 +33,29 @@ export function createWriteFileTool(
       }
 
       const file = await workspace.writeFile(params.path, params.content);
+      const meta = inferWorkspaceFileMeta(file.path);
 
       return {
-        content: [{ type: "text", text: `文件已写入: ${file.path} (${formatSize(file.size)})` }],
+        content: [{
+          type: "text",
+          text: [
+            `文件已写入: ${file.path} (${formatWorkspaceSize(file.size)})`,
+            `类型: ${meta.language ?? meta.kind}`,
+            "后续可用 workspace_read_file 确认内容，或用 workspace_run_container 运行测试/构建。",
+          ].join("\n"),
+        }],
         details: {
           artifact: true,
           path: file.path,
           size: file.size,
-          ...inferArtifactMeta(file.path),
-          previewable: isPreviewable(file.path),
+          ...meta,
+          nextActions: buildWorkspaceNextActions({
+            paths: [file.path],
+            artifactPath: file.path,
+            canRun: meta.kind === "code" || ["json", "html", "markdown", "text"].includes(meta.kind),
+          }),
         },
       };
     },
   };
-}
-
-function inferArtifactMeta(path: string): { kind: string; language?: string } {
-  const normalizedPath = path.toLowerCase();
-  const filename = normalizedPath.split("/").pop() ?? normalizedPath;
-  const extension = filename.split(".").pop() ?? "";
-  const namedLanguage = CODE_FILENAMES[filename];
-  if (namedLanguage) return { kind: "code", language: namedLanguage };
-  const language = CODE_EXTENSIONS[extension];
-  if (language) return { kind: "code", language };
-  if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(extension)) return { kind: "image" };
-  if (["md", "markdown"].includes(extension)) return { kind: "markdown" };
-  if (["json"].includes(extension)) return { kind: "json" };
-  if (["html", "htm"].includes(extension)) return { kind: "html" };
-  if (["txt", "log", "csv", "jsonl", "xml", "yaml", "yml", "toml", "ini", "env"].includes(extension)) return { kind: "text" };
-  return { kind: "file" };
-}
-
-function isPreviewable(path: string): boolean {
-  return inferArtifactMeta(path).kind !== "file";
-}
-
-const CODE_FILENAMES: Record<string, string> = {
-  dockerfile: "dockerfile",
-  makefile: "makefile",
-  "package.json": "json",
-  "tsconfig.json": "json",
-};
-
-const CODE_EXTENSIONS: Record<string, string> = {
-  js: "javascript",
-  jsx: "javascript",
-  mjs: "javascript",
-  cjs: "javascript",
-  ts: "typescript",
-  tsx: "typescript",
-  vue: "xml",
-  css: "css",
-  scss: "scss",
-  sass: "scss",
-  less: "less",
-  html: "xml",
-  htm: "xml",
-  py: "python",
-  go: "go",
-  rs: "rust",
-  java: "java",
-  kt: "kotlin",
-  kts: "kotlin",
-  c: "c",
-  h: "c",
-  cpp: "cpp",
-  cc: "cpp",
-  cxx: "cpp",
-  hpp: "cpp",
-  cs: "csharp",
-  php: "php",
-  rb: "ruby",
-  swift: "swift",
-  sh: "bash",
-  bash: "bash",
-  zsh: "bash",
-  fish: "bash",
-  sql: "sql",
-  lua: "lua",
-  r: "r",
-  dart: "dart",
-  ex: "elixir",
-  exs: "elixir",
-  erl: "erlang",
-  clj: "clojure",
-  scala: "scala",
-};
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1_048_576) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1_048_576).toFixed(1)} MB`;
 }

@@ -20,7 +20,7 @@
 - 会话分支：支持整段会话分支，也支持从指定消息创建分支用于对比调试
 - 多租户隔离：`swarms / conversations / agent presets / documents / wiki / usage analytics` 按 `userId` 严格隔离；首个注册用户自动成为 `admin`
 - 工具运行时：`packages/core/src/tools/runtime.ts` 统一把模式工具、前端桥接工具、WebSearch、MCP 和运行时工具注入 Agent
-- Workspace 工具：`workspace_run_container` 通过 Docker 隔离执行命令，容器按会话 label 关联，并通过 `workspace_list_containers` / `workspace_remove_containers` 管理当前会话容器
+- Workspace 工具：`workspace_list_files/read_file/grep/write_file` 返回可衔接的路径、文件类型和 `nextActions`，便于 Agent 在列目录、搜索、读取、写入和容器验证之间连续协作；`workspace_run_container` 通过 Docker 隔离执行命令，容器按会话 label 关联，并通过容器管理工具管理当前会话容器
 - Workspace 产物：聊天页右侧产物面板可按目录分组查看并搜索当前会话工作区文件，支持文本/Markdown/JSON/代码/图片预览、单文件三点菜单操作、批量选择后下载/加入文档/标记最终/删除，以及整个工作区打包下载；`workspace_write_file` 工具卡可直接跳转到产物详情
 - 浏览器自动化工具：`browser_automation` 基于 [agent-browser](https://github.com/vercel-labs/agent-browser) 提供浏览器控制能力，支持打开网页、快照获取元素引用 `@e1/@e2`、点击、填表、截图等操作
 - 消息 Markdown 渲染：基于 `marked + marked-highlight + highlight.js + KaTeX + dompurify`，支持代码高亮、数学公式与安全净化
