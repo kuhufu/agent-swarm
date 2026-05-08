@@ -587,9 +587,11 @@ function handleFork() {
 /* ── Tool calls ── */
 .msg-tool-calls {
   margin-top: 8px;
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
+  width: 100%;
 }
 
 @keyframes fadeIn {

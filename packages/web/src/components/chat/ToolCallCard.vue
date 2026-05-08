@@ -121,10 +121,9 @@ function formatSize(bytes?: number): string {
 .tool-call-card {
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
-  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .tool-call-card:hover {
