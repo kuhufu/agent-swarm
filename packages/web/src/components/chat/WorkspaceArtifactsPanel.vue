@@ -31,6 +31,13 @@ interface ArtifactContent {
   previewable: boolean;
 }
 
+interface ArtifactGroup {
+  key: string;
+  label: string;
+  artifacts: WorkspaceArtifact[];
+  totalSize: number;
+}
+
 const props = defineProps<{
   conversationId: string | null;
   selectedPath?: string | null;
@@ -47,11 +54,33 @@ const selectedPaths = ref<Set<string>>(new Set());
 const previewOpen = ref(false);
 const openMenuPath = ref<string | null>(null);
 const batchMenuOpen = ref(false);
+const collapsedFolders = ref<Set<string>>(new Set());
 
 const totalSize = computed(() => artifacts.value.reduce((sum, item) => sum + item.size, 0));
 const selectedCount = computed(() => selectedPaths.value.size);
 const finalArtifacts = computed(() => artifacts.value.filter((item) => item.final));
 const selectedArtifacts = computed(() => artifacts.value.filter((item) => selectedPaths.value.has(item.path)));
+const artifactGroups = computed<ArtifactGroup[]>(() => {
+  const groups = new Map<string, WorkspaceArtifact[]>();
+  for (const artifact of artifacts.value) {
+    const dir = getArtifactDirectory(artifact.path);
+    const items = groups.get(dir) ?? [];
+    items.push(artifact);
+    groups.set(dir, items);
+  }
+  return [...groups.entries()]
+    .map(([key, items]) => ({
+      key,
+      label: key || "根目录",
+      artifacts: items,
+      totalSize: items.reduce((sum, item) => sum + item.size, 0),
+    }))
+    .sort((a, b) => {
+      if (a.key === "") return -1;
+      if (b.key === "") return 1;
+      return a.key.localeCompare(b.key);
+    });
+});
 const highlightedPreview = computed(() => {
   if (!preview.value || preview.value.kind !== "code") return "";
   const language = preview.value.language ?? "";
@@ -109,6 +138,7 @@ async function loadArtifacts(nextSelectedPath?: string) {
       `/conversations/${props.conversationId}/workspace/files`,
     );
     artifacts.value = response.data ?? [];
+    collapsedFolders.value = new Set([...collapsedFolders.value].filter((folder) => artifacts.value.some((item) => getArtifactDirectory(item.path) === folder)));
     selectedPaths.value = new Set([...selectedPaths.value].filter((path) => artifacts.value.some((item) => item.path === path)));
     const targetPath = nextSelectedPath ?? props.selectedPath ?? selectedArtifact.value?.path;
     const target = targetPath
@@ -130,6 +160,12 @@ async function loadArtifacts(nextSelectedPath?: string) {
 
 async function selectArtifact(artifact: WorkspaceArtifact) {
   selectedArtifact.value = artifact;
+  const directory = getArtifactDirectory(artifact.path);
+  if (collapsedFolders.value.has(directory)) {
+    const next = new Set(collapsedFolders.value);
+    next.delete(directory);
+    collapsedFolders.value = next;
+  }
   openMenuPath.value = null;
   batchMenuOpen.value = false;
 }
@@ -432,6 +468,18 @@ function toggleBatchMenu() {
   batchMenuOpen.value = !batchMenuOpen.value;
 }
 
+function toggleFolder(folder: string) {
+  const next = new Set(collapsedFolders.value);
+  if (next.has(folder)) {
+    next.delete(folder);
+  } else {
+    next.add(folder);
+  }
+  collapsedFolders.value = next;
+  openMenuPath.value = null;
+  batchMenuOpen.value = false;
+}
+
 function handleClickOutside() {
   openMenuPath.value = null;
   batchMenuOpen.value = false;
@@ -456,6 +504,11 @@ function formatSize(bytes: number): string {
 function formatTime(value?: number): string {
   if (!value) return "";
   return new Date(value).toLocaleString();
+}
+
+function getArtifactDirectory(path: string): string {
+  const index = path.lastIndexOf("/");
+  return index === -1 ? "" : path.slice(0, index);
 }
 
 function getFileIcon(name: string): string {
@@ -601,61 +654,85 @@ function getFileColor(name: string): string {
       </section>
 
       <div class="artifact-list">
-        <article
-          v-for="artifact in artifacts"
-          :key="artifact.path"
-          class="artifact-card"
-          :class="{ active: selectedArtifact?.path === artifact.path }"
-          @click="selectArtifact(artifact)"
-          @dblclick="openPreview(artifact)"
+        <section
+          v-for="group in artifactGroups"
+          :key="group.key || '__root__'"
+          class="artifact-folder"
         >
           <button
-            class="artifact-checkbox"
-            :class="{ checked: selectedPaths.has(artifact.path) }"
+            class="folder-header"
             type="button"
-            :aria-label="selectedPaths.has(artifact.path) ? '取消选择' : '选择文件'"
-            :aria-pressed="selectedPaths.has(artifact.path)"
-            @click.stop="toggleSelection(artifact.path)"
+            :aria-expanded="!collapsedFolders.has(group.key)"
+            @click="toggleFolder(group.key)"
           >
-            <SvgIcon v-if="selectedPaths.has(artifact.path)" name="check" :size="11" />
+            <SvgIcon
+              class="folder-chevron"
+              :class="{ collapsed: collapsedFolders.has(group.key) }"
+              name="chevronDown"
+              :size="13"
+            />
+            <SvgIcon name="folder" :size="15" />
+            <span class="folder-name">{{ group.label }}</span>
+            <span class="folder-meta">{{ group.artifacts.length }} · {{ formatSize(group.totalSize) }}</span>
           </button>
-          <div class="file-icon" :style="{ color: getFileColor(artifact.name) }">
-            <SvgIcon :name="getFileIcon(artifact.name)" :size="18" />
+          <div v-if="!collapsedFolders.has(group.key)" class="folder-files">
+            <article
+              v-for="artifact in group.artifacts"
+              :key="artifact.path"
+              class="artifact-card"
+              :class="{ active: selectedArtifact?.path === artifact.path }"
+              @click="selectArtifact(artifact)"
+              @dblclick="openPreview(artifact)"
+            >
+              <button
+                class="artifact-checkbox"
+                :class="{ checked: selectedPaths.has(artifact.path) }"
+                type="button"
+                :aria-label="selectedPaths.has(artifact.path) ? '取消选择' : '选择文件'"
+                :aria-pressed="selectedPaths.has(artifact.path)"
+                @click.stop="toggleSelection(artifact.path)"
+              >
+                <SvgIcon v-if="selectedPaths.has(artifact.path)" name="check" :size="11" />
+              </button>
+              <div class="file-icon" :style="{ color: getFileColor(artifact.name) }">
+                <SvgIcon :name="getFileIcon(artifact.name)" :size="18" />
+              </div>
+              <div class="file-info">
+                <div class="file-name-row">
+                  <span class="file-name">{{ artifact.name }}</span>
+                  <span v-if="artifact.final" class="final-badge-inline">最终</span>
+                  <span class="file-size">{{ formatSize(artifact.size) }}</span>
+                </div>
+                <span class="file-path">{{ artifact.path }}</span>
+              </div>
+              <button class="menu-btn" type="button" title="文件操作" @click.stop="toggleArtifactMenu(artifact.path)">
+                <SvgIcon name="moreHorizontal" :size="14" />
+              </button>
+              <div v-if="openMenuPath === artifact.path" class="artifact-menu" @click.stop>
+                <button type="button" :disabled="!artifact.previewable" @click="openPreview(artifact)">
+                  <SvgIcon name="search" :size="13" />
+                  预览
+                </button>
+                <button type="button" @click="downloadArtifact(artifact)">
+                  <SvgIcon name="download" :size="13" />
+                  下载
+                </button>
+                <button type="button" @click="importArtifact(artifact)">
+                  <SvgIcon name="book" :size="13" />
+                  加入文档
+                </button>
+                <button type="button" @click="toggleFinalArtifact(artifact)">
+                  <SvgIcon name="check" :size="13" />
+                  {{ artifact.final ? "取消最终" : "标记最终" }}
+                </button>
+                <button type="button" class="danger" @click="deleteArtifact(artifact)">
+                  <SvgIcon name="trash" :size="13" />
+                  删除
+                </button>
+              </div>
+            </article>
           </div>
-          <div class="file-info">
-            <div class="file-name-row">
-              <span class="file-name">{{ artifact.name }}</span>
-              <span v-if="artifact.final" class="final-badge-inline">最终</span>
-              <span class="file-size">{{ formatSize(artifact.size) }}</span>
-            </div>
-            <span class="file-path">{{ artifact.path }}</span>
-          </div>
-          <button class="menu-btn" type="button" title="文件操作" @click.stop="toggleArtifactMenu(artifact.path)">
-            <SvgIcon name="moreHorizontal" :size="14" />
-          </button>
-          <div v-if="openMenuPath === artifact.path" class="artifact-menu" @click.stop>
-            <button type="button" :disabled="!artifact.previewable" @click="openPreview(artifact)">
-              <SvgIcon name="search" :size="13" />
-              预览
-            </button>
-            <button type="button" @click="downloadArtifact(artifact)">
-              <SvgIcon name="download" :size="13" />
-              下载
-            </button>
-            <button type="button" @click="importArtifact(artifact)">
-              <SvgIcon name="book" :size="13" />
-              加入文档
-            </button>
-            <button type="button" @click="toggleFinalArtifact(artifact)">
-              <SvgIcon name="check" :size="13" />
-              {{ artifact.final ? "取消最终" : "标记最终" }}
-            </button>
-            <button type="button" class="danger" @click="deleteArtifact(artifact)">
-              <SvgIcon name="trash" :size="13" />
-              删除
-            </button>
-          </div>
-        </article>
+        </section>
       </div>
 
       <div v-if="selectedArtifact" class="artifact-detail">
@@ -849,9 +926,68 @@ function getFileColor(name: string): string {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
   overflow-y: auto;
   padding-right: 2px;
+}
+
+.artifact-folder {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.folder-header {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.015);
+  cursor: pointer;
+  text-align: left;
+}
+
+.folder-header:hover {
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.folder-chevron {
+  flex: 0 0 auto;
+  transition: transform 0.15s ease;
+}
+
+.folder-chevron.collapsed {
+  transform: rotate(-90deg);
+}
+
+.folder-name {
+  min-width: 0;
+  flex: 1;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-meta {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.folder-files {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .final-section {

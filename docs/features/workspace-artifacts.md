@@ -4,8 +4,9 @@ Workspace 产物是按会话隔离的工作区文件视图，用于把 `workspac
 
 ## 前端体验
 
-聊天页右侧提供 Agent、Trace、产物三个 tab。产物 tab 会列出当前会话 workspace 文件，展示路径、类型、大小和更新时间，并支持：
+聊天页右侧提供 Agent、Trace、产物三个 tab。产物 tab 会按目录分组列出当前会话 workspace 文件，展示路径、类型、大小和更新时间，并支持：
 
+- 目录分组展示与目录折叠。
 - 文本、Markdown、JSON、HTML 等文本类文件预览。
 - 常见代码文件预览和语法高亮，例如 JavaScript、TypeScript、Vue、CSS、Python、Go、Rust、Java、C/C++、Shell、SQL 等。
 - 图片文件预览。
