@@ -8,6 +8,7 @@ import type { ClientToolDefinition, ClientToolExecutionResult } from "./client-b
 import { createClientBridgeTool } from "./client-bridge.js";
 import { createHandoffTool } from "./handoff.js";
 import { createRouteToAgentTool } from "./route-to-agent.js";
+import { createBrowserAutomationTool } from "./browser-automation.js";
 
 export interface RuntimeTool {
   id: string;
@@ -123,6 +124,10 @@ export function createRuntimeTools(
 
   if (enabledTools.has("web_fetch")) {
     tools.push(createWebFetchTool(runtimeOptions.webFetchConfig));
+  }
+
+  if (enabledTools.has("browser_automation")) {
+    tools.push(createBrowserAutomationTool());
   }
 
   if (enabledTools.has("mcp")) {

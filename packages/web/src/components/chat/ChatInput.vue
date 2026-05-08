@@ -31,6 +31,7 @@ const {
   retrieveKnowledgeToolEnabled,
   wikiToolEnabled,
   workspaceToolEnabled,
+  browserAutomationToolEnabled,
   thinkingLevel,
 } = useChat(computed(() => props.conversationId ?? null));
 
@@ -63,6 +64,7 @@ const activeToolCount = computed(() => {
   if (webFetchToolEnabled.value) count++;
   if (wikiToolEnabled.value) count++;
   if (retrieveKnowledgeToolEnabled.value) count++;
+  if (browserAutomationToolEnabled.value) count++;
   return count;
 });
 
@@ -265,6 +267,7 @@ function toggleWorkspaceTool() { workspaceToolEnabled.value = !workspaceToolEnab
 function toggleWebFetchTool() { webFetchToolEnabled.value = !webFetchToolEnabled.value; }
 function toggleRetrieveKnowledgeTool() { retrieveKnowledgeToolEnabled.value = !retrieveKnowledgeToolEnabled.value; }
 function toggleWikiTool() { wikiToolEnabled.value = !wikiToolEnabled.value; }
+function toggleBrowserAutomationTool() { browserAutomationToolEnabled.value = !browserAutomationToolEnabled.value; }
 
 function handleToggleThinkLevel() {
   captureTextareaSelection();
@@ -547,6 +550,21 @@ function handleOutsideClick(event: MouseEvent) {
               </svg>
               <span class="dropdown-tool-label">抓取网页</span>
               <span class="dropdown-tool-state">{{ webFetchToolEnabled ? '开' : '关' }}</span>
+            </button>
+            <button
+              class="tools-dropdown-item"
+              :class="{ active: browserAutomationToolEnabled }"
+              @mousedown="handleKeepTextareaFocusMouseDown"
+              @click="toggleToolFromDropdown(toggleBrowserAutomationTool)"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
+                <circle cx="12" cy="12" r="10" />
+                <circle cx="12" cy="12" r="4" />
+                <line x1="2" y1="12" x2="22" y2="12" />
+                <line x1="12" y1="2" x2="12" y2="22" />
+              </svg>
+              <span class="dropdown-tool-label">浏览器</span>
+              <span class="dropdown-tool-state">{{ browserAutomationToolEnabled ? '开' : '关' }}</span>
             </button>
             <button
               class="tools-dropdown-item"
