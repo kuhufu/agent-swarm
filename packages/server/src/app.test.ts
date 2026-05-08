@@ -482,6 +482,7 @@ describe("API routes", () => {
     try {
       await workspace.writeFile(artifactPath, "workspace artifact content");
       await workspace.writeFile("src/example.ts", "export const answer: number = 42;\n");
+      await workspace.writeFile("easyfanyi/.gitignore", "node_modules\n");
 
       const listResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files`, {
         headers: withAuthHeaders(),
@@ -559,6 +560,14 @@ describe("API routes", () => {
       expect(zipResponse.status).toBe(200);
       expect(zipResponse.headers.get("content-type")).toBe("application/zip");
       expect(zipBuffer.readUInt32LE(0)).toBe(0x04034b50);
+
+      const hiddenFileResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/download?path=${encodeURIComponent("easyfanyi/.gitignore")}`, {
+        headers: withAuthHeaders(),
+      });
+      expect(hiddenFileResponse.status).toBe(200);
+      expect(hiddenFileResponse.headers.get("content-disposition")).toContain("filename=\".gitignore\"");
+      expect(hiddenFileResponse.headers.get("content-disposition")).toContain("filename*=UTF-8''%2Egitignore");
+      expect(await hiddenFileResponse.text()).toBe("node_modules\n");
 
       const deleteResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files?path=${encodeURIComponent(artifactPath)}`, {
         method: "DELETE",

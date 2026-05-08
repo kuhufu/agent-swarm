@@ -3,6 +3,7 @@ import { WorkspaceManager } from "@agent-swarm/core";
 import type { AgentSwarm, FileInfo } from "@agent-swarm/core";
 import type { ConversationPreferences, ConversationDirectModel } from "@agent-swarm/core";
 import { randomUUID } from "node:crypto";
+import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { basename } from "node:path";
 import { deflateRawSync } from "node:zlib";
@@ -180,7 +181,18 @@ export function conversationRoutes(swarm: AgentSwarm): Router {
       const fullPath = await workspace.checkPath(path);
       const fileStat = await stat(fullPath);
       if (!fileStat.isFile()) return res.status(400).json({ error: "不是文件" });
-      res.download(fullPath, basename(path));
+      res.setHeader("Content-Type", "application/octet-stream");
+      res.setHeader("Content-Length", String(fileStat.size));
+      res.setHeader("Content-Disposition", attachmentDisposition(basename(path)));
+      const stream = createReadStream(fullPath);
+      stream.on("error", (error) => {
+        if (!res.headersSent) {
+          res.status(500).json({ error: error.message });
+        } else {
+          res.destroy(error);
+        }
+      });
+      stream.pipe(res);
     } catch (err: any) {
       res.status(404).json({ error: err.message });
     }
@@ -391,6 +403,20 @@ async function writeArtifactMetadata(workspace: WorkspaceManager, metadata: Arti
 function normalizeArtifactPaths(input: unknown): string[] {
   if (!Array.isArray(input)) return [];
   return Array.from(new Set(input.filter((item): item is string => typeof item === "string" && item.trim().length > 0)));
+}
+
+function escapeHeaderValue(value: string): string {
+  return value.replace(/["\\\r\n]/g, "_");
+}
+
+function attachmentDisposition(filename: string): string {
+  return `attachment; filename="${escapeHeaderValue(filename)}"; filename*=UTF-8''${encodeHeaderFilename(filename)}`;
+}
+
+function encodeHeaderFilename(filename: string): string {
+  return encodeURIComponent(filename)
+    .replace(/^\./, "%2E")
+    .replace(/['()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
 }
 
 function buildDocumentChunks(documentId: string, text: string) {

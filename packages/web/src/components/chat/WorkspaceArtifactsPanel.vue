@@ -180,9 +180,10 @@ async function downloadArtifact(artifact?: WorkspaceArtifact) {
   if (!target) return;
   try {
     const blob = await fetchArtifactBlob(target.path);
-    triggerDownload(blob, target.name);
+    await triggerDownload(blob, target.name);
     openMenuPath.value = null;
   } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") return;
     showError(error instanceof Error ? error.message : "下载产物失败");
   }
 }
@@ -194,9 +195,10 @@ async function downloadSelectedArtifacts() {
       `/api/conversations/${props.conversationId}/workspace/files/download-zip`,
       { paths: [...selectedPaths.value] },
     );
-    triggerDownload(blob, "workspace-artifacts.zip");
+    await triggerDownload(blob, "workspace-artifacts.zip");
     batchMenuOpen.value = false;
   } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") return;
     showError(error instanceof Error ? error.message : "下载产物失败");
   }
 }
@@ -208,9 +210,10 @@ async function downloadAllArtifacts() {
       `/api/conversations/${props.conversationId}/workspace/files/download-zip`,
       { paths: artifacts.value.map((item) => item.path) },
     );
-    triggerDownload(blob, "workspace-all-artifacts.zip");
+    await triggerDownload(blob, "workspace-all-artifacts.zip");
     batchMenuOpen.value = false;
   } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") return;
     showError(error instanceof Error ? error.message : "下载工作区失败");
   }
 }
@@ -380,7 +383,16 @@ async function postArtifactBlob(url: string, body: unknown): Promise<Blob> {
   return response.blob();
 }
 
-function triggerDownload(blob: Blob, filename: string) {
+async function triggerDownload(blob: Blob, filename: string) {
+  if (filename.startsWith(".") && "showSaveFilePicker" in window) {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: filename,
+    });
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return;
+  }
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
