@@ -257,6 +257,25 @@ async function openVersionPreview(version: WorkspaceFileVersion) {
   }
 }
 
+async function restoreArtifactVersion(version: WorkspaceFileVersion) {
+  if (!props.conversationId) return;
+  if (!window.confirm(`恢复到 ${formatTime(version.updatedAt)} 的版本？当前文件会被覆盖。`)) return;
+  try {
+    await apiClient<{ data: { path: string; size: number; restoredFrom: string } }>(
+      `/conversations/${props.conversationId}/workspace/files/versions/restore`,
+      {
+        method: "POST",
+        body: JSON.stringify({ path: version.path, versionId: version.id }),
+      },
+    );
+    showSuccess("已恢复历史版本");
+    await loadArtifacts(version.path);
+    await loadArtifactVersions(artifacts.value.find((item) => item.path === version.path) ?? selectedArtifact.value);
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "恢复版本失败");
+  }
+}
+
 async function loadArtifactVersions(artifact = selectedArtifact.value) {
   if (!artifact || !props.conversationId) {
     artifactVersions.value = [];
@@ -898,7 +917,10 @@ function getFileColor(name: string): string {
               class="version-item"
               @click="openVersionPreview(version)"
             >
-              <span>{{ index === 0 ? "当前版本" : `历史版本 ${artifactVersions.length - index}` }}</span>
+              <span class="version-item-main">
+                <span>{{ index === 0 ? "当前版本" : `历史版本 ${artifactVersions.length - index}` }}</span>
+                <button type="button" title="恢复此版本" @click.stop="restoreArtifactVersion(version)">恢复</button>
+              </span>
               <small>{{ formatSize(version.size) }} · {{ formatTime(version.updatedAt) }}</small>
             </button>
           </div>
@@ -1598,9 +1620,32 @@ function getFileColor(name: string): string {
   background: rgba(99, 102, 241, 0.08);
 }
 
-.version-item span {
+.version-item-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.version-item-main > span {
   font-size: 11px;
   font-weight: 650;
+}
+
+.version-item-main button {
+  min-height: 22px;
+  padding: 0 7px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 999px;
+  color: var(--color-accent-light);
+  background: rgba(99, 102, 241, 0.08);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.version-item-main button:hover {
+  background: rgba(99, 102, 241, 0.16);
 }
 
 .version-item small,

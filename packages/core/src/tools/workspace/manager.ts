@@ -155,6 +155,16 @@ export class WorkspaceManager {
     return this.readFile(join(WORKSPACE_VERSION_DIR, version.id), 2000);
   }
 
+  async restoreFileVersion(relativePath: string, versionId: string): Promise<FileInfo> {
+    const version = (await this.listFileVersions(relativePath)).find((item) => item.id === versionId);
+    if (!version) {
+      throw new Error(`版本不存在: ${versionId}`);
+    }
+    const fullPath = await this.checkPath(join(WORKSPACE_VERSION_DIR, version.id));
+    const content = await readFile(fullPath, "utf-8");
+    return this.writeFile(relativePath, content);
+  }
+
   async readFile(relativePath: string, maxLines?: number): Promise<{ content: string; size: number; truncated: boolean }> {
     const fullPath = await this.checkPath(relativePath);
 

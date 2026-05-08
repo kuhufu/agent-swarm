@@ -168,6 +168,7 @@ pnpm --filter @agent-swarm/server test
 - `GET /api/conversations/:id/workspace/files/content?path=...`：读取可预览产物内容
 - `GET /api/conversations/:id/workspace/files/versions?path=...`：读取指定产物的写入版本记录
 - `GET /api/conversations/:id/workspace/files/versions/content?path=...&versionId=...`：读取指定产物版本内容
+- `POST /api/conversations/:id/workspace/files/versions/restore`：按 `{ path, versionId }` 恢复指定产物版本
 - `GET /api/conversations/:id/workspace/files/download?path=...`：下载指定产物文件
 - `POST /api/conversations/:id/workspace/files/download-zip`：按 `paths` 打包下载多个产物
 - `POST /api/conversations/:id/workspace/files/import-document`：把指定产物加入文档知识库

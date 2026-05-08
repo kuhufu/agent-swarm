@@ -188,6 +188,26 @@ export function conversationRoutes(swarm: AgentSwarm): Router {
     }
   });
 
+  router.post("/:id/workspace/files/versions/restore", async (req, res) => {
+    const userId = resolveRequestUserId(req);
+    if (!userId) return res.status(401).json({ error: "未登录" });
+
+    try {
+      const conversation = await swarm.getConversation(req.params.id as string, userId);
+      if (!conversation) return res.status(404).json({ error: "会话不存在" });
+
+      const path = typeof req.body?.path === "string" ? req.body.path : "";
+      const versionId = typeof req.body?.versionId === "string" ? req.body.versionId : "";
+      if (!path || path === ARTIFACT_METADATA_PATH || !versionId) return res.status(400).json({ error: "path 和 versionId 不能为空" });
+
+      const workspace = new WorkspaceManager(req.params.id as string);
+      const file = await workspace.restoreFileVersion(path, versionId);
+      res.json({ data: { path: file.path, size: file.size, restoredFrom: versionId } });
+    } catch (err: any) {
+      res.status(404).json({ error: err.message });
+    }
+  });
+
   router.get("/:id/workspace/files/content", async (req, res) => {
     const userId = resolveRequestUserId(req);
     if (!userId) return res.status(401).json({ error: "未登录" });

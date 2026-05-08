@@ -540,6 +540,21 @@ describe("API routes", () => {
       expect(versionContentResponse.status).toBe(200);
       expect(versionContentData.data.content).toBe("workspace artifact draft");
 
+      const restoreResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/versions/restore`, {
+        method: "POST",
+        headers: withAuthHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({ path: artifactPath, versionId: versionsData.data[1]?.id }),
+      });
+      const restoreData = await restoreResponse.json() as { data: { path: string; restoredFrom: string } };
+      expect(restoreResponse.status).toBe(200);
+      expect(restoreData.data).toMatchObject({ path: artifactPath, restoredFrom: versionsData.data[1]?.id });
+
+      const restoredContentResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/content?path=${encodeURIComponent(artifactPath)}`, {
+        headers: withAuthHeaders(),
+      });
+      const restoredContentData = await restoredContentResponse.json() as { data: { content: string } };
+      expect(restoredContentData.data.content).toBe("workspace artifact draft");
+
       const finalResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/final`, {
         method: "PATCH",
         headers: withAuthHeaders({ "content-type": "application/json" }),
@@ -564,7 +579,7 @@ describe("API routes", () => {
       expect(server.uploadedDocs.at(-1)).toMatchObject({
         title: artifactPath.split("/").pop(),
         source: "workspace_artifact",
-        content: "workspace artifact content",
+        content: "workspace artifact draft",
         userId: TEST_USER.id,
       });
 
