@@ -1,13 +1,7 @@
 import type { ModeExecutor, ModeExecutionContext } from "./types.js";
-import type { SwarmEvent, InterventionPoint } from "../core/types.js";
+import type { SwarmEvent } from "../core/types.js";
 import type { AgentEvent as PiAgentEvent } from "@mariozechner/pi-agent-core";
-import {
-  buildModelFailureMessage,
-  extractAssistantErrorMessage,
-  extractAssistantTextAndThinking,
-} from "./message-fallback.js";
-import { mapAgentEvent } from "./map-agent-event.js";
-import { createMessagePersistor } from "./message-persistence.js";
+import { runAgent, extractText, getStrategy } from "./run-agent.js";
 
 interface HandoffProposal {
   fromAgentId: string;
@@ -68,7 +62,7 @@ export class SwarmMode implements ModeExecutor {
       if (!currentAgentId || !agents.has(currentAgentId)) break;
 
       // Check intervention
-      const strategy = this.getStrategy(ctx, "before_agent_start");
+      const strategy = getStrategy(ctx, "before_agent_start");
       if (strategy !== "auto" && ctx.interventionCallback) {
         const decision = await ctx.interventionCallback("before_agent_start", {
           agentId: currentAgentId,
@@ -123,7 +117,7 @@ export class SwarmMode implements ModeExecutor {
         }
       });
 
-      yield* this.runAgent(currentAgentId, currentMessage, ctx, () => Boolean(handoffResolution.proposal));
+      yield* runAgent(currentAgentId, currentMessage, ctx, { isExpectedAbort: () => Boolean(handoffResolution.proposal) });
       unsub();
       if (handoffDecisionPromise && !handoffDecisionSettled) {
         await handoffDecisionPromise;
@@ -167,7 +161,7 @@ export class SwarmMode implements ModeExecutor {
               const msgs = prevAgent.agent.state.messages;
               const lastAssistant = [...msgs].reverse().find((m: any) => m.role === "assistant");
               if (lastAssistant) {
-                currentMessage = this.extractText(lastAssistant.content);
+                currentMessage = extractText(lastAssistant.content);
               }
             }
           }
@@ -196,203 +190,6 @@ export class SwarmMode implements ModeExecutor {
 
       turn++;
     }
-  }
-
-  private async *runAgent(
-    agentId: string,
-    input: string,
-    ctx: ModeExecutionContext,
-    isExpectedAbort?: () => boolean,
-  ): AsyncGenerator<SwarmEvent> {
-    const active = ctx.agents.get(agentId);
-    if (!active) return;
-
-    const { agent, config } = active;
-    const events: SwarmEvent[] = [];
-    const initialMessageCount = agent.state.messages.length;
-    let assistantHasStreamDelta = false;
-    let assistantErrorEmitted = false;
-    let agentEnded = false;
-    let persisted = false;
-    let settled = false;
-
-    let resolveDone: () => void;
-    const donePromise = new Promise<void>((r) => { resolveDone = r; });
-    const { persistPendingMessages } = createMessagePersistor(
-      ctx,
-      agentId,
-      initialMessageCount,
-      () => agent.state.messages,
-    );
-
-    const settle = () => {
-      if (settled) return;
-      settled = true;
-      resolveDone();
-    };
-
-    const persistNewMessagesOnce = async () => {
-      if (persisted) return;
-      persisted = true;
-      await persistPendingMessages();
-    };
-
-    const unsub = agent.subscribe((e: PiAgentEvent) => {
-      if (e.type === "message_start" && e.message.role === "assistant") {
-        assistantHasStreamDelta = false;
-        assistantErrorEmitted = false;
-      }
-
-      if (
-        e.type === "message_update"
-        && (e.assistantMessageEvent.type === "text_delta" || e.assistantMessageEvent.type === "thinking_delta")
-      ) {
-        assistantHasStreamDelta = true;
-      }
-
-      if (e.type === "message_end" && e.message.role === "assistant" && !assistantHasStreamDelta) {
-        const fallback = extractAssistantTextAndThinking(e.message.content);
-        if (fallback.thinking.trim().length > 0) {
-          const thinkingEvent: SwarmEvent = {
-            type: "message_update",
-            agentId,
-            thinkingDelta: fallback.thinking,
-          };
-          events.push(thinkingEvent);
-          ctx.emit(thinkingEvent);
-        }
-        if (fallback.text.trim().length > 0) {
-          const textEvent: SwarmEvent = {
-            type: "message_update",
-            agentId,
-            delta: fallback.text,
-          };
-          events.push(textEvent);
-          ctx.emit(textEvent);
-        }
-
-        if (e.message.stopReason === "error" && !assistantErrorEmitted && !isExpectedAbort?.()) {
-          assistantErrorEmitted = true;
-          const assistantErrorMessage = extractAssistantErrorMessage(e.message);
-          const errorEvent: SwarmEvent = {
-            type: "error",
-            agentId,
-            error: new Error(
-              buildModelFailureMessage(
-                config.model.provider,
-                config.model.modelId,
-                assistantErrorMessage,
-                agent.state.errorMessage,
-              ),
-            ),
-          };
-          events.push(errorEvent);
-          ctx.emit(errorEvent);
-        }
-      }
-
-      const swarmEvent = mapAgentEvent(e, agentId, config.name);
-      if (swarmEvent) {
-        events.push(swarmEvent);
-        ctx.emit(swarmEvent);
-      }
-      if (e.type === "turn_end") {
-        void persistPendingMessages().catch((err) => {
-          const persistenceError: SwarmEvent = { type: "error", agentId, error: err as Error };
-          events.push(persistenceError);
-          ctx.emit(persistenceError);
-        });
-      }
-      if (e.type === "agent_end") {
-        agentEnded = true;
-        void persistNewMessagesOnce()
-          .catch((err) => {
-            const persistenceError: SwarmEvent = { type: "error", agentId, error: err as Error };
-            events.push(persistenceError);
-            ctx.emit(persistenceError);
-          })
-          .finally(() => {
-            settle();
-          });
-      }
-    });
-
-    agent.prompt(input)
-      .then(() => {
-        if (agentEnded) {
-          settle();
-          return;
-        }
-
-        const syntheticAgentEnd: SwarmEvent = {
-          type: "agent_end",
-          agentId,
-          agentName: config.name,
-        };
-        events.push(syntheticAgentEnd);
-        ctx.emit(syntheticAgentEnd);
-
-        void persistNewMessagesOnce()
-          .catch((err) => {
-            const persistenceError: SwarmEvent = { type: "error", agentId, error: err as Error };
-            events.push(persistenceError);
-            ctx.emit(persistenceError);
-          })
-          .finally(() => {
-            settle();
-          });
-      })
-      .catch((err) => {
-        if (isExpectedAbort?.()) {
-          void persistNewMessagesOnce()
-            .catch((persistErr) => {
-              const persistenceError: SwarmEvent = { type: "error", agentId, error: persistErr as Error };
-              events.push(persistenceError);
-              ctx.emit(persistenceError);
-            })
-            .finally(() => {
-              settle();
-            });
-          return;
-        }
-        const errorEvent: SwarmEvent = { type: "error", agentId, error: err as Error };
-        events.push(errorEvent);
-        ctx.emit(errorEvent);
-        settle();
-      });
-
-    let yielded = 0;
-    while (true) {
-      if (ctx.isAborted()) break;
-      await new Promise((r) => setTimeout(r, 10));
-      while (yielded < events.length) yield events[yielded++];
-      if (isExpectedAbort?.()) {
-        await persistNewMessagesOnce()
-          .catch((err) => {
-            const persistenceError: SwarmEvent = { type: "error", agentId, error: err as Error };
-            events.push(persistenceError);
-            ctx.emit(persistenceError);
-          });
-        settle();
-      }
-      const race = await Promise.race([
-        donePromise.then(() => true),
-        new Promise<boolean>((r) => setTimeout(() => r(false), 50)),
-      ]);
-      if (race) {
-        while (yielded < events.length) yield events[yielded++];
-        break;
-      }
-    }
-    unsub();
-  }
-
-  private extractText(content: any): string {
-    if (typeof content === "string") return content;
-    if (Array.isArray(content)) {
-      return content.filter((c: any) => c.type === "text").map((c: any) => c.text).join("\n");
-    }
-    return "";
   }
 
   private extractHandoffProposal(result: unknown, fromAgentId: string): HandoffProposal | null {
@@ -447,7 +244,7 @@ export class SwarmMode implements ModeExecutor {
       return { proposal: null, rejected: true, errorEvent };
     }
 
-    const handoffStrategy = this.getStrategy(ctx, "on_handoff");
+    const handoffStrategy = getStrategy(ctx, "on_handoff");
     if (handoffStrategy !== "auto" && ctx.interventionCallback) {
       const decision = await ctx.interventionCallback("on_handoff", {
         fromAgentId: proposal.fromAgentId,
@@ -532,7 +329,7 @@ export class SwarmMode implements ModeExecutor {
     if (!lastAssistant) {
       return;
     }
-    const text = this.extractText(lastAssistant.content).trim();
+    const text = extractText(lastAssistant.content).trim();
     if (!text) {
       return;
     }
@@ -594,11 +391,5 @@ export class SwarmMode implements ModeExecutor {
       return input;
     }
     return `${input.slice(0, Math.max(0, maxChars - 1)).trimEnd()}…`;
-  }
-
-
-
-  private getStrategy(ctx: ModeExecutionContext, point: InterventionPoint): string {
-    return ctx.swarmConfig.interventions?.[point] ?? "auto";
   }
 }

@@ -100,6 +100,8 @@ export { SequentialMode } from "./modes/sequential.js";
 export { ParallelMode } from "./modes/parallel.js";
 export { SwarmMode } from "./modes/swarm-mode.js";
 export { DebateMode } from "./modes/debate.js";
+export { runAgent, extractText, getStrategy } from "./modes/run-agent.js";
+export type { RunAgentOptions } from "./modes/run-agent.js";
 
 // LLM helpers
 export { resolveModel, resolveModelFromProvider, mapThinkingLevel } from "./llm/provider.js";
