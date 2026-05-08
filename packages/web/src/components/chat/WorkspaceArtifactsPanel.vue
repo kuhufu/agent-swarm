@@ -1206,7 +1206,7 @@ function getFileColor(name: string): string {
   overflow: auto;
   border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, 0.15);
   color: var(--color-text-secondary);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -1245,8 +1245,7 @@ function getFileColor(name: string): string {
   align-items: center;
   justify-content: center;
   padding: 40px;
-  background: rgba(2, 6, 23, 0.72);
-  backdrop-filter: blur(10px);
+  background: rgba(2, 6, 23, 0.5);
 }
 
 .preview-dialog {
@@ -1257,8 +1256,8 @@ function getFileColor(name: string): string {
   flex-direction: column;
   border: 1px solid var(--color-border-subtle);
   border-radius: 10px;
-  background: rgba(15, 23, 42, 0.96);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  background: rgba(30, 41, 59, 0.96);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
 }
 
 .preview-header {
