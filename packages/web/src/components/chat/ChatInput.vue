@@ -837,6 +837,7 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
 .tools-dropdown-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -857,8 +858,18 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
 .tools-dropdown-item.active {
-  background: rgba(99, 102, 241, 0.12);
   color: var(--color-accent-light);
+}
+
+.tools-dropdown-item.active::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 9px;
+  bottom: 9px;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--color-accent-light);
 }
 
 .tools-dropdown-item.warn {
@@ -881,12 +892,21 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
 .dropdown-tool-state {
+  min-width: 28px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
   font-size: 11px;
   color: var(--color-text-muted);
 }
 
 .tools-dropdown-item.active .dropdown-tool-state {
-  color: rgba(129, 140, 248, 0.6);
+  border-color: rgba(129, 140, 248, 0.24);
+  color: var(--color-accent-light);
+  background: rgba(99, 102, 241, 0.12);
 }
 
 .tools-dropdown-separator {
