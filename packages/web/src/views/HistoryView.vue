@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import { useConversationStore } from "../stores/conversation.js";
 import { useSwarmStore } from "../stores/swarm.js";
 import * as conversationsApi from "../api/conversations.js";
+import { apiClient } from "../api/client.js";
 import { getModeConfig } from "../constants/swarm-modes.js";
 import { formatTimeLong } from "../utils/format.js";
 import ModeIcon from "../components/common/ModeIcon.vue";
@@ -18,8 +19,18 @@ const searchQuery = ref("");
 const selectedConvId = ref<string | null>(null);
 const expandedMessages = reactive<Map<string, ChatMessage[]>>(new Map());
 const expandedEvents = reactive<Map<string, ConversationEvent[]>>(new Map());
+const expandedArtifacts = reactive<Map<string, WorkspaceArtifact[]>>(new Map());
 const loadingMessages = ref(false);
 const loadingEvents = ref(false);
+const loadingArtifacts = ref(false);
+
+interface WorkspaceArtifact {
+  path: string;
+  name: string;
+  size: number;
+  kind: string;
+  final: boolean;
+}
 
 const filteredConversations = computed(() => {
   if (!searchQuery.value) return conversationStore.conversations;
@@ -38,6 +49,9 @@ const selectedMessages = computed(() =>
 );
 const selectedEvents = computed(() =>
   selectedConvId.value ? expandedEvents.get(selectedConvId.value) ?? null : null
+);
+const selectedFinalArtifacts = computed(() =>
+  selectedConvId.value ? expandedArtifacts.get(selectedConvId.value) ?? null : null
 );
 
 onMounted(async () => {
@@ -68,6 +82,17 @@ async function selectConv(conv: ConversationInfo) {
       loadingEvents.value = false;
     }
   }
+  if (!expandedArtifacts.has(conv.id)) {
+    loadingArtifacts.value = true;
+    try {
+      const res = await apiClient<{ data: WorkspaceArtifact[] }>(`/conversations/${conv.id}/workspace/files`);
+      expandedArtifacts.set(conv.id, (res.data ?? []).filter((item) => item.final));
+    } catch {
+      expandedArtifacts.set(conv.id, []);
+    } finally {
+      loadingArtifacts.value = false;
+    }
+  }
 }
 
 async function resumeConversation(conv: ConversationInfo) {
@@ -90,6 +115,7 @@ async function deleteConversation(conv: ConversationInfo) {
     await conversationStore.deleteConversation(conv.id);
     expandedMessages.delete(conv.id);
     expandedEvents.delete(conv.id);
+    expandedArtifacts.delete(conv.id);
     if (selectedConvId.value === conv.id) {
       selectedConvId.value = null;
     }
@@ -266,6 +292,37 @@ function formatEventOffset(event: ConversationEvent, events: ConversationEvent[]
   if (diff < 60_000) return `+${(diff / 1000).toFixed(1)}s`;
   return `+${Math.floor(diff / 60_000)}m ${Math.floor((diff % 60_000) / 1000)}s`;
 }
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1_048_576) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1_048_576).toFixed(1)} MB`;
+}
+
+async function downloadArtifact(conversationId: string, artifact: WorkspaceArtifact) {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await fetch(
+      `/api/conversations/${conversationId}/workspace/files/download?path=${encodeURIComponent(artifact.path)}`,
+      { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+    );
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error ?? `HTTP ${response.status}`);
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = artifact.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    showError(err instanceof Error ? err.message : "下载产物失败");
+  }
+}
 </script>
 
 <template>
@@ -353,6 +410,27 @@ function formatEventOffset(event: ConversationEvent, events: ConversationEvent[]
                 <SvgIcon name="trash" :size="14" />
                 删除
               </button>
+            </div>
+          </div>
+
+          <div v-if="loadingArtifacts || (selectedFinalArtifacts && selectedFinalArtifacts.length)" class="detail-section final-artifacts-section">
+            <h4 class="detail-section-title">
+              <SvgIcon name="folder" :size="16" />
+              最终产物
+              <span v-if="selectedFinalArtifacts" class="msg-count">{{ selectedFinalArtifacts.length }} 个</span>
+            </h4>
+            <div v-if="loadingArtifacts" class="detail-empty">最终产物加载中...</div>
+            <div v-else-if="selectedFinalArtifacts && selectedFinalArtifacts.length" class="final-artifacts">
+              <article v-for="artifact in selectedFinalArtifacts" :key="artifact.path" class="final-artifact-card">
+                <div>
+                  <strong>{{ artifact.name }}</strong>
+                  <span>{{ artifact.path }}</span>
+                  <small>{{ artifact.kind }} · {{ formatSize(artifact.size) }}</small>
+                </div>
+                <button type="button" title="下载" @click="downloadArtifact(selectedConv.id, artifact)">
+                  <SvgIcon name="download" :size="14" />
+                </button>
+              </article>
             </div>
           </div>
 
@@ -754,6 +832,62 @@ function formatEventOffset(event: ConversationEvent, events: ConversationEvent[]
   background: rgba(255, 255, 255, 0.05);
   padding: 2px 8px;
   border-radius: 9999px;
+}
+
+.final-artifacts-section {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.final-artifacts {
+  display: grid;
+  gap: 10px;
+}
+
+.final-artifact-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(34, 197, 94, 0.22);
+  border-radius: 10px;
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.final-artifact-card div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.final-artifact-card strong {
+  color: var(--color-text-primary);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.final-artifact-card span,
+.final-artifact-card small {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.final-artifact-card button {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  flex: 0 0 auto;
 }
 
 /* Trace */
