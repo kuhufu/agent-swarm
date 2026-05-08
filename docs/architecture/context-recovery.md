@@ -32,7 +32,13 @@
 
 ### 3.1 正常对话写入
 
-在 `Conversation.prompt()` 中，用户消息先落库；后续 Agent 消息、工具结果等持续写入 `messages`。
+在 `Conversation.prompt()` 中，用户消息先落库；后续 Agent 消息、工具结果等由各协作模式通过 `createMessagePersistor()` 写入 `messages`。
+
+写入时机按 Agent 运行阶段推进：
+
+- `turn_end` 后增量写入本轮新增的 assistant/toolResult 消息，避免多工具调用或多轮 Agent 长时间运行时历史记录滞后。
+- `agent_end` 和 prompt resolve 时再做一次兜底写入，并等待写入完成后才结束对应 `runAgent` 流程，避免前端收到完成事件后立即拉历史却读不到最新消息。
+- 写入器维护已写入游标，同一个 Agent 运行过程中的多次 `turn_end` / `agent_end` 不会重复入库。
 
 ### 3.2 清空上下文写入
 
@@ -124,4 +130,3 @@ WHERE conversation_id = ?
     SELECT context_reset_at FROM conversations WHERE id = ?
   );
 ```
-

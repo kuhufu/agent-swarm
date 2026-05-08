@@ -1,14 +1,13 @@
 import type { ModeExecutor, ModeExecutionContext } from "./types.js";
 import type { SwarmEvent, InterventionPoint } from "../core/types.js";
-import type { AgentEvent as PiAgentEvent, AgentMessage } from "@mariozechner/pi-agent-core";
-import type { Message } from "@mariozechner/pi-ai";
-import { messageToStored } from "../storage/message-mapper.js";
+import type { AgentEvent as PiAgentEvent } from "@mariozechner/pi-agent-core";
 import {
   buildModelFailureMessage,
   extractAssistantErrorMessage,
   extractAssistantTextAndThinking,
 } from "./message-fallback.js";
 import { mapAgentEvent } from "./map-agent-event.js";
+import { createMessagePersistor } from "./message-persistence.js";
 
 interface HandoffProposal {
   fromAgentId: string;
@@ -219,6 +218,12 @@ export class SwarmMode implements ModeExecutor {
 
     let resolveDone: () => void;
     const donePromise = new Promise<void>((r) => { resolveDone = r; });
+    const { persistPendingMessages } = createMessagePersistor(
+      ctx,
+      agentId,
+      initialMessageCount,
+      () => agent.state.messages,
+    );
 
     const settle = () => {
       if (settled) return;
@@ -229,7 +234,7 @@ export class SwarmMode implements ModeExecutor {
     const persistNewMessagesOnce = async () => {
       if (persisted) return;
       persisted = true;
-      await this.persistNewMessages(ctx, agentId, agent.state.messages.slice(initialMessageCount));
+      await persistPendingMessages();
     };
 
     const unsub = agent.subscribe((e: PiAgentEvent) => {
@@ -290,6 +295,13 @@ export class SwarmMode implements ModeExecutor {
       if (swarmEvent) {
         events.push(swarmEvent);
         ctx.emit(swarmEvent);
+      }
+      if (e.type === "turn_end") {
+        void persistPendingMessages().catch((err) => {
+          const persistenceError: SwarmEvent = { type: "error", agentId, error: err as Error };
+          events.push(persistenceError);
+          ctx.emit(persistenceError);
+        });
       }
       if (e.type === "agent_end") {
         agentEnded = true;
@@ -373,29 +385,6 @@ export class SwarmMode implements ModeExecutor {
       }
     }
     unsub();
-  }
-
-  private async persistNewMessages(
-    ctx: ModeExecutionContext,
-    agentId: string,
-    newMessages: AgentMessage[],
-  ): Promise<void> {
-    for (const message of newMessages) {
-      if (!this.isPersistablePiMessage(message) || message.role === "user") {
-        continue;
-      }
-      await ctx.storage.appendMessage(
-        ctx.conversationId,
-        messageToStored(message, agentId),
-      );
-    }
-  }
-
-  private isPersistablePiMessage(message: AgentMessage): message is Message {
-    return typeof message === "object"
-      && message !== null
-      && "role" in message
-      && (message.role === "user" || message.role === "assistant" || message.role === "toolResult");
   }
 
   private extractText(content: any): string {

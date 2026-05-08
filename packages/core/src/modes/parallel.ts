@@ -1,14 +1,13 @@
 import type { ModeExecutor, ModeExecutionContext } from "./types.js";
 import type { SwarmEvent } from "../core/types.js";
-import type { AgentEvent as PiAgentEvent, AgentMessage } from "@mariozechner/pi-agent-core";
-import type { Message } from "@mariozechner/pi-ai";
-import { messageToStored } from "../storage/message-mapper.js";
+import type { AgentEvent as PiAgentEvent } from "@mariozechner/pi-agent-core";
 import {
   buildModelFailureMessage,
   extractAssistantErrorMessage,
   extractAssistantTextAndThinking,
 } from "./message-fallback.js";
 import { mapAgentEvent } from "./map-agent-event.js";
+import { createMessagePersistor } from "./message-persistence.js";
 
 /**
  * Parallel mode: all agents run simultaneously on the same input.
@@ -109,9 +108,30 @@ export class ParallelMode implements ModeExecutor {
     const initialMessageCount = agent.state.messages.length;
     let assistantHasStreamDelta = false;
     let assistantErrorEmitted = false;
+    let agentEnded = false;
+    let persisted = false;
+    let settled = false;
 
     let resolveDone: () => void;
     const donePromise = new Promise<void>((r) => { resolveDone = r; });
+    const { persistPendingMessages } = createMessagePersistor(
+      ctx,
+      agentId,
+      initialMessageCount,
+      () => agent.state.messages,
+    );
+
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      resolveDone();
+    };
+
+    const persistNewMessagesOnce = async () => {
+      if (persisted) return;
+      persisted = true;
+      await persistPendingMessages();
+    };
 
     const unsub = agent.subscribe((e: PiAgentEvent) => {
       if (e.type === "message_start" && e.message.role === "assistant") {
@@ -172,21 +192,50 @@ export class ParallelMode implements ModeExecutor {
         events.push(swarmEvent);
         ctx.emit(swarmEvent);
       }
+      if (e.type === "turn_end") {
+        void persistPendingMessages().catch((err) => {
+          const persistenceError: SwarmEvent = { type: "error", agentId, error: err as Error };
+          events.push(persistenceError);
+          ctx.emit(persistenceError);
+        });
+      }
       if (e.type === "agent_end") {
-        void this.persistNewMessages(ctx, agentId, agent.state.messages.slice(initialMessageCount))
+        agentEnded = true;
+        void persistNewMessagesOnce()
           .catch((err) => {
             const persistenceError: SwarmEvent = { type: "error", agentId, error: err as Error };
             events.push(persistenceError);
             ctx.emit(persistenceError);
+          })
+          .finally(() => {
+            settle();
           });
-        resolveDone();
       }
     });
 
-    agent.prompt(input).catch((err) => {
-      events.push({ type: "error", agentId, error: err as Error });
-      resolveDone();
-    });
+    agent.prompt(input)
+      .then(() => {
+        if (agentEnded) {
+          settle();
+          return;
+        }
+        const syntheticAgentEnd: SwarmEvent = { type: "agent_end", agentId, agentName: config.name };
+        events.push(syntheticAgentEnd);
+        ctx.emit(syntheticAgentEnd);
+        void persistNewMessagesOnce()
+          .catch((err) => {
+            const persistenceError: SwarmEvent = { type: "error", agentId, error: err as Error };
+            events.push(persistenceError);
+            ctx.emit(persistenceError);
+          })
+          .finally(() => {
+            settle();
+          });
+      })
+      .catch((err) => {
+        events.push({ type: "error", agentId, error: err as Error });
+        settle();
+      });
 
     let yielded = 0;
     while (true) {
@@ -203,29 +252,6 @@ export class ParallelMode implements ModeExecutor {
       }
     }
     unsub();
-  }
-
-  private async persistNewMessages(
-    ctx: ModeExecutionContext,
-    agentId: string,
-    newMessages: AgentMessage[],
-  ): Promise<void> {
-    for (const message of newMessages) {
-      if (!this.isPersistablePiMessage(message) || message.role === "user") {
-        continue;
-      }
-      await ctx.storage.appendMessage(
-        ctx.conversationId,
-        messageToStored(message, agentId),
-      );
-    }
-  }
-
-  private isPersistablePiMessage(message: AgentMessage): message is Message {
-    return typeof message === "object"
-      && message !== null
-      && "role" in message
-      && (message.role === "user" || message.role === "assistant" || message.role === "toolResult");
   }
 
   private async *aggregate(
