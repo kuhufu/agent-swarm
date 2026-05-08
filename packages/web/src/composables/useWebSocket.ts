@@ -258,7 +258,7 @@ export function useWebSocket() {
             id: msg.payload.toolCallId,
             name: typeof msg.payload?.toolName === "string" ? msg.payload.toolName : undefined,
             arguments: msg.payload?.args,
-            result: msg.payload?.result,
+            result: msg.payload?.partialResult,
           }, targetConversationId);
         }
         break;

@@ -19,11 +19,11 @@ export function mapAgentEvent(e: PiAgentEvent, agentId: string, agentName: strin
       return null;
     case "message_end": return { type: "message_end", agentId, agentName, role: e.message.role };
     case "tool_execution_start":
-      return { type: "tool_execution_start", agentId, toolName: e.toolName, toolCallId: e.toolCallId, args: e.args };
+      return { ...e, agentId };
     case "tool_execution_update":
-      return { type: "tool_execution_update", agentId, toolName: e.toolName, toolCallId: e.toolCallId, args: e.args, partialResult: e.partialResult };
+      return { ...e, agentId };
     case "tool_execution_end":
-      return { type: "tool_execution_end", agentId, toolName: e.toolName, toolCallId: e.toolCallId, result: e.result, isError: e.isError };
+      return { ...e, agentId };
     default: return null;
   }
 }
