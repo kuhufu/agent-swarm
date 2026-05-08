@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from "vue";
 import hljs from "highlight.js/lib/common";
 import "highlight.js/styles/github-dark.css";
 import { apiClient } from "../../api/client.js";
@@ -420,6 +420,14 @@ function toggleBatchMenu() {
   batchMenuOpen.value = !batchMenuOpen.value;
 }
 
+function handleClickOutside() {
+  openMenuPath.value = null;
+  batchMenuOpen.value = false;
+}
+
+onMounted(() => document.addEventListener("click", handleClickOutside));
+onUnmounted(() => document.removeEventListener("click", handleClickOutside));
+
 function revokeImageUrl() {
   if (imageUrl.value) {
     URL.revokeObjectURL(imageUrl.value);
@@ -483,7 +491,7 @@ function getFileColor(name: string): string {
         <span class="bulk-count">{{ selectedCount > 0 ? `${selectedCount} 已选` : `${artifacts.length} 个文件` }}</span>
       </div>
       <div v-if="selectedCount > 0" class="batch-menu-wrap">
-        <button class="batch-trigger" type="button" title="批量操作" @click="toggleBatchMenu">
+        <button class="batch-trigger" type="button" title="批量操作" @click.stop="toggleBatchMenu">
           <SvgIcon name="moreHorizontal" :size="14" />
         </button>
         <div v-if="batchMenuOpen" class="artifact-menu batch-menu" @click.stop>
