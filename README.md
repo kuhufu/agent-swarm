@@ -21,6 +21,7 @@
 - 多租户隔离：`swarms / conversations / agent presets / documents / wiki / usage analytics` 按 `userId` 严格隔离；首个注册用户自动成为 `admin`
 - 工具运行时：`packages/core/src/tools/runtime.ts` 统一把模式工具、前端桥接工具、WebSearch、MCP 和运行时工具注入 Agent
 - Workspace 工具：`workspace_run_container` 通过 Docker 隔离执行命令，容器按会话 label 关联，并通过 `workspace_list_containers` / `workspace_remove_containers` 管理当前会话容器
+- 浏览器自动化工具：`browser_automation` 基于 [agent-browser](https://github.com/vercel-labs/agent-browser) 提供浏览器控制能力，支持打开网页、快照获取元素引用 `@e1/@e2`、点击、填表、截图等操作
 - 消息 Markdown 渲染：基于 `marked + marked-highlight + highlight.js + KaTeX + dompurify`，支持代码高亮、数学公式与安全净化
 - 文档与 Wiki：文档 tab 管理来源文件和知识库检索，Wiki tab 基于文档生成可编辑页面、支撑要点和关联页面
 - 知识引用回显：`search_wiki` 和 `retrieve_knowledge` 工具结果会在聊天工具卡中展示命中页面、文档片段和相关度，并可跳转到对应来源
@@ -59,6 +60,7 @@ agent-swarm/
 - Node.js `>= 18`
 - pnpm `>= 8`
 - Docker（仅启用 workspace 命令执行工具时需要）
+- agent-browser（仅启用浏览器自动化工具时需要）：`npm install -g agent-browser && agent-browser install`
 
 ## 快速开始
 
