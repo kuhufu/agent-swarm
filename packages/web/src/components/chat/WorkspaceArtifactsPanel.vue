@@ -175,10 +175,12 @@ async function loadImagePreview(artifact: WorkspaceArtifact) {
   }
 }
 
-async function downloadArtifact(artifact: WorkspaceArtifact) {
+async function downloadArtifact(artifact?: WorkspaceArtifact) {
+  const target = artifact ?? selectedArtifact.value;
+  if (!target) return;
   try {
-    const blob = await fetchArtifactBlob(artifact.path);
-    triggerDownload(blob, artifact.name);
+    const blob = await fetchArtifactBlob(target.path);
+    triggerDownload(blob, target.name);
     openMenuPath.value = null;
   } catch (error) {
     showError(error instanceof Error ? error.message : "下载产物失败");
@@ -213,14 +215,15 @@ async function downloadAllArtifacts() {
   }
 }
 
-async function importArtifact(artifact = selectedArtifact.value) {
-  if (!props.conversationId || !artifact) return;
+async function importArtifact(artifact?: WorkspaceArtifact) {
+  const target = artifact ?? selectedArtifact.value;
+  if (!props.conversationId || !target) return;
   try {
     const response = await apiClient<{ data: { title: string } }>(
       `/conversations/${props.conversationId}/workspace/files/import-document`,
       {
         method: "POST",
-        body: JSON.stringify({ path: artifact.path }),
+        body: JSON.stringify({ path: target.path }),
       },
     );
     openMenuPath.value = null;
@@ -303,15 +306,16 @@ async function setSelectedFinalArtifacts(final: boolean) {
   showSuccess(final ? `已标记最终结果：${targets.length} 个文件` : `已取消最终结果：${targets.length} 个文件`);
 }
 
-async function deleteArtifact(artifact = selectedArtifact.value) {
-  if (!props.conversationId || !artifact) return;
-  if (!window.confirm(`删除产物“${artifact.path}”？`)) return;
+async function deleteArtifact(artifact?: WorkspaceArtifact) {
+  const target = artifact ?? selectedArtifact.value;
+  if (!props.conversationId || !target) return;
+  if (!window.confirm(`删除产物"${target.path}"？`)) return;
   try {
     await apiClient<{ data: { deleted: boolean } }>(
-      `/conversations/${props.conversationId}/workspace/files?path=${encodeURIComponent(artifact.path)}`,
+      `/conversations/${props.conversationId}/workspace/files?path=${encodeURIComponent(target.path)}`,
       { method: "DELETE" },
     );
-    selectedPaths.value.delete(artifact.path);
+    selectedPaths.value.delete(target.path);
     selectedPaths.value = new Set(selectedPaths.value);
     openMenuPath.value = null;
     showSuccess("产物已删除");
@@ -433,12 +437,30 @@ function formatTime(value?: number): string {
   if (!value) return "";
   return new Date(value).toLocaleString();
 }
+
+function getFileIcon(name: string): string {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  if (["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"].includes(ext)) return "image";
+  if (["js", "ts", "jsx", "tsx", "py", "java", "c", "cpp", "h", "hpp", "go", "rs", "swift", "kt", "rb", "php", "cs"].includes(ext)) return "fileCode";
+  if (["json", "yaml", "yml", "toml", "xml"].includes(ext)) return "fileJson";
+  if (["md", "txt", "rst", "log"].includes(ext)) return "file";
+  return "file";
+}
+
+function getFileColor(name: string): string {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  if (["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"].includes(ext)) return "#a78bfa";
+  if (["js", "ts", "jsx", "tsx", "py", "java", "c", "cpp", "h", "hpp", "go", "rs", "swift", "kt", "rb", "php", "cs"].includes(ext)) return "#60a5fa";
+  if (["json", "yaml", "yml", "toml", "xml"].includes(ext)) return "#fbbf24";
+  if (["md", "txt", "rst", "log"].includes(ext)) return "#94a3b8";
+  return "#cbd5e1";
+}
 </script>
 
 <template>
   <section class="workspace-artifacts">
     <header class="panel-header">
-      <div>
+      <div class="header-info">
         <h3>产物</h3>
         <p>{{ artifacts.length }} 个文件 · {{ formatSize(totalSize) }}</p>
       </div>
@@ -446,11 +468,19 @@ function formatTime(value?: number): string {
         <SvgIcon name="refresh" :size="14" />
       </button>
     </header>
+
     <div v-if="conversationId && artifacts.length > 0" class="bulk-actions">
       <div class="bulk-summary">
-        <span>{{ selectedCount }} 已选</span>
-        <button v-if="selectedCount < artifacts.length" type="button" @click="selectAllArtifacts">全选</button>
-        <button v-else type="button" @click="clearSelection">清空</button>
+        <button
+          class="artifact-checkbox"
+          :class="{ checked: selectedCount > 0 && selectedCount === artifacts.length, partial: selectedCount > 0 && selectedCount < artifacts.length }"
+          type="button"
+          :aria-label="selectedCount === artifacts.length ? '取消全选' : '全选'"
+          @click="selectedCount === artifacts.length ? clearSelection() : selectAllArtifacts()"
+        >
+          <SvgIcon v-if="selectedCount > 0" name="check" :size="11" />
+        </button>
+        <span class="bulk-count">{{ selectedCount > 0 ? `${selectedCount} 已选` : `${artifacts.length} 个文件` }}</span>
       </div>
       <div v-if="selectedCount > 0" class="batch-menu-wrap">
         <button class="batch-trigger" type="button" title="批量操作" @click="toggleBatchMenu">
@@ -485,79 +515,101 @@ function formatTime(value?: number): string {
       </div>
     </div>
 
-    <div v-if="!conversationId" class="empty-state">打开会话后查看产物</div>
-    <div v-else-if="!loading && artifacts.length === 0" class="empty-state">暂无产物</div>
+    <div v-if="!conversationId" class="empty-state">
+      <SvgIcon name="folder" :size="28" />
+      <p>打开会话后查看产物</p>
+    </div>
+    <div v-else-if="!loading && artifacts.length === 0" class="empty-state">
+      <SvgIcon name="folder" :size="28" />
+      <p>暂无产物</p>
+    </div>
     <div v-else class="artifact-layout">
       <section v-if="finalArtifacts.length > 0" class="final-section">
         <div class="section-title">
-          <strong>最终结果</strong>
-          <span>{{ finalArtifacts.length }}</span>
+          <span class="section-label">
+            <span class="final-dot" />
+            最终结果
+          </span>
+          <span class="section-count">{{ finalArtifacts.length }}</span>
         </div>
-        <article
-          v-for="artifact in finalArtifacts"
-          :key="`final-${artifact.path}`"
-          class="final-item"
-          :class="{ active: selectedArtifact?.path === artifact.path }"
-          @click="selectArtifact(artifact)"
-          @dblclick="openPreview(artifact)"
-        >
-          <div>
-            <span>{{ artifact.name }}</span>
-            <small>{{ artifact.path }}</small>
-          </div>
-          <button class="menu-btn" type="button" title="文件操作" @click.stop="toggleArtifactMenu(artifact.path)">
-            <SvgIcon name="moreHorizontal" :size="14" />
-          </button>
-          <div v-if="openMenuPath === artifact.path" class="artifact-menu" @click.stop>
-            <button type="button" :disabled="!artifact.previewable" @click="openPreview(artifact)">
-              <SvgIcon name="search" :size="13" />
-              预览
+        <div class="final-list">
+          <article
+            v-for="artifact in finalArtifacts"
+            :key="`final-${artifact.path}`"
+            class="artifact-card final-card"
+            :class="{ active: selectedArtifact?.path === artifact.path }"
+            @click="selectArtifact(artifact)"
+            @dblclick="openPreview(artifact)"
+          >
+            <div class="file-icon" :style="{ color: getFileColor(artifact.name) }">
+              <SvgIcon :name="getFileIcon(artifact.name)" :size="18" />
+            </div>
+            <div class="file-info">
+              <div class="file-name-row">
+                <span class="file-name">{{ artifact.name }}</span>
+                <span class="file-size">{{ formatSize(artifact.size) }}</span>
+              </div>
+              <span class="file-path">{{ artifact.path }}</span>
+            </div>
+            <button class="menu-btn" type="button" title="文件操作" @click.stop="toggleArtifactMenu(artifact.path)">
+              <SvgIcon name="moreHorizontal" :size="14" />
             </button>
-            <button type="button" @click="downloadArtifact(artifact)">
-              <SvgIcon name="download" :size="13" />
-              下载
-            </button>
-            <button type="button" @click="importArtifact(artifact)">
-              <SvgIcon name="book" :size="13" />
-              加入文档
-            </button>
-            <button type="button" @click="toggleFinalArtifact(artifact)">
-              <SvgIcon name="check" :size="13" />
-              取消最终
-            </button>
-            <button type="button" class="danger" @click="deleteArtifact(artifact)">
-              <SvgIcon name="trash" :size="13" />
-              删除
-            </button>
-          </div>
-        </article>
+            <div v-if="openMenuPath === artifact.path" class="artifact-menu" @click.stop>
+              <button type="button" :disabled="!artifact.previewable" @click="openPreview(artifact)">
+                <SvgIcon name="search" :size="13" />
+                预览
+              </button>
+              <button type="button" @click="downloadArtifact(artifact)">
+                <SvgIcon name="download" :size="13" />
+                下载
+              </button>
+              <button type="button" @click="importArtifact(artifact)">
+                <SvgIcon name="book" :size="13" />
+                加入文档
+              </button>
+              <button type="button" @click="toggleFinalArtifact(artifact)">
+                <SvgIcon name="check" :size="13" />
+                取消最终
+              </button>
+              <button type="button" class="danger" @click="deleteArtifact(artifact)">
+                <SvgIcon name="trash" :size="13" />
+                删除
+              </button>
+            </div>
+          </article>
+        </div>
       </section>
 
       <div class="artifact-list">
         <article
           v-for="artifact in artifacts"
           :key="artifact.path"
-          class="artifact-item"
+          class="artifact-card"
           :class="{ active: selectedArtifact?.path === artifact.path }"
           @click="selectArtifact(artifact)"
           @dblclick="openPreview(artifact)"
         >
-          <span class="artifact-row">
-            <button
-              class="artifact-checkbox"
-              :class="{ checked: selectedPaths.has(artifact.path) }"
-              type="button"
-              :aria-label="selectedPaths.has(artifact.path) ? '取消选择' : '选择文件'"
-              :aria-pressed="selectedPaths.has(artifact.path)"
-              @click.stop="toggleSelection(artifact.path)"
-            >
-              <SvgIcon v-if="selectedPaths.has(artifact.path)" name="check" :size="12" />
-            </button>
-            <span class="artifact-name">{{ artifact.name }}</span>
-            <span v-if="artifact.final" class="final-badge">最终</span>
-          </span>
-          <span class="artifact-path">{{ artifact.path }}</span>
-          <span class="artifact-meta">{{ artifact.kind }} · {{ formatSize(artifact.size) }}</span>
+          <button
+            class="artifact-checkbox"
+            :class="{ checked: selectedPaths.has(artifact.path) }"
+            type="button"
+            :aria-label="selectedPaths.has(artifact.path) ? '取消选择' : '选择文件'"
+            :aria-pressed="selectedPaths.has(artifact.path)"
+            @click.stop="toggleSelection(artifact.path)"
+          >
+            <SvgIcon v-if="selectedPaths.has(artifact.path)" name="check" :size="11" />
+          </button>
+          <div class="file-icon" :style="{ color: getFileColor(artifact.name) }">
+            <SvgIcon :name="getFileIcon(artifact.name)" :size="18" />
+          </div>
+          <div class="file-info">
+            <div class="file-name-row">
+              <span class="file-name">{{ artifact.name }}</span>
+              <span v-if="artifact.final" class="final-badge-inline">最终</span>
+              <span class="file-size">{{ formatSize(artifact.size) }}</span>
+            </div>
+            <span class="file-path">{{ artifact.path }}</span>
+          </div>
           <button class="menu-btn" type="button" title="文件操作" @click.stop="toggleArtifactMenu(artifact.path)">
             <SvgIcon name="moreHorizontal" :size="14" />
           </button>
@@ -587,11 +639,38 @@ function formatTime(value?: number): string {
       </div>
 
       <div v-if="selectedArtifact" class="artifact-detail">
-        <div class="detail-title">
-          <div>
-            <strong>{{ selectedArtifact.name }}</strong>
-            <span>{{ formatTime(selectedArtifact.updatedAt) }}</span>
+        <div class="detail-header">
+          <div class="detail-icon" :style="{ color: getFileColor(selectedArtifact.name) }">
+            <SvgIcon :name="getFileIcon(selectedArtifact.name)" :size="22" />
           </div>
+          <div class="detail-info">
+            <strong class="detail-name" :title="selectedArtifact.name">{{ selectedArtifact.name }}</strong>
+            <div class="detail-meta">
+              <span class="meta-kind">{{ selectedArtifact.kind }}</span>
+              <span class="meta-right">
+                <span>{{ formatSize(selectedArtifact.size) }}</span>
+                <span v-if="selectedArtifact.updatedAt" class="meta-sep">·</span>
+                <span v-if="selectedArtifact.updatedAt">{{ formatTime(selectedArtifact.updatedAt) }}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="detail-actions">
+          <button type="button" title="预览" :disabled="!selectedArtifact.previewable" @click="openPreview()">
+            <SvgIcon name="search" :size="14" />
+          </button>
+          <button type="button" title="下载" @click="downloadArtifact()">
+            <SvgIcon name="download" :size="14" />
+          </button>
+          <button type="button" title="加入文档" @click="importArtifact()">
+            <SvgIcon name="book" :size="14" />
+          </button>
+          <button type="button" :title="selectedArtifact.final ? '取消最终' : '标记最终'" @click="toggleFinalArtifact(selectedArtifact)">
+            <SvgIcon :name="selectedArtifact.final ? 'close' : 'check'" :size="14" />
+          </button>
+          <button type="button" title="删除" class="danger" @click="deleteArtifact()">
+            <SvgIcon name="trash" :size="14" />
+          </button>
         </div>
       </div>
     </div>
@@ -600,9 +679,14 @@ function formatTime(value?: number): string {
       <div v-if="previewOpen && selectedArtifact" class="preview-modal" @click.self="closePreview">
         <section class="preview-dialog">
           <header class="preview-header">
-            <div>
-              <strong>{{ selectedArtifact.name }}</strong>
-              <span>{{ selectedArtifact.path }}</span>
+            <div class="preview-title">
+              <div class="preview-icon" :style="{ color: getFileColor(selectedArtifact.name) }">
+                <SvgIcon :name="getFileIcon(selectedArtifact.name)" :size="18" />
+              </div>
+              <div>
+                <strong>{{ selectedArtifact.name }}</strong>
+                <span>{{ selectedArtifact.path }}</span>
+              </div>
             </div>
             <button class="icon-btn" type="button" title="关闭" @click="closePreview">
               <SvgIcon name="close" :size="15" />
@@ -628,32 +712,55 @@ function formatTime(value?: number): string {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   overflow: hidden;
 }
 
-.panel-header,
-.detail-title {
+.panel-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
+  flex-shrink: 0;
 }
 
-.panel-header h3 {
+.header-info h3 {
   margin: 0;
   color: var(--color-text-primary);
   font-size: 13px;
   font-weight: 700;
 }
 
-.panel-header p,
-.detail-title span,
-.artifact-path,
-.artifact-meta,
-.preview-note {
+.header-info p {
+  margin: 2px 0 0;
   color: var(--color-text-muted);
   font-size: 11px;
+}
+
+.icon-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 7px;
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.icon-btn:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--color-text-primary);
+}
+
+.icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .bulk-actions {
@@ -662,42 +769,26 @@ function formatTime(value?: number): string {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px;
+  padding: 6px 8px;
   border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
+  background: rgba(255, 255, 255, 0.02);
+  flex-shrink: 0;
+  height: 40px;
+  box-sizing: border-box;
 }
 
 .bulk-summary {
-  min-height: 28px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
 }
 
-.bulk-summary span {
+.bulk-count {
   color: var(--color-text-muted);
   font-size: 11px;
-}
-
-.bulk-actions button {
-  min-height: 28px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 0 10px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 7px;
-  color: var(--color-text-secondary);
-  background: rgba(255, 255, 255, 0.04);
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.bulk-actions button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+  font-weight: 500;
 }
 
 .batch-menu-wrap {
@@ -706,38 +797,22 @@ function formatTime(value?: number): string {
 }
 
 .batch-trigger {
-  width: 30px;
-  padding: 0;
-  justify-content: center;
-}
-
-.batch-menu {
-  top: 34px;
-  right: 0;
-}
-
-.icon-btn {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--color-text-secondary);
   background: rgba(255, 255, 255, 0.04);
   cursor: pointer;
 }
 
-.icon-btn.danger {
-  color: var(--color-danger);
-  border-color: rgba(239, 68, 68, 0.2);
-  background: rgba(239, 68, 68, 0.08);
-}
-
-.icon-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
+.batch-menu {
+  top: 32px;
+  right: 0;
 }
 
 .artifact-layout {
@@ -745,183 +820,245 @@ function formatTime(value?: number): string {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   overflow: hidden;
 }
 
 .artifact-list {
   flex: 1;
   min-height: 0;
-  display: grid;
-  align-content: start;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
   overflow-y: auto;
+  padding-right: 2px;
 }
 
 .final-section {
-  display: grid;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.final-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .section-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: var(--color-text-muted);
-  font-size: 11px;
+  padding: 0 4px;
 }
 
-.section-title strong {
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-
-.final-item {
-  position: relative;
-  display: grid;
-  gap: 3px;
-  padding: 9px 44px 9px 10px;
-  border: 1px solid rgba(34, 197, 94, 0.22);
-  border-radius: 8px;
-  color: var(--color-text-secondary);
-  background: rgba(34, 197, 94, 0.08);
-  text-align: left;
-  cursor: pointer;
-}
-
-.final-item.active {
-  border-color: rgba(34, 197, 94, 0.45);
-  background: rgba(34, 197, 94, 0.14);
-}
-
-.final-item span {
-  color: var(--color-text-primary);
-  font-size: 12px;
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.final-item small {
-  color: var(--color-text-muted);
-  font-size: 11px;
-  overflow-wrap: anywhere;
-}
-
-.artifact-item {
-  position: relative;
-  display: grid;
-  gap: 3px;
-  padding: 9px 44px 9px 10px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
-  text-align: left;
-  cursor: pointer;
-}
-
-.artifact-item.active {
-  border-color: rgba(99, 102, 241, 0.42);
-  background: rgba(99, 102, 241, 0.12);
-}
-
-.artifact-name {
-  min-width: 0;
-  color: var(--color-text-primary);
-  font-size: 12px;
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.artifact-row {
-  min-width: 0;
+.section-label {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
 }
 
-.final-badge {
+.final-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+}
+
+.section-count {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+
+.artifact-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 36px 8px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.artifact-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.artifact-card.active {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.25);
+}
+
+.final-card {
+  background: rgba(34, 197, 94, 0.06);
+  border-color: rgba(34, 197, 94, 0.12);
+}
+
+.final-card:hover {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.22);
+}
+
+.final-card.active {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.file-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.file-info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.file-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.file-name {
+  min-width: 0;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.file-path {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.final-badge-inline {
+  flex-shrink: 0;
   padding: 1px 6px;
   border-radius: 999px;
-  color: var(--color-success);
+  color: #22c55e;
   background: rgba(34, 197, 94, 0.12);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  flex: 0 0 auto;
 }
 
 .artifact-checkbox {
-  width: 18px;
-  height: 18px;
-  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 5px;
+  border: 1.5px solid rgba(148, 163, 184, 0.22);
+  border-radius: 4px;
   color: #fff;
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(255, 255, 255, 0.02);
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .artifact-checkbox:hover {
-  border-color: rgba(99, 102, 241, 0.55);
-  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(99, 102, 241, 0.08);
 }
 
 .artifact-checkbox.checked {
-  border-color: rgba(99, 102, 241, 0.85);
+  border-color: #6366f1;
   background: #6366f1;
 }
 
-.artifact-path {
-  overflow-wrap: anywhere;
+.artifact-checkbox.partial {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.25);
 }
 
 .menu-btn {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 28px;
-  height: 28px;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
   color: var(--color-text-muted);
-  background: rgba(255, 255, 255, 0.04);
+  background: transparent;
   cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.artifact-card:hover .menu-btn {
+  opacity: 1;
 }
 
 .menu-btn:hover {
   color: var(--color-text-primary);
-  border-color: rgba(99, 102, 241, 0.32);
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .artifact-menu {
   position: absolute;
-  top: 38px;
-  right: 8px;
+  top: 30px;
+  right: 4px;
   z-index: 12;
-  min-width: 132px;
+  min-width: 140px;
   display: grid;
-  gap: 3px;
+  gap: 2px;
   padding: 6px;
   border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
   background: rgba(15, 23, 42, 0.98);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.34);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
 }
 
 .artifact-menu button {
-  min-height: 30px;
+  min-height: 28px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -933,6 +1070,7 @@ function formatTime(value?: number): string {
   cursor: pointer;
   font-size: 12px;
   text-align: left;
+  transition: all 0.1s ease;
 }
 
 .artifact-menu button:hover:not(:disabled) {
@@ -944,27 +1082,112 @@ function formatTime(value?: number): string {
   color: var(--color-danger);
 }
 
+.artifact-menu button.danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.1);
+}
+
 .artifact-menu button:disabled {
   cursor: not-allowed;
-  opacity: 0.45;
+  opacity: 0.35;
 }
 
 .artifact-detail {
-  flex: 0 0 auto;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 10px;
+  padding: 12px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.025);
 }
 
-.detail-title strong {
-  display: block;
-  color: var(--color-text-secondary);
+.detail-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.detail-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.detail-info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.detail-name {
+  color: var(--color-text-primary);
   font-size: 12px;
-  overflow-wrap: anywhere;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.meta-sep {
+  opacity: 0.5;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.detail-actions button {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 7px;
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.detail-actions button:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.detail-actions button.danger {
+  color: var(--color-danger);
+  border-color: rgba(239, 68, 68, 0.15);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.detail-actions button.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.detail-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .text-preview {
@@ -1032,14 +1255,32 @@ function formatTime(value?: number): string {
 
 .preview-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding: 14px 16px;
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
-.preview-header div {
+.preview-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.preview-icon {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  flex-shrink: 0;
+}
+
+.preview-header div:last-child:not(.preview-title) {
   min-width: 0;
   display: grid;
   gap: 4px;
@@ -1067,16 +1308,33 @@ function formatTime(value?: number): string {
 }
 
 .empty-state {
-  padding: 16px 10px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 10px;
   color: var(--color-text-muted);
-  background: rgba(255, 255, 255, 0.025);
   text-align: center;
   font-size: 12px;
 }
 
+.empty-state :deep(svg) {
+  opacity: 0.3;
+}
+
 .empty-state.compact {
   padding: 12px 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.preview-note {
+  margin: 8px 0 0;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-align: center;
 }
 </style>
