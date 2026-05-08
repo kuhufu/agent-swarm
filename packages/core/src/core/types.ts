@@ -287,7 +287,9 @@ export interface ToolExecutionUpdateEvent {
   type: "tool_execution_update";
   agentId: string;
   toolCallId: string;
-  progress?: any;
+  toolName: string;
+  args: any;
+  partialResult: any;
 }
 
 export interface ToolExecutionEndEvent {

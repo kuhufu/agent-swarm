@@ -8,6 +8,7 @@ import {
   extractAssistantErrorMessage,
   extractAssistantTextAndThinking,
 } from "./message-fallback.js";
+import { mapAgentEvent } from "./map-agent-event.js";
 
 /**
  * Router mode: an orchestrator agent decides which specialist agent to route to.
@@ -151,7 +152,7 @@ export class RouterMode implements ModeExecutor {
         }
       }
 
-      const swarmEvent = this.mapAgentEvent(e, agentId, config.name);
+      const swarmEvent = mapAgentEvent(e, agentId, config.name);
       if (swarmEvent) {
         events.push(swarmEvent);
         ctx.emit(swarmEvent);
@@ -242,6 +243,17 @@ export class RouterMode implements ModeExecutor {
             thinkingDelta: e.assistantMessageEvent.delta,
           };
         }
+        if (e.assistantMessageEvent.type === "toolcall_end") {
+          return {
+            type: "message_update",
+            agentId,
+            toolCallId: e.assistantMessageEvent.toolCall.id,
+            toolCallName: e.assistantMessageEvent.toolCall.name,
+            toolCallArgs: typeof e.assistantMessageEvent.toolCall.arguments === "string"
+              ? e.assistantMessageEvent.toolCall.arguments
+              : JSON.stringify(e.assistantMessageEvent.toolCall.arguments ?? {}),
+          };
+        }
         return null;
       case "message_end":
         return { type: "message_end", agentId, agentName, role: e.message.role };
@@ -253,6 +265,8 @@ export class RouterMode implements ModeExecutor {
           toolCallId: e.toolCallId,
           args: e.args,
         };
+      case "tool_execution_update":
+        return { type: "tool_execution_update", agentId, toolName: e.toolName, toolCallId: e.toolCallId, args: e.args, result: e.partialResult };
       case "tool_execution_end":
         return {
           type: "tool_execution_end",

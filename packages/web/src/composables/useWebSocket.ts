@@ -252,6 +252,17 @@ export function useWebSocket() {
         }
         break;
 
+      case "tool_execution_update":
+        if (typeof msg.payload?.toolCallId === "string") {
+          conversationStore.upsertToolCall(msg.payload.agentId, {
+            id: msg.payload.toolCallId,
+            name: typeof msg.payload?.toolName === "string" ? msg.payload.toolName : undefined,
+            arguments: msg.payload?.args,
+            result: msg.payload?.result,
+          }, targetConversationId);
+        }
+        break;
+
       case "tool_execution_end": {
         conversationStore.setAgentStatus(msg.payload.agentId, "thinking", targetConversationId);
         if (typeof msg.payload?.toolCallId === "string" && typeof msg.payload?.toolName === "string") {
