@@ -1,5 +1,5 @@
 import { mkdir, writeFile, readFile, readdir, stat, rm, realpath } from "node:fs/promises";
-import { join, resolve, relative } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { spawn } from "node:child_process";
 
@@ -11,6 +11,8 @@ const MAX_READ_SIZE = 10240; // 10KB
 export interface FileInfo {
   path: string;
   size: number;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 export interface GrepMatch {
@@ -67,9 +69,8 @@ export class WorkspaceManager {
     } catch (err: unknown) {
       const code = (err as NodeJS.ErrnoException)?.code;
       if (code === "ENOENT") {
-        const parentDir = resolve(resolved, "..");
         try {
-          const realParent = await realpath(parentDir);
+          const realParent = await this.resolveExistingAncestor(resolved);
           const realBase = await this.resolveRealBase();
           if (!realParent.startsWith(realBase + "/") && realParent !== realBase) {
             throw new Error(`路径不允许逃逸工作目录: ${relativePath}`);
@@ -81,6 +82,26 @@ export class WorkspaceManager {
       }
       return resolved;
     }
+  }
+
+  private async resolveExistingAncestor(path: string): Promise<string> {
+    const realBase = await this.resolveRealBase();
+    let current = dirname(path);
+    while (current.startsWith(this.baseDir + "/") || current === this.baseDir) {
+      try {
+        return await realpath(current);
+      } catch (err: unknown) {
+        const code = (err as NodeJS.ErrnoException)?.code;
+        if (code !== "ENOENT") {
+          throw err;
+        }
+        if (current === this.baseDir) {
+          break;
+        }
+        current = dirname(current);
+      }
+    }
+    return realBase;
   }
 
   async writeFile(relativePath: string, content: string): Promise<FileInfo> {
@@ -95,7 +116,12 @@ export class WorkspaceManager {
     await writeFile(fullPath, content, "utf-8");
 
     const fileStat = await stat(fullPath);
-    return { path: relativePath, size: fileStat.size };
+    return {
+      path: relativePath,
+      size: fileStat.size,
+      createdAt: fileStat.birthtimeMs,
+      updatedAt: fileStat.mtimeMs,
+    };
   }
 
   async readFile(relativePath: string, maxLines?: number): Promise<{ content: string; size: number; truncated: boolean }> {
@@ -133,7 +159,12 @@ export class WorkspaceManager {
     });
     if (!dirStat.isDirectory()) {
       const fileStat = await stat(target);
-      return [{ path: relativePath ?? ".", size: fileStat.size }];
+      return [{
+        path: relativePath ?? ".",
+        size: fileStat.size,
+        createdAt: fileStat.birthtimeMs,
+        updatedAt: fileStat.mtimeMs,
+      }];
     }
 
     const entries = await readdir(target, { withFileTypes: true });
@@ -147,6 +178,8 @@ export class WorkspaceManager {
         results.push({
           path: relativePath ? join(relativePath, entry.name) : entry.name,
           size: fileStat.size,
+          createdAt: fileStat.birthtimeMs,
+          updatedAt: fileStat.mtimeMs,
         });
       }
     }
@@ -167,7 +200,12 @@ export class WorkspaceManager {
           results.push(...sub);
         } else {
           const fileStat = await stat(entryPath);
-          results.push({ path: relPath, size: fileStat.size });
+          results.push({
+            path: relPath,
+            size: fileStat.size,
+            createdAt: fileStat.birthtimeMs,
+            updatedAt: fileStat.mtimeMs,
+          });
         }
       }
     } catch {

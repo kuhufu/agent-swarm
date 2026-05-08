@@ -9,6 +9,7 @@ import MessageList from "../components/chat/MessageList.vue";
 import ChatInput from "../components/chat/ChatInput.vue";
 import AgentStatus from "../components/chat/AgentStatus.vue";
 import ConversationTrace from "../components/chat/ConversationTrace.vue";
+import WorkspaceArtifactsPanel from "../components/chat/WorkspaceArtifactsPanel.vue";
 import InterventionPanel from "../components/intervention/InterventionPanel.vue";
 import { showError } from "../utils/ui-feedback.js";
 import SvgIcon from "../components/common/SvgIcon.vue";
@@ -19,6 +20,8 @@ const { connect, connected } = useWebSocket();
 const route = useRoute();
 const router = useRouter();
 const draftSwarmId = ref<string>("");
+const activeSidebarTab = ref<"agents" | "trace" | "artifacts">("agents");
+const selectedArtifactPath = ref<string | null>(null);
 
 const routeConversationId = computed(() => {
   const rawConversationId = route.params.conversationId;
@@ -63,6 +66,21 @@ const active = computed(() => conversationStore.getIsActive(routeConversationId.
 const messages = computed(() => conversationStore.getMessages(routeConversationId.value));
 const agentStates = computed(() => Array.from(conversationStore.getAgentStates(routeConversationId.value).values()));
 const traceEvents = computed(() => conversationStore.getEvents(routeConversationId.value));
+const artifactRefreshKey = computed(() => {
+  const paths: string[] = [];
+  for (const message of messages.value) {
+    for (const toolCall of message.toolCalls ?? []) {
+      if (toolCall.name !== "workspace_write_file" || !toolCall.result || typeof toolCall.result !== "object" || Array.isArray(toolCall.result)) {
+        continue;
+      }
+      const path = (toolCall.result as Record<string, unknown>).path;
+      if (typeof path === "string" && path) {
+        paths.push(`${toolCall.id}:${path}`);
+      }
+    }
+  }
+  return paths.join("|");
+});
 
 onMounted(() => {
   swarmStore.fetchSwarms();
@@ -70,10 +88,12 @@ onMounted(() => {
     connect();
   }
   window.addEventListener("agent-swarm:conversation-created", handleConversationCreated);
+  window.addEventListener("agent-swarm:open-artifact", handleOpenArtifact);
 });
 
 onUnmounted(() => {
   window.removeEventListener("agent-swarm:conversation-created", handleConversationCreated);
+  window.removeEventListener("agent-swarm:open-artifact", handleOpenArtifact);
 });
 
 function handleConversationCreated(event: Event) {
@@ -85,6 +105,14 @@ function handleConversationCreated(event: Event) {
   if (routeConversationId.value !== conversationId) {
     void router.replace({ name: "chat", params: { conversationId } });
   }
+}
+
+function handleOpenArtifact(event: Event) {
+  const detail = (event as CustomEvent<{ path?: unknown }>).detail;
+  const path = typeof detail?.path === "string" ? detail.path : "";
+  if (!path) return;
+  selectedArtifactPath.value = path;
+  activeSidebarTab.value = "artifacts";
 }
 
 watch(draftMode, (mode) => {
@@ -195,8 +223,40 @@ async function handleForkConversation(messageId?: string) {
       />
     </div>
     <aside class="chat-sidebar-right">
-      <AgentStatus :agents="agentStates" :swarm-id="swarmId" />
-      <ConversationTrace :events="traceEvents" />
+      <div class="sidebar-tabs">
+        <button
+          type="button"
+          :class="{ active: activeSidebarTab === 'agents' }"
+          title="Agent"
+          @click="activeSidebarTab = 'agents'"
+        >
+          <SvgIcon name="swarm" :size="14" />
+        </button>
+        <button
+          type="button"
+          :class="{ active: activeSidebarTab === 'trace' }"
+          title="Trace"
+          @click="activeSidebarTab = 'trace'"
+        >
+          <SvgIcon name="pulse" :size="14" />
+        </button>
+        <button
+          type="button"
+          :class="{ active: activeSidebarTab === 'artifacts' }"
+          title="产物"
+          @click="activeSidebarTab = 'artifacts'"
+        >
+          <SvgIcon name="folder" :size="14" />
+        </button>
+      </div>
+      <AgentStatus v-if="activeSidebarTab === 'agents'" :agents="agentStates" :swarm-id="swarmId" />
+      <ConversationTrace v-else-if="activeSidebarTab === 'trace'" :events="traceEvents" />
+      <WorkspaceArtifactsPanel
+        v-else
+        :conversation-id="routeConversationId"
+        :selected-path="selectedArtifactPath"
+        :refresh-key="artifactRefreshKey"
+      />
     </aside>
   </div>
 </template>
@@ -295,6 +355,34 @@ async function handleForkConversation(messageId?: string) {
   flex-direction: column;
   gap: 20px;
   min-height: 0;
+}
+
+.sidebar-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  flex: 0 0 auto;
+}
+
+.sidebar-tabs button {
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.sidebar-tabs button.active {
+  color: var(--color-accent-light);
+  background: rgba(99, 102, 241, 0.16);
 }
 
 .chat-sidebar-right :deep(.agent-status) {

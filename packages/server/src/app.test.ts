@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { AddressInfo } from "node:net";
-import type { AgentSwarm, LLMBackendConfig, SwarmConfig } from "@agent-swarm/core";
+import { WorkspaceManager, type AgentSwarm, type LLMBackendConfig, type SwarmConfig } from "@agent-swarm/core";
 import { createApp } from "./app.js";
 import { signToken } from "./middleware/auth.js";
 
@@ -471,6 +471,58 @@ describe("API routes", () => {
       expect(data.data[0]?.eventType).toBe("handoff");
       expect(JSON.parse(data.data[0]?.eventData ?? "{}").toAgentId).toBe("worker");
     } finally {
+      await server.close();
+    }
+  });
+
+  it("GET /api/conversations/:id/workspace/files returns workspace artifacts and preview content", async () => {
+    const server = await startTestServer();
+    const workspace = new WorkspaceManager("conv_test");
+    const artifactPath = `reports/artifact-${Date.now()}.txt`;
+    try {
+      await workspace.writeFile(artifactPath, "workspace artifact content");
+      await workspace.writeFile("src/example.ts", "export const answer: number = 42;\n");
+
+      const listResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files`, {
+        headers: withAuthHeaders(),
+      });
+      const listData = await listResponse.json() as { data: Array<{ path: string; kind: string; previewable: boolean; downloadUrl: string }> };
+      const artifact = listData.data.find((item) => item.path === artifactPath);
+
+      expect(listResponse.status).toBe(200);
+      expect(artifact).toMatchObject({
+        path: artifactPath,
+        kind: "text",
+        previewable: true,
+      });
+      expect(artifact?.downloadUrl).toContain("/api/conversations/conv_test/workspace/files/download");
+
+      const contentResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/content?path=${encodeURIComponent(artifactPath)}`, {
+        headers: withAuthHeaders(),
+      });
+      const contentData = await contentResponse.json() as { data: { path: string; content: string; truncated: boolean } };
+
+      expect(contentResponse.status).toBe(200);
+      expect(contentData.data).toMatchObject({
+        path: artifactPath,
+        content: "workspace artifact content",
+        truncated: false,
+      });
+
+      const codeResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/content?path=${encodeURIComponent("src/example.ts")}`, {
+        headers: withAuthHeaders(),
+      });
+      const codeData = await codeResponse.json() as { data: { path: string; kind: string; language?: string; content: string } };
+
+      expect(codeResponse.status).toBe(200);
+      expect(codeData.data).toMatchObject({
+        path: "src/example.ts",
+        kind: "code",
+        language: "typescript",
+        content: "export const answer: number = 42;\n",
+      });
+    } finally {
+      await workspace.cleanup();
       await server.close();
     }
   });

@@ -8,8 +8,12 @@ const WriteFileParams = Type.Object({
 });
 
 interface WriteFileDetails {
+  artifact: true;
   path: string;
   size: number;
+  kind: string;
+  language?: string;
+  previewable: boolean;
 }
 
 export function createWriteFileTool(
@@ -30,11 +34,89 @@ export function createWriteFileTool(
 
       return {
         content: [{ type: "text", text: `文件已写入: ${file.path} (${formatSize(file.size)})` }],
-        details: { path: file.path, size: file.size },
+        details: {
+          artifact: true,
+          path: file.path,
+          size: file.size,
+          ...inferArtifactMeta(file.path),
+          previewable: isPreviewable(file.path),
+        },
       };
     },
   };
 }
+
+function inferArtifactMeta(path: string): { kind: string; language?: string } {
+  const normalizedPath = path.toLowerCase();
+  const filename = normalizedPath.split("/").pop() ?? normalizedPath;
+  const extension = filename.split(".").pop() ?? "";
+  const namedLanguage = CODE_FILENAMES[filename];
+  if (namedLanguage) return { kind: "code", language: namedLanguage };
+  const language = CODE_EXTENSIONS[extension];
+  if (language) return { kind: "code", language };
+  if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(extension)) return { kind: "image" };
+  if (["md", "markdown"].includes(extension)) return { kind: "markdown" };
+  if (["json"].includes(extension)) return { kind: "json" };
+  if (["html", "htm"].includes(extension)) return { kind: "html" };
+  if (["txt", "log", "csv", "jsonl", "xml", "yaml", "yml", "toml", "ini", "env"].includes(extension)) return { kind: "text" };
+  return { kind: "file" };
+}
+
+function isPreviewable(path: string): boolean {
+  return inferArtifactMeta(path).kind !== "file";
+}
+
+const CODE_FILENAMES: Record<string, string> = {
+  dockerfile: "dockerfile",
+  makefile: "makefile",
+  "package.json": "json",
+  "tsconfig.json": "json",
+};
+
+const CODE_EXTENSIONS: Record<string, string> = {
+  js: "javascript",
+  jsx: "javascript",
+  mjs: "javascript",
+  cjs: "javascript",
+  ts: "typescript",
+  tsx: "typescript",
+  vue: "xml",
+  css: "css",
+  scss: "scss",
+  sass: "scss",
+  less: "less",
+  html: "xml",
+  htm: "xml",
+  py: "python",
+  go: "go",
+  rs: "rust",
+  java: "java",
+  kt: "kotlin",
+  kts: "kotlin",
+  c: "c",
+  h: "c",
+  cpp: "cpp",
+  cc: "cpp",
+  cxx: "cpp",
+  hpp: "cpp",
+  cs: "csharp",
+  php: "php",
+  rb: "ruby",
+  swift: "swift",
+  sh: "bash",
+  bash: "bash",
+  zsh: "bash",
+  fish: "bash",
+  sql: "sql",
+  lua: "lua",
+  r: "r",
+  dart: "dart",
+  ex: "elixir",
+  exs: "elixir",
+  erl: "erlang",
+  clj: "clojure",
+  scala: "scala",
+};
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

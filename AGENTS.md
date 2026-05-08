@@ -171,7 +171,7 @@ pnpm test                  # 运行 core + server 单元测试
 | Auth | `/api/auth` | 注册、登录、登出、当前用户 |
 | Swarms | `/api/swarms` | CRUD |
 | Agents | `/api/agents` | Agent 预设 CRUD + 模板导入 |
-| Conversations | `/api/conversations` | CRUD、偏好设置、清空上下文、恢复、整段/指定消息分支、消息查询与执行 Trace |
+| Conversations | `/api/conversations` | CRUD、偏好设置、清空上下文、恢复、整段/指定消息分支、消息查询、执行 Trace 与 workspace 产物 |
 | Wiki | `/api/wiki` | LLM Wiki 页面 CRUD、搜索、资料入库生成、从已有文档生成、按来源重新生成 |
 | Documents | `/api/documents` | 文档知识库 CRUD、全文搜索、文档 chunk 查询；上传支持 JSON 内容和 multipart 文本文件 |
 | Templates | `/api/templates` | 系统 Agent 模板 CRUD |
@@ -207,7 +207,7 @@ pnpm test                  # 运行 core + server 单元测试
 
 | 工具组 | 子工具数 | 说明 |
 |--------|---------|------|
-| `workspace` | 11 | workspace_write_file / read_file / grep / list_files / run_container / list_containers / start_containers / stop_containers / restart_containers / remove_containers / pull_image |
+| `workspace` | 11 | workspace_write_file / read_file / grep / list_files / run_container / list_containers / start_containers / stop_containers / restart_containers / remove_containers / pull_image；写入文件会返回 artifact 元数据供前端产物面板跳转 |
 | `web_search` | 1 | Web 搜索（多 provider） |
 | `search_wiki` | 1 | LLM Wiki 页面检索 |
 | `retrieve_knowledge` | 1 | 文档知识库检索 |
