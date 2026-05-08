@@ -55,14 +55,31 @@ const previewOpen = ref(false);
 const openMenuPath = ref<string | null>(null);
 const batchMenuOpen = ref(false);
 const collapsedFolders = ref<Set<string>>(new Set());
+const searchQuery = ref("");
 
 const totalSize = computed(() => artifacts.value.reduce((sum, item) => sum + item.size, 0));
 const selectedCount = computed(() => selectedPaths.value.size);
 const finalArtifacts = computed(() => artifacts.value.filter((item) => item.final));
 const selectedArtifacts = computed(() => artifacts.value.filter((item) => selectedPaths.value.has(item.path)));
+const hasArtifactFilter = computed(() => searchQuery.value.trim().length > 0);
+const filteredArtifacts = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase();
+  if (!query) return artifacts.value;
+  return artifacts.value.filter((item) => {
+    return item.path.toLowerCase().includes(query)
+      || item.name.toLowerCase().includes(query)
+      || item.kind.toLowerCase().includes(query)
+      || item.language?.toLowerCase().includes(query);
+  });
+});
+const visibleFinalArtifacts = computed(() => filteredArtifacts.value.filter((item) => item.final));
+const visibleTotalSize = computed(() => filteredArtifacts.value.reduce((sum, item) => sum + item.size, 0));
+const visibleSelectedCount = computed(() => filteredArtifacts.value.filter((item) => selectedPaths.value.has(item.path)).length);
+const allVisibleSelected = computed(() => filteredArtifacts.value.length > 0 && visibleSelectedCount.value === filteredArtifacts.value.length);
+const someVisibleSelected = computed(() => visibleSelectedCount.value > 0 && !allVisibleSelected.value);
 const artifactGroups = computed<ArtifactGroup[]>(() => {
   const groups = new Map<string, WorkspaceArtifact[]>();
-  for (const artifact of artifacts.value) {
+  for (const artifact of filteredArtifacts.value) {
     const dir = getArtifactDirectory(artifact.path);
     const items = groups.get(dir) ?? [];
     items.push(artifact);
@@ -450,7 +467,7 @@ function toggleSelection(path: string) {
 }
 
 function selectAllArtifacts() {
-  selectedPaths.value = new Set(artifacts.value.map((item) => item.path));
+  selectedPaths.value = new Set(filteredArtifacts.value.map((item) => item.path));
 }
 
 function clearSelection() {
@@ -511,6 +528,10 @@ function getArtifactDirectory(path: string): string {
   return index === -1 ? "" : path.slice(0, index);
 }
 
+function clearSearch() {
+  searchQuery.value = "";
+}
+
 function getFileIcon(name: string): string {
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
   if (["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"].includes(ext)) return "image";
@@ -535,25 +556,39 @@ function getFileColor(name: string): string {
     <header class="panel-header">
       <div class="header-info">
         <h3>产物</h3>
-        <p>{{ artifacts.length }} 个文件 · {{ formatSize(totalSize) }}</p>
+        <p v-if="hasArtifactFilter">{{ filteredArtifacts.length }} / {{ artifacts.length }} 个文件 · {{ formatSize(visibleTotalSize) }}</p>
+        <p v-else>{{ artifacts.length }} 个文件 · {{ formatSize(totalSize) }}</p>
       </div>
       <button class="icon-btn" type="button" title="刷新" :disabled="loading" @click="loadArtifacts()">
         <SvgIcon name="refresh" :size="14" />
       </button>
     </header>
 
+    <label v-if="conversationId && artifacts.length > 0" class="artifact-search" @click.stop>
+      <SvgIcon name="search" :size="13" />
+      <input
+        v-model="searchQuery"
+        type="search"
+        placeholder="搜索文件名、路径、类型"
+      >
+      <button v-if="searchQuery" type="button" title="清空搜索" @click="clearSearch">
+        <SvgIcon name="close" :size="12" />
+      </button>
+    </label>
+
     <div v-if="conversationId && artifacts.length > 0" class="bulk-actions">
       <div class="bulk-summary">
         <button
           class="artifact-checkbox"
-          :class="{ checked: selectedCount > 0 && selectedCount === artifacts.length, partial: selectedCount > 0 && selectedCount < artifacts.length }"
+          :class="{ checked: allVisibleSelected, partial: someVisibleSelected }"
           type="button"
-          :aria-label="selectedCount === artifacts.length ? '取消全选' : '全选'"
-          @click="selectedCount === artifacts.length ? clearSelection() : selectAllArtifacts()"
+          :disabled="filteredArtifacts.length === 0"
+          :aria-label="allVisibleSelected ? '取消全选' : '全选'"
+          @click="allVisibleSelected ? clearSelection() : selectAllArtifacts()"
         >
-          <SvgIcon v-if="selectedCount > 0" name="check" :size="11" />
+          <SvgIcon v-if="visibleSelectedCount > 0" name="check" :size="11" />
         </button>
-        <span class="bulk-count">{{ selectedCount > 0 ? `${selectedCount} 已选` : `${artifacts.length} 个文件` }}</span>
+        <span class="bulk-count">{{ selectedCount > 0 ? `${selectedCount} 已选` : `${filteredArtifacts.length} 个文件` }}</span>
       </div>
       <div v-if="selectedCount > 0" class="batch-menu-wrap">
         <button class="batch-trigger" type="button" title="批量操作" @click.stop="toggleBatchMenu">
@@ -596,18 +631,22 @@ function getFileColor(name: string): string {
       <SvgIcon name="folder" :size="28" />
       <p>暂无产物</p>
     </div>
+    <div v-else-if="!loading && filteredArtifacts.length === 0" class="empty-state">
+      <SvgIcon name="search" :size="28" />
+      <p>未找到匹配产物</p>
+    </div>
     <div v-else class="artifact-layout">
-      <section v-if="finalArtifacts.length > 0" class="final-section">
+      <section v-if="visibleFinalArtifacts.length > 0" class="final-section">
         <div class="section-title">
           <span class="section-label">
             <span class="final-dot" />
             最终结果
           </span>
-          <span class="section-count">{{ finalArtifacts.length }}</span>
+          <span class="section-count">{{ visibleFinalArtifacts.length }}</span>
         </div>
         <div class="final-list">
           <article
-            v-for="artifact in finalArtifacts"
+            v-for="artifact in visibleFinalArtifacts"
             :key="`final-${artifact.path}`"
             class="artifact-card final-card"
             :class="{ active: selectedArtifact?.path === artifact.path }"
@@ -858,6 +897,57 @@ function getFileColor(name: string): string {
 .icon-btn:disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+.artifact-search {
+  height: 34px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.artifact-search:focus-within {
+  border-color: rgba(99, 102, 241, 0.36);
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.artifact-search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: none;
+  color: var(--color-text-secondary);
+  background: transparent;
+  font-size: 12px;
+}
+
+.artifact-search input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.artifact-search button {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.artifact-search button:hover {
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .bulk-actions {
@@ -1167,6 +1257,11 @@ function getFileColor(name: string): string {
 .artifact-checkbox.partial {
   border-color: #6366f1;
   background: rgba(99, 102, 241, 0.25);
+}
+
+.artifact-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .menu-btn {
