@@ -256,14 +256,12 @@ export function normalizeHistoryMessages(
 
     const normalizedMessage = normalizeHistoryMessage(message, resolveAgentName);
     if (normalizedMessage.role === "assistant" && Array.isArray(normalizedMessage.toolCalls)) {
-      const toolCalls = normalizedMessage.toolCalls;
       if (hasAssistantBody(normalizedMessage)) {
-        normalized.push({
-          ...normalizedMessage,
-          toolCalls: undefined,
-        });
+        normalized.push(normalizedMessage);
+        registerToolCalls(normalized.length - 1);
+      } else {
+        pushToolCallMessage(normalizedMessage, normalizedMessage.toolCalls);
       }
-      pushToolCallMessage(normalizedMessage, toolCalls);
       continue;
     }
 

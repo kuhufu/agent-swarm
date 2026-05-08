@@ -122,6 +122,10 @@ function toParts(message: ChatMessage): MessagePart[] {
   return parts;
 }
 
+function orderedParts(message: ChatMessage): MessagePart[] {
+  return message.parts?.length ? message.parts : toParts(message);
+}
+
 function mergeTextParts(...parts: Array<string | undefined>): string {
   return parts
     .map((part) => part?.trim() ?? "")
@@ -178,8 +182,8 @@ function mergeAssistantEntries(previous: RenderEntry, next: RenderEntry): Render
       timestamp: Math.min(previous.message.timestamp, next.message.timestamp),
       createdAt: previous.message.createdAt ?? next.message.createdAt,
       parts: [
-        ...toParts(previous.message),
-        ...toParts(next.message),
+        ...orderedParts(previous.message),
+        ...orderedParts(next.message),
       ],
     },
   };

@@ -537,6 +537,33 @@ export const useConversationStore = defineStore("conversation", () => {
         return;
       }
 
+      // Attach to an active streaming message from the same agent if available
+      if (agentId) {
+        const stream = state.streamingMessages.get(agentId);
+        if (stream) {
+          state.streamingMessages.set(agentId, upsertToolCallInMessage(stream, toolCall));
+          state.toolCallMessageIds.set(toolCall.id, stream.id);
+          refreshToolCallBindings();
+          return;
+        }
+      }
+
+      // Attach to the last assistant message from the same agent in messages
+      if (agentId) {
+        for (let i = state.messages.length - 1; i >= 0; i--) {
+          const msg = state.messages[i];
+          if (msg.role !== "assistant") {
+            break;
+          }
+          if (msg.agentId === agentId) {
+            state.messages[i] = upsertToolCallInMessage(msg, toolCall);
+            state.toolCallMessageIds.set(toolCall.id, msg.id);
+            refreshToolCallBindings();
+            return;
+          }
+        }
+      }
+
       const messageId = crypto.randomUUID();
       state.messages.push({
         id: messageId,
