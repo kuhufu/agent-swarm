@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type, type Static } from "@sinclair/typebox";
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { WorkspaceManager, FileInfo } from "./manager.js";
 
@@ -6,7 +6,12 @@ const ListFilesParams = Type.Object({
   path: Type.Optional(Type.String({
     description: "要列出的目录路径（相对于工作区根目录），默认为根目录",
   })),
+  recursive: Type.Optional(Type.Boolean({
+    description: "是否递归列出所有子目录中的文件，为 false 时只列出当前目录下的直接文件。默认 true",
+  })),
 });
+
+type ListFilesParams = Static<typeof ListFilesParams>;
 
 interface ListFilesDetails {
   files: FileInfo[];
@@ -21,7 +26,7 @@ export function createListFilesTool(
     description: "列出工作区中的文件。",
     parameters: ListFilesParams,
     execute: async (_toolCallId, params) => {
-      const files = await workspace.listFiles(params.path);
+      const files = await workspace.listFiles(params.path, params.recursive);
 
       if (files.length === 0) {
         return {
@@ -30,11 +35,8 @@ export function createListFilesTool(
         };
       }
 
-      const tree = buildTree(files);
-      const text = tree.length > 0 ? tree.join("\n") : `目录为空: ${params.path ?? "/"}`;
-
       return {
-        content: [{ type: "text", text: `工作区 (${files.length} 个文件):\n${text}` }],
+        content: [{ type: "text", text: `共 ${files.length} 个文件` }],
         details: { files },
       };
     },

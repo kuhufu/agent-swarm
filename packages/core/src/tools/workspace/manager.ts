@@ -15,6 +15,7 @@ const MAX_HISTORY_PER_FILE = 20;
 export interface FileInfo {
   path: string;
   size: number;
+  type: "file" | "dir";
   createdAt?: number;
   updatedAt?: number;
 }
@@ -131,6 +132,7 @@ export class WorkspaceManager {
     const file = {
       path: relativePath,
       size: fileStat.size,
+      type: "file" as const,
       createdAt: fileStat.birthtimeMs,
       updatedAt: fileStat.mtimeMs,
     };
@@ -212,7 +214,7 @@ export class WorkspaceManager {
     await rm(fullPath);
   }
 
-  async listFiles(relativePath?: string): Promise<FileInfo[]> {
+  async listFiles(relativePath?: string, recursive?: boolean): Promise<FileInfo[]> {
     await this.ensureDir();
     const target = relativePath ? await this.checkPath(relativePath) : this.baseDir;
     const results: FileInfo[] = [];
@@ -225,6 +227,7 @@ export class WorkspaceManager {
       return [{
         path: relativePath ?? ".",
         size: fileStat.size,
+        type: "file" as const,
         createdAt: fileStat.birthtimeMs,
         updatedAt: fileStat.mtimeMs,
       }];
@@ -237,13 +240,22 @@ export class WorkspaceManager {
         continue;
       }
       if (entry.isDirectory()) {
-        const subFiles = await this.collectFiles(entryPath, join(relativePath ?? "", entry.name));
-        results.push(...subFiles);
+        if (recursive !== false) {
+          const subFiles = await this.collectFiles(entryPath, join(relativePath ?? "", entry.name));
+          results.push(...subFiles);
+        } else {
+          results.push({
+            path: relativePath ? join(relativePath, entry.name) : entry.name,
+            size: 0,
+            type: "dir" as const,
+          });
+        }
       } else {
         const fileStat = await stat(entryPath);
         results.push({
           path: relativePath ? join(relativePath, entry.name) : entry.name,
           size: fileStat.size,
+          type: "file" as const,
           createdAt: fileStat.birthtimeMs,
           updatedAt: fileStat.mtimeMs,
         });
@@ -272,6 +284,7 @@ export class WorkspaceManager {
           results.push({
             path: relPath,
             size: fileStat.size,
+            type: "file" as const,
             createdAt: fileStat.birthtimeMs,
             updatedAt: fileStat.mtimeMs,
           });

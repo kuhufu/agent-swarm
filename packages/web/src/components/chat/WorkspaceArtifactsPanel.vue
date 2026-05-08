@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from "vue";
 import hljs from "highlight.js/lib/common";
 import "highlight.js/styles/github-dark.css";
+import { diffLines, type Change } from "diff";
 import { apiClient } from "../../api/client.js";
 import { showError, showSuccess } from "../../utils/ui-feedback.js";
 import SvgIcon from "../common/SvgIcon.vue";
@@ -69,6 +70,7 @@ const collapsedFolders = ref<Set<string>>(new Set());
 const searchQuery = ref("");
 const artifactVersions = ref<WorkspaceFileVersion[]>([]);
 const previewVersion = ref<WorkspaceFileVersion | null>(null);
+const diffResult = ref<Change[] | null>(null);
 
 const totalSize = computed(() => artifacts.value.reduce((sum, item) => sum + item.size, 0));
 const selectedCount = computed(() => selectedPaths.value.size);
@@ -243,15 +245,23 @@ async function openVersionPreview(version: WorkspaceFileVersion) {
   openMenuPath.value = null;
   previewOpen.value = true;
   preview.value = null;
+  diffResult.value = null;
   revokeImageUrl();
   previewLoading.value = true;
   try {
-    const response = await apiClient<{ data: ArtifactContent }>(
-      `/conversations/${props.conversationId}/workspace/files/versions/content?path=${encodeURIComponent(version.path)}&versionId=${encodeURIComponent(version.id)}`,
-    );
-    preview.value = response.data;
+    const [currentRes, versionRes] = await Promise.all([
+      apiClient<{ data: ArtifactContent }>(
+        `/conversations/${props.conversationId}/workspace/files/content?path=${encodeURIComponent(version.path)}`,
+      ),
+      apiClient<{ data: ArtifactContent }>(
+        `/conversations/${props.conversationId}/workspace/files/versions/content?path=${encodeURIComponent(version.path)}&versionId=${encodeURIComponent(version.id)}`,
+      ),
+    ]);
+    const current = currentRes.data.content;
+    const prev = versionRes.data.content;
+    diffResult.value = diffLines(prev, current);
   } catch (error) {
-    showError(error instanceof Error ? error.message : "加载版本失败");
+    showError(error instanceof Error ? error.message : "加载版本对比失败");
   } finally {
     previewLoading.value = false;
   }
@@ -919,7 +929,7 @@ function getFileColor(name: string): string {
             >
               <span class="version-item-main">
                 <span>{{ index === 0 ? "当前版本" : `历史版本 ${artifactVersions.length - index}` }}</span>
-                <button type="button" title="恢复此版本" @click.stop="restoreArtifactVersion(version)">恢复</button>
+                <button v-if="index > 0" type="button" title="恢复此版本" @click.stop="restoreArtifactVersion(version)">恢复</button>
               </span>
               <small>{{ formatSize(version.size) }} · {{ formatTime(version.updatedAt) }}</small>
             </button>
@@ -947,6 +957,14 @@ function getFileColor(name: string): string {
           </header>
           <div class="preview-body">
             <div v-if="previewLoading" class="empty-state compact">加载中...</div>
+            <div v-else-if="diffResult" class="diff-view">
+              <div
+                v-for="(part, i) in diffResult"
+                :key="i"
+                class="diff-line"
+                :class="{ added: part.added, removed: part.removed }"
+              ><span class="diff-marker">{{ part.added ? '+' : part.removed ? '-' : ' ' }}</span><span class="diff-text">{{ part.value }}</span></div>
+            </div>
             <img v-else-if="imageUrl" class="image-preview" :src="imageUrl" :alt="selectedArtifact.name">
             <pre v-else-if="preview?.kind === 'code'" class="text-preview code-preview"><code class="hljs" v-html="highlightedPreview" /></pre>
             <pre v-else-if="preview" class="text-preview">{{ preview.content }}</pre>
@@ -1809,5 +1827,48 @@ function getFileColor(name: string): string {
   color: var(--color-text-muted);
   font-size: 11px;
   text-align: center;
+}
+
+.diff-view {
+  height: 100%;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.diff-line {
+  display: flex;
+  padding: 0 8px;
+  min-height: 18px;
+}
+
+.diff-line.added {
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.diff-line.removed {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.diff-marker {
+  flex-shrink: 0;
+  width: 14px;
+  color: var(--color-text-muted);
+  user-select: none;
+}
+
+.diff-text {
+  white-space: pre-wrap;
+  word-break: break-all;
+  min-width: 0;
+}
+
+.diff-line.added .diff-marker {
+  color: #22c55e;
+}
+
+.diff-line.removed .diff-marker {
+  color: #ef4444;
 }
 </style>
