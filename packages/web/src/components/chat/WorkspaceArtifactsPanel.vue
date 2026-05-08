@@ -18,6 +18,7 @@ interface WorkspaceArtifact {
   updatedAt?: number;
   downloadUrl: string;
   final: boolean;
+  versionCount: number;
 }
 
 interface ArtifactContent {
@@ -29,6 +30,15 @@ interface ArtifactContent {
   language?: string;
   mimeType: string;
   previewable: boolean;
+  versionId?: string;
+}
+
+interface WorkspaceFileVersion {
+  id: string;
+  path: string;
+  size: number;
+  createdAt: number;
+  updatedAt: number;
 }
 
 interface ArtifactGroup {
@@ -50,12 +60,15 @@ const preview = ref<ArtifactContent | null>(null);
 const imageUrl = ref<string | null>(null);
 const loading = ref(false);
 const previewLoading = ref(false);
+const versionsLoading = ref(false);
 const selectedPaths = ref<Set<string>>(new Set());
 const previewOpen = ref(false);
 const openMenuPath = ref<string | null>(null);
 const batchMenuOpen = ref(false);
 const collapsedFolders = ref<Set<string>>(new Set());
 const searchQuery = ref("");
+const artifactVersions = ref<WorkspaceFileVersion[]>([]);
+const previewVersion = ref<WorkspaceFileVersion | null>(null);
 
 const totalSize = computed(() => artifacts.value.reduce((sum, item) => sum + item.size, 0));
 const selectedCount = computed(() => selectedPaths.value.size);
@@ -146,6 +159,8 @@ async function loadArtifacts(nextSelectedPath?: string) {
     artifacts.value = [];
     selectedArtifact.value = null;
     preview.value = null;
+    artifactVersions.value = [];
+    previewVersion.value = null;
     revokeImageUrl();
     return;
   }
@@ -166,6 +181,8 @@ async function loadArtifacts(nextSelectedPath?: string) {
     } else {
       selectedArtifact.value = null;
       preview.value = null;
+      artifactVersions.value = [];
+      previewVersion.value = null;
       revokeImageUrl();
     }
   } catch (error) {
@@ -177,6 +194,8 @@ async function loadArtifacts(nextSelectedPath?: string) {
 
 async function selectArtifact(artifact: WorkspaceArtifact) {
   selectedArtifact.value = artifact;
+  previewVersion.value = null;
+  artifactVersions.value = [];
   const directory = getArtifactDirectory(artifact.path);
   if (collapsedFolders.value.has(directory)) {
     const next = new Set(collapsedFolders.value);
@@ -185,11 +204,15 @@ async function selectArtifact(artifact: WorkspaceArtifact) {
   }
   openMenuPath.value = null;
   batchMenuOpen.value = false;
+  if (artifact.versionCount > 0) {
+    await loadArtifactVersions(artifact);
+  }
 }
 
 async function openPreview(artifact = selectedArtifact.value) {
   if (!artifact) return;
   selectedArtifact.value = artifact;
+  previewVersion.value = null;
   openMenuPath.value = null;
   previewOpen.value = true;
   preview.value = null;
@@ -212,8 +235,49 @@ async function openPreview(artifact = selectedArtifact.value) {
   }
 }
 
+async function openVersionPreview(version: WorkspaceFileVersion) {
+  const artifact = artifacts.value.find((item) => item.path === version.path) ?? selectedArtifact.value;
+  if (!artifact || !props.conversationId) return;
+  selectedArtifact.value = artifact;
+  previewVersion.value = version;
+  openMenuPath.value = null;
+  previewOpen.value = true;
+  preview.value = null;
+  revokeImageUrl();
+  previewLoading.value = true;
+  try {
+    const response = await apiClient<{ data: ArtifactContent }>(
+      `/conversations/${props.conversationId}/workspace/files/versions/content?path=${encodeURIComponent(version.path)}&versionId=${encodeURIComponent(version.id)}`,
+    );
+    preview.value = response.data;
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "加载版本失败");
+  } finally {
+    previewLoading.value = false;
+  }
+}
+
+async function loadArtifactVersions(artifact = selectedArtifact.value) {
+  if (!artifact || !props.conversationId) {
+    artifactVersions.value = [];
+    return;
+  }
+  versionsLoading.value = true;
+  try {
+    const response = await apiClient<{ data: WorkspaceFileVersion[] }>(
+      `/conversations/${props.conversationId}/workspace/files/versions?path=${encodeURIComponent(artifact.path)}`,
+    );
+    artifactVersions.value = response.data ?? [];
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "加载版本记录失败");
+  } finally {
+    versionsLoading.value = false;
+  }
+}
+
 function closePreview() {
   previewOpen.value = false;
+  previewVersion.value = null;
 }
 
 async function loadImagePreview(artifact: WorkspaceArtifact) {
@@ -756,6 +820,10 @@ function getFileColor(name: string): string {
                   <SvgIcon name="download" :size="13" />
                   下载
                 </button>
+                <button type="button" @click="loadArtifactVersions(artifact)">
+                  <SvgIcon name="history" :size="13" />
+                  版本记录
+                </button>
                 <button type="button" @click="importArtifact(artifact)">
                   <SvgIcon name="book" :size="13" />
                   加入文档
@@ -785,6 +853,8 @@ function getFileColor(name: string): string {
               <span class="meta-kind">{{ selectedArtifact.kind }}</span>
               <span class="meta-right">
                 <span>{{ formatSize(selectedArtifact.size) }}</span>
+                <span class="meta-sep">·</span>
+                <span>{{ selectedArtifact.versionCount }} 个版本</span>
                 <span v-if="selectedArtifact.updatedAt" class="meta-sep">·</span>
                 <span v-if="selectedArtifact.updatedAt">{{ formatTime(selectedArtifact.updatedAt) }}</span>
               </span>
@@ -798,6 +868,9 @@ function getFileColor(name: string): string {
           <button type="button" title="下载" @click="downloadArtifact()">
             <SvgIcon name="download" :size="14" />
           </button>
+          <button type="button" title="版本记录" @click="loadArtifactVersions()">
+            <SvgIcon name="history" :size="14" />
+          </button>
           <button type="button" title="加入文档" @click="importArtifact()">
             <SvgIcon name="book" :size="14" />
           </button>
@@ -808,6 +881,28 @@ function getFileColor(name: string): string {
             <SvgIcon name="trash" :size="14" />
           </button>
         </div>
+        <section class="version-panel">
+          <div class="version-title">
+            <span>版本记录</span>
+            <button type="button" :disabled="versionsLoading" @click="loadArtifactVersions()">
+              <SvgIcon name="refresh" :size="12" />
+            </button>
+          </div>
+          <div v-if="versionsLoading" class="version-empty">加载中...</div>
+          <div v-else-if="artifactVersions.length === 0" class="version-empty">暂无历史版本，新写入会开始记录</div>
+          <div v-else class="version-list">
+            <button
+              v-for="(version, index) in artifactVersions"
+              :key="version.id"
+              type="button"
+              class="version-item"
+              @click="openVersionPreview(version)"
+            >
+              <span>{{ index === 0 ? "当前版本" : `历史版本 ${artifactVersions.length - index}` }}</span>
+              <small>{{ formatSize(version.size) }} · {{ formatTime(version.updatedAt) }}</small>
+            </button>
+          </div>
+        </section>
       </div>
     </div>
 
@@ -820,8 +915,8 @@ function getFileColor(name: string): string {
                 <SvgIcon :name="getFileIcon(selectedArtifact.name)" :size="18" />
               </div>
               <div>
-                <strong>{{ selectedArtifact.name }}</strong>
-                <span>{{ selectedArtifact.path }}</span>
+                <strong>{{ selectedArtifact.name }}<em v-if="previewVersion"> · 历史版本</em></strong>
+                <span>{{ previewVersion ? `${selectedArtifact.path} · ${formatTime(previewVersion.updatedAt)}` : selectedArtifact.path }}</span>
               </div>
             </div>
             <button class="icon-btn" type="button" title="关闭" @click="closePreview">
@@ -1441,6 +1536,83 @@ function getFileColor(name: string): string {
   opacity: 0.4;
 }
 
+.version-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.version-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.version-title button {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.035);
+  cursor: pointer;
+}
+
+.version-title button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.version-list {
+  display: grid;
+  gap: 5px;
+  max-height: 116px;
+  overflow-y: auto;
+}
+
+.version-item {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.025);
+  cursor: pointer;
+  text-align: left;
+}
+
+.version-item:hover {
+  border-color: rgba(99, 102, 241, 0.22);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.version-item span {
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.version-item small,
+.version-empty {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.version-empty {
+  padding: 6px 2px;
+}
+
 .text-preview {
   height: 100%;
   min-height: 0;
@@ -1542,6 +1714,12 @@ function getFileColor(name: string): string {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.preview-header strong em {
+  color: var(--color-text-muted);
+  font-style: normal;
+  font-weight: 600;
 }
 
 .preview-header span {

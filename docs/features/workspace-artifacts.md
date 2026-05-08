@@ -14,7 +14,7 @@ Workspace 产物是按会话隔离的工作区文件视图，用于把 `workspac
 - 单文件三点菜单操作：预览、下载、加入文档、标记或取消最终结果、删除。
 - 多选产物后批量打包下载、加入文档、标记或取消最终结果、删除。
 - 整个工作区打包下载。
-- `workspace_write_file` 写入历史记录，后端保留每个文件最近 20 个版本快照。
+- `workspace_write_file` 写入历史记录，详情区可查看并预览每个文件最近 20 个版本快照。
 - 手动刷新列表。
 
 `workspace_write_file` 工具结果会返回 `artifact: true`、`path`、`size`、`kind`、`language` 和 `previewable`。聊天工具卡识别这组结构化字段后展示为产物卡片，点击“查看”会切换到产物 tab 并打开对应文件。
