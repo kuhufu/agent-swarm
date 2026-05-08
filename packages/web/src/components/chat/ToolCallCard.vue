@@ -109,7 +109,7 @@ function formatSize(bytes?: number): string {
             <strong>{{ workspaceArtifact.path }}</strong>
             <span>{{ workspaceArtifact.kind ?? "file" }} {{ formatSize(workspaceArtifact.size) }}</span>
           </div>
-          <button type="button" @click.stop="openArtifact(workspaceArtifact.path)">
+          <button class="artifact-open-btn" type="button" title="查看产物" @click.stop="openArtifact(workspaceArtifact.path)">
             <SvgIcon name="arrowRight" :size="13" />
             查看
           </button>
@@ -262,18 +262,37 @@ pre {
   font-size: 11px;
 }
 
-.artifact-result button {
-  min-height: 30px;
+.artifact-open-btn {
+  height: 28px;
+  padding: 0 9px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  border: 1px solid rgba(99, 102, 241, 0.28);
-  border-radius: 7px;
-  color: var(--color-accent-light);
-  background: rgba(99, 102, 241, 0.1);
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.04);
   cursor: pointer;
   flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.artifact-open-btn:hover {
+  color: var(--color-accent-light);
+  border-color: rgba(99, 102, 241, 0.32);
+  background: rgba(99, 102, 241, 0.12);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.06);
+}
+
+.artifact-open-btn svg {
+  transition: transform 0.15s ease;
+}
+
+.artifact-open-btn:hover svg {
+  transform: translateX(1px);
 }
 
 </style>
