@@ -71,6 +71,8 @@
 - `setAgentName`
 - `setActive`
 
+实时 `message_update` 会同时承接三类流式内容：普通文本 `delta`、思考内容 `thinkingDelta`、工具调用参数流 `toolCall*` 字段。`conversationStore` 会把这些增量写入 streaming assistant message 的 `parts`，按到达顺序保留 `content + toolCalls + content` 这类混合消息结构；工具真正执行后的 `tool_execution_start/update/end` 继续复用同一个 tool call id 合并状态和结果。
+
 ## 5. 会话创建与草稿归并
 
 在 WS `conversation_created` 事件中，前端执行：

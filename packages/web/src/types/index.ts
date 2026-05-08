@@ -182,6 +182,7 @@ export interface ToolCallInfo {
   id: string;
   name: string;
   arguments: any;
+  argumentsText?: string;
   result?: any;
   isError?: boolean;
 }

@@ -9,7 +9,7 @@ describe("mapAgentEvent", () => {
       toolName: "workspace_write_file",
       toolCallId: "call-1",
       args: { path: "result.txt" },
-    } as PiAgentEvent, "agent-1", "Agent");
+    } as unknown as PiAgentEvent, "agent-1", "Agent");
 
     expect(event).toEqual({
       type: "tool_execution_start",
@@ -27,7 +27,7 @@ describe("mapAgentEvent", () => {
       toolCallId: "call-1",
       args: { path: "result.txt" },
       partialResult: { progress: 0.5 },
-    } as PiAgentEvent, "agent-1", "Agent");
+    } as unknown as PiAgentEvent, "agent-1", "Agent");
 
     expect(event).toEqual({
       type: "tool_execution_update",
@@ -55,6 +55,49 @@ describe("mapAgentEvent", () => {
       toolCallId: "call-1",
       result: { path: "result.txt" },
       isError: false,
+    });
+  });
+
+  it("maps streaming tool call argument deltas", () => {
+    const event = mapAgentEvent({
+      type: "message_update",
+      message: {
+        role: "assistant",
+        content: [{
+          type: "toolCall",
+          id: "call-1",
+          name: "workspace_write_file",
+          arguments: { path: "essay.txt", content: "开头" },
+          partialJson: "{\"path\":\"essay.txt\",\"content\":\"开头",
+        }],
+      },
+      assistantMessageEvent: {
+        type: "toolcall_delta",
+        contentIndex: 0,
+        delta: "开头",
+        partial: {
+          role: "assistant",
+          content: [{
+            type: "toolCall",
+            id: "call-1",
+            name: "workspace_write_file",
+            arguments: { path: "essay.txt", content: "开头" },
+            partialJson: "{\"path\":\"essay.txt\",\"content\":\"开头",
+          }],
+        },
+      },
+    } as unknown as PiAgentEvent, "agent-1", "Agent");
+
+    expect(event).toEqual({
+      type: "message_update",
+      agentId: "agent-1",
+      toolCallPhase: "delta",
+      toolCallContentIndex: 0,
+      toolCallId: "call-1",
+      toolName: "workspace_write_file",
+      toolCallArgs: { path: "essay.txt", content: "开头" },
+      toolCallArgumentsDelta: "开头",
+      toolCallArgumentsText: "{\"path\":\"essay.txt\",\"content\":\"开头",
     });
   });
 });

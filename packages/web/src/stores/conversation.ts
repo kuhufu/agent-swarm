@@ -209,6 +209,7 @@ export const useConversationStore = defineStore("conversation", () => {
     return {
       ...toolCall,
       arguments: toolCall.arguments,
+      argumentsText: toolCall.argumentsText,
       result: toolCall.result,
     };
   }
@@ -219,6 +220,10 @@ export const useConversationStore = defineStore("conversation", () => {
       toolCalls: Array.isArray(message.toolCalls)
         ? message.toolCalls.map((toolCall) => cloneToolCall(toolCall))
         : undefined,
+      parts: message.parts?.map((part) => ({
+        ...part,
+        toolCalls: part.toolCalls?.map((toolCall) => cloneToolCall(toolCall)),
+      })),
       metadata: message.metadata ? { ...message.metadata } : undefined,
     };
   }
@@ -451,9 +456,53 @@ export const useConversationStore = defineStore("conversation", () => {
       id: existing.id,
       name: typeof next.name === "string" && next.name.trim().length > 0 ? next.name : existing.name,
       arguments: next.arguments !== undefined ? next.arguments : existing.arguments,
+      argumentsText: next.argumentsText !== undefined ? next.argumentsText : existing.argumentsText,
       result: next.result !== undefined ? next.result : existing.result,
       isError: typeof next.isError === "boolean" ? next.isError : existing.isError,
     };
+  }
+
+  function appendMessagePartDelta(message: ChatMessage, type: "content" | "thinking", delta: string): ChatMessage {
+    const parts = message.parts ? [...message.parts] : [];
+    const last = parts[parts.length - 1];
+    if (last?.type === type) {
+      parts[parts.length - 1] = {
+        ...last,
+        content: `${last.content ?? ""}${delta}`,
+      };
+    } else {
+      parts.push({ type, content: delta });
+    }
+    return { ...message, parts };
+  }
+
+  function upsertToolCallInParts(message: ChatMessage, toolCall: ToolCallInfo) {
+    const parts = message.parts ? [...message.parts] : [];
+    for (let partIndex = 0; partIndex < parts.length; partIndex += 1) {
+      const part = parts[partIndex];
+      if (part.type !== "toolCalls" || !Array.isArray(part.toolCalls)) {
+        continue;
+      }
+      const toolCallIndex = part.toolCalls.findIndex((item) => item.id === toolCall.id);
+      if (toolCallIndex >= 0) {
+        const nextToolCalls = [...part.toolCalls];
+        nextToolCalls[toolCallIndex] = mergeToolCall(nextToolCalls[toolCallIndex], toolCall);
+        parts[partIndex] = { ...part, toolCalls: nextToolCalls };
+        return parts;
+      }
+    }
+
+    const last = parts[parts.length - 1];
+    if (last?.type === "toolCalls") {
+      parts[parts.length - 1] = {
+        ...last,
+        toolCalls: [...(last.toolCalls ?? []), toolCall],
+      };
+      return parts;
+    }
+
+    parts.push({ type: "toolCalls", toolCalls: [toolCall] });
+    return parts;
   }
 
   function upsertToolCallInMessage(message: ChatMessage, toolCall: ToolCallInfo): ChatMessage {
@@ -467,6 +516,7 @@ export const useConversationStore = defineStore("conversation", () => {
     return {
       ...message,
       toolCalls,
+      parts: upsertToolCallInParts(message, toolCall),
     };
   }
 
@@ -610,10 +660,11 @@ export const useConversationStore = defineStore("conversation", () => {
       if (!current) {
         return;
       }
-      state.streamingMessages.set(agentId, {
+      const next = appendMessagePartDelta({
         ...current,
         content: current.content + delta,
-      });
+      }, "content", delta);
+      state.streamingMessages.set(agentId, next);
     });
   }
 
@@ -623,10 +674,11 @@ export const useConversationStore = defineStore("conversation", () => {
       if (!current) {
         return;
       }
-      state.streamingMessages.set(agentId, {
+      const next = appendMessagePartDelta({
         ...current,
         thinking: (current.thinking ?? "") + delta,
-      });
+      }, "thinking", delta);
+      state.streamingMessages.set(agentId, next);
     });
   }
 

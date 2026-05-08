@@ -266,6 +266,13 @@ export interface MessageUpdateEvent {
   agentId: string;
   delta?: string;
   thinkingDelta?: string;
+  toolCallPhase?: "start" | "delta" | "end";
+  toolCallContentIndex?: number;
+  toolCallId?: string;
+  toolName?: string;
+  toolCallArgs?: any;
+  toolCallArgumentsDelta?: string;
+  toolCallArgumentsText?: string;
 }
 
 export interface MessageEndEvent {

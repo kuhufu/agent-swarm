@@ -29,6 +29,12 @@ const javascriptExecution = computed(() => isJavascriptTool.value
   : null);
 const hasJavascriptResult = computed(() => isJavascriptTool.value && javascriptExecution.value !== null);
 const queryText = computed(() => extractQueryText(props.toolCall.arguments));
+const formattedArguments = computed(() => {
+  if (props.toolCall.arguments !== undefined) {
+    return JSON.stringify(props.toolCall.arguments, null, 2);
+  }
+  return props.toolCall.argumentsText ?? "";
+});
 const status = computed(() => {
   if (props.toolCall.isError === true) {
     return { label: "失败", cls: "error" };
@@ -80,7 +86,7 @@ function formatSize(bytes?: number): string {
     <div v-if="expanded" class="tool-details">
       <div class="tool-section">
         <SectionLabel icon="jsExecute" label="参数" />
-        <pre>{{ JSON.stringify(toolCall.arguments, null, 2) }}</pre>
+        <pre>{{ formattedArguments }}</pre>
       </div>
       <KnowledgeReferencesCard
         v-if="hasKnowledgeResult"

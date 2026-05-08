@@ -231,6 +231,16 @@ export function useWebSocket() {
           if (typeof msg.payload?.thinkingDelta === "string") {
             conversationStore.appendStreamThinkingDelta(msg.payload.agentId, msg.payload.thinkingDelta, targetConversationId);
           }
+          if (typeof msg.payload?.toolCallId === "string") {
+            conversationStore.upsertToolCall(msg.payload.agentId, {
+              id: msg.payload.toolCallId,
+              name: typeof msg.payload?.toolName === "string" ? msg.payload.toolName : "tool",
+              arguments: msg.payload?.toolCallArgs,
+              argumentsText: typeof msg.payload?.toolCallArgumentsText === "string"
+                ? msg.payload.toolCallArgumentsText
+                : undefined,
+            }, targetConversationId);
+          }
         }
         break;
 

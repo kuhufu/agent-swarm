@@ -240,6 +240,8 @@ pnpm --filter @agent-swarm/server test
 - `prompt_completed`
 - `error`
 
+`message_update` 除了普通文本增量 `delta` 和思考增量 `thinkingDelta`，也会透传底层工具调用参数流：`toolCallPhase`、`toolCallId`、`toolName`、`toolCallArgs`、`toolCallArgumentsDelta`、`toolCallArgumentsText`。前端据此在工具真正执行前更新工具卡参数，避免长内容写入 workspace 时只能在 `tool_execution_start` 一次性出现。
+
 ## 前端路由约定
 
 - `GET /chat`：进入新对话草稿态（无会话 ID）。
