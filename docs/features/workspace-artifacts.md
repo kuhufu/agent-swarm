@@ -10,6 +10,10 @@ Workspace 产物是按会话隔离的工作区文件视图，用于把 `workspac
 - 常见代码文件预览和语法高亮，例如 JavaScript、TypeScript、Vue、CSS、Python、Go、Rust、Java、C/C++、Shell、SQL 等。
 - 图片文件预览。
 - 单文件下载。
+- 多选产物后打包下载。
+- 将当前产物加入文档知识库。
+- 标记或取消标记最终结果。
+- 删除指定产物。
 - 手动刷新列表。
 
 `workspace_write_file` 工具结果会返回 `artifact: true`、`path`、`size`、`kind`、`language` 和 `previewable`。聊天工具卡识别这组结构化字段后展示为产物卡片，点击“查看”会切换到产物 tab 并打开对应文件。
@@ -21,7 +25,11 @@ Workspace 产物是按会话隔离的工作区文件视图，用于把 `workspac
 - `GET /api/conversations/:id/workspace/files`：列出当前会话 workspace 文件，返回路径、文件名、大小、类型、预览能力、更新时间和下载地址。
 - `GET /api/conversations/:id/workspace/files/content?path=...`：读取文件预览内容，使用 `WorkspaceManager.readFile()` 的大小和行数限制，过长内容会返回 `truncated: true`。
 - `GET /api/conversations/:id/workspace/files/download?path=...`：下载指定文件。
+- `POST /api/conversations/:id/workspace/files/download-zip`：请求体 `{ paths: string[] }`，把多个产物打包为 zip 下载。
+- `POST /api/conversations/:id/workspace/files/import-document`：请求体 `{ path: string }`，读取产物文本内容并写入文档知识库，来源标记为 `workspace_artifact`。
+- `PATCH /api/conversations/:id/workspace/files/final`：请求体 `{ path: string, final: boolean }`，标记或取消最终结果。标记信息保存在 workspace 内部 metadata 文件中，不暴露为普通产物。
+- `DELETE /api/conversations/:id/workspace/files?path=...`：删除指定产物，并同步清理最终结果标记。
 
 ## 安全边界
 
-所有文件路径都通过 `WorkspaceManager.checkPath()` 校验，禁止逃逸当前会话 workspace 根目录。下载接口在发送文件前会再次确认目标是普通文件。会话删除时，`AgentSwarm.deleteConversation()` 仍负责清理 workspace 目录和关联容器。
+所有文件路径都通过 `WorkspaceManager.checkPath()` 校验，禁止逃逸当前会话 workspace 根目录。下载、删除、导入文档等接口在操作前会确认目标是普通文件。会话删除时，`AgentSwarm.deleteConversation()` 仍负责清理 workspace 目录和关联容器。

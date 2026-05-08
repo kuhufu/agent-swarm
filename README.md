@@ -21,7 +21,7 @@
 - 多租户隔离：`swarms / conversations / agent presets / documents / wiki / usage analytics` 按 `userId` 严格隔离；首个注册用户自动成为 `admin`
 - 工具运行时：`packages/core/src/tools/runtime.ts` 统一把模式工具、前端桥接工具、WebSearch、MCP 和运行时工具注入 Agent
 - Workspace 工具：`workspace_run_container` 通过 Docker 隔离执行命令，容器按会话 label 关联，并通过 `workspace_list_containers` / `workspace_remove_containers` 管理当前会话容器
-- Workspace 产物：聊天页右侧产物面板可查看当前会话工作区文件，支持文本/Markdown/JSON/图片预览和下载；`workspace_write_file` 工具卡可直接跳转到产物详情
+- Workspace 产物：聊天页右侧产物面板可查看当前会话工作区文件，支持文本/Markdown/JSON/代码/图片预览、下载、打包、删除、加入文档和标记最终结果；`workspace_write_file` 工具卡可直接跳转到产物详情
 - 浏览器自动化工具：`browser_automation` 基于 [agent-browser](https://github.com/vercel-labs/agent-browser) 提供浏览器控制能力，支持打开网页、快照获取元素引用 `@e1/@e2`、点击、填表、截图等操作
 - 消息 Markdown 渲染：基于 `marked + marked-highlight + highlight.js + KaTeX + dompurify`，支持代码高亮、数学公式与安全净化
 - 文档与 Wiki：文档 tab 管理来源文件和知识库检索，Wiki tab 基于文档生成可编辑页面、支撑要点和关联页面
@@ -167,6 +167,10 @@ pnpm --filter @agent-swarm/server test
 - `GET /api/conversations/:id/workspace/files`：列出当前会话 workspace 产物
 - `GET /api/conversations/:id/workspace/files/content?path=...`：读取可预览产物内容
 - `GET /api/conversations/:id/workspace/files/download?path=...`：下载指定产物文件
+- `POST /api/conversations/:id/workspace/files/download-zip`：按 `paths` 打包下载多个产物
+- `POST /api/conversations/:id/workspace/files/import-document`：把指定产物加入文档知识库
+- `PATCH /api/conversations/:id/workspace/files/final`：标记或取消标记最终结果
+- `DELETE /api/conversations/:id/workspace/files?path=...`：删除指定产物文件
 - `DELETE /api/conversations/:id`
 
 ### 消息查询

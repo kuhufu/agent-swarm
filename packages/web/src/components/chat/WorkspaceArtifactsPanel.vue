@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from "vue";
 import hljs from "highlight.js/lib/common";
 import "highlight.js/styles/github-dark.css";
 import { apiClient } from "../../api/client.js";
-import { showError } from "../../utils/ui-feedback.js";
+import { showError, showSuccess } from "../../utils/ui-feedback.js";
 import SvgIcon from "../common/SvgIcon.vue";
 
 interface WorkspaceArtifact {
@@ -17,6 +17,7 @@ interface WorkspaceArtifact {
   createdAt?: number;
   updatedAt?: number;
   downloadUrl: string;
+  final: boolean;
 }
 
 interface ArtifactContent {
@@ -42,8 +43,10 @@ const preview = ref<ArtifactContent | null>(null);
 const imageUrl = ref<string | null>(null);
 const loading = ref(false);
 const previewLoading = ref(false);
+const selectedPaths = ref<Set<string>>(new Set());
 
 const totalSize = computed(() => artifacts.value.reduce((sum, item) => sum + item.size, 0));
+const selectedCount = computed(() => selectedPaths.value.size);
 const highlightedPreview = computed(() => {
   if (!preview.value || preview.value.kind !== "code") return "";
   const language = preview.value.language ?? "";
@@ -101,6 +104,7 @@ async function loadArtifacts(nextSelectedPath?: string) {
       `/conversations/${props.conversationId}/workspace/files`,
     );
     artifacts.value = response.data ?? [];
+    selectedPaths.value = new Set([...selectedPaths.value].filter((path) => artifacts.value.some((item) => item.path === path)));
     const targetPath = nextSelectedPath ?? props.selectedPath ?? selectedArtifact.value?.path;
     const target = targetPath ? artifacts.value.find((item) => item.path === targetPath) : artifacts.value[0];
     if (target) {
@@ -154,16 +158,75 @@ async function loadImagePreview(artifact: WorkspaceArtifact) {
 async function downloadArtifact(artifact: WorkspaceArtifact) {
   try {
     const blob = await fetchArtifactBlob(artifact.path);
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = artifact.name;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    triggerDownload(blob, artifact.name);
   } catch (error) {
     showError(error instanceof Error ? error.message : "下载产物失败");
+  }
+}
+
+async function downloadSelectedArtifacts() {
+  if (!props.conversationId || selectedPaths.value.size === 0) return;
+  try {
+    const blob = await postArtifactBlob(
+      `/api/conversations/${props.conversationId}/workspace/files/download-zip`,
+      { paths: [...selectedPaths.value] },
+    );
+    triggerDownload(blob, "workspace-artifacts.zip");
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "下载产物失败");
+  }
+}
+
+async function importSelectedArtifact() {
+  if (!props.conversationId || !selectedArtifact.value) return;
+  try {
+    const response = await apiClient<{ data: { title: string } }>(
+      `/conversations/${props.conversationId}/workspace/files/import-document`,
+      {
+        method: "POST",
+        body: JSON.stringify({ path: selectedArtifact.value.path }),
+      },
+    );
+    showSuccess(`已加入文档：${response.data.title}`);
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "加入文档失败");
+  }
+}
+
+async function toggleFinalArtifact(artifact: WorkspaceArtifact) {
+  if (!props.conversationId) return;
+  try {
+    const nextFinal = !artifact.final;
+    await apiClient<{ data: { path: string; final: boolean } }>(
+      `/conversations/${props.conversationId}/workspace/files/final`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ path: artifact.path, final: nextFinal }),
+      },
+    );
+    artifact.final = nextFinal;
+    selectedArtifact.value = { ...artifact };
+    artifacts.value = artifacts.value.map((item) => item.path === artifact.path ? { ...item, final: nextFinal } : item);
+    showSuccess(nextFinal ? "已标记为最终结果" : "已取消最终结果");
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "更新标记失败");
+  }
+}
+
+async function deleteSelectedArtifact() {
+  if (!props.conversationId || !selectedArtifact.value) return;
+  if (!window.confirm(`删除产物“${selectedArtifact.value.path}”？`)) return;
+  try {
+    await apiClient<{ data: { deleted: boolean } }>(
+      `/conversations/${props.conversationId}/workspace/files?path=${encodeURIComponent(selectedArtifact.value.path)}`,
+      { method: "DELETE" },
+    );
+    selectedPaths.value.delete(selectedArtifact.value.path);
+    selectedPaths.value = new Set(selectedPaths.value);
+    showSuccess("产物已删除");
+    await loadArtifacts();
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "删除产物失败");
   }
 }
 
@@ -181,6 +244,44 @@ async function fetchArtifactBlob(path: string): Promise<Blob> {
     throw new Error(body.error ?? `HTTP ${response.status}`);
   }
   return response.blob();
+}
+
+async function postArtifactBlob(url: string, body: unknown): Promise<Blob> {
+  const token = localStorage.getItem("token");
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error ?? `HTTP ${response.status}`);
+  }
+  return response.blob();
+}
+
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function toggleSelection(path: string) {
+  const next = new Set(selectedPaths.value);
+  if (next.has(path)) {
+    next.delete(path);
+  } else {
+    next.add(path);
+  }
+  selectedPaths.value = next;
 }
 
 function revokeImageUrl() {
@@ -213,6 +314,13 @@ function formatTime(value?: number): string {
         <SvgIcon name="refresh" :size="14" />
       </button>
     </header>
+    <div v-if="conversationId && artifacts.length > 0" class="bulk-actions">
+      <span>{{ selectedCount }} 已选</span>
+      <button type="button" :disabled="selectedCount === 0" @click="downloadSelectedArtifacts">
+        <SvgIcon name="download" :size="13" />
+        打包
+      </button>
+    </div>
 
     <div v-if="!conversationId" class="empty-state">打开会话后查看产物</div>
     <div v-else-if="!loading && artifacts.length === 0" class="empty-state">暂无产物</div>
@@ -226,7 +334,16 @@ function formatTime(value?: number): string {
           type="button"
           @click="selectArtifact(artifact)"
         >
-          <span class="artifact-name">{{ artifact.name }}</span>
+          <span class="artifact-row">
+            <input
+              type="checkbox"
+              :checked="selectedPaths.has(artifact.path)"
+              @click.stop
+              @change.stop="toggleSelection(artifact.path)"
+            >
+            <span class="artifact-name">{{ artifact.name }}</span>
+            <span v-if="artifact.final" class="final-badge">最终</span>
+          </span>
           <span class="artifact-path">{{ artifact.path }}</span>
           <span class="artifact-meta">{{ artifact.kind }} · {{ formatSize(artifact.size) }}</span>
         </button>
@@ -238,9 +355,20 @@ function formatTime(value?: number): string {
             <strong>{{ selectedArtifact.name }}</strong>
             <span>{{ formatTime(selectedArtifact.updatedAt) }}</span>
           </div>
-          <button class="icon-btn" type="button" title="下载" @click="downloadArtifact(selectedArtifact)">
-            <SvgIcon name="download" :size="14" />
-          </button>
+          <div class="detail-actions">
+            <button class="icon-btn" type="button" title="加入文档" @click="importSelectedArtifact">
+              <SvgIcon name="book" :size="14" />
+            </button>
+            <button class="icon-btn" type="button" :title="selectedArtifact.final ? '取消最终结果' : '标记最终结果'" @click="toggleFinalArtifact(selectedArtifact)">
+              <SvgIcon name="check" :size="14" />
+            </button>
+            <button class="icon-btn" type="button" title="下载" @click="downloadArtifact(selectedArtifact)">
+              <SvgIcon name="download" :size="14" />
+            </button>
+            <button class="icon-btn danger" type="button" title="删除" @click="deleteSelectedArtifact">
+              <SvgIcon name="trash" :size="14" />
+            </button>
+          </div>
         </div>
 
         <div v-if="previewLoading" class="empty-state compact">加载中...</div>
@@ -286,6 +414,41 @@ function formatTime(value?: number): string {
   font-size: 11px;
 }
 
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.bulk-actions span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.bulk-actions button {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 7px;
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.bulk-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .icon-btn {
   width: 30px;
   height: 30px;
@@ -297,6 +460,12 @@ function formatTime(value?: number): string {
   color: var(--color-text-secondary);
   background: rgba(255, 255, 255, 0.04);
   cursor: pointer;
+}
+
+.icon-btn.danger {
+  color: var(--color-danger);
+  border-color: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.08);
 }
 
 .artifact-layout {
@@ -339,6 +508,30 @@ function formatTime(value?: number): string {
   white-space: nowrap;
 }
 
+.artifact-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.artifact-row input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--color-accent);
+  flex: 0 0 auto;
+}
+
+.final-badge {
+  padding: 1px 6px;
+  border-radius: 999px;
+  color: var(--color-success);
+  background: rgba(34, 197, 94, 0.12);
+  font-size: 10px;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
 .artifact-path {
   overflow-wrap: anywhere;
 }
@@ -355,6 +548,13 @@ function formatTime(value?: number): string {
   color: var(--color-text-secondary);
   font-size: 12px;
   overflow-wrap: anywhere;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .text-preview {

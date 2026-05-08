@@ -149,6 +149,28 @@ export class WorkspaceManager {
     return { content, size: fileStat.size, truncated };
   }
 
+  async readFileBuffer(relativePath: string): Promise<{ data: Buffer; size: number }> {
+    const fullPath = await this.checkPath(relativePath);
+    const fileStat = await stat(fullPath).catch(() => {
+      throw new Error(`文件不存在: ${relativePath}`);
+    });
+    if (!fileStat.isFile()) {
+      throw new Error(`不是文件: ${relativePath}`);
+    }
+    return { data: await readFile(fullPath), size: fileStat.size };
+  }
+
+  async deleteFile(relativePath: string): Promise<void> {
+    const fullPath = await this.checkPath(relativePath);
+    const fileStat = await stat(fullPath).catch(() => {
+      throw new Error(`文件不存在: ${relativePath}`);
+    });
+    if (!fileStat.isFile()) {
+      throw new Error(`不是文件: ${relativePath}`);
+    }
+    await rm(fullPath);
+  }
+
   async listFiles(relativePath?: string): Promise<FileInfo[]> {
     await this.ensureDir();
     const target = relativePath ? await this.checkPath(relativePath) : this.baseDir;

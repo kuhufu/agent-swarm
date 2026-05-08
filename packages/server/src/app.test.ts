@@ -486,7 +486,7 @@ describe("API routes", () => {
       const listResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files`, {
         headers: withAuthHeaders(),
       });
-      const listData = await listResponse.json() as { data: Array<{ path: string; kind: string; previewable: boolean; downloadUrl: string }> };
+      const listData = await listResponse.json() as { data: Array<{ path: string; kind: string; previewable: boolean; downloadUrl: string; final: boolean }> };
       const artifact = listData.data.find((item) => item.path === artifactPath);
 
       expect(listResponse.status).toBe(200);
@@ -521,6 +521,57 @@ describe("API routes", () => {
         language: "typescript",
         content: "export const answer: number = 42;\n",
       });
+
+      const finalResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/final`, {
+        method: "PATCH",
+        headers: withAuthHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({ path: artifactPath, final: true }),
+      });
+      expect(finalResponse.status).toBe(200);
+
+      const finalListResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files`, {
+        headers: withAuthHeaders(),
+      });
+      const finalListData = await finalListResponse.json() as { data: Array<{ path: string; final: boolean }> };
+      expect(finalListData.data.find((item) => item.path === artifactPath)?.final).toBe(true);
+
+      const importResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/import-document`, {
+        method: "POST",
+        headers: withAuthHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({ path: artifactPath }),
+      });
+      const importData = await importResponse.json() as { data: { title: string; chunks: number } };
+      expect(importResponse.status).toBe(201);
+      expect(importData.data.title).toBe(artifactPath.split("/").pop());
+      expect(server.uploadedDocs.at(-1)).toMatchObject({
+        title: artifactPath.split("/").pop(),
+        source: "workspace_artifact",
+        content: "workspace artifact content",
+        userId: TEST_USER.id,
+      });
+
+      const zipResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/download-zip`, {
+        method: "POST",
+        headers: withAuthHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({ paths: [artifactPath, "src/example.ts"] }),
+      });
+      const zipBuffer = Buffer.from(await zipResponse.arrayBuffer());
+      expect(zipResponse.status).toBe(200);
+      expect(zipResponse.headers.get("content-type")).toBe("application/zip");
+      expect(zipBuffer.readUInt32LE(0)).toBe(0x04034b50);
+
+      const deleteResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files?path=${encodeURIComponent(artifactPath)}`, {
+        method: "DELETE",
+        headers: withAuthHeaders(),
+      });
+      expect(deleteResponse.status).toBe(200);
+
+      const afterDeleteResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files`, {
+        headers: withAuthHeaders(),
+      });
+      const afterDeleteData = await afterDeleteResponse.json() as { data: Array<{ path: string }> };
+      expect(afterDeleteData.data.some((item) => item.path === artifactPath)).toBe(false);
+      expect(afterDeleteData.data.some((item) => item.path === ".agent-swarm-artifacts.json")).toBe(false);
     } finally {
       await workspace.cleanup();
       await server.close();
