@@ -652,7 +652,7 @@ async function handleForkConversation(messageId?: string) {
 }
 
 .chat-sidebar-right {
-  width: 400px;
+  width: 380px;
   background: rgba(255, 255, 255, 0.02);
   backdrop-filter: blur(12px);
   padding: 20px;
