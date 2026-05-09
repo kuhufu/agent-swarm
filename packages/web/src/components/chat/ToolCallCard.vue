@@ -6,16 +6,33 @@ import SectionLabel from "./SectionLabel.vue";
 import JavascriptExecutionCard, { extractJavascriptExecution } from "./JavascriptExecutionCard.vue";
 import KnowledgeReferencesCard, { extractKnowledgeReferences, extractQueryText } from "./KnowledgeReferencesCard.vue";
 import WikiReferencesCard, { extractWikiReferences } from "./WikiReferencesCard.vue";
+import WebSearchCard from "./WebSearchCard.vue";
+import WebFetchCard from "./WebFetchCard.vue";
+import WorkspaceReadFileCard from "./WorkspaceReadFileCard.vue";
+import WorkspaceListFilesCard from "./WorkspaceListFilesCard.vue";
+import WorkspaceGrepCard from "./WorkspaceGrepCard.vue";
+import ContainerResultCard from "./ContainerResultCard.vue";
+import NextActionsCard from "./NextActionsCard.vue";
 
 const props = defineProps<{
   toolCall: ToolCallInfo;
 }>();
 
 const expanded = ref(false);
+const showRaw = ref(false);
+
 const isKnowledgeTool = computed(() => props.toolCall.name === "retrieve_knowledge");
 const isWikiTool = computed(() => props.toolCall.name === "search_wiki");
 const isJavascriptTool = computed(() => props.toolCall.name === "javascript_execute");
+const isWebSearchTool = computed(() => props.toolCall.name === "web_search");
+const isWebFetchTool = computed(() => props.toolCall.name === "web_fetch");
+const isReadFileTool = computed(() => props.toolCall.name === "workspace_read_file");
+const isListFilesTool = computed(() => props.toolCall.name === "workspace_list_files");
+const isGrepTool = computed(() => props.toolCall.name === "workspace_grep");
+const isContainerTool = computed(() => props.toolCall.name.startsWith("workspace_") && !["workspace_read_file", "workspace_list_files", "workspace_grep", "workspace_write_file"].includes(props.toolCall.name));
+
 const workspaceArtifact = computed(() => extractWorkspaceArtifact(props.toolCall.details, props.toolCall.name));
+
 const knowledgeReferences = computed(() => isKnowledgeTool.value
   ? extractKnowledgeReferences(props.toolCall.details)
   : null);
@@ -28,6 +45,43 @@ const javascriptExecution = computed(() => isJavascriptTool.value
   ? extractJavascriptExecution(props.toolCall.details, props.toolCall.arguments)
   : null);
 const hasJavascriptResult = computed(() => isJavascriptTool.value && javascriptExecution.value !== null);
+
+const webSearchResults = computed(() => {
+  if (!isWebSearchTool.value || !Array.isArray(props.toolCall.details)) return null;
+  return props.toolCall.details as Array<{ title: string; url: string; snippet: string }>;
+});
+const hasWebSearchResults = computed(() => webSearchResults.value !== null && webSearchResults.value.length > 0);
+
+const webFetchResult = computed(() => {
+  if (!isWebFetchTool.value || !props.toolCall.details || typeof props.toolCall.details !== "object") return null;
+  return props.toolCall.details as { url: string; title: string; content: string; description?: string; contentType: string };
+});
+const hasWebFetchResult = computed(() => webFetchResult.value !== null);
+
+const readFileDetails = computed(() => {
+  if (!isReadFileTool.value || !props.toolCall.details || typeof props.toolCall.details !== "object") return null;
+  const raw = props.toolCall.details as Record<string, unknown>;
+  if (typeof raw.path !== "string") return null;
+  return raw as { path: string; size: number; truncated: boolean; meta: { kind: string; language?: string; previewable: boolean } };
+});
+const hasReadFileResult = computed(() => readFileDetails.value !== null);
+
+const listFilesDetails = computed(() => {
+  if (!isListFilesTool.value || !props.toolCall.details || typeof props.toolCall.details !== "object") return null;
+  const raw = props.toolCall.details as Record<string, unknown>;
+  if (!Array.isArray(raw.files)) return null;
+  return raw as { files: Array<{ path: string; size: number; type: "file" | "dir"; updatedAt?: number }>; count: number; totalSize: number; directories: string[] };
+});
+const hasListFilesResult = computed(() => listFilesDetails.value !== null);
+
+const grepDetails = computed(() => {
+  if (!isGrepTool.value || !props.toolCall.details || typeof props.toolCall.details !== "object") return null;
+  const raw = props.toolCall.details as Record<string, unknown>;
+  if (!Array.isArray(raw.matches)) return null;
+  return raw as { matches: Array<{ path: string; line: number; content: string }>; total: number; matchedPaths: string[] };
+});
+const hasGrepResult = computed(() => grepDetails.value !== null);
+
 const queryText = computed(() => extractQueryText(props.toolCall.arguments));
 const formattedArguments = computed(() => {
   if (props.toolCall.arguments !== undefined) {
@@ -35,6 +89,22 @@ const formattedArguments = computed(() => {
   }
   return props.toolCall.argumentsText ?? "";
 });
+
+const nextActions = computed(() => {
+  if (!props.toolCall.details || typeof props.toolCall.details !== "object") return null;
+  const raw = props.toolCall.details as Record<string, unknown>;
+  const na = raw.nextActions;
+  if (Array.isArray(na) && na.length > 0) {
+    return na as Array<{ tool: string; reason: string; params?: Record<string, unknown> }>;
+  }
+  return null;
+});
+
+const formattedContent = computed(() => {
+  if (!props.toolCall.content) return "";
+  return props.toolCall.content.map((c: any) => c.text ?? "").join("\n");
+});
+
 const status = computed(() => {
   if (props.toolCall.isError === true) {
     return { label: "失败", cls: "error" };
@@ -115,13 +185,62 @@ function formatSize(bytes?: number): string {
           </button>
         </div>
       </div>
+      <WebSearchCard
+        v-else-if="hasWebSearchResults"
+        :results="webSearchResults!"
+      />
+      <WebFetchCard
+        v-else-if="hasWebFetchResult"
+        :result="webFetchResult!"
+      />
+      <WorkspaceReadFileCard
+        v-else-if="hasReadFileResult"
+        :details="readFileDetails!"
+      />
+      <WorkspaceListFilesCard
+        v-else-if="hasListFilesResult"
+        :details="listFilesDetails!"
+      />
+      <WorkspaceGrepCard
+        v-else-if="hasGrepResult"
+        :details="grepDetails!"
+      />
+      <ContainerResultCard
+        v-else-if="isContainerTool"
+        :tool-name="toolCall.name"
+        :details="(toolCall.details as Record<string, unknown>) ?? {}"
+      />
       <div v-else-if="toolCall.details" class="tool-section">
         <SectionLabel icon="check" label="结果" />
         <pre>{{ JSON.stringify(toolCall.details, null, 2) }}</pre>
       </div>
-      <div v-if="toolCall.content" class="tool-section">
+
+      <NextActionsCard v-if="nextActions" :actions="nextActions" />
+
+      <div v-if="formattedContent" class="tool-section">
         <SectionLabel icon="message" label="返回给模型的内容" />
-        <pre>{{ toolCall.content.map((c: any) => c.text ?? "").join("\n") }}</pre>
+        <pre>{{ formattedContent }}</pre>
+      </div>
+
+      <div class="tool-section raw-toggle-section">
+        <button class="raw-toggle-btn" type="button" @click.stop="showRaw = !showRaw">
+          <SvgIcon :name="showRaw ? 'chevronDown' : 'chevronRight'" :size="12" />
+          查看原始数据
+        </button>
+        <div v-if="showRaw" class="raw-panel" @click.stop>
+          <div class="raw-block">
+            <SectionLabel icon="jsExecute" label="参数 (arguments)" />
+            <pre class="raw-pre">{{ formattedArguments }}</pre>
+          </div>
+          <div v-if="toolCall.content" class="raw-block">
+            <SectionLabel icon="message" label="返回内容 (content)" />
+            <pre class="raw-pre">{{ JSON.stringify(toolCall.content, null, 2) }}</pre>
+          </div>
+          <div class="raw-block">
+            <SectionLabel icon="check" label="结构化数据 (details)" />
+            <pre class="raw-pre">{{ JSON.stringify(toolCall.details, null, 2) }}</pre>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -297,6 +416,52 @@ pre {
 
 .artifact-open-btn:hover svg {
   transform: translateX(1px);
+}
+
+.raw-toggle-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+.raw-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color 0.16s;
+}
+.raw-toggle-btn:hover {
+  color: var(--color-text-secondary);
+}
+.raw-panel {
+  margin-top: 10px;
+  display: grid;
+  gap: 12px;
+}
+.raw-block {
+  display: grid;
+  gap: 4px;
+}
+.raw-pre {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--color-border-subtle);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 240px;
+  overflow-y: auto;
 }
 
 </style>
