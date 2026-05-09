@@ -1,7 +1,7 @@
 import { Type, type Static } from "@sinclair/typebox";
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { WorkspaceManager, FileInfo } from "./manager.js";
-import { buildWorkspaceNextActions, formatWorkspaceSize, inferWorkspaceFileMeta, summarizeWorkspaceFiles, type WorkspaceNextAction } from "./context.js";
+import { formatWorkspaceSize, inferWorkspaceFileMeta, summarizeWorkspaceFiles } from "./context.js";
 
 const ListFilesParams = Type.Object({
   path: Type.Optional(Type.String({
@@ -19,7 +19,6 @@ interface ListFilesDetails {
   count: number;
   totalSize: number;
   directories: string[];
-  nextActions: WorkspaceNextAction[];
 }
 
 export function createListFilesTool(
@@ -47,7 +46,6 @@ export function createListFilesTool(
             count: 0,
             totalSize: 0,
             directories: [],
-            nextActions: buildWorkspaceNextActions({ directory: params.path }),
           },
         };
       }
@@ -70,11 +68,6 @@ export function createListFilesTool(
           count: files.length,
           totalSize,
           directories,
-          nextActions: buildWorkspaceNextActions({
-            paths: files.map((file) => file.path),
-            directory: params.path,
-            canRun: files.some((file) => inferWorkspaceFileMeta(file.path).kind === "code"),
-          }),
         },
       };
     },

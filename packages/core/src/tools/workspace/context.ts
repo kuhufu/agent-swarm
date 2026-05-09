@@ -6,12 +6,6 @@ export interface WorkspaceFileMeta {
   previewable: boolean;
 }
 
-export interface WorkspaceNextAction {
-  tool: string;
-  reason: string;
-  params?: Record<string, unknown>;
-}
-
 export function inferWorkspaceFileMeta(path: string): WorkspaceFileMeta {
   const normalizedPath = path.toLowerCase();
   const filename = normalizedPath.split("/").pop() ?? normalizedPath;
@@ -55,57 +49,6 @@ export function summarizeGrepMatches(matches: GrepMatch[], limit = 80): string {
     lines.push(`...还有 ${matches.length - visible.length} 处匹配未显示，可提高 maxResults 或收窄 include`);
   }
   return lines.join("\n");
-}
-
-export function buildWorkspaceNextActions(input: {
-  paths?: string[];
-  directory?: string;
-  hasMatches?: boolean;
-  canRun?: boolean;
-  artifactPath?: string;
-}): WorkspaceNextAction[] {
-  const actions: WorkspaceNextAction[] = [];
-  const firstPath = input.paths?.find((path) => path.trim().length > 0);
-
-  if (firstPath) {
-    actions.push({
-      tool: "workspace_read_file",
-      reason: input.hasMatches ? "读取匹配文件的完整上下文后再修改或分析" : "读取目标文件内容后再修改或分析",
-      params: { path: firstPath },
-    });
-    actions.push({
-      tool: "workspace_grep",
-      reason: "在相关文件中继续定位符号、函数名或文本片段",
-      params: { pattern: "<关键词或正则>", include: input.directory ? `${input.directory}/**/*` : undefined },
-    });
-  } else {
-    actions.push({
-      tool: "workspace_list_files",
-      reason: "先查看工作区文件，再选择要读取、搜索或执行的路径",
-      params: { path: input.directory ?? ".", recursive: true },
-    });
-  }
-
-  if (input.artifactPath) {
-    const hasReadAction = actions.some((action) => action.tool === "workspace_read_file" && action.params?.path === input.artifactPath);
-    if (!hasReadAction) {
-      actions.push({
-        tool: "workspace_read_file",
-        reason: "确认刚写入的文件内容",
-        params: { path: input.artifactPath },
-      });
-    }
-  }
-
-  if (input.canRun) {
-    actions.push({
-      tool: "workspace_run_container",
-      reason: "在隔离容器内运行脚本、测试或构建命令验证结果",
-      params: { command: "<验证命令>" },
-    });
-  }
-
-  return actions;
 }
 
 const CODE_FILENAMES: Record<string, string> = {

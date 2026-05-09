@@ -6,12 +6,6 @@ export interface WorkspaceArtifact {
   kind?: string;
 }
 
-export interface WorkspaceNextAction {
-  tool: string;
-  reason: string;
-  params?: Record<string, unknown>;
-}
-
 export interface WebSearchResult {
   title: string;
   url: string;
@@ -258,10 +252,4 @@ export function extractWorkspaceArtifact(details: unknown, toolName: string): Wo
   };
 }
 
-export function extractNextActions(details: unknown): WorkspaceNextAction[] | null {
-  if (!details || typeof details !== "object" || Array.isArray(details)) return null;
-  const raw = details as Record<string, unknown>;
-  const nextActions = raw.nextActions;
-  if (!Array.isArray(nextActions) || nextActions.length === 0) return null;
-  return nextActions as WorkspaceNextAction[];
-}
+

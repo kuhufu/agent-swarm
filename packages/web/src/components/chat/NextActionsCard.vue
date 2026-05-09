@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import SectionLabel from "./SectionLabel.vue";
-import type { WorkspaceNextAction } from "./tool-card-utils.js";
-
 defineProps<{
-  actions: WorkspaceNextAction[];
+  actions: { tool: string; reason: string; params?: Record<string, unknown> }[];
 }>();
 
 const emit = defineEmits<{
-  apply: [action: WorkspaceNextAction];
+  apply: [action: { tool: string; reason: string; params?: Record<string, unknown> }];
 }>();
 </script>
 

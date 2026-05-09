@@ -1,7 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { WorkspaceManager } from "./manager.js";
-import { buildWorkspaceNextActions, formatWorkspaceSize, inferWorkspaceFileMeta, type WorkspaceNextAction } from "./context.js";
+import { formatWorkspaceSize, inferWorkspaceFileMeta } from "./context.js";
 
 const WriteFileParams = Type.Object({
   path: Type.String({ description: "写入路径（相对于工作区根目录）" }),
@@ -15,7 +15,6 @@ interface WriteFileDetails {
   kind: string;
   language?: string;
   previewable: boolean;
-  nextActions: WorkspaceNextAction[];
 }
 
 export function createWriteFileTool(
@@ -49,11 +48,6 @@ export function createWriteFileTool(
           path: file.path,
           size: file.size,
           ...meta,
-          nextActions: buildWorkspaceNextActions({
-            paths: [file.path],
-            artifactPath: file.path,
-            canRun: meta.kind === "code" || ["json", "html", "markdown", "text"].includes(meta.kind),
-          }),
         },
       };
     },

@@ -27,18 +27,16 @@ describe("workspace tool context", () => {
     expect(text).toContain("README.md");
     expect(result.details.count).toBe(2);
     expect(result.details.directories).toEqual(["src"]);
-    expect(result.details.nextActions.map((action) => action.tool)).toContain("workspace_read_file");
   });
 
-  it("returns file metadata and runnable follow-up hints when reading code", async () => {
+  it("returns file metadata when reading code", async () => {
     const tool = createReadFileTool(workspace);
     const result = await tool.execute("read", { path: "src/app.ts" });
 
     expect(result.details.meta).toMatchObject({ kind: "code", language: "typescript", previewable: true });
-    expect(result.details.nextActions.map((action) => action.tool)).toContain("workspace_run_container");
   });
 
-  it("returns artifact metadata and follow-up hints when writing files", async () => {
+  it("returns artifact metadata when writing files", async () => {
     const tool = createWriteFileTool(workspace);
     const result = await tool.execute("write", { path: "src/new.ts", content: "export const value = 1;\n" });
 
@@ -49,7 +47,6 @@ describe("workspace tool context", () => {
       language: "typescript",
       previewable: true,
     });
-    expect(result.details.nextActions.map((action) => action.tool)).toContain("workspace_read_file");
   });
 
   it("returns matched paths for grep results", async () => {
@@ -57,9 +54,5 @@ describe("workspace tool context", () => {
     const result = await tool.execute("grep", { pattern: "answer" });
 
     expect(result.details.matchedPaths).toEqual(["README.md", "src/app.ts"]);
-    expect(result.details.nextActions[0]).toMatchObject({
-      tool: "workspace_read_file",
-      params: { path: "README.md" },
-    });
   });
 });

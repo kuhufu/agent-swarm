@@ -11,11 +11,8 @@ import WorkspaceListFilesCard from "./WorkspaceListFilesCard.vue";
 import WorkspaceGrepCard from "./WorkspaceGrepCard.vue";
 import WorkspaceArtifactCard from "./WorkspaceArtifactCard.vue";
 import ContainerResultCard from "./ContainerResultCard.vue";
-import NextActionsCard from "./NextActionsCard.vue";
 import ToolJsonResultCard from "./ToolJsonResultCard.vue";
-import type { WorkspaceNextAction } from "./tool-card-utils.js";
 import {
-  extractNextActions,
   extractWebFetchResult,
   extractWebSearchResults,
   extractWorkspaceArtifact,
@@ -27,10 +24,6 @@ import {
 
 const props = defineProps<{
   toolCall: ToolCallInfo;
-}>();
-
-const emit = defineEmits<{
-  applyNextAction: [action: WorkspaceNextAction];
 }>();
 
 interface ToolResultView {
@@ -138,8 +131,6 @@ const activeResult = computed(() => {
   }
   return null;
 });
-const nextActions = computed(() => extractNextActions(props.toolCall.details));
-
 function openArtifact(path: string) {
   window.dispatchEvent(new CustomEvent("agent-swarm:open-artifact", { detail: { path } }));
 }
@@ -152,6 +143,4 @@ function openArtifact(path: string) {
     v-bind="activeResult.props"
     v-on="activeResult.listeners ?? {}"
   />
-
-  <NextActionsCard v-if="nextActions" :actions="nextActions" @apply="emit('applyNextAction', $event)" />
 </template>

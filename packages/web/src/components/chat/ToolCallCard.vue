@@ -4,7 +4,6 @@ import type { ToolCallInfo } from "../../types/index.js";
 import SvgIcon from "../common/SvgIcon.vue";
 import ToolRawDataPanel from "./ToolRawDataPanel.vue";
 import ToolResultRenderer from "./ToolResultRenderer.vue";
-import type { WorkspaceNextAction } from "./tool-card-utils.js";
 import {
   formatDuration,
   getToolColorClass,
@@ -27,10 +26,6 @@ const paramSummary = computed(() => getToolParamSummary(props.toolCall.arguments
 const formattedDuration = computed(() => formatDuration(props.toolCall.durationMs));
 const status = computed(() => getToolStatus(props.toolCall));
 
-function handleApplyNextAction(action: WorkspaceNextAction) {
-  const text = `${action.tool}${action.params ? " " + JSON.stringify(action.params) : ""}`;
-  window.dispatchEvent(new CustomEvent("agent-swarm:fill-input", { detail: { text } }));
-}
 </script>
 
 <template>
@@ -48,7 +43,7 @@ function handleApplyNextAction(action: WorkspaceNextAction) {
       <SvgIcon class="expand-icon" :class="{ rotated: expanded }" name="chevronDown" :size="14" />
     </div>
     <div v-if="expanded" class="tool-details">
-      <ToolResultRenderer :tool-call="toolCall" @apply-next-action="handleApplyNextAction" />
+      <ToolResultRenderer :tool-call="toolCall" />
       <ToolRawDataPanel :tool-call="toolCall" />
     </div>
   </div>

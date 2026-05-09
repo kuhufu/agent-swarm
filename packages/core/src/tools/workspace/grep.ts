@@ -1,7 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { WorkspaceManager, GrepMatch } from "./manager.js";
-import { buildWorkspaceNextActions, summarizeGrepMatches, type WorkspaceNextAction } from "./context.js";
+import { summarizeGrepMatches } from "./context.js";
 
 const GrepParams = Type.Object({
   pattern: Type.String({ description: "搜索模式（正则表达式）" }),
@@ -19,7 +19,6 @@ interface GrepDetails {
   matches: GrepMatch[];
   total: number;
   matchedPaths: string[];
-  nextActions: WorkspaceNextAction[];
 }
 
 export function createGrepTool(
@@ -49,7 +48,6 @@ export function createGrepTool(
             matches: [],
             total: 0,
             matchedPaths: [],
-            nextActions: buildWorkspaceNextActions({}),
           },
         };
       }
@@ -67,10 +65,6 @@ export function createGrepTool(
           matches,
           total: matches.length,
           matchedPaths,
-          nextActions: buildWorkspaceNextActions({
-            paths: matchedPaths,
-            hasMatches: true,
-          }),
         },
       };
     },

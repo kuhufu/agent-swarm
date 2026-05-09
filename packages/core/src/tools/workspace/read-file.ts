@@ -1,7 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { WorkspaceManager } from "./manager.js";
-import { buildWorkspaceNextActions, formatWorkspaceSize, inferWorkspaceFileMeta, type WorkspaceFileMeta, type WorkspaceNextAction } from "./context.js";
+import { formatWorkspaceSize, inferWorkspaceFileMeta, type WorkspaceFileMeta } from "./context.js";
 
 const ReadFileParams = Type.Object({
   path: Type.String({ description: "要读取的文件路径（相对于工作区根目录）" }),
@@ -17,7 +17,6 @@ interface ReadFileDetails {
   size: number;
   truncated: boolean;
   meta: WorkspaceFileMeta;
-  nextActions: WorkspaceNextAction[];
 }
 
 export function createReadFileTool(
@@ -45,10 +44,6 @@ export function createReadFileTool(
           size: result.size,
           truncated: result.truncated,
           meta,
-          nextActions: buildWorkspaceNextActions({
-            paths: [params.path],
-            canRun: meta.kind === "code" || ["json", "html", "markdown", "text"].includes(meta.kind),
-          }),
         },
       };
     },
