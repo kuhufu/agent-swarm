@@ -758,6 +758,7 @@ export class AgentSwarm {
       xai: "https://api.x.ai",
       mistral: "https://api.mistral.ai",
       deepseek: "https://api.deepseek.com",
+      siliconflow: "https://api.siliconflow.cn",
       zai: "https://api.z.ai",
     };
 
@@ -833,6 +834,8 @@ export class AgentSwarm {
       cerebras: "openai-completions",
       openrouter: "openai-completions",
       mistral: "mistral-conversations",
+      deepseek: "openai-completions",
+      siliconflow: "openai-completions",
       zai: "openai-completions",
     };
     return PROTOCOL_MAP[providerId];

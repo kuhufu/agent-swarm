@@ -20,6 +20,8 @@ const DEFAULT_PROTOCOL_MAP: Record<string, KnownApi> = {
   cerebras: "openai-completions",
   openrouter: "openai-completions",
   mistral: "mistral-conversations",
+  deepseek: "openai-completions",
+  siliconflow: "openai-completions",
   zai: "openai-completions",
 };
 
