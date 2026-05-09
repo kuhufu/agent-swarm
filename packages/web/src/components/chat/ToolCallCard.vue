@@ -167,10 +167,6 @@ const paramSummary = computed(() => {
   if (typeof raw.query === "string" && raw.query) return raw.query;
   if (typeof raw.pattern === "string" && raw.pattern) return raw.pattern;
   if (typeof raw.path === "string" && raw.path) return raw.path;
-  if (typeof raw.code === "string") {
-    const lines = raw.code.split("\n").filter((l: string) => l.trim().length > 0);
-    return lines.length === 1 ? raw.code : `${lines[0]} …`;
-  }
   return null;
 });
 
