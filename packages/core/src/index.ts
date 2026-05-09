@@ -34,6 +34,8 @@ export type {
   Conversation,
   ConversationPreferences,
   ConversationDirectModel,
+  Workspace,
+  WorkspaceInput,
   ConversationUsage,
   DailyUsage,
   LLMCallRecord,

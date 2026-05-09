@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { eq, desc, and, gt } from "drizzle-orm";
+import { eq, desc, and, gt, isNull } from "drizzle-orm";
 import type {
   IStorage,
   ConversationUsage,
@@ -12,12 +12,14 @@ import type {
   Conversation,
   ConversationPreferences,
   ConversationDirectModel,
+  Workspace,
+  WorkspaceInput,
   StoredUser,
   PublicUser,
   UserRole,
 } from "./interface.js";
 import type { SwarmConfig, AgentPreset } from "../core/types.js";
-import { settingsTable, swarmsTable, agentsTable, conversationsTable, messagesTable, eventsTable, presetAgentsTable, agentTemplatesTable, usersTable, llmCallsTable } from "./schema.js";
+import { settingsTable, swarmsTable, agentsTable, conversationsTable, messagesTable, eventsTable, presetAgentsTable, agentTemplatesTable, usersTable, llmCallsTable, workspacesTable } from "./schema.js";
 
 const DEFAULT_CONVERSATION_PREFERENCES: ConversationPreferences = {
   enabledTools: [],
@@ -76,12 +78,22 @@ export class SqliteStorage implements IStorage {
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
         swarm_id TEXT NOT NULL REFERENCES swarms(id),
+        workspace_id TEXT,
         title TEXT,
         enabled_tools TEXT NOT NULL DEFAULT '[]',
         thinking_level TEXT NOT NULL DEFAULT 'off',
         direct_provider TEXT,
         direct_model_id TEXT,
         context_reset_at INTEGER,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS workspaces (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        archived_at INTEGER,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       );
@@ -110,6 +122,8 @@ export class SqliteStorage implements IStorage {
       CREATE INDEX IF NOT EXISTS idx_messages_agent ON messages(agent_id);
       CREATE INDEX IF NOT EXISTS idx_events_conversation ON events(conversation_id, timestamp);
       CREATE INDEX IF NOT EXISTS idx_conversations_swarm ON conversations(swarm_id);
+      CREATE INDEX IF NOT EXISTS idx_conversations_workspace ON conversations(workspace_id);
+      CREATE INDEX IF NOT EXISTS idx_workspaces_user ON workspaces(user_id, updated_at);
       CREATE TABLE IF NOT EXISTS preset_agents (
         id TEXT NOT NULL,
         user_id TEXT NOT NULL,
@@ -211,6 +225,7 @@ export class SqliteStorage implements IStorage {
         DROP TABLE IF EXISTS events;
         DROP TABLE IF EXISTS messages;
         DROP TABLE IF EXISTS conversations;
+        DROP TABLE IF EXISTS workspaces;
         DROP TABLE IF EXISTS agents;
         DROP TABLE IF EXISTS swarms;
         DROP TABLE IF EXISTS preset_agents;
@@ -269,6 +284,7 @@ export class SqliteStorage implements IStorage {
     thinkingLevel: string | null;
     directProvider: string | null;
     directModelId: string | null;
+    workspaceId?: string | null;
     contextResetAt: number | null;
     createdAt: number;
     updatedAt: number;
@@ -279,12 +295,33 @@ export class SqliteStorage implements IStorage {
       id: row.id,
       swarmId: row.swarmId,
       title: row.title ?? undefined,
+      workspaceId: row.workspaceId ?? undefined,
       enabledTools: this.parseStoredEnabledTools(row.enabledTools),
       thinkingLevel: row.thinkingLevel ?? "off",
       directModel: (directProvider && directModelId)
         ? { provider: directProvider, modelId: directModelId }
         : undefined,
       contextResetAt: row.contextResetAt ?? undefined,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  private mapWorkspaceRow(row: {
+    id: string;
+    userId: string;
+    name: string;
+    description: string | null;
+    archivedAt: number | null;
+    createdAt: number;
+    updatedAt: number;
+  }): Workspace {
+    return {
+      id: row.id,
+      userId: row.userId,
+      name: row.name,
+      description: row.description ?? undefined,
+      archivedAt: row.archivedAt ?? undefined,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -321,6 +358,10 @@ export class SqliteStorage implements IStorage {
     }
     if (!columns.has("user_id")) {
       this.rawDb.exec("ALTER TABLE conversations ADD COLUMN user_id TEXT;");
+      schemaChanged = true;
+    }
+    if (!columns.has("workspace_id")) {
+      this.rawDb.exec("ALTER TABLE conversations ADD COLUMN workspace_id TEXT;");
       schemaChanged = true;
     }
 
@@ -632,6 +673,7 @@ export class SqliteStorage implements IStorage {
     userId: string,
     title?: string,
     preferences?: Partial<ConversationPreferences>,
+    workspaceId?: string | null,
   ): Promise<Conversation> {
     const now = Date.now();
     const enabledTools = this.normalizeEnabledTools(
@@ -643,6 +685,7 @@ export class SqliteStorage implements IStorage {
       id: crypto.randomUUID(),
       swarmId,
       title: title ?? "新对话",
+      workspaceId: workspaceId ?? undefined,
       enabledTools,
       thinkingLevel,
       directModel,
@@ -654,6 +697,7 @@ export class SqliteStorage implements IStorage {
       id: conv.id,
       userId,
       swarmId: conv.swarmId,
+      workspaceId: conv.workspaceId ?? null,
       title: conv.title,
       enabledTools: JSON.stringify(conv.enabledTools),
       thinkingLevel: conv.thinkingLevel,
@@ -738,6 +782,31 @@ export class SqliteStorage implements IStorage {
       .run();
   }
 
+  async updateConversationWorkspace(id: string, workspaceId: string | null, userId: string): Promise<Conversation> {
+    const current = await this.getConversation(id, userId);
+    if (!current) {
+      throw new Error(`Conversation not found: ${id}`);
+    }
+    if (workspaceId !== null) {
+      const workspace = await this.getWorkspace(workspaceId, userId);
+      if (!workspace || workspace.archivedAt) {
+        throw new Error(`Workspace not found: ${workspaceId}`);
+      }
+    }
+
+    const now = Date.now();
+    this.getDb().update(conversationsTable)
+      .set({ workspaceId, updatedAt: now })
+      .where(and(eq(conversationsTable.id, id), eq(conversationsTable.userId, userId)))
+      .run();
+
+    return {
+      ...current,
+      workspaceId: workspaceId ?? undefined,
+      updatedAt: now,
+    };
+  }
+
   async updateConversationContextReset(id: string, contextResetAt: number, userId?: string): Promise<void> {
     this.getDb().update(conversationsTable)
       .set({
@@ -761,6 +830,114 @@ export class SqliteStorage implements IStorage {
     this.getDb().delete(conversationsTable).where(
       and(eq(conversationsTable.id, id), eq(conversationsTable.userId, userId)),
     ).run();
+  }
+
+  // ── Workspace management ──
+
+  async createWorkspace(userId: string, input: WorkspaceInput): Promise<Workspace> {
+    const now = Date.now();
+    const name = input.name.trim();
+    if (!name) {
+      throw new Error("Workspace name is required");
+    }
+    const workspace: Workspace = {
+      id: crypto.randomUUID(),
+      userId,
+      name,
+      description: input.description?.trim() || undefined,
+      archivedAt: undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.getDb().insert(workspacesTable).values({
+      id: workspace.id,
+      userId,
+      name: workspace.name,
+      description: workspace.description ?? null,
+      archivedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    }).run();
+
+    return workspace;
+  }
+
+  async getWorkspace(id: string, userId: string): Promise<Workspace | null> {
+    const rows = this.getDb().select().from(workspacesTable)
+      .where(and(eq(workspacesTable.id, id), eq(workspacesTable.userId, userId)))
+      .all();
+    if (rows.length === 0) return null;
+    return this.mapWorkspaceRow(rows[0]);
+  }
+
+  async listWorkspaces(userId: string, options: { includeArchived?: boolean } = {}): Promise<Workspace[]> {
+    const condition = options.includeArchived
+      ? eq(workspacesTable.userId, userId)
+      : and(eq(workspacesTable.userId, userId), isNull(workspacesTable.archivedAt));
+    const rows = this.getDb().select().from(workspacesTable)
+      .where(condition)
+      .orderBy(desc(workspacesTable.updatedAt))
+      .all();
+    return rows.map((row) => this.mapWorkspaceRow(row));
+  }
+
+  async updateWorkspace(id: string, userId: string, patch: Partial<WorkspaceInput>): Promise<Workspace> {
+    const current = await this.getWorkspace(id, userId);
+    if (!current) {
+      throw new Error(`Workspace not found: ${id}`);
+    }
+    const name = patch.name !== undefined ? patch.name.trim() : current.name;
+    if (!name) {
+      throw new Error("Workspace name is required");
+    }
+    const description = patch.description !== undefined
+      ? patch.description.trim() || undefined
+      : current.description;
+    const now = Date.now();
+
+    this.getDb().update(workspacesTable)
+      .set({
+        name,
+        description: description ?? null,
+        updatedAt: now,
+      })
+      .where(and(eq(workspacesTable.id, id), eq(workspacesTable.userId, userId)))
+      .run();
+
+    return {
+      ...current,
+      name,
+      description,
+      updatedAt: now,
+    };
+  }
+
+  async archiveWorkspace(id: string, userId: string): Promise<Workspace> {
+    const current = await this.getWorkspace(id, userId);
+    if (!current) {
+      throw new Error(`Workspace not found: ${id}`);
+    }
+    const now = Date.now();
+    this.getDb().update(workspacesTable)
+      .set({ archivedAt: now, updatedAt: now })
+      .where(and(eq(workspacesTable.id, id), eq(workspacesTable.userId, userId)))
+      .run();
+    return { ...current, archivedAt: now, updatedAt: now };
+  }
+
+  async deleteWorkspace(id: string, userId: string): Promise<void> {
+    const current = await this.getWorkspace(id, userId);
+    if (!current) {
+      throw new Error(`Workspace not found: ${id}`);
+    }
+    this.getDb().update(conversationsTable)
+      .set({ workspaceId: null, updatedAt: Date.now() })
+      .where(and(eq(conversationsTable.workspaceId, id), eq(conversationsTable.userId, userId)))
+      .run();
+    this.getDb().delete(workspacesTable)
+      .where(and(eq(workspacesTable.id, id), eq(workspacesTable.userId, userId)))
+      .run();
   }
 
   // ── Message management ──

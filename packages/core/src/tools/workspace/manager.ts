@@ -45,13 +45,13 @@ export interface WorkspaceContainerInfo {
 export class WorkspaceManager {
   static dockerCommandRunner: (args: string[]) => Promise<string> = dockerStdout;
 
-  readonly conversationId: string;
+  readonly workspaceId: string;
   readonly baseDir: string;
   private realBaseDir: string | null = null;
 
-  constructor(conversationId: string) {
-    this.conversationId = conversationId;
-    this.baseDir = resolve(WORKSPACE_ROOT, conversationId);
+  constructor(workspaceId: string) {
+    this.workspaceId = workspaceId;
+    this.baseDir = resolve(WORKSPACE_ROOT, workspaceId);
   }
 
   private async resolveRealBase(): Promise<string> {
@@ -416,7 +416,7 @@ export class WorkspaceManager {
       "ps",
       "-a",
       "--filter",
-      `label=agent-swarm.conversation-id=${this.conversationId}`,
+      `label=agent-swarm.workspace-id=${this.workspaceId}`,
       "--format",
       "{{json .}}",
     ]);
@@ -498,7 +498,7 @@ export class WorkspaceManager {
   }
 
   async cleanupContainers(): Promise<number> {
-    return removeDockerContainersByConversation(this.conversationId);
+    return removeDockerContainersByWorkspace(this.workspaceId);
   }
 
   async cleanup(): Promise<void> {
@@ -529,12 +529,12 @@ function removeDockerContainer(containerName: string): void {
   child.unref();
 }
 
-async function removeDockerContainersByConversation(conversationId: string): Promise<number> {
+async function removeDockerContainersByWorkspace(workspaceId: string): Promise<number> {
   const ids = await WorkspaceManager.dockerCommandRunner([
     "ps",
     "-aq",
     "--filter",
-    `label=agent-swarm.conversation-id=${conversationId}`,
+    `label=agent-swarm.workspace-id=${workspaceId}`,
   ]);
   const containers = ids.split(/\s+/).filter(Boolean);
   if (containers.length === 0) {
@@ -569,8 +569,8 @@ function dockerStdout(args: string[]): Promise<string> {
   });
 }
 
-export function createWorkspaceManager(conversationId: string): WorkspaceManager {
-  return new WorkspaceManager(conversationId);
+export function createWorkspaceManager(workspaceId: string): WorkspaceManager {
+  return new WorkspaceManager(workspaceId);
 }
 
 function normalizeWorkspaceFileVersion(input: Partial<WorkspaceFileVersion>): WorkspaceFileVersion[] {

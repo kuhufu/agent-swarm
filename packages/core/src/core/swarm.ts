@@ -214,6 +214,7 @@ export class AgentSwarm {
     swarmId: string,
     title?: string,
     preferences?: Partial<ConversationPreferences>,
+    workspaceId?: string | null,
   ): Promise<Conversation> {
     this.ensureInitialized();
     const normalizedUserId = this.normalizeUserId(userId);
@@ -223,7 +224,14 @@ export class AgentSwarm {
       throw new Error(`Swarm not found: ${swarmId}`);
     }
 
-    const conv = await this.storage.createConversation(swarmId, normalizedUserId, title, preferences);
+    if (workspaceId) {
+      const workspace = await this.storage.getWorkspace(workspaceId, normalizedUserId);
+      if (!workspace || workspace.archivedAt) {
+        throw new Error(`Workspace not found: ${workspaceId}`);
+      }
+    }
+
+    const conv = await this.storage.createConversation(swarmId, normalizedUserId, title, preferences, workspaceId);
 
     return new Conversation(
       conv.id,
@@ -235,6 +243,7 @@ export class AgentSwarm {
       [],
       this.eventLogLevel,
       (context) => this.createToolRuntimeAvailability(context),
+      conv.workspaceId,
     );
   }
 
@@ -275,6 +284,7 @@ export class AgentSwarm {
         thinkingLevel: source.thinkingLevel,
         directModel: source.directModel,
       },
+      source.workspaceId,
     );
 
     // Replicate messages with new IDs
@@ -308,6 +318,7 @@ export class AgentSwarm {
       [],
       this.eventLogLevel,
       (context) => this.createToolRuntimeAvailability(context),
+      newConv.workspaceId,
     );
   }
 
@@ -321,6 +332,7 @@ export class AgentSwarm {
     modelId: string,
     title?: string,
     preferences?: Partial<ConversationPreferences>,
+    workspaceId?: string | null,
   ): Promise<Conversation> {
     this.ensureInitialized();
     const normalizedUserId = this.normalizeUserId(userId);
@@ -352,10 +364,17 @@ export class AgentSwarm {
       // If saveSwarm fails (e.g. transient DB issue), keep in-memory config available.
     }
 
+    if (workspaceId) {
+      const workspace = await this.storage.getWorkspace(workspaceId, normalizedUserId);
+      if (!workspace || workspace.archivedAt) {
+        throw new Error(`Workspace not found: ${workspaceId}`);
+      }
+    }
+
     const conv = await this.storage.createConversation(swarmId, normalizedUserId, title, {
       ...preferences,
       directModel: { provider, modelId },
-    });
+    }, workspaceId);
 
     return new Conversation(
       conv.id,
@@ -367,6 +386,7 @@ export class AgentSwarm {
       [],
       this.eventLogLevel,
       (context) => this.createToolRuntimeAvailability(context),
+      conv.workspaceId,
     );
   }
 
@@ -408,6 +428,7 @@ export class AgentSwarm {
       restoredMessages,
       this.eventLogLevel,
       (context) => this.createToolRuntimeAvailability(context),
+      conv.workspaceId,
     );
 
     return conversation;
@@ -416,10 +437,11 @@ export class AgentSwarm {
   createToolRuntimeAvailability(context: {
     conversationId: string;
     userId: string;
+    workspaceId?: string;
   }): ToolRuntimeAvailability {
-    const runtimeTools = [
-      createWorkspaceTool(createWorkspaceManager(context.conversationId)),
-    ];
+    const runtimeTools = context.workspaceId
+      ? [createWorkspaceTool(createWorkspaceManager(context.workspaceId))]
+      : [];
 
     if (this.vectorStore) {
       runtimeTools.push(createRuntimeTool(
@@ -515,6 +537,53 @@ export class AgentSwarm {
     return this.storage.updateConversationPreferences(conversationId, preferences, normalizedUserId);
   }
 
+  async updateConversationWorkspace(conversationId: string, workspaceId: string | null, userId: string) {
+    this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
+    return this.storage.updateConversationWorkspace(conversationId, workspaceId, normalizedUserId);
+  }
+
+  async createWorkspace(userId: string, input: { name: string; description?: string }) {
+    this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
+    return this.storage.createWorkspace(normalizedUserId, input);
+  }
+
+  async getWorkspace(workspaceId: string, userId: string) {
+    this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
+    return this.storage.getWorkspace(workspaceId, normalizedUserId);
+  }
+
+  async listWorkspaces(userId: string, options?: { includeArchived?: boolean }) {
+    this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
+    return this.storage.listWorkspaces(normalizedUserId, options);
+  }
+
+  async updateWorkspace(workspaceId: string, userId: string, patch: { name?: string; description?: string }) {
+    this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
+    return this.storage.updateWorkspace(workspaceId, normalizedUserId, patch);
+  }
+
+  async archiveWorkspace(workspaceId: string, userId: string) {
+    this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
+    return this.storage.archiveWorkspace(workspaceId, normalizedUserId);
+  }
+
+  async deleteWorkspace(workspaceId: string, userId: string) {
+    this.ensureInitialized();
+    const normalizedUserId = this.normalizeUserId(userId);
+    const workspace = await this.storage.getWorkspace(workspaceId, normalizedUserId);
+    if (!workspace) {
+      throw new Error(`Workspace not found: ${workspaceId}`);
+    }
+    await createWorkspaceManager(workspaceId).cleanup();
+    await this.storage.deleteWorkspace(workspaceId, normalizedUserId);
+  }
+
   /**
    * Delete a conversation.
    */
@@ -526,7 +595,6 @@ export class AgentSwarm {
       throw new Error(`Conversation not found: ${id}`);
     }
 
-    await createWorkspaceManager(id).cleanup();
     await this.storage.deleteConversation(id, normalizedUserId);
   }
 

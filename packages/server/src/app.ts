@@ -13,6 +13,7 @@ import { documentRoutes } from "./routes/documents.js";
 import { wikiRoutes } from "./routes/wiki.js";
 import { authRoutes } from "./routes/auth.js";
 import { templateRoutes } from "./routes/templates.js";
+import { workspaceRoutes } from "./routes/workspaces.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/error-handler.js";
 
@@ -38,6 +39,7 @@ export function createApp(swarm: AgentSwarm): Express {
   app.use("/api/swarms", swarmRoutes(swarm));
   app.use("/api/agents", agentRoutes(swarm));
   app.use("/api/conversations", conversationRoutes(swarm));
+  app.use("/api/workspaces", workspaceRoutes(swarm));
   app.use("/api/config", configRoutes(swarm));
   app.use("/api", messageRoutes(swarm));
   app.use("/api", usageRoutes(swarm));

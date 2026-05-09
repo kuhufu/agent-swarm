@@ -45,7 +45,7 @@ describe("workspace container tools", () => {
         "ps",
         "-a",
         "--filter",
-        `label=agent-swarm.conversation-id=${workspace.conversationId}`,
+        `label=agent-swarm.workspace-id=${workspace.workspaceId}`,
         "--format",
         "{{json .}}",
       ]);
@@ -264,7 +264,7 @@ describe("workspace_run_container tool", () => {
       "--label",
       "agent-swarm=true",
       "--label",
-      `agent-swarm.conversation-id=${workspace.conversationId}`,
+      `agent-swarm.workspace-id=${workspace.workspaceId}`,
       "--label",
       "agent-swarm.tool-call-id=call-1",
       "--network",

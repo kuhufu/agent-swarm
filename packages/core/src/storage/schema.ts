@@ -30,12 +30,23 @@ export const conversationsTable = sqliteTable("conversations", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),
   swarmId: text("swarm_id").notNull().references(() => swarmsTable.id),
+  workspaceId: text("workspace_id"),
   title: text("title"),
   enabledTools: text("enabled_tools").notNull().default("[]"),
   thinkingLevel: text("thinking_level").notNull().default("off"),
   directProvider: text("direct_provider"),
   directModelId: text("direct_model_id"),
   contextResetAt: integer("context_reset_at"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
+export const workspacesTable = sqliteTable("workspaces", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  archivedAt: integer("archived_at"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 });

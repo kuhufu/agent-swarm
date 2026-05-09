@@ -126,6 +126,7 @@ export const updateAgentTemplateSchema = updateAgentPresetSchema;
 export const createConversationSchema = z.object({
   swarmId: z.string().min(1, "swarmId 不能为空"),
   title: z.string().optional(),
+  workspaceId: z.string().nullable().optional(),
   enabledTools: z.array(z.string()).optional(),
   thinkingLevel: z.enum(["xhigh", "high", "medium", "low", "off"]).optional(),
   directModel: directModelSchema.optional(),
@@ -135,6 +136,20 @@ export const updateConversationPreferencesSchema = z.object({
   enabledTools: z.array(z.string()).optional(),
   thinkingLevel: z.enum(["xhigh", "high", "medium", "low", "off"]).optional(),
   directModel: directModelSchema.optional(),
+});
+
+export const updateConversationWorkspaceSchema = z.object({
+  workspaceId: z.string().nullable(),
+});
+
+export const createWorkspaceSchema = z.object({
+  name: z.string().min(1, "名称不能为空"),
+  description: z.string().optional(),
+});
+
+export const updateWorkspaceSchema = z.object({
+  name: z.string().min(1, "名称不能为空").optional(),
+  description: z.string().optional(),
 });
 
 export const providerConfigSchema = z.object({

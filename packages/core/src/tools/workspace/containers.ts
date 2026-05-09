@@ -31,7 +31,7 @@ export function createListWorkspaceContainersTool(
   return {
     name: "workspace_list_containers",
     label: "列出工作区容器",
-    description: "列出当前会话 workspace 中由 workspace_run_container 创建的 Docker 容器。容器通过 agent-swarm.conversation-id label 关联到当前会话，因此服务重启后仍可查询；只能查看当前会话，不能访问其他会话或任意宿主机容器。",
+    description: "列出当前工作区中由 workspace_run_container 创建的 Docker 容器。容器通过 agent-swarm.workspace-id label 关联到当前工作区，因此服务重启后仍可查询；只能查看当前工作区，不能访问任意宿主机容器。",
     parameters: EmptyParams,
     execute: async (): Promise<AgentToolResult<ListWorkspaceContainersDetails>> => {
       const containers = await workspace.listContainers();
@@ -250,7 +250,7 @@ export function createRunWorkspaceContainerTool(
       await workspace.ensureDir();
       const hostCwd = params.cwd ? await workspace.checkPath(params.cwd) : workspace.baseDir;
       const containerCwd = toContainerCwd(workspace.baseDir, hostCwd);
-      const containerName = createContainerName(workspace.conversationId, toolCallId);
+      const containerName = createContainerName(workspace.workspaceId, toolCallId);
 
       const paramsImage = params.image;
       if (paramsImage !== undefined) {
@@ -270,7 +270,7 @@ export function createRunWorkspaceContainerTool(
       return new Promise<AgentToolResult<ExecuteFileDetails>>((resolve, reject) => {
         const dockerArgs = buildDockerArgs({
           image: dockerImage,
-          conversationId: workspace.conversationId,
+          workspaceId: workspace.workspaceId,
           toolCallId,
           containerName,
           workspaceDir: workspace.baseDir,
@@ -349,7 +349,7 @@ export function createRunWorkspaceContainerTool(
                   `命令: ${command}`,
                   `镜像: ${dockerImage}`,
                   `容器: ${containerName}`,
-                  `会话: ${workspace.conversationId}`,
+                  `工作区: ${workspace.workspaceId}`,
                   `目录: ${containerCwd}`,
                   ports.length > 0 ? `端口: ${formatPorts(ports)}` : undefined,
                   child.pid ? `docker进程: ${child.pid}` : undefined,
@@ -391,7 +391,7 @@ export function createRunWorkspaceContainerTool(
             `命令: ${command}`,
             `镜像: ${dockerImage}`,
             `容器: ${containerName}`,
-            `会话: ${workspace.conversationId}`,
+            `工作区: ${workspace.workspaceId}`,
             `目录: ${containerCwd}`,
             ports.length > 0 ? `端口: ${formatPorts(ports)}` : undefined,
             child.pid ? `docker进程: ${child.pid}` : undefined,
@@ -568,7 +568,7 @@ export function createPullWorkspaceImageTool(
 
 function buildDockerArgs(options: {
   image: string;
-  conversationId: string;
+  workspaceId: string;
   toolCallId: string;
   containerName: string;
   workspaceDir: string;
@@ -581,7 +581,7 @@ function buildDockerArgs(options: {
     "--rm",
     "--name", options.containerName,
     "--label", "agent-swarm=true",
-    "--label", `agent-swarm.conversation-id=${options.conversationId}`,
+    "--label", `agent-swarm.workspace-id=${options.workspaceId}`,
     "--label", `agent-swarm.tool-call-id=${options.toolCallId}`,
     ...(options.ports.length > 0 ? buildPortArgs(options.ports) : ["--network", "none"]),
     "--cpus", "1",
@@ -601,8 +601,8 @@ function buildDockerArgs(options: {
   ];
 }
 
-function createContainerName(conversationId: string, toolCallId: string): string {
-  const raw = `agent-swarm-${conversationId}-${toolCallId}`;
+function createContainerName(workspaceId: string, toolCallId: string): string {
+  const raw = `agent-swarm-${workspaceId}-${toolCallId}`;
   const normalized = raw
     .toLowerCase()
     .replace(/[^a-z0-9_.-]+/g, "-")

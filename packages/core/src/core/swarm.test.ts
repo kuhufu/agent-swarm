@@ -174,8 +174,8 @@ describe("AgentSwarm persistence", () => {
     cleanupDb(dbPath);
   });
 
-  it("cleans conversation workspace when deleting a conversation", async () => {
-    const dbPath = createTestDbPath("delete-conversation-workspace");
+  it("keeps mounted workspace files when deleting a conversation", async () => {
+    const dbPath = createTestDbPath("delete-conversation-keeps-workspace");
     cleanupDb(dbPath);
 
     const swarm = new AgentSwarm({
@@ -183,15 +183,43 @@ describe("AgentSwarm persistence", () => {
     });
 
     await swarm.init();
-    const conversation = await swarm.createConversation(TEST_USER_ID, "workspace_swarm", "workspace", undefined);
-    const workspace = createWorkspaceManager(conversation.getId());
+    const workspaceRecord = await swarm.createWorkspace(TEST_USER_ID, { name: "workspace" });
+    const conversation = await swarm.createConversation(TEST_USER_ID, "workspace_swarm", "workspace", undefined, workspaceRecord.id);
+    const workspace = createWorkspaceManager(workspaceRecord.id);
     await workspace.writeFile("result.txt", "temporary workspace file");
 
     expect(existsSync(workspace.baseDir)).toBe(true);
 
     await swarm.deleteConversation(conversation.getId(), TEST_USER_ID);
 
+    expect(existsSync(workspace.baseDir)).toBe(true);
+    await workspace.cleanup();
+
+    await swarm.close();
+    cleanupDb(dbPath);
+  });
+
+  it("cleans workspace files when deleting a workspace", async () => {
+    const dbPath = createTestDbPath("delete-workspace-files");
+    cleanupDb(dbPath);
+
+    const swarm = new AgentSwarm({
+      config: createRootConfig(dbPath, [createSwarmConfig("workspace_swarm")]),
+    });
+
+    await swarm.init();
+    const workspaceRecord = await swarm.createWorkspace(TEST_USER_ID, { name: "workspace" });
+    const conversation = await swarm.createConversation(TEST_USER_ID, "workspace_swarm", "workspace", undefined, workspaceRecord.id);
+    const workspace = createWorkspaceManager(workspaceRecord.id);
+    await workspace.writeFile("result.txt", "temporary workspace file");
+
+    expect(existsSync(workspace.baseDir)).toBe(true);
+
+    await swarm.deleteWorkspace(workspaceRecord.id, TEST_USER_ID);
+
     expect(existsSync(workspace.baseDir)).toBe(false);
+    const updatedConversation = await swarm.getConversation(conversation.getId(), TEST_USER_ID);
+    expect(updatedConversation?.workspaceId).toBeUndefined();
 
     await swarm.close();
     cleanupDb(dbPath);

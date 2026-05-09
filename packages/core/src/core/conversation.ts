@@ -75,9 +75,11 @@ export class Conversation {
   private eventListeners: ((event: SwarmEvent) => void)[] = [];
   private _aborted = false;
   private readonly userId: string;
+  private readonly workspaceId?: string;
   private readonly toolAvailabilityProvider?: (context: {
     conversationId: string;
     userId: string;
+    workspaceId?: string;
   }) => ToolRuntimeAvailability | Promise<ToolRuntimeAvailability>;
 
   constructor(
@@ -92,10 +94,13 @@ export class Conversation {
     toolAvailabilityProvider?: (context: {
       conversationId: string;
       userId: string;
+      workspaceId?: string;
     }) => ToolRuntimeAvailability | Promise<ToolRuntimeAvailability>,
+    workspaceId?: string,
   ) {
     this.id = id;
     this.userId = userId;
+    this.workspaceId = workspaceId;
     this.swarmConfig = swarmConfig;
     this.storage = storage;
     this.llmConfig = llmConfig;
@@ -185,9 +190,11 @@ export class Conversation {
    */
   abort(): void {
     this._aborted = true;
-    void createWorkspaceManager(this.id).cleanupContainers().catch(() => {
-      // Docker may be unavailable; aborting agents should continue regardless.
-    });
+    if (this.workspaceId) {
+      void createWorkspaceManager(this.workspaceId).cleanupContainers().catch(() => {
+        // Docker may be unavailable; aborting agents should continue regardless.
+      });
+    }
     for (const [, active] of this.agents) {
       active.agent.abort();
     }
@@ -271,6 +278,7 @@ export class Conversation {
     return this.toolAvailabilityProvider({
       conversationId: this.id,
       userId: this.userId,
+      workspaceId: this.workspaceId,
     });
   }
 

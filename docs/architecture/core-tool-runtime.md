@@ -1,12 +1,12 @@
 # Core Tool Runtime
 
-`packages/core/src/tools/runtime.ts` 是 Agent 工具注入的统一入口。`Conversation` 负责根据当前会话的 `enabledTools` 决定启用哪些工具；`AgentSwarm.createToolRuntimeAvailability()` 只提供本会话可用的工具资源，例如 WebSearch 配置、MCP 工具、Wiki/知识库工具和 workspace 组合工具。
+`packages/core/src/tools/runtime.ts` 是 Agent 工具注入的统一入口。`Conversation` 负责根据当前会话的 `enabledTools` 决定启用哪些工具；`AgentSwarm.createToolRuntimeAvailability()` 只提供本会话可用的工具资源，例如 WebSearch 配置、MCP 工具、Wiki/知识库工具和 workspace 组合工具。workspace 是用户级一等资源，会话只挂载 `workspaceId`；没有挂载 workspace 时，即使 `enabledTools` 中包含 `workspace`，后端也不会注入 workspace 组合工具。
 
 ## 入口
 
 - `createToolRuntimeOptions(input)`：规范化 `enabledTools`，补齐默认前端工具执行器。
 - `createRuntimeTool(tool)` / `createRuntimeTool(id, tools)`：把一个或多个 `AgentTool` 封装成统一的 `RuntimeTool`。
-- `AgentSwarm.createToolRuntimeAvailability(context)`：按 `conversationId/userId` 创建可用工具资源，不读取 `enabledTools`。
+- `AgentSwarm.createToolRuntimeAvailability(context)`：按 `conversationId/userId/workspaceId` 创建可用工具资源，不读取 `enabledTools`；`workspaceId` 为空时不创建 workspace runtime tool。
 - `withRuntimeTools(config, swarmConfig, runtimeOptions)`：基于 Swarm 模式和运行时开关，为单个 Agent 合并工具。
 - `createRuntimeTools(config, swarmConfig, runtimeOptions)`：只生成运行时工具列表，按工具名去重。
 - `createClientToolDefinitions()`：集中定义前端桥接工具声明，目前包含 `current_time` 和 `javascript_execute`。
@@ -91,12 +91,12 @@ swarmContext?: {
 
 `cwd` 默认就是 `/workspace`，不要传 `"workspace"` 表示根目录；只有文件确实位于工作区子目录时才传相对路径。`background: true` 默认会等待 `startupWaitMs=2000` 后才返回后台运行，若容器在这段时间内退出，应返回实际退出码和 stderr。
 
-每次 `workspace_run_container` 都会生成容器名 `agent-swarm-<conversationId>-<toolCallId>`，并写入 Docker labels：`agent-swarm=true`、`agent-swarm.conversation-id=<conversationId>`、`agent-swarm.tool-call-id=<toolCallId>`。后台运行返回的 `details.containerName` 是后续排查和清理的容器标识。
+每次 `workspace_run_container` 都会生成容器名 `agent-swarm-<workspaceId>-<toolCallId>`，并写入 Docker labels：`agent-swarm=true`、`agent-swarm.workspace-id=<workspaceId>`、`agent-swarm.tool-call-id=<toolCallId>`。后台运行返回的 `details.containerName` 是后续排查和清理的容器标识。
 
-Agent 如需主动管理当前会话的容器，只能使用受控 workspace 工具：`workspace_list_containers` 和 `workspace_remove_containers`。这两个工具只按当前 `conversationId` 的 Docker label 查询和清理资源，不维护内存进程表，也不接受任意容器名，避免越权清理宿主机上的其他容器。
+Agent 如需主动管理当前工作区的容器，只能使用受控 workspace 工具：`workspace_list_containers` 和 `workspace_remove_containers`。这两个工具只按当前 `workspaceId` 的 Docker label 查询和清理资源，不维护内存进程表，也不接受任意容器名，避免越权清理宿主机上的其他容器。
 
-`workspace_run_container` 会监听工具调用的 `AbortSignal`。当用户点击停止、WebSocket 断开或 `Conversation.abort()` 被调用时，Conversation 会按当前 `conversationId` 的 Docker label 清理该会话关联容器；服务进程重启后仍可通过 Docker label 找回和清理残留容器。
+`workspace_run_container` 会监听工具调用的 `AbortSignal`。当用户点击停止、WebSocket 断开或 `Conversation.abort()` 被调用时，Conversation 会按当前 `workspaceId` 的 Docker label 清理当前工作区关联容器；服务进程重启后仍可通过 Docker label 找回和清理残留容器。
 
-删除会话时，`AgentSwarm.deleteConversation()` 会先清理对应 `conversationId` 的 workspace 目录，并按 `agent-swarm.conversation-id` label best-effort 清理仍在运行或服务重启后残留的容器，再删除会话消息、事件和会话记录。
+删除会话只删除会话消息、事件和会话记录，不清理 workspace 文件或容器。删除 workspace 时，`AgentSwarm.deleteWorkspace()` 会清理对应 `workspaceId` 的目录，并按 `agent-swarm.workspace-id` label best-effort 清理仍在运行或服务重启后残留的容器，同时解除关联会话的挂载。
 
 新增前端执行工具时，更新 `createClientToolDefinitions()` 和前端 `packages/web/src/tools/client-tools.ts` 的实际执行逻辑，二者的工具名和参数 schema 必须保持一致。

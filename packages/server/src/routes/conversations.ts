@@ -12,6 +12,7 @@ import { resolveRequestUserId } from "../middleware/auth.js";
 import {
   createConversationSchema,
   updateConversationPreferencesSchema,
+  updateConversationWorkspaceSchema,
   listConversationsQuerySchema,
 } from "../schemas/index.js";
 
@@ -62,10 +63,10 @@ export function conversationRoutes(swarm: AgentSwarm): Router {
     const userId = resolveRequestUserId(req);
     if (!userId) return res.status(401).json({ error: "未登录" });
 
-    const { swarmId, title } = req.body;
+    const { swarmId, title, workspaceId } = req.body;
     try {
       const preferences = parseConversationPreferences(req.body as Record<string, unknown>);
-      const conversation = await swarm.createConversation(userId, swarmId, title, preferences);
+      const conversation = await swarm.createConversation(userId, swarmId, title, preferences, workspaceId ?? null);
       const conversationInfo = await swarm.getConversation(conversation.getId(), userId);
       if (!conversationInfo) {
         return res.status(500).json({ error: "无法加载已创建的会话" });
@@ -96,6 +97,22 @@ export function conversationRoutes(swarm: AgentSwarm): Router {
     try {
       const preferences = parseConversationPreferences(req.body as Record<string, unknown>);
       const updated = await swarm.updateConversationPreferences(req.params.id as string, preferences, userId);
+      res.json({ data: updated });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  router.patch("/:id/workspace", validateBody(updateConversationWorkspaceSchema), async (req, res) => {
+    const userId = resolveRequestUserId(req);
+    if (!userId) return res.status(401).json({ error: "未登录" });
+
+    try {
+      const updated = await swarm.updateConversationWorkspace(
+        req.params.id as string,
+        req.body.workspaceId ?? null,
+        userId,
+      );
       res.json({ data: updated });
     } catch (err: any) {
       res.status(400).json({ error: err.message });

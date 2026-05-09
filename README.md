@@ -20,8 +20,9 @@
 - 会话分支：支持整段会话分支，也支持从指定消息创建分支用于对比调试
 - 多租户隔离：`swarms / conversations / agent presets / documents / wiki / usage analytics` 按 `userId` 严格隔离；首个注册用户自动成为 `admin`
 - 工具运行时：`packages/core/src/tools/runtime.ts` 统一把模式工具、前端桥接工具、WebSearch、MCP 和运行时工具注入 Agent
-- Workspace 工具：`workspace_list_files/read_file/grep/write_file` 返回可衔接的路径、文件类型和 `nextActions`，便于 Agent 在列目录、搜索、读取、写入和容器验证之间连续协作；`workspace_run_container` 通过 Docker 隔离执行命令，容器按会话 label 关联，并通过容器管理工具管理当前会话容器
-- Workspace 产物：聊天页右侧产物面板可按目录分组查看并搜索当前会话工作区文件，支持文本/Markdown/JSON/代码/图片预览、单文件三点菜单操作、批量选择后下载/加入文档/标记最终/删除，以及整个工作区打包下载；`workspace_write_file` 工具卡可直接跳转到产物详情
+- Workspace：工作区是用户级一等资源，会话仅挂载 `workspaceId`；未挂载工作区时后端不会注入 workspace 工具
+- Workspace 工具：`workspace_list_files/read_file/grep/write_file` 返回可衔接的路径、文件类型和 `nextActions`，便于 Agent 在列目录、搜索、读取、写入和容器验证之间连续协作；`workspace_run_container` 通过 Docker 隔离执行命令，容器按工作区 label 关联，并通过容器管理工具管理当前工作区容器
+- Workspace 产物：聊天页右侧产物面板可按目录分组查看并搜索当前工作区文件，支持文本/Markdown/JSON/代码/图片预览、单文件三点菜单操作、批量选择后下载/加入文档/标记最终/删除，以及整个工作区打包下载；`workspace_write_file` 工具卡可直接跳转到产物详情
 - 浏览器自动化工具：`browser_automation` 基于 [agent-browser](https://github.com/vercel-labs/agent-browser) 提供浏览器控制能力，支持打开网页、快照获取元素引用 `@e1/@e2`、点击、填表、截图等操作
 - 消息 Markdown 渲染：基于 `marked + marked-highlight + highlight.js + KaTeX + dompurify`，支持代码高亮、数学公式与安全净化
 - 文档与 Wiki：文档 tab 管理来源文件和知识库检索，Wiki tab 基于文档生成可编辑页面、支撑要点和关联页面
@@ -161,6 +162,7 @@ pnpm --filter @agent-swarm/server test
 - `POST /api/conversations`
 - `GET /api/conversations/:id`
 - `PATCH /api/conversations/:id/preferences`
+- `PATCH /api/conversations/:id/workspace`：按 `{ workspaceId: string | null }` 挂载或清除会话工作区
 - `POST /api/conversations/:id/context/clear`
 - `POST /api/conversations/:id/resume`
 - `POST /api/conversations/:id/fork`：可选 `messageId`，只复制到指定消息为止
@@ -175,6 +177,16 @@ pnpm --filter @agent-swarm/server test
 - `PATCH /api/conversations/:id/workspace/files/final`：标记或取消标记最终结果
 - `DELETE /api/conversations/:id/workspace/files?path=...`：删除指定产物文件
 - `DELETE /api/conversations/:id`
+
+### 工作区管理
+
+- `GET /api/workspaces`
+- `GET /api/workspaces?includeArchived=true`
+- `POST /api/workspaces`：创建用户私有工作区，名称必填
+- `GET /api/workspaces/:id`
+- `PATCH /api/workspaces/:id`
+- `POST /api/workspaces/:id/archive`
+- `DELETE /api/workspaces/:id`：硬删除工作区并清理文件目录/容器，同时解除关联会话挂载
 
 ### 消息查询
 

@@ -15,7 +15,7 @@ Agent Swarm 是一个多 Agent 协作框架，基于 `@mariozechner/pi-agent-cor
 
 | 包 | 路径 | 职责 |
 |---|------|------|
-| `@agent-swarm/core` | `packages/core/` | 后端 SDK：协作模式、介入机制、存储（SQLite + 向量存储 + Wiki 存储）、LLM 桥接、工具定义（含 workspace Docker 容器）、日志、Agent 预设管理 |
+| `@agent-swarm/core` | `packages/core/` | 后端 SDK：协作模式、介入机制、存储（SQLite + 向量存储 + Wiki 存储 + Workspace 存储）、LLM 桥接、工具定义（含 workspace Docker 容器）、日志、Agent 预设管理 |
 | `@agent-swarm/server` | `packages/server/` | API 服务：Express REST + WebSocket + Zod 校验，桥接 core 和前端 |
 | `@agent-swarm/web` | `packages/web/` | Vue 3 前端：对话 UI、Agent 状态可视化、Swarm/Agent 预设管理、文档与 LLM Wiki 管理 |
 
@@ -112,7 +112,7 @@ pnpm test                  # 运行 core + server 单元测试
 - 存储：通过 `IStorage` 接口抽象，默认 `SqliteStorage` + 向量存储实现
 - 事件：所有协作过程通过 `SwarmEvent` 类型的事件流暴露
 - 介入：通过 `InterventionHandler` 抽象类实现，内置 5 种策略
-- 工具注入：统一通过 `packages/core/src/tools/runtime.ts`；`Conversation` 按 `enabledTools` 决定启用，`AgentSwarm.createToolRuntimeAvailability()` 只提供可用工具资源，WebSocket 不创建具体工具
+- 工具注入：统一通过 `packages/core/src/tools/runtime.ts`；`Conversation` 按 `enabledTools` 决定启用，`AgentSwarm.createToolRuntimeAvailability()` 只提供可用工具资源，WebSocket 不创建具体工具；workspace 是用户级资源，未挂载 `workspaceId` 时不注入 workspace 工具
 - API 路由：RESTful 风格，响应格式 `{ data: T }` 或 `{ error: string }`
 - WebSocket 消息格式：`{ type: string, payload: any, conversationId?: string }`
 
@@ -171,7 +171,8 @@ pnpm test                  # 运行 core + server 单元测试
 | Auth | `/api/auth` | 注册、登录、登出、当前用户 |
 | Swarms | `/api/swarms` | CRUD |
 | Agents | `/api/agents` | Agent 预设 CRUD + 模板导入 |
-| Conversations | `/api/conversations` | CRUD、偏好设置、清空上下文、恢复、整段/指定消息分支、消息查询、执行 Trace 与 workspace 产物列表/预览/下载/打包/删除/加入文档/最终标记 |
+| Conversations | `/api/conversations` | CRUD、偏好设置、工作区挂载、清空上下文、恢复、整段/指定消息分支、消息查询、执行 Trace 与 workspace 产物列表/预览/下载/打包/删除/加入文档/最终标记 |
+| Workspaces | `/api/workspaces` | 用户级工作区 CRUD、归档/硬删除；会话通过 `workspaceId` 挂载工作区，未挂载时不注入 workspace 工具 |
 | Wiki | `/api/wiki` | LLM Wiki 页面 CRUD、搜索、资料入库生成、从已有文档生成、按来源重新生成 |
 | Documents | `/api/documents` | 文档知识库 CRUD、全文搜索、文档 chunk 查询；上传支持 JSON 内容和 multipart 文本文件 |
 | Templates | `/api/templates` | 系统 Agent 模板 CRUD |
@@ -207,7 +208,7 @@ pnpm test                  # 运行 core + server 单元测试
 
 | 工具组 | 子工具数 | 说明 |
 |--------|---------|------|
-| `workspace` | 11 | workspace_write_file / read_file / grep / list_files / run_container / list_containers / start_containers / stop_containers / restart_containers / remove_containers / pull_image；写入文件会返回 artifact 元数据供前端产物面板跳转 |
+| `workspace` | 11 | workspace_write_file / read_file / grep / list_files / run_container / list_containers / start_containers / stop_containers / restart_containers / remove_containers / pull_image；仅会话挂载 `workspaceId` 且启用 `workspace` 工具时注入，容器按 `agent-swarm.workspace-id` label 归属工作区 |
 | `web_search` | 1 | Web 搜索（多 provider） |
 | `search_wiki` | 1 | LLM Wiki 页面检索 |
 | `retrieve_knowledge` | 1 | 文档知识库检索 |

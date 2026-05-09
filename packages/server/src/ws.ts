@@ -23,6 +23,7 @@ interface ConversationPreferencesPayload {
     provider: string;
     modelId: string;
   };
+  workspaceId?: string;
 }
 
 interface ConversationPreferencesPatch {
@@ -182,6 +183,9 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
     const conversationId = typeof payload.conversationId === "string" ? payload.conversationId : undefined;
     const provider = typeof payload.provider === "string" ? payload.provider : undefined;
     const modelId = typeof payload.modelId === "string" ? payload.modelId : undefined;
+    const workspaceId = typeof payload.workspaceId === "string" && payload.workspaceId.trim().length > 0
+      ? payload.workspaceId.trim()
+      : undefined;
     const thinkingLevel = typeof payload.thinkingLevel === "string" ? payload.thinkingLevel as ThinkingLevel : undefined;
     const preferencesPatch = parseConversationPreferencesPatch(payload);
 
@@ -214,6 +218,9 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
         ) {
           storedConversation = await swarm.updateConversationPreferences(conversationId, mergedPatch, client.userId);
         }
+        if (workspaceId !== undefined && storedConversation.workspaceId !== workspaceId) {
+          storedConversation = await swarm.updateConversationWorkspace(conversationId, workspaceId, client.userId);
+        }
         conversation = await swarm.resumeConversation(conversationId, client.userId);
         effectivePreferences = {
           enabledTools: storedConversation.enabledTools,
@@ -225,7 +232,7 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
           enabledTools: preferencesPatch.enabledTools ?? DEFAULT_CONVERSATION_PREFERENCES.enabledTools,
           thinkingLevel: preferencesPatch.thinkingLevel,
         };
-        conversation = await swarm.createConversation(client.userId, swarmId, undefined, initialPreferences);
+        conversation = await swarm.createConversation(client.userId, swarmId, undefined, initialPreferences, workspaceId ?? null);
         storedConversation = await swarm.getConversation(conversation.getId(), client.userId);
         if (storedConversation) {
           effectivePreferences = {
@@ -246,7 +253,7 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
           thinkingLevel: preferencesPatch.thinkingLevel,
           directModel: { provider, modelId },
         };
-        conversation = await swarm.createDirectConversation(client.userId, provider, modelId, undefined, initialPreferences);
+        conversation = await swarm.createDirectConversation(client.userId, provider, modelId, undefined, initialPreferences, workspaceId ?? null);
         storedConversation = await swarm.getConversation(conversation.getId(), client.userId);
         if (storedConversation) {
           effectivePreferences = {
@@ -301,6 +308,7 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
           conversationId: convId,
           enabledTools: effectivePreferences.enabledTools,
           thinkingLevel: effectivePreferences.thinkingLevel,
+          ...(storedConversation?.workspaceId ? { workspaceId: storedConversation.workspaceId } : {}),
           ...(effectivePreferences.directModel ? { directModel: effectivePreferences.directModel } : {}),
         },
       };

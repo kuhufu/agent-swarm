@@ -41,6 +41,7 @@ export interface Conversation {
   id: string;
   swarmId: string;
   title?: string;
+  workspaceId?: string;
   enabledTools: string[];
   thinkingLevel: string;
   directModel?: ConversationDirectModel;
@@ -58,6 +59,21 @@ export interface ConversationPreferences {
   enabledTools: string[];
   thinkingLevel?: string;
   directModel?: ConversationDirectModel;
+}
+
+export interface Workspace {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  archivedAt?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface WorkspaceInput {
+  name: string;
+  description?: string;
 }
 
 export interface ConversationUsage {
@@ -132,6 +148,7 @@ export interface IStorage {
     userId: string,
     title?: string,
     preferences?: Partial<ConversationPreferences>,
+    workspaceId?: string | null,
   ): Promise<Conversation>;
   getConversation(id: string, userId: string): Promise<Conversation | null>;
   listConversations(swarmId: string, userId: string): Promise<Conversation[]>;
@@ -142,8 +159,17 @@ export interface IStorage {
     userId: string,
   ): Promise<Conversation>;
   updateConversationTitle(id: string, title: string, userId?: string): Promise<void>;
+  updateConversationWorkspace(id: string, workspaceId: string | null, userId: string): Promise<Conversation>;
   updateConversationContextReset(id: string, contextResetAt: number, userId?: string): Promise<void>;
   deleteConversation(id: string, userId: string): Promise<void>;
+
+  // Workspace management
+  createWorkspace(userId: string, input: WorkspaceInput): Promise<Workspace>;
+  getWorkspace(id: string, userId: string): Promise<Workspace | null>;
+  listWorkspaces(userId: string, options?: { includeArchived?: boolean }): Promise<Workspace[]>;
+  updateWorkspace(id: string, userId: string, patch: Partial<WorkspaceInput>): Promise<Workspace>;
+  archiveWorkspace(id: string, userId: string): Promise<Workspace>;
+  deleteWorkspace(id: string, userId: string): Promise<void>;
 
   // Message management
   appendMessage(conversationId: string, message: StoredMessage): Promise<void>;
