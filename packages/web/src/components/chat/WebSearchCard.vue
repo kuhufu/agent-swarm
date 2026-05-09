@@ -1,14 +1,9 @@
 <script setup lang="ts">
 import SectionLabel from "./SectionLabel.vue";
-
-interface SearchResult {
-  title: string;
-  url: string;
-  snippet: string;
-}
+import type { WebSearchResult } from "./tool-card-utils.js";
 
 defineProps<{
-  results: SearchResult[];
+  results: WebSearchResult[];
 }>();
 
 function hostname(url: string): string {

@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import SectionLabel from "./SectionLabel.vue";
-
-interface WorkspaceNextAction {
-  tool: string;
-  reason: string;
-  params?: Record<string, unknown>;
-}
+import type { WorkspaceNextAction } from "./tool-card-utils.js";
 
 defineProps<{
   actions: WorkspaceNextAction[];

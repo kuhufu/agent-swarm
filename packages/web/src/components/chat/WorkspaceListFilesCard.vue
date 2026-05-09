@@ -1,45 +1,19 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
+import SvgIcon from "../common/SvgIcon.vue";
 import SectionLabel from "./SectionLabel.vue";
-
-interface FileInfo {
-  path: string;
-  size: number;
-  type: "file" | "dir";
-  updatedAt?: number;
-}
-
-interface ListFilesDetails {
-  files: FileInfo[];
-  count: number;
-  totalSize: number;
-  directories: string[];
-}
+import type { WorkspaceListFilesDetails } from "./tool-card-utils.js";
+import { formatSize } from "./tool-card-utils.js";
 
 const props = defineProps<{
-  details: ListFilesDetails;
+  details: WorkspaceListFilesDetails;
 }>();
 
 const showAll = ref(false);
 const DISPLAY_LIMIT = 20;
-const visibleFiles = ref(props.details.files.length > DISPLAY_LIMIT
-  ? props.details.files.slice(0, DISPLAY_LIMIT)
-  : props.details.files);
-
-function toggleFiles() {
-  if (showAll.value) {
-    visibleFiles.value = props.details.files.slice(0, DISPLAY_LIMIT);
-  } else {
-    visibleFiles.value = props.details.files;
-  }
-  showAll.value = !showAll.value;
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1_048_576) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1_048_576).toFixed(1)} MB`;
-}
+const visibleFiles = computed(() => showAll.value
+  ? props.details.files
+  : props.details.files.slice(0, DISPLAY_LIMIT));
 
 function formatTime(ts?: number): string {
   if (!ts) return "-";
@@ -69,7 +43,9 @@ function formatTime(ts?: number): string {
         class="file-table-row"
         :class="{ 'is-dir': f.type === 'dir' }"
       >
-        <span class="ft-col-icon ft-icon">{{ f.type === "dir" ? "📁" : "📄" }}</span>
+        <span class="ft-col-icon ft-icon">
+          <SvgIcon :name="f.type === 'dir' ? 'folder' : 'file'" :size="13" />
+        </span>
         <span class="ft-col-path ft-path">{{ f.path }}</span>
         <span class="ft-col-size ft-size">{{ f.type === "dir" ? "-" : formatSize(f.size) }}</span>
         <span class="ft-col-time ft-time">{{ formatTime(f.updatedAt) }}</span>
@@ -80,7 +56,7 @@ function formatTime(ts?: number): string {
       v-if="details.files.length > DISPLAY_LIMIT"
       class="list-toggle"
       type="button"
-      @click.stop="toggleFiles"
+      @click.stop="showAll = !showAll"
     >
       {{ showAll ? `收起 (显示 ${DISPLAY_LIMIT})` : `展开全部 (共 ${details.files.length} 项)` }}
     </button>
@@ -135,9 +111,13 @@ function formatTime(ts?: number): string {
   opacity: 0.7;
 }
 .ft-icon {
-  text-align: center;
-  font-size: 13px;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+.file-table-row.is-dir .ft-icon {
+  color: var(--color-accent-light);
 }
 .ft-path {
   color: var(--color-text-secondary);

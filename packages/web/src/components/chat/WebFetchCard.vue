@@ -1,14 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import SectionLabel from "./SectionLabel.vue";
-
-interface WebFetchResult {
-  url: string;
-  title: string;
-  content: string;
-  description?: string;
-  contentType: string;
-}
+import type { WebFetchResult } from "./tool-card-utils.js";
 
 const props = defineProps<{
   result: WebFetchResult;

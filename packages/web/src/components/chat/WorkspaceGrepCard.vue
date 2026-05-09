@@ -1,25 +1,14 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import SectionLabel from "./SectionLabel.vue";
-
-interface GrepMatch {
-  path: string;
-  line: number;
-  content: string;
-}
-
-interface GrepDetails {
-  matches: GrepMatch[];
-  total: number;
-  matchedPaths: string[];
-}
+import type { WorkspaceGrepDetails, WorkspaceGrepMatch } from "./tool-card-utils.js";
 
 const props = defineProps<{
-  details: GrepDetails;
+  details: WorkspaceGrepDetails;
 }>();
 
 const grouped = computed(() => {
-  const map = new Map<string, GrepMatch[]>();
+  const map = new Map<string, WorkspaceGrepMatch[]>();
   for (const m of props.details.matches) {
     const list = map.get(m.path);
     if (list) {

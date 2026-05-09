@@ -1,36 +1,11 @@
 <script setup lang="ts">
 import SectionLabel from "./SectionLabel.vue";
-
-interface WorkspaceFileMeta {
-  kind: string;
-  language?: string;
-  previewable: boolean;
-}
-
-interface ReadFileDetails {
-  path: string;
-  size: number;
-  truncated: boolean;
-  meta: WorkspaceFileMeta;
-}
+import type { WorkspaceReadFileDetails } from "./tool-card-utils.js";
+import { formatSize, getWorkspaceFileKindLabel } from "./tool-card-utils.js";
 
 defineProps<{
-  details: ReadFileDetails;
+  details: WorkspaceReadFileDetails;
 }>();
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1_048_576) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1_048_576).toFixed(1)} MB`;
-}
-
-function kindLabel(kind: string): string {
-  const map: Record<string, string> = {
-    code: "代码", image: "图片", markdown: "Markdown",
-    json: "JSON", html: "HTML", text: "文本", file: "文件",
-  };
-  return map[kind] ?? kind;
-}
 </script>
 
 <template>
@@ -39,7 +14,7 @@ function kindLabel(kind: string): string {
     <div class="file-card">
       <div class="file-path-row">
         <strong class="file-path">{{ details.path }}</strong>
-        <span class="file-kind">{{ kindLabel(details.meta.kind) }}{{ details.meta.language ? ` / ${details.meta.language}` : "" }}</span>
+        <span class="file-kind">{{ getWorkspaceFileKindLabel(details.meta.kind) }}{{ details.meta.language ? ` / ${details.meta.language}` : "" }}</span>
       </div>
       <div class="file-meta-row">
         <span>{{ formatSize(details.size) }}</span>
