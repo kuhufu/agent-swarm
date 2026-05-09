@@ -128,7 +128,7 @@ function handleApplyNextAction(action: WorkspaceNextAction) {
 }
 
 .tool-param-summary {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -150,6 +150,8 @@ function handleApplyNextAction(action: WorkspaceNextAction) {
 }
 
 .tool-status {
+  margin-left: auto;
+  flex-shrink: 0;
   font-size: 11px;
   padding: 3px 10px;
   border-radius: 9999px;
@@ -203,8 +205,8 @@ function handleApplyNextAction(action: WorkspaceNextAction) {
   }
 }
 
-.tool-section {
-  margin-top: 12px;
+.tool-details :deep(.tool-section) {
+  margin-top: 6px;
 }
 
 </style>
