@@ -142,7 +142,7 @@ async function handleDelete(workspace: WorkspaceInfo) {
   <div class="workspaces-view">
     <section class="workspace-list-pane">
       <header class="view-header">
-        <div>
+        <div class="view-header-text">
           <h1>工作区</h1>
           <p>管理 Agent 可写入、运行和产出文件的独立空间</p>
         </div>
@@ -152,9 +152,14 @@ async function handleDelete(workspace: WorkspaceInfo) {
       </header>
 
       <form class="create-form" @submit.prevent="handleCreateWorkspace">
-        <input v-model="draftName" type="text" maxlength="60" placeholder="工作区名称">
-        <input v-model="draftDescription" type="text" maxlength="160" placeholder="描述，可选">
-        <button type="submit" :disabled="saving || !draftName.trim()">创建</button>
+        <div class="create-form-row">
+          <input v-model="draftName" type="text" maxlength="60" placeholder="工作区名称">
+          <button type="submit" class="create-btn" :disabled="saving || !draftName.trim()">
+            <SvgIcon name="plus" :size="14" />
+            创建
+          </button>
+        </div>
+        <input v-model="draftDescription" type="text" maxlength="160" placeholder="描述（可选）">
       </form>
 
       <label class="archive-toggle">
@@ -166,19 +171,21 @@ async function handleDelete(workspace: WorkspaceInfo) {
         <button
           v-for="workspace in visibleWorkspaces"
           :key="workspace.id"
-          class="workspace-row"
+          class="workspace-card"
           :class="{ active: selectedWorkspaceId === workspace.id, archived: Boolean(workspace.archivedAt) }"
           type="button"
           @click="selectedWorkspaceId = workspace.id"
         >
-          <span class="workspace-row-title">
-            <SvgIcon name="folder" :size="15" />
-            <span>{{ workspace.name }}</span>
-          </span>
-          <span class="workspace-row-desc">{{ workspace.description || workspace.id }}</span>
-          <span class="workspace-row-meta">
-            {{ workspace.archivedAt ? "已归档" : "更新于 " + formatTimeLong(workspace.updatedAt) }}
-          </span>
+          <div class="workspace-card-icon">
+            <SvgIcon name="folder" :size="16" />
+          </div>
+          <div class="workspace-card-body">
+            <span class="workspace-card-name">{{ workspace.name }}</span>
+            <span class="workspace-card-desc">{{ workspace.description || workspace.id }}</span>
+            <span class="workspace-card-meta">
+              {{ workspace.archivedAt ? "已归档" : "更新于 " + formatTimeLong(workspace.updatedAt) }}
+            </span>
+          </div>
         </button>
         <div v-if="!loading && visibleWorkspaces.length === 0" class="empty-state">
           <SvgIcon name="folder" :size="28" />
@@ -200,7 +207,7 @@ async function handleDelete(workspace: WorkspaceInfo) {
           </div>
           <form v-else class="edit-form" @submit.prevent="saveEdit(selectedWorkspace)">
             <input v-model="editName" type="text" maxlength="60">
-            <input v-model="editDescription" type="text" maxlength="160" placeholder="描述，可选">
+            <input v-model="editDescription" type="text" maxlength="160" placeholder="描述（可选）">
           </form>
           <div class="detail-actions">
             <template v-if="editingId === selectedWorkspace.id">
@@ -219,8 +226,11 @@ async function handleDelete(workspace: WorkspaceInfo) {
         </div>
       </template>
       <div v-else class="detail-empty">
-        <SvgIcon name="folder" :size="34" />
-        <p>选择或创建一个工作区</p>
+        <div class="detail-empty-icon">
+          <SvgIcon name="folder" :size="34" />
+        </div>
+        <p class="detail-empty-title">选择或创建一个工作区</p>
+        <p class="detail-empty-hint">从左侧选择一个工作区，或创建新的工作区开始使用</p>
       </div>
     </section>
   </div>
@@ -230,9 +240,12 @@ async function handleDelete(workspace: WorkspaceInfo) {
 .workspaces-view {
   display: grid;
   grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  gap: 18px;
   height: 100%;
   min-height: 0;
+  padding: 24px;
   background: rgba(255, 255, 255, 0.01);
+  box-sizing: border-box;
 }
 
 .workspace-list-pane,
@@ -240,16 +253,19 @@ async function handleDelete(workspace: WorkspaceInfo) {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
 }
 
 .workspace-list-pane {
-  border-right: 1px solid var(--color-border-subtle);
-  padding: 24px;
+  padding: 20px;
   gap: 16px;
 }
 
 .workspace-detail-pane {
-  padding: 24px;
+  padding: 20px;
   gap: 16px;
 }
 
@@ -267,6 +283,7 @@ async function handleDelete(workspace: WorkspaceInfo) {
   color: var(--color-text-primary);
   font-size: 20px;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .view-header p,
@@ -274,21 +291,23 @@ async function handleDelete(workspace: WorkspaceInfo) {
   margin: 6px 0 0;
   color: var(--color-text-muted);
   font-size: 13px;
+  line-height: 1.4;
 }
 
+/* Buttons */
 .icon-btn,
 .secondary-btn,
 .primary-btn,
-.danger-btn,
-.create-form button {
+.danger-btn {
   height: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 7px;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .icon-btn {
@@ -298,6 +317,12 @@ async function handleDelete(workspace: WorkspaceInfo) {
   color: var(--color-text-secondary);
 }
 
+.icon-btn:hover:not(:disabled) {
+  border-color: rgba(99, 102, 241, 0.35);
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--color-text-primary);
+}
+
 .secondary-btn {
   border: 1px solid var(--color-border-subtle);
   background: rgba(255, 255, 255, 0.04);
@@ -305,12 +330,23 @@ async function handleDelete(workspace: WorkspaceInfo) {
   padding: 0 12px;
 }
 
-.primary-btn,
-.create-form button {
+.secondary-btn:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--color-text-primary);
+}
+
+.primary-btn {
   border: 1px solid rgba(99, 102, 241, 0.35);
   background: rgba(99, 102, 241, 0.18);
   color: var(--color-accent-light);
   padding: 0 14px;
+}
+
+.primary-btn:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.28);
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
 }
 
 .danger-btn {
@@ -320,15 +356,29 @@ async function handleDelete(workspace: WorkspaceInfo) {
   padding: 0 12px;
 }
 
+.danger-btn:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.2);
+  border-color: rgba(248, 113, 113, 0.5);
+}
+
 button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-.create-form,
-.edit-form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
+/* Create form */
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.create-form-row {
+  display: flex;
   gap: 8px;
 }
 
@@ -337,82 +387,158 @@ button:disabled {
   min-width: 0;
   height: 36px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 7px;
+  border-radius: 8px;
   padding: 0 11px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(0, 0, 0, 0.22);
   color: var(--color-text-primary);
   outline: none;
+  font: inherit;
+  font-size: 13px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
 }
 
 .create-form input:focus,
 .edit-form input:focus {
   border-color: rgba(99, 102, 241, 0.45);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
+.create-btn {
+  flex-shrink: 0;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 14px;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--color-accent-light);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.create-btn:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.28);
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
+}
+
+.create-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Archive toggle */
 .archive-toggle {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   color: var(--color-text-muted);
   font-size: 13px;
+  cursor: pointer;
+  user-select: none;
 }
 
+.archive-toggle input[type="checkbox"] {
+  accent-color: var(--color-accent);
+}
+
+/* Workspace list */
 .workspace-list {
   min-height: 0;
+  flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  padding-right: 2px;
 }
 
-.workspace-row {
+.workspace-card {
   width: 100%;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: flex-start;
+  gap: 10px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.025);
   color: var(--color-text-secondary);
   text-align: left;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.workspace-row:hover,
-.workspace-row.active {
-  border-color: rgba(99, 102, 241, 0.35);
-  background: rgba(99, 102, 241, 0.12);
+.workspace-card:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
 }
 
-.workspace-row.archived {
-  opacity: 0.68;
+.workspace-card.active {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 16px rgba(99, 102, 241, 0.08);
 }
 
-.workspace-row-title {
+.workspace-card.archived {
+  opacity: 0.6;
+}
+
+.workspace-card-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--color-text-primary);
-  font-size: 14px;
-  font-weight: 700;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--color-accent-light);
+  margin-top: 1px;
 }
 
-.workspace-row-title span,
-.workspace-row-desc,
-.workspace-row-meta {
+.workspace-card.active .workspace-card-icon {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.workspace-card-body {
   min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.workspace-card-name {
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.workspace-row-desc,
-.workspace-row-meta {
+.workspace-card-desc {
+  min-width: 0;
   color: var(--color-text-muted);
   font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+.workspace-card-meta {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+/* Detail pane */
 .detail-actions {
   display: flex;
   align-items: center;
@@ -424,13 +550,16 @@ button:disabled {
 .edit-form {
   flex: 1;
   max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .artifacts-wrap {
   min-height: 0;
   flex: 1;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.02);
   overflow: hidden;
 }
@@ -440,6 +569,7 @@ button:disabled {
   padding: 16px;
 }
 
+/* Empty states */
 .empty-state,
 .detail-empty {
   display: flex;
@@ -454,8 +584,37 @@ button:disabled {
   min-height: 180px;
 }
 
+.empty-state :deep(svg) {
+  opacity: 0.3;
+}
+
 .detail-empty {
   height: 100%;
+  gap: 14px;
+}
+
+.detail-empty-icon {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--color-accent-light);
+}
+
+.detail-empty-title {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.detail-empty-hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
 }
 
 @media (max-width: 1024px) {
@@ -465,7 +624,6 @@ button:disabled {
 
   .workspace-list-pane {
     border-right: 0;
-    border-bottom: 1px solid var(--color-border-subtle);
     max-height: 45vh;
   }
 }
