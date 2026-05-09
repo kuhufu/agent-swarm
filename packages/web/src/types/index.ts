@@ -186,6 +186,7 @@ export interface ToolCallInfo {
   content?: Array<{ type: string; text?: string }>;
   details?: any;
   isError?: boolean;
+  durationMs?: number;
 }
 
 export type AgentStatus = "idle" | "thinking" | "executing_tool" | "handing_off";

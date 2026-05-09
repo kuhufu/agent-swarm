@@ -10,16 +10,26 @@ interface WorkspaceNextAction {
 defineProps<{
   actions: WorkspaceNextAction[];
 }>();
+
+const emit = defineEmits<{
+  apply: [action: WorkspaceNextAction];
+}>();
 </script>
 
 <template>
   <div class="tool-section">
     <SectionLabel icon="arrowRight" label="建议下一步" />
     <div class="actions-list">
-      <div v-for="(a, i) in actions" :key="i" class="action-item">
+      <button
+        v-for="(a, i) in actions"
+        :key="i"
+        type="button"
+        class="action-btn"
+        @click.stop="emit('apply', a)"
+      >
         <span class="action-tool">{{ a.tool }}</span>
         <span class="action-reason">{{ a.reason }}</span>
-      </div>
+      </button>
     </div>
   </div>
 </template>
@@ -29,15 +39,25 @@ defineProps<{
   display: grid;
   gap: 6px;
 }
-.action-item {
+.action-btn {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  text-align: left;
   padding: 8px 10px;
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid var(--color-border-subtle);
   font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  color: inherit;
+}
+.action-btn:hover {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.2);
 }
 .action-tool {
   flex-shrink: 0;

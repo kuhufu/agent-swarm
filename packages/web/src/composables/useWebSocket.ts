@@ -13,6 +13,8 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let manualClose = false;
 let lastConversationId: string | null = null;
 
+const toolCallStartTimes = new Map<string, number>();
+
 const TRACE_EVENT_TYPES = new Set([
   "swarm_start",
   "swarm_end",
@@ -254,6 +256,7 @@ export function useWebSocket() {
       case "tool_execution_start":
         conversationStore.setAgentStatus(msg.payload.agentId, "executing_tool", targetConversationId);
         if (typeof msg.payload?.toolCallId === "string" && typeof msg.payload?.toolName === "string") {
+          toolCallStartTimes.set(msg.payload.toolCallId, Date.now());
           conversationStore.upsertToolCall(msg.payload.agentId, {
             id: msg.payload.toolCallId,
             name: msg.payload.toolName,
@@ -277,6 +280,12 @@ export function useWebSocket() {
         conversationStore.setAgentStatus(msg.payload.agentId, "thinking", targetConversationId);
         if (typeof msg.payload?.toolCallId === "string" && typeof msg.payload?.toolName === "string") {
           const fullResult = msg.payload?.result as { content?: any; details?: any } | undefined;
+          const startTime = toolCallStartTimes.get(msg.payload.toolCallId);
+          let durationMs: number | undefined;
+          if (startTime) {
+            durationMs = Date.now() - startTime;
+            toolCallStartTimes.delete(msg.payload.toolCallId);
+          }
           conversationStore.upsertToolCall(msg.payload.agentId, {
             id: msg.payload.toolCallId,
             name: msg.payload.toolName,
@@ -284,6 +293,7 @@ export function useWebSocket() {
             content: fullResult?.content,
             details: fullResult?.details,
             isError: msg.payload.isError === true,
+            durationMs,
           }, targetConversationId);
         }
         break;

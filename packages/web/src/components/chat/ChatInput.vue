@@ -352,14 +352,25 @@ onMounted(() => {
   }
 
   document.addEventListener("mousedown", handleOutsideClick);
+  window.addEventListener("agent-swarm:fill-input", handleFillInput);
 });
 
 onUnmounted(() => {
   document.removeEventListener("mousedown", handleOutsideClick);
+  window.removeEventListener("agent-swarm:fill-input", handleFillInput);
   if (focusDebounceTimer) {
     clearTimeout(focusDebounceTimer);
   }
 });
+
+function handleFillInput(event: Event) {
+  const detail = (event as CustomEvent).detail;
+  if (detail?.text) {
+    inputText.value = detail.text;
+    requestTextareaFocus();
+    nextTick(() => resizeTextarea());
+  }
+}
 
 function handleOutsideClick(event: MouseEvent) {
   const target = event.target as Node;

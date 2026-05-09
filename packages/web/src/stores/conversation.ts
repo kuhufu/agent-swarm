@@ -461,6 +461,7 @@ export const useConversationStore = defineStore("conversation", () => {
       content: next.content !== undefined ? next.content : existing.content,
       details: next.details !== undefined ? next.details : existing.details,
       isError: typeof next.isError === "boolean" ? next.isError : existing.isError,
+      durationMs: next.durationMs ?? existing.durationMs,
     };
   }
 

@@ -105,6 +105,27 @@ const formattedContent = computed(() => {
   return props.toolCall.content.map((c: any) => c.text ?? "").join("\n");
 });
 
+const paramSummary = computed(() => {
+  const args = props.toolCall.arguments;
+  if (!args || typeof args !== "object") return null;
+  const raw = args as Record<string, unknown>;
+  if (typeof raw.query === "string" && raw.query) return raw.query;
+  if (typeof raw.pattern === "string" && raw.pattern) return raw.pattern;
+  if (typeof raw.path === "string" && raw.path) return raw.path;
+  if (typeof raw.code === "string") {
+    const lines = raw.code.split("\n").filter((l: string) => l.trim().length > 0);
+    return lines.length === 1 ? raw.code : `${lines[0]} …`;
+  }
+  return null;
+});
+
+const formattedDuration = computed(() => {
+  const ms = props.toolCall.durationMs;
+  if (ms === undefined || ms === null) return null;
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+});
+
 const status = computed(() => {
   if (props.toolCall.isError === true) {
     return { label: "失败", cls: "error" };
@@ -133,6 +154,11 @@ function openArtifact(path: string) {
   window.dispatchEvent(new CustomEvent("agent-swarm:open-artifact", { detail: { path } }));
 }
 
+function handleApplyNextAction(action: { tool: string; reason: string; params?: Record<string, unknown> }) {
+  const text = `${action.tool}${action.params ? " " + JSON.stringify(action.params) : ""}`;
+  window.dispatchEvent(new CustomEvent("agent-swarm:fill-input", { detail: { text } }));
+}
+
 function formatSize(bytes?: number): string {
   if (bytes === undefined) return "";
   if (bytes < 1024) return `${bytes} B`;
@@ -148,6 +174,8 @@ function formatSize(bytes?: number): string {
         <SvgIcon name="wrench" :size="12" />
       </div>
       <span class="tool-name">{{ toolCall.name }}</span>
+      <span v-if="paramSummary" class="tool-param-summary" :title="paramSummary">{{ paramSummary }}</span>
+      <span v-if="formattedDuration" class="tool-duration">{{ formattedDuration }}</span>
       <span :class="['tool-status', status.cls]">
         {{ status.label }}
       </span>
@@ -215,7 +243,7 @@ function formatSize(bytes?: number): string {
         <pre>{{ JSON.stringify(toolCall.details, null, 2) }}</pre>
       </div>
 
-      <NextActionsCard v-if="nextActions" :actions="nextActions" />
+      <NextActionsCard v-if="nextActions" :actions="nextActions" @apply="handleApplyNextAction" />
 
       <div v-if="formattedContent" class="tool-section">
         <SectionLabel icon="message" label="返回给模型的内容" />
@@ -290,11 +318,33 @@ function formatSize(bytes?: number): string {
 }
 
 .tool-name {
-  flex: 1;
   color: var(--color-text-secondary);
   font-size: 13px;
   font-family: var(--font-mono);
   font-weight: 500;
+  flex-shrink: 0;
+}
+
+.tool-param-summary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tool-duration {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .tool-status {
