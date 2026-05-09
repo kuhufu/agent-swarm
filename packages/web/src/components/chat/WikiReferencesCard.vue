@@ -48,13 +48,9 @@ function normalizeWikiReference(value: unknown): WikiReference | null {
   };
 }
 
-export function extractWikiReferences(result: unknown): WikiReference[] | null {
-  if (Array.isArray(result)) {
-    return result.map(normalizeWikiReference).filter((item): item is WikiReference => item !== null);
-  }
-  const raw = asRecord(result);
-  if (raw && Array.isArray(raw.details)) {
-    return raw.details.map(normalizeWikiReference).filter((item): item is WikiReference => item !== null);
+export function extractWikiReferences(details: unknown): WikiReference[] | null {
+  if (Array.isArray(details)) {
+    return details.map(normalizeWikiReference).filter((item): item is WikiReference => item !== null);
   }
   return null;
 }

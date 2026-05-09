@@ -70,10 +70,10 @@ const artifactRefreshKey = computed(() => {
   const paths: string[] = [];
   for (const message of messages.value) {
     for (const toolCall of message.toolCalls ?? []) {
-      if (toolCall.name !== "workspace_write_file" || !toolCall.result || typeof toolCall.result !== "object" || Array.isArray(toolCall.result)) {
+      if (toolCall.name !== "workspace_write_file" || !toolCall.details || typeof toolCall.details !== "object" || Array.isArray(toolCall.details)) {
         continue;
       }
-      const path = (toolCall.result as Record<string, unknown>).path;
+      const path = (toolCall.details as Record<string, unknown>).path;
       if (typeof path === "string" && path) {
         paths.push(`${toolCall.id}:${path}`);
       }

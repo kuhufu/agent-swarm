@@ -15,17 +15,17 @@ const expanded = ref(false);
 const isKnowledgeTool = computed(() => props.toolCall.name === "retrieve_knowledge");
 const isWikiTool = computed(() => props.toolCall.name === "search_wiki");
 const isJavascriptTool = computed(() => props.toolCall.name === "javascript_execute");
-const workspaceArtifact = computed(() => extractWorkspaceArtifact(props.toolCall.result, props.toolCall.name));
+const workspaceArtifact = computed(() => extractWorkspaceArtifact(props.toolCall.details, props.toolCall.name));
 const knowledgeReferences = computed(() => isKnowledgeTool.value
-  ? extractKnowledgeReferences(props.toolCall.result)
+  ? extractKnowledgeReferences(props.toolCall.details)
   : null);
-const hasKnowledgeResult = computed(() => isKnowledgeTool.value && props.toolCall.result !== undefined);
+const hasKnowledgeResult = computed(() => isKnowledgeTool.value && props.toolCall.details !== undefined);
 const wikiReferences = computed(() => isWikiTool.value
-  ? extractWikiReferences(props.toolCall.result)
+  ? extractWikiReferences(props.toolCall.details)
   : null);
-const hasWikiResult = computed(() => isWikiTool.value && props.toolCall.result !== undefined);
+const hasWikiResult = computed(() => isWikiTool.value && props.toolCall.details !== undefined);
 const javascriptExecution = computed(() => isJavascriptTool.value
-  ? extractJavascriptExecution(props.toolCall.result, props.toolCall.arguments)
+  ? extractJavascriptExecution(props.toolCall.details, props.toolCall.arguments)
   : null);
 const hasJavascriptResult = computed(() => isJavascriptTool.value && javascriptExecution.value !== null);
 const queryText = computed(() => extractQueryText(props.toolCall.arguments));
@@ -39,17 +39,17 @@ const status = computed(() => {
   if (props.toolCall.isError === true) {
     return { label: "失败", cls: "error" };
   }
-  if (props.toolCall.isError === false) {
+  if (props.toolCall.details !== undefined) {
     return { label: "完成", cls: "success" };
   }
   return { label: "运行中", cls: "running" };
 });
 
-function extractWorkspaceArtifact(result: unknown, toolName: string): { path: string; size?: number; kind?: string } | null {
-  if (toolName !== "workspace_write_file" || !result || typeof result !== "object" || Array.isArray(result)) {
+function extractWorkspaceArtifact(details: unknown, toolName: string): { path: string; size?: number; kind?: string } | null {
+  if (toolName !== "workspace_write_file" || !details || typeof details !== "object" || Array.isArray(details)) {
     return null;
   }
-  const raw = result as Record<string, unknown>;
+  const raw = details as Record<string, unknown>;
   const path = typeof raw.path === "string" ? raw.path : "";
   if (!path) return null;
   return {
@@ -115,9 +115,13 @@ function formatSize(bytes?: number): string {
           </button>
         </div>
       </div>
-      <div v-else-if="toolCall.result" class="tool-section">
+      <div v-else-if="toolCall.details" class="tool-section">
         <SectionLabel icon="check" label="结果" />
-        <pre>{{ JSON.stringify(toolCall.result, null, 2) }}</pre>
+        <pre>{{ JSON.stringify(toolCall.details, null, 2) }}</pre>
+      </div>
+      <div v-if="toolCall.content" class="tool-section">
+        <SectionLabel icon="message" label="返回给模型的内容" />
+        <pre>{{ toolCall.content.map((c: any) => c.text ?? "").join("\n") }}</pre>
       </div>
     </div>
   </div>

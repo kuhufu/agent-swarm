@@ -17,17 +17,16 @@ function normalizeStringArray(value: unknown): string[] {
   return value.map((item) => stringifyUnknown(item));
 }
 
-export function extractJavascriptExecution(result: unknown, args: unknown): JavascriptExecutionView | null {
-  const raw = asRecord(result);
-  const details = asRecord(raw?.details) ?? raw;
-  if (!details) return null;
+export function extractJavascriptExecution(details: unknown, args: unknown): JavascriptExecutionView | null {
+  const raw = asRecord(details);
+  if (!raw) return null;
 
   const argsRecord = asRecord(args);
-  const code = typeof details.code === "string"
-    ? details.code
+  const code = typeof raw.code === "string"
+    ? raw.code
     : (typeof argsRecord?.code === "string" ? argsRecord.code : "");
-  const jsResult = stringifyUnknown(details.result);
-  const logs = normalizeStringArray(details.logs);
+  const jsResult = stringifyUnknown(raw.result);
+  const logs = normalizeStringArray(raw.logs);
 
   if (!code && jsResult.length === 0 && logs.length === 0) return null;
 

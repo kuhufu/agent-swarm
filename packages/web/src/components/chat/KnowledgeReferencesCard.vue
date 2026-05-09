@@ -35,13 +35,9 @@ function normalizeKnowledgeReference(value: unknown): KnowledgeReference | null 
   };
 }
 
-function extractKnowledgeReferences(result: unknown): KnowledgeReference[] | null {
-  if (Array.isArray(result)) {
-    return result.map(normalizeKnowledgeReference).filter((item): item is KnowledgeReference => item !== null);
-  }
-  const raw = asRecord(result);
-  if (raw && Array.isArray(raw.details)) {
-    return raw.details.map(normalizeKnowledgeReference).filter((item): item is KnowledgeReference => item !== null);
+function extractKnowledgeReferences(details: unknown): KnowledgeReference[] | null {
+  if (Array.isArray(details)) {
+    return details.map(normalizeKnowledgeReference).filter((item): item is KnowledgeReference => item !== null);
   }
   return null;
 }

@@ -69,8 +69,7 @@ export function updateConversationPreferences(
 }
 
 export function getMessages(conversationId: string, since?: number) {
-  const query = since !== undefined ? `?since=${since}` : "";
-  return apiClient<MessageListResponse>(`/conversations/${conversationId}/messages${query}`);
+  return apiClient<MessageListResponse>(`/conversations/${conversationId}/messages`);
 }
 
 export function getEvents(conversationId: string, eventType?: string) {

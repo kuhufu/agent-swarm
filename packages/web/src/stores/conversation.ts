@@ -210,7 +210,8 @@ export const useConversationStore = defineStore("conversation", () => {
       ...toolCall,
       arguments: toolCall.arguments,
       argumentsText: toolCall.argumentsText,
-      result: toolCall.result,
+      content: toolCall.content,
+      details: toolCall.details,
     };
   }
 
@@ -457,7 +458,8 @@ export const useConversationStore = defineStore("conversation", () => {
       name: typeof next.name === "string" && next.name.trim().length > 0 ? next.name : existing.name,
       arguments: next.arguments !== undefined ? next.arguments : existing.arguments,
       argumentsText: next.argumentsText !== undefined ? next.argumentsText : existing.argumentsText,
-      result: next.result !== undefined ? next.result : existing.result,
+      content: next.content !== undefined ? next.content : existing.content,
+      details: next.details !== undefined ? next.details : existing.details,
       isError: typeof next.isError === "boolean" ? next.isError : existing.isError,
     };
   }

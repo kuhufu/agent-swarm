@@ -155,7 +155,7 @@ function mergeToolCalls(
       ...merged[index],
       ...toolCall,
       arguments: toolCall.arguments !== undefined ? toolCall.arguments : merged[index].arguments,
-      result: toolCall.result !== undefined ? toolCall.result : merged[index].result,
+      details: toolCall.details !== undefined ? toolCall.details : merged[index].details,
       isError: typeof toolCall.isError === "boolean" ? toolCall.isError : merged[index].isError,
     };
   }

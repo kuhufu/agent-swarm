@@ -65,11 +65,13 @@ export function normalizeToolCalls(toolCalls: unknown): ToolCallInfo[] | undefin
         })()
         : (args ?? {});
 
+      const rawContent = raw.content;
       return {
         id,
         name,
         arguments: normalizedArguments,
-        result: raw.result,
+        details: raw.details,
+        content: Array.isArray(rawContent) ? rawContent as Array<{ type: string; text?: string }> : undefined,
         isError: typeof raw.isError === "boolean" ? raw.isError : undefined,
       };
     })
@@ -235,15 +237,15 @@ export function normalizeHistoryMessages(
         const toolCalls = targetMessage?.toolCalls;
         if (toolCalls && toolCalls[pointer.toolCallIndex]) {
           const metadata = parseMetadata(message.metadata);
-          const details = metadata?.details;
-          const content = typeof message.content === "string" ? message.content : "";
           const current = toolCalls[pointer.toolCallIndex];
+          const textContent = typeof message.content === "string" ? message.content.trim() : "";
 
           toolCalls[pointer.toolCallIndex] = {
             ...current,
             name: typeof metadata?.toolName === "string" ? metadata.toolName : current.name,
             isError: typeof metadata?.isError === "boolean" ? metadata.isError : current.isError,
-            result: details ?? (content.trim().length > 0 ? content : current.result),
+            details: metadata?.details,
+            content: textContent ? [{ type: "text" as const, text: textContent }] : undefined,
           };
         }
         continue;
