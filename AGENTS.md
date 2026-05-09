@@ -17,7 +17,7 @@ Agent Swarm 是一个多 Agent 协作框架，基于 `@mariozechner/pi-agent-cor
 |---|------|------|
 | `@agent-swarm/core` | `packages/core/` | 后端 SDK：协作模式、介入机制、存储（SQLite + 向量存储 + Wiki 存储 + Workspace 存储）、LLM 桥接、工具定义（含 workspace Docker 容器）、日志、Agent 预设管理 |
 | `@agent-swarm/server` | `packages/server/` | API 服务：Express REST + WebSocket + Zod 校验，桥接 core 和前端 |
-| `@agent-swarm/web` | `packages/web/` | Vue 3 前端：对话 UI、Agent 状态可视化、Swarm/Agent 预设管理、文档与 LLM Wiki 管理 |
+| `@agent-swarm/web` | `packages/web/` | Vue 3 前端：对话 UI、Agent 状态可视化、Swarm/Agent 预设管理、工作区产物管理、文档与 LLM Wiki 管理 |
 
 ---
 
@@ -61,7 +61,7 @@ agent-swarm/
 │       │   ├── api/             # HTTP 请求封装
 │       │   ├── composables/     # useWebSocket / useChat / useIntervention
 │       │   ├── stores/          # Pinia stores（swarm/agents/conversation/intervention/settings/auth/theme）
-│       │   ├── views/           # 页面组件（Chat/Swarms/Agents/History/Settings/Documents/Login/Register/Usage）
+│       │   ├── views/           # 页面组件（Chat/Swarms/Agents/History/Settings/Documents/Workspaces/Wiki/Login/Register/Usage）
 │       │   ├── components/      # 通用组件（layout/chat/intervention/swarm）
 │       │   ├── router/          # Vue Router 配置
 │       │   ├── types/           # 前端本地类型

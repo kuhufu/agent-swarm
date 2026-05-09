@@ -48,6 +48,11 @@ const router = createRouter({
       component: () => import("../views/DocumentsView.vue"),
     },
     {
+      path: "/workspaces",
+      name: "workspaces",
+      component: () => import("../views/WorkspacesView.vue"),
+    },
+    {
       path: "/wiki",
       name: "wiki",
       component: () => import("../views/WikiView.vue"),

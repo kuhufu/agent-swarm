@@ -20,3 +20,22 @@ export function createWorkspace(payload: { name: string; description?: string })
     body: JSON.stringify(payload),
   });
 }
+
+export function updateWorkspace(workspaceId: string, payload: { name?: string; description?: string }) {
+  return apiClient<WorkspaceDetailResponse>(`/workspaces/${workspaceId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function archiveWorkspace(workspaceId: string) {
+  return apiClient<WorkspaceDetailResponse>(`/workspaces/${workspaceId}/archive`, {
+    method: "POST",
+  });
+}
+
+export function deleteWorkspace(workspaceId: string) {
+  return apiClient<{ data: { success: boolean } }>(`/workspaces/${workspaceId}`, {
+    method: "DELETE",
+  });
+}

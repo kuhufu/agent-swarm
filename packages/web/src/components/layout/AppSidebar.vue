@@ -28,6 +28,7 @@ const navItems = computed(() => [
   { label: "历史", route: "/history", icon: HistoryIcon },
   { label: "Swarm", route: "/swarms", icon: SwarmIcon },
   { label: "Agents", route: "/agents", icon: AgentsIcon },
+  { label: "工作区", route: "/workspaces", icon: WorkspaceIcon },
   { label: "文档", route: "/documents", icon: KnowledgeIcon },
   { label: "Wiki", route: "/wiki", icon: KnowledgeIcon },
   ...(authStore.user?.role === "admin" ? [{ label: "设置", route: "/settings", icon: SettingsIcon }] : []),
@@ -330,6 +331,10 @@ function SettingsIcon() {
 
 function KnowledgeIcon() {
   return h(SvgIcon, { name: "book", size: 16, class: "nav-icon" });
+}
+
+function WorkspaceIcon() {
+  return h(SvgIcon, { name: "folder", size: 16, class: "nav-icon" });
 }
 
 import { h } from "vue";
