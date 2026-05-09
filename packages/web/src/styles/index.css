@@ -186,6 +186,40 @@
   }
 }
 
+/* ── TDesign Message 样式覆盖 ── */
+.t-message {
+  border-radius: 10px !important;
+  backdrop-filter: blur(16px) saturate(1.3) !important;
+  border: 1px solid var(--color-border-subtle) !important;
+  box-shadow: var(--shadow-dropdown) !important;
+}
+
+.t-message.t-is-error {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  color: #fca5a5 !important;
+}
+
+.t-message.t-is-success {
+  background: rgba(34, 197, 94, 0.12) !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+  color: #86efac !important;
+}
+
+.t-message.t-is-warning {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+  color: #fcd34d !important;
+}
+
+.t-message__close {
+  color: var(--color-text-muted) !important;
+}
+
+.t-message__close:hover {
+  color: var(--color-text-secondary) !important;
+}
+
 @layer components {
   .glass {
     background: var(--glass-bg);
