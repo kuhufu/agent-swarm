@@ -20,6 +20,7 @@ const props = defineProps<{
 
 const expanded = ref(false);
 const showRaw = ref(false);
+const showContent = ref(false);
 
 const isKnowledgeTool = computed(() => props.toolCall.name === "retrieve_knowledge");
 const isWikiTool = computed(() => props.toolCall.name === "search_wiki");
@@ -182,10 +183,6 @@ function formatSize(bytes?: number): string {
       <SvgIcon class="expand-icon" :class="{ rotated: expanded }" name="chevronDown" :size="14" />
     </div>
     <div v-if="expanded" class="tool-details">
-      <div class="tool-section">
-        <SectionLabel icon="jsExecute" label="参数" />
-        <pre>{{ formattedArguments }}</pre>
-      </div>
       <KnowledgeReferencesCard
         v-if="hasKnowledgeResult"
         :references="knowledgeReferences ?? []"
@@ -245,9 +242,12 @@ function formatSize(bytes?: number): string {
 
       <NextActionsCard v-if="nextActions" :actions="nextActions" @apply="handleApplyNextAction" />
 
-      <div v-if="formattedContent" class="tool-section">
-        <SectionLabel icon="message" label="返回给模型的内容" />
-        <pre>{{ formattedContent }}</pre>
+      <div v-if="formattedContent" class="tool-section content-toggle-section">
+        <button class="content-toggle-btn" type="button" @click.stop="showContent = !showContent">
+          <SvgIcon :name="showContent ? 'chevronDown' : 'chevronRight'" :size="12" />
+          返回给模型的内容
+        </button>
+        <pre v-if="showContent" class="content-pre" @click.stop>{{ formattedContent }}</pre>
       </div>
 
       <div class="tool-section raw-toggle-section">
@@ -468,12 +468,10 @@ pre {
   transform: translateX(1px);
 }
 
-.raw-toggle-section {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-border-subtle);
+.content-toggle-section {
+  margin-top: 6px;
 }
-.raw-toggle-btn {
+.content-toggle-btn, .raw-toggle-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -486,9 +484,30 @@ pre {
   padding: 4px 0;
   transition: color 0.16s;
 }
-.raw-toggle-btn:hover {
+.content-toggle-btn:hover, .raw-toggle-btn:hover {
   color: var(--color-text-secondary);
 }
+.content-pre {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--color-border-subtle);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.raw-toggle-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
 .raw-panel {
   margin-top: 10px;
   display: grid;
