@@ -472,7 +472,7 @@ import { h } from "vue";
 
 <style scoped>
 .sidebar {
-  width: 260px;
+  width: 350px;
   background: var(--sidebar-bg);
   backdrop-filter: blur(24px) saturate(1.4);
   border-right: 1px solid var(--color-border-subtle);
