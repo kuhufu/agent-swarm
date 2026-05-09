@@ -171,8 +171,8 @@ pnpm test                  # 运行 core + server 单元测试
 | Auth | `/api/auth` | 注册、登录、登出、当前用户 |
 | Swarms | `/api/swarms` | CRUD |
 | Agents | `/api/agents` | Agent 预设 CRUD + 模板导入 |
-| Conversations | `/api/conversations` | CRUD、偏好设置、工作区挂载、清空上下文、恢复、整段/指定消息分支、消息查询、执行 Trace 与 workspace 产物列表/预览/下载/打包/删除/加入文档/最终标记 |
-| Workspaces | `/api/workspaces` | 用户级工作区 CRUD、归档/硬删除；会话通过 `workspaceId` 挂载工作区，未挂载时不注入 workspace 工具 |
+| Conversations | `/api/conversations` | CRUD、偏好设置、工作区挂载、清空上下文、恢复、整段/指定消息分支、消息查询与执行 Trace |
+| Workspaces | `/api/workspaces` | 用户级工作区 CRUD、归档/硬删除、workspace 产物列表/预览/下载/打包/删除/加入文档/最终标记；会话通过 `workspaceId` 挂载工作区，未挂载时不注入 workspace 工具 |
 | Wiki | `/api/wiki` | LLM Wiki 页面 CRUD、搜索、资料入库生成、从已有文档生成、按来源重新生成 |
 | Documents | `/api/documents` | 文档知识库 CRUD、全文搜索、文档 chunk 查询；上传支持 JSON 内容和 multipart 文本文件 |
 | Templates | `/api/templates` | 系统 Agent 模板 CRUD |

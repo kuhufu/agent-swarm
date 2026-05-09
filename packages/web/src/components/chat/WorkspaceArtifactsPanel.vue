@@ -50,7 +50,7 @@ interface ArtifactGroup {
 }
 
 const props = defineProps<{
-  conversationId: string | null;
+  workspaceId: string | null;
   selectedPath?: string | null;
   refreshKey?: string | number;
 }>();
@@ -123,7 +123,7 @@ const highlightedPreview = computed(() => {
 });
 
 watch(
-  () => props.conversationId,
+  () => props.workspaceId,
   () => {
     void loadArtifacts();
   },
@@ -146,7 +146,7 @@ watch(
 watch(
   () => props.refreshKey,
   () => {
-    if (props.conversationId) {
+    if (props.workspaceId) {
       void loadArtifacts();
     }
   },
@@ -157,7 +157,7 @@ onBeforeUnmount(() => {
 });
 
 async function loadArtifacts(nextSelectedPath?: string) {
-  if (!props.conversationId) {
+  if (!props.workspaceId) {
     artifacts.value = [];
     selectedArtifact.value = null;
     preview.value = null;
@@ -169,7 +169,7 @@ async function loadArtifacts(nextSelectedPath?: string) {
   loading.value = true;
   try {
     const response = await apiClient<{ data: WorkspaceArtifact[] }>(
-      `/conversations/${props.conversationId}/workspace/files`,
+      `/workspaces/${props.workspaceId}/files`,
     );
     artifacts.value = response.data ?? [];
     collapsedFolders.value = new Set([...collapsedFolders.value].filter((folder) => artifacts.value.some((item) => getArtifactDirectory(item.path) === folder)));
@@ -219,7 +219,7 @@ async function openPreview(artifact = selectedArtifact.value) {
   previewOpen.value = true;
   preview.value = null;
   revokeImageUrl();
-  if (!props.conversationId || !artifact.previewable) return;
+  if (!props.workspaceId || !artifact.previewable) return;
   if (artifact.kind === "image") {
     await loadImagePreview(artifact);
     return;
@@ -227,7 +227,7 @@ async function openPreview(artifact = selectedArtifact.value) {
   previewLoading.value = true;
   try {
     const response = await apiClient<{ data: ArtifactContent }>(
-      `/conversations/${props.conversationId}/workspace/files/content?path=${encodeURIComponent(artifact.path)}`,
+      `/workspaces/${props.workspaceId}/files/content?path=${encodeURIComponent(artifact.path)}`,
     );
     preview.value = response.data;
   } catch (error) {
@@ -239,7 +239,7 @@ async function openPreview(artifact = selectedArtifact.value) {
 
 async function openVersionPreview(version: WorkspaceFileVersion) {
   const artifact = artifacts.value.find((item) => item.path === version.path) ?? selectedArtifact.value;
-  if (!artifact || !props.conversationId) return;
+  if (!artifact || !props.workspaceId) return;
   selectedArtifact.value = artifact;
   previewVersion.value = version;
   openMenuPath.value = null;
@@ -251,10 +251,10 @@ async function openVersionPreview(version: WorkspaceFileVersion) {
   try {
     const [currentRes, versionRes] = await Promise.all([
       apiClient<{ data: ArtifactContent }>(
-        `/conversations/${props.conversationId}/workspace/files/content?path=${encodeURIComponent(version.path)}`,
+        `/workspaces/${props.workspaceId}/files/content?path=${encodeURIComponent(version.path)}`,
       ),
       apiClient<{ data: ArtifactContent }>(
-        `/conversations/${props.conversationId}/workspace/files/versions/content?path=${encodeURIComponent(version.path)}&versionId=${encodeURIComponent(version.id)}`,
+        `/workspaces/${props.workspaceId}/files/versions/content?path=${encodeURIComponent(version.path)}&versionId=${encodeURIComponent(version.id)}`,
       ),
     ]);
     const current = currentRes.data.content;
@@ -268,11 +268,11 @@ async function openVersionPreview(version: WorkspaceFileVersion) {
 }
 
 async function restoreArtifactVersion(version: WorkspaceFileVersion) {
-  if (!props.conversationId) return;
+  if (!props.workspaceId) return;
   if (!window.confirm(`恢复到 ${formatTime(version.updatedAt)} 的版本？当前文件会被覆盖。`)) return;
   try {
     await apiClient<{ data: { path: string; size: number; restoredFrom: string } }>(
-      `/conversations/${props.conversationId}/workspace/files/versions/restore`,
+      `/workspaces/${props.workspaceId}/files/versions/restore`,
       {
         method: "POST",
         body: JSON.stringify({ path: version.path, versionId: version.id }),
@@ -287,14 +287,14 @@ async function restoreArtifactVersion(version: WorkspaceFileVersion) {
 }
 
 async function loadArtifactVersions(artifact = selectedArtifact.value) {
-  if (!artifact || !props.conversationId) {
+  if (!artifact || !props.workspaceId) {
     artifactVersions.value = [];
     return;
   }
   versionsLoading.value = true;
   try {
     const response = await apiClient<{ data: WorkspaceFileVersion[] }>(
-      `/conversations/${props.conversationId}/workspace/files/versions?path=${encodeURIComponent(artifact.path)}`,
+      `/workspaces/${props.workspaceId}/files/versions?path=${encodeURIComponent(artifact.path)}`,
     );
     artifactVersions.value = response.data ?? [];
   } catch (error) {
@@ -335,10 +335,10 @@ async function downloadArtifact(artifact?: WorkspaceArtifact) {
 }
 
 async function downloadSelectedArtifacts() {
-  if (!props.conversationId || selectedPaths.value.size === 0) return;
+  if (!props.workspaceId || selectedPaths.value.size === 0) return;
   try {
     const blob = await postArtifactBlob(
-      `/api/conversations/${props.conversationId}/workspace/files/download-zip`,
+      `/api/workspaces/${props.workspaceId}/files/download-zip`,
       { paths: [...selectedPaths.value] },
     );
     await triggerDownload(blob, "workspace-artifacts.zip");
@@ -350,10 +350,10 @@ async function downloadSelectedArtifacts() {
 }
 
 async function downloadAllArtifacts() {
-  if (!props.conversationId || artifacts.value.length === 0) return;
+  if (!props.workspaceId || artifacts.value.length === 0) return;
   try {
     const blob = await postArtifactBlob(
-      `/api/conversations/${props.conversationId}/workspace/files/download-zip`,
+      `/api/workspaces/${props.workspaceId}/files/download-zip`,
       { paths: artifacts.value.map((item) => item.path) },
     );
     await triggerDownload(blob, "workspace-all-artifacts.zip");
@@ -366,10 +366,10 @@ async function downloadAllArtifacts() {
 
 async function importArtifact(artifact?: WorkspaceArtifact) {
   const target = artifact ?? selectedArtifact.value;
-  if (!props.conversationId || !target) return;
+  if (!props.workspaceId || !target) return;
   try {
     const response = await apiClient<{ data: { title: string } }>(
-      `/conversations/${props.conversationId}/workspace/files/import-document`,
+      `/workspaces/${props.workspaceId}/files/import-document`,
       {
         method: "POST",
         body: JSON.stringify({ path: target.path }),
@@ -383,12 +383,12 @@ async function importArtifact(artifact?: WorkspaceArtifact) {
 }
 
 async function importSelectedArtifacts() {
-  if (!props.conversationId || selectedArtifacts.value.length === 0) return;
+  if (!props.workspaceId || selectedArtifacts.value.length === 0) return;
   let successCount = 0;
   for (const artifact of selectedArtifacts.value) {
     try {
       await apiClient<{ data: { title: string } }>(
-        `/conversations/${props.conversationId}/workspace/files/import-document`,
+        `/workspaces/${props.workspaceId}/files/import-document`,
         {
           method: "POST",
           body: JSON.stringify({ path: artifact.path }),
@@ -405,11 +405,11 @@ async function importSelectedArtifacts() {
 }
 
 async function toggleFinalArtifact(artifact: WorkspaceArtifact) {
-  if (!props.conversationId) return;
+  if (!props.workspaceId) return;
   try {
     const nextFinal = !artifact.final;
     await apiClient<{ data: { path: string; final: boolean } }>(
-      `/conversations/${props.conversationId}/workspace/files/final`,
+      `/workspaces/${props.workspaceId}/files/final`,
       {
         method: "PATCH",
         body: JSON.stringify({ path: artifact.path, final: nextFinal }),
@@ -426,7 +426,7 @@ async function toggleFinalArtifact(artifact: WorkspaceArtifact) {
 }
 
 async function setSelectedFinalArtifacts(final: boolean) {
-  if (!props.conversationId || selectedArtifacts.value.length === 0) return;
+  if (!props.workspaceId || selectedArtifacts.value.length === 0) return;
   const targets = selectedArtifacts.value.filter((item) => item.final !== final);
   if (targets.length === 0) {
     batchMenuOpen.value = false;
@@ -436,7 +436,7 @@ async function setSelectedFinalArtifacts(final: boolean) {
   for (const artifact of targets) {
     try {
       await apiClient<{ data: { path: string; final: boolean } }>(
-        `/conversations/${props.conversationId}/workspace/files/final`,
+        `/workspaces/${props.workspaceId}/files/final`,
         {
           method: "PATCH",
           body: JSON.stringify({ path: artifact.path, final }),
@@ -457,11 +457,11 @@ async function setSelectedFinalArtifacts(final: boolean) {
 
 async function deleteArtifact(artifact?: WorkspaceArtifact) {
   const target = artifact ?? selectedArtifact.value;
-  if (!props.conversationId || !target) return;
+  if (!props.workspaceId || !target) return;
   if (!window.confirm(`删除产物"${target.path}"？`)) return;
   try {
     await apiClient<{ data: { deleted: boolean } }>(
-      `/conversations/${props.conversationId}/workspace/files?path=${encodeURIComponent(target.path)}`,
+      `/workspaces/${props.workspaceId}/files?path=${encodeURIComponent(target.path)}`,
       { method: "DELETE" },
     );
     selectedPaths.value.delete(target.path);
@@ -475,13 +475,13 @@ async function deleteArtifact(artifact?: WorkspaceArtifact) {
 }
 
 async function deleteSelectedArtifacts() {
-  if (!props.conversationId || selectedArtifacts.value.length === 0) return;
+  if (!props.workspaceId || selectedArtifacts.value.length === 0) return;
   if (!window.confirm(`删除选中的 ${selectedArtifacts.value.length} 个产物？`)) return;
   const targets = [...selectedArtifacts.value];
   for (const artifact of targets) {
     try {
       await apiClient<{ data: { deleted: boolean } }>(
-        `/conversations/${props.conversationId}/workspace/files?path=${encodeURIComponent(artifact.path)}`,
+        `/workspaces/${props.workspaceId}/files?path=${encodeURIComponent(artifact.path)}`,
         { method: "DELETE" },
       );
     } catch (error) {
@@ -497,10 +497,10 @@ async function deleteSelectedArtifacts() {
 }
 
 async function fetchArtifactBlob(path: string): Promise<Blob> {
-  if (!props.conversationId) throw new Error("没有打开的会话");
+  if (!props.workspaceId) throw new Error("没有选择工作区");
   const token = localStorage.getItem("token");
   const response = await fetch(
-    `/api/conversations/${props.conversationId}/workspace/files/download?path=${encodeURIComponent(path)}`,
+    `/api/workspaces/${props.workspaceId}/files/download?path=${encodeURIComponent(path)}`,
     {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     },
@@ -657,7 +657,7 @@ function getFileColor(name: string): string {
       </button>
     </header>
 
-    <label v-if="conversationId && artifacts.length > 0" class="artifact-search" @click.stop>
+    <label v-if="workspaceId && artifacts.length > 0" class="artifact-search" @click.stop>
       <SvgIcon name="search" :size="13" />
       <input
         v-model="searchQuery"
@@ -669,7 +669,7 @@ function getFileColor(name: string): string {
       </button>
     </label>
 
-    <div v-if="conversationId && artifacts.length > 0" class="bulk-actions">
+    <div v-if="workspaceId && artifacts.length > 0" class="bulk-actions">
       <div class="bulk-summary">
         <button
           class="artifact-checkbox"
@@ -716,9 +716,9 @@ function getFileColor(name: string): string {
       </div>
     </div>
 
-    <div v-if="!conversationId" class="empty-state">
+    <div v-if="!workspaceId" class="empty-state">
       <SvgIcon name="folder" :size="28" />
-      <p>打开会话后查看产物</p>
+      <p>选择工作区后查看产物</p>
     </div>
     <div v-else-if="!loading && artifacts.length === 0" class="empty-state">
       <SvgIcon name="folder" :size="28" />

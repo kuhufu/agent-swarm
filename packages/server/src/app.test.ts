@@ -26,6 +26,7 @@ function createMockSwarm() {
   };
   const swarms = new Map<string, SwarmConfig>();
   const templates = new Map<string, any>();
+  const workspaces = new Map<string, any>();
   const uploadedDocs: Array<{
     id: string;
     title: string;
@@ -69,6 +70,43 @@ function createMockSwarm() {
     deleteAgentTemplate: async (id: string) => { if (!templates.has(id)) throw new Error("Agent template not found"); templates.delete(id); },
     listConversations: async () => [],
     listAllConversations: async () => [],
+    listWorkspaces: async (userId: string) => Array.from(workspaces.values()).filter((workspace) => workspace.userId === userId),
+    getWorkspace: async (id: string, userId: string) => {
+      const workspace = workspaces.get(id);
+      return workspace?.userId === userId ? workspace : null;
+    },
+    createWorkspace: async (userId: string, input: any) => {
+      const workspace = {
+        id: input.id ?? `workspace_${workspaces.size + 1}`,
+        userId,
+        name: input.name,
+        description: input.description,
+        archived: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      workspaces.set(workspace.id, workspace);
+      return workspace;
+    },
+    updateWorkspace: async (id: string, userId: string, input: any) => {
+      const workspace = workspaces.get(id);
+      if (!workspace || workspace.userId !== userId) throw new Error("工作区不存在");
+      const updated = { ...workspace, ...input, updatedAt: Date.now() };
+      workspaces.set(id, updated);
+      return updated;
+    },
+    archiveWorkspace: async (id: string, userId: string) => {
+      const workspace = workspaces.get(id);
+      if (!workspace || workspace.userId !== userId) throw new Error("工作区不存在");
+      const updated = { ...workspace, archived: true, updatedAt: Date.now() };
+      workspaces.set(id, updated);
+      return updated;
+    },
+    deleteWorkspace: async (id: string, userId: string) => {
+      const workspace = workspaces.get(id);
+      if (!workspace || workspace.userId !== userId) throw new Error("工作区不存在");
+      workspaces.delete(id);
+    },
     createConversation: async () => ({ getId: () => "conv_test" }),
     getConversation: async (id: string) => {
       if (id === "test_conv" || id === "conv_test") {
@@ -221,11 +259,12 @@ function createMockSwarm() {
     usageCalls,
     uploadedDocs,
     wikiPages,
+    workspaces,
   };
 }
 
 async function startTestServer() {
-  const { swarm, usageCalls, uploadedDocs, wikiPages } = createMockSwarm();
+  const { swarm, usageCalls, uploadedDocs, wikiPages, workspaces } = createMockSwarm();
   const app = createApp(swarm);
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", () => resolve()));
@@ -238,6 +277,7 @@ async function startTestServer() {
     usageCalls,
     uploadedDocs,
     wikiPages,
+    workspaces,
     close: async () => { await new Promise<void>((resolve, reject) => { server.close((err) => (err ? reject(err) : resolve())); }); },
   };
 }
@@ -475,9 +515,19 @@ describe("API routes", () => {
     }
   });
 
-  it("GET /api/conversations/:id/workspace/files returns workspace artifacts and preview content", async () => {
+  it("GET /api/workspaces/:id/files returns workspace artifacts and preview content", async () => {
     const server = await startTestServer();
-    const workspace = new WorkspaceManager("conv_test");
+    const workspaceId = "workspace_test";
+    server.workspaces.set(workspaceId, {
+      id: workspaceId,
+      userId: TEST_USER.id,
+      name: "Test workspace",
+      archived: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    const workspace = new WorkspaceManager(workspaceId);
+    const filesBaseUrl = `${server.baseUrl}/api/workspaces/${workspaceId}/files`;
     const artifactPath = `reports/artifact-${Date.now()}.txt`;
     try {
       await workspace.writeFile(artifactPath, "workspace artifact draft");
@@ -485,7 +535,7 @@ describe("API routes", () => {
       await workspace.writeFile("src/example.ts", "export const answer: number = 42;\n");
       await workspace.writeFile("easyfanyi/.gitignore", "node_modules\n");
 
-      const listResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files`, {
+      const listResponse = await fetch(filesBaseUrl, {
         headers: withAuthHeaders(),
       });
       const listData = await listResponse.json() as { data: Array<{ path: string; kind: string; previewable: boolean; downloadUrl: string; final: boolean; versionCount: number }> };
@@ -498,9 +548,9 @@ describe("API routes", () => {
         previewable: true,
         versionCount: 2,
       });
-      expect(artifact?.downloadUrl).toContain("/api/conversations/conv_test/workspace/files/download");
+      expect(artifact?.downloadUrl).toContain(`/api/workspaces/${workspaceId}/files/download`);
 
-      const contentResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/content?path=${encodeURIComponent(artifactPath)}`, {
+      const contentResponse = await fetch(`${filesBaseUrl}/content?path=${encodeURIComponent(artifactPath)}`, {
         headers: withAuthHeaders(),
       });
       const contentData = await contentResponse.json() as { data: { path: string; content: string; truncated: boolean } };
@@ -512,7 +562,7 @@ describe("API routes", () => {
         truncated: false,
       });
 
-      const codeResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/content?path=${encodeURIComponent("src/example.ts")}`, {
+      const codeResponse = await fetch(`${filesBaseUrl}/content?path=${encodeURIComponent("src/example.ts")}`, {
         headers: withAuthHeaders(),
       });
       const codeData = await codeResponse.json() as { data: { path: string; kind: string; language?: string; content: string } };
@@ -525,7 +575,7 @@ describe("API routes", () => {
         content: "export const answer: number = 42;\n",
       });
 
-      const versionsResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/versions?path=${encodeURIComponent(artifactPath)}`, {
+      const versionsResponse = await fetch(`${filesBaseUrl}/versions?path=${encodeURIComponent(artifactPath)}`, {
         headers: withAuthHeaders(),
       });
       const versionsData = await versionsResponse.json() as { data: Array<{ id: string; path: string; size: number }> };
@@ -533,14 +583,14 @@ describe("API routes", () => {
       expect(versionsData.data).toHaveLength(2);
       expect(versionsData.data[0]).toMatchObject({ path: artifactPath, size: Buffer.byteLength("workspace artifact content") });
 
-      const versionContentResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/versions/content?path=${encodeURIComponent(artifactPath)}&versionId=${encodeURIComponent(versionsData.data[1]?.id ?? "")}`, {
+      const versionContentResponse = await fetch(`${filesBaseUrl}/versions/content?path=${encodeURIComponent(artifactPath)}&versionId=${encodeURIComponent(versionsData.data[1]?.id ?? "")}`, {
         headers: withAuthHeaders(),
       });
       const versionContentData = await versionContentResponse.json() as { data: { content: string } };
       expect(versionContentResponse.status).toBe(200);
       expect(versionContentData.data.content).toBe("workspace artifact draft");
 
-      const restoreResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/versions/restore`, {
+      const restoreResponse = await fetch(`${filesBaseUrl}/versions/restore`, {
         method: "POST",
         headers: withAuthHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ path: artifactPath, versionId: versionsData.data[1]?.id }),
@@ -549,26 +599,26 @@ describe("API routes", () => {
       expect(restoreResponse.status).toBe(200);
       expect(restoreData.data).toMatchObject({ path: artifactPath, restoredFrom: versionsData.data[1]?.id });
 
-      const restoredContentResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/content?path=${encodeURIComponent(artifactPath)}`, {
+      const restoredContentResponse = await fetch(`${filesBaseUrl}/content?path=${encodeURIComponent(artifactPath)}`, {
         headers: withAuthHeaders(),
       });
       const restoredContentData = await restoredContentResponse.json() as { data: { content: string } };
       expect(restoredContentData.data.content).toBe("workspace artifact draft");
 
-      const finalResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/final`, {
+      const finalResponse = await fetch(`${filesBaseUrl}/final`, {
         method: "PATCH",
         headers: withAuthHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ path: artifactPath, final: true }),
       });
       expect(finalResponse.status).toBe(200);
 
-      const finalListResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files`, {
+      const finalListResponse = await fetch(filesBaseUrl, {
         headers: withAuthHeaders(),
       });
       const finalListData = await finalListResponse.json() as { data: Array<{ path: string; final: boolean }> };
       expect(finalListData.data.find((item) => item.path === artifactPath)?.final).toBe(true);
 
-      const importResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/import-document`, {
+      const importResponse = await fetch(`${filesBaseUrl}/import-document`, {
         method: "POST",
         headers: withAuthHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ path: artifactPath }),
@@ -583,7 +633,7 @@ describe("API routes", () => {
         userId: TEST_USER.id,
       });
 
-      const zipResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/download-zip`, {
+      const zipResponse = await fetch(`${filesBaseUrl}/download-zip`, {
         method: "POST",
         headers: withAuthHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ paths: [artifactPath, "src/example.ts"] }),
@@ -593,7 +643,7 @@ describe("API routes", () => {
       expect(zipResponse.headers.get("content-type")).toBe("application/zip");
       expect(zipBuffer.readUInt32LE(0)).toBe(0x04034b50);
 
-      const hiddenFileResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files/download?path=${encodeURIComponent("easyfanyi/.gitignore")}`, {
+      const hiddenFileResponse = await fetch(`${filesBaseUrl}/download?path=${encodeURIComponent("easyfanyi/.gitignore")}`, {
         headers: withAuthHeaders(),
       });
       expect(hiddenFileResponse.status).toBe(200);
@@ -601,13 +651,13 @@ describe("API routes", () => {
       expect(hiddenFileResponse.headers.get("content-disposition")).toContain("filename*=UTF-8''%2Egitignore");
       expect(await hiddenFileResponse.text()).toBe("node_modules\n");
 
-      const deleteResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files?path=${encodeURIComponent(artifactPath)}`, {
+      const deleteResponse = await fetch(`${filesBaseUrl}?path=${encodeURIComponent(artifactPath)}`, {
         method: "DELETE",
         headers: withAuthHeaders(),
       });
       expect(deleteResponse.status).toBe(200);
 
-      const afterDeleteResponse = await fetch(`${server.baseUrl}/api/conversations/conv_test/workspace/files`, {
+      const afterDeleteResponse = await fetch(filesBaseUrl, {
         headers: withAuthHeaders(),
       });
       const afterDeleteData = await afterDeleteResponse.json() as { data: Array<{ path: string }> };

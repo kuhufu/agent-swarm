@@ -32,18 +32,18 @@ Workspace 产物是用户级工作区中的文件视图，用于把 `workspace_w
 - `DELETE /api/workspaces/:id`：硬删除工作区，清理文件目录和容器，并解除关联会话挂载。
 - `PATCH /api/conversations/:id/workspace`：按 `{ workspaceId: string | null }` 挂载或清除会话工作区。
 
-文件产物 API 正在从会话路由迁移到 workspace 路由。迁移前的产物接口仍需要当前用户拥有对应会话：
+文件产物 API 归属于 workspace 路由，访问前会校验当前用户拥有该 workspace：
 
-- `GET /api/conversations/:id/workspace/files`：列出当前会话 workspace 文件，返回路径、文件名、大小、类型、预览能力、更新时间、下载地址和版本数量。
-- `GET /api/conversations/:id/workspace/files/content?path=...`：读取文件预览内容，使用 `WorkspaceManager.readFile()` 的大小和行数限制，过长内容会返回 `truncated: true`。
-- `GET /api/conversations/:id/workspace/files/versions?path=...`：读取指定文件的版本记录，按更新时间倒序返回。
-- `GET /api/conversations/:id/workspace/files/versions/content?path=...&versionId=...`：读取指定版本快照内容，过长内容会返回 `truncated: true`。
-- `POST /api/conversations/:id/workspace/files/versions/restore`：请求体 `{ path: string, versionId: string }`，把指定版本内容恢复为当前文件，并记录一次新的写入历史。
-- `GET /api/conversations/:id/workspace/files/download?path=...`：下载指定文件。
-- `POST /api/conversations/:id/workspace/files/download-zip`：请求体 `{ paths: string[] }`，把多个产物打包为 zip 下载。
-- `POST /api/conversations/:id/workspace/files/import-document`：请求体 `{ path: string }`，读取产物文本内容并写入文档知识库，来源标记为 `workspace_artifact`。
-- `PATCH /api/conversations/:id/workspace/files/final`：请求体 `{ path: string, final: boolean }`，标记或取消最终结果。标记信息保存在 workspace 内部 metadata 文件中，不暴露为普通产物。
-- `DELETE /api/conversations/:id/workspace/files?path=...`：删除指定产物，并同步清理最终结果标记。
+- `GET /api/workspaces/:id/files`：列出 workspace 文件，返回路径、文件名、大小、类型、预览能力、更新时间、下载地址和版本数量。
+- `GET /api/workspaces/:id/files/content?path=...`：读取文件预览内容，使用 `WorkspaceManager.readFile()` 的大小和行数限制，过长内容会返回 `truncated: true`。
+- `GET /api/workspaces/:id/files/versions?path=...`：读取指定文件的版本记录，按更新时间倒序返回。
+- `GET /api/workspaces/:id/files/versions/content?path=...&versionId=...`：读取指定版本快照内容，过长内容会返回 `truncated: true`。
+- `POST /api/workspaces/:id/files/versions/restore`：请求体 `{ path: string, versionId: string }`，把指定版本内容恢复为当前文件，并记录一次新的写入历史。
+- `GET /api/workspaces/:id/files/download?path=...`：下载指定文件。
+- `POST /api/workspaces/:id/files/download-zip`：请求体 `{ paths: string[] }`，把多个产物打包为 zip 下载。
+- `POST /api/workspaces/:id/files/import-document`：请求体 `{ path: string }`，读取产物文本内容并写入文档知识库，来源标记为 `workspace_artifact`。
+- `PATCH /api/workspaces/:id/files/final`：请求体 `{ path: string, final: boolean }`，标记或取消最终结果。标记信息保存在 workspace 内部 metadata 文件中，不暴露为普通产物。
+- `DELETE /api/workspaces/:id/files?path=...`：删除指定产物，并同步清理最终结果标记。
 
 ## 安全边界
 

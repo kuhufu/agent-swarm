@@ -166,16 +166,6 @@ pnpm --filter @agent-swarm/server test
 - `POST /api/conversations/:id/context/clear`
 - `POST /api/conversations/:id/resume`
 - `POST /api/conversations/:id/fork`：可选 `messageId`，只复制到指定消息为止
-- `GET /api/conversations/:id/workspace/files`：列出当前会话 workspace 产物
-- `GET /api/conversations/:id/workspace/files/content?path=...`：读取可预览产物内容
-- `GET /api/conversations/:id/workspace/files/versions?path=...`：读取指定产物的写入版本记录
-- `GET /api/conversations/:id/workspace/files/versions/content?path=...&versionId=...`：读取指定产物版本内容
-- `POST /api/conversations/:id/workspace/files/versions/restore`：按 `{ path, versionId }` 恢复指定产物版本
-- `GET /api/conversations/:id/workspace/files/download?path=...`：下载指定产物文件
-- `POST /api/conversations/:id/workspace/files/download-zip`：按 `paths` 打包下载多个产物
-- `POST /api/conversations/:id/workspace/files/import-document`：把指定产物加入文档知识库
-- `PATCH /api/conversations/:id/workspace/files/final`：标记或取消标记最终结果
-- `DELETE /api/conversations/:id/workspace/files?path=...`：删除指定产物文件
 - `DELETE /api/conversations/:id`
 
 ### 工作区管理
@@ -187,6 +177,16 @@ pnpm --filter @agent-swarm/server test
 - `PATCH /api/workspaces/:id`
 - `POST /api/workspaces/:id/archive`
 - `DELETE /api/workspaces/:id`：硬删除工作区并清理文件目录/容器，同时解除关联会话挂载
+- `GET /api/workspaces/:id/files`：列出 workspace 产物
+- `GET /api/workspaces/:id/files/content?path=...`：读取可预览产物内容
+- `GET /api/workspaces/:id/files/versions?path=...`：读取指定产物的写入版本记录
+- `GET /api/workspaces/:id/files/versions/content?path=...&versionId=...`：读取指定产物版本内容
+- `POST /api/workspaces/:id/files/versions/restore`：按 `{ path, versionId }` 恢复指定产物版本
+- `GET /api/workspaces/:id/files/download?path=...`：下载指定产物文件
+- `POST /api/workspaces/:id/files/download-zip`：按 `paths` 打包下载多个产物
+- `POST /api/workspaces/:id/files/import-document`：把指定产物加入文档知识库
+- `PATCH /api/workspaces/:id/files/final`：标记或取消标记最终结果
+- `DELETE /api/workspaces/:id/files?path=...`：删除指定产物文件
 
 ### 消息查询
 

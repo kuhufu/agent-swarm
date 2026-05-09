@@ -65,6 +65,7 @@ export interface ModelConfig {
 export interface ConversationInfo {
   id: string;
   swarmId: string;
+  workspaceId?: string;
   title?: string;
   enabledTools: string[];
   thinkingLevel: string;

@@ -253,7 +253,7 @@ async function handleForkConversation(messageId?: string) {
       <ConversationTrace v-else-if="activeSidebarTab === 'trace'" :events="traceEvents" />
       <WorkspaceArtifactsPanel
         v-else
-        :conversation-id="routeConversationId"
+        :workspace-id="currentConversation?.workspaceId ?? null"
         :selected-path="selectedArtifactPath"
         :refresh-key="artifactRefreshKey"
       />

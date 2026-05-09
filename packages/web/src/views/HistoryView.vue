@@ -85,7 +85,11 @@ async function selectConv(conv: ConversationInfo) {
   if (!expandedArtifacts.has(conv.id)) {
     loadingArtifacts.value = true;
     try {
-      const res = await apiClient<{ data: WorkspaceArtifact[] }>(`/conversations/${conv.id}/workspace/files`);
+      if (!conv.workspaceId) {
+        expandedArtifacts.set(conv.id, []);
+        return;
+      }
+      const res = await apiClient<{ data: WorkspaceArtifact[] }>(`/workspaces/${conv.workspaceId}/files`);
       expandedArtifacts.set(conv.id, (res.data ?? []).filter((item) => item.final));
     } catch {
       expandedArtifacts.set(conv.id, []);
@@ -299,11 +303,12 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1_048_576).toFixed(1)} MB`;
 }
 
-async function downloadArtifact(conversationId: string, artifact: WorkspaceArtifact) {
+async function downloadArtifact(workspaceId: string | undefined, artifact: WorkspaceArtifact) {
+  if (!workspaceId) return;
   try {
     const token = localStorage.getItem("token");
     const response = await fetch(
-      `/api/conversations/${conversationId}/workspace/files/download?path=${encodeURIComponent(artifact.path)}`,
+      `/api/workspaces/${workspaceId}/files/download?path=${encodeURIComponent(artifact.path)}`,
       { headers: token ? { Authorization: `Bearer ${token}` } : {} },
     );
     if (!response.ok) {
@@ -427,7 +432,7 @@ async function downloadArtifact(conversationId: string, artifact: WorkspaceArtif
                   <span>{{ artifact.path }}</span>
                   <small>{{ artifact.kind }} · {{ formatSize(artifact.size) }}</small>
                 </div>
-                <button type="button" title="下载" @click="downloadArtifact(selectedConv.id, artifact)">
+                <button type="button" title="下载" @click="downloadArtifact(selectedConv.workspaceId, artifact)">
                   <SvgIcon name="download" :size="14" />
                 </button>
               </article>
