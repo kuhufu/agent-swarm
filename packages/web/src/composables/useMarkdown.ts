@@ -16,6 +16,12 @@ import { markedHighlight } from "marked-highlight";
 const markdownParser = new Marked({
   gfm: true,
   breaks: true,
+  renderer: {
+    link({ href, text, tokens }) {
+      const title = tokens.map((t) => typeof t === "string" ? t : t.raw).join("");
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer">${text || title}</a>`;
+    },
+  },
 });
 
 markdownParser.use(markedHighlight({
@@ -255,6 +261,6 @@ export function renderMarkdown(content: string): string {
 
   return DOMPurify.sanitize(html, {
     USE_PROFILES: { html: true },
-    ADD_ATTR: ["aria-hidden"],
+    ADD_ATTR: ["aria-hidden", "target", "rel"],
   });
 }
