@@ -120,6 +120,33 @@ export function getToolStatus(toolCall: ToolCallInfo): { label: string; cls: str
   return { label: "运行中", cls: "running" };
 }
 
+const TOOL_ICONS: Record<string, string> = {
+  web_search: "search",
+  web_fetch: "globe",
+  browser_automation: "monitor",
+  retrieve_knowledge: "book",
+  search_wiki: "book",
+  javascript_execute: "jsExecute",
+  current_time: "clock",
+  handoff: "arrowRight",
+  route_to_agent: "arrowRight",
+  workspace_read_file: "fileCode",
+  workspace_write_file: "fileCode",
+  workspace_list_files: "folder",
+  workspace_grep: "search",
+  workspace_run_container: "monitor",
+  workspace_list_containers: "monitor",
+  workspace_start_containers: "monitor",
+  workspace_stop_containers: "monitor",
+  workspace_restart_containers: "monitor",
+  workspace_remove_containers: "monitor",
+  workspace_pull_image: "download",
+};
+
+export function getToolIcon(name: string): string {
+  return TOOL_ICONS[name] ?? "wrench";
+}
+
 export function getToolStatusIcon(toolCall: ToolCallInfo): string {
   if (toolCall.isError === true) return "close";
   if (toolCall.details !== undefined) return "check";

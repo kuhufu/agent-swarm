@@ -8,10 +8,10 @@ import type { WorkspaceNextAction } from "./tool-card-utils.js";
 import {
   formatDuration,
   getToolColorClass,
+  getToolIcon,
   getToolLabel,
   getToolParamSummary,
   getToolStatus,
-  getToolStatusIcon,
 } from "./tool-card-utils.js";
 
 const props = defineProps<{
@@ -22,10 +22,10 @@ const expanded = ref(false);
 
 const toolLabel = computed(() => getToolLabel(props.toolCall.name));
 const colorClass = computed(() => getToolColorClass(props.toolCall.name));
+const toolIcon = computed(() => getToolIcon(props.toolCall.name));
 const paramSummary = computed(() => getToolParamSummary(props.toolCall.arguments));
 const formattedDuration = computed(() => formatDuration(props.toolCall.durationMs));
 const status = computed(() => getToolStatus(props.toolCall));
-const statusIcon = computed(() => getToolStatusIcon(props.toolCall));
 
 function handleApplyNextAction(action: WorkspaceNextAction) {
   const text = `${action.tool}${action.params ? " " + JSON.stringify(action.params) : ""}`;
@@ -37,7 +37,7 @@ function handleApplyNextAction(action: WorkspaceNextAction) {
   <div class="tool-call-card" :class="{ expanded }" @click="expanded = !expanded">
     <div class="tool-header">
       <div :class="['tool-icon-wrapper', colorClass]">
-        <SvgIcon :name="statusIcon" :size="12" />
+        <SvgIcon :name="toolIcon" :size="12" />
       </div>
       <span class="tool-name">{{ toolLabel }}</span>
       <span v-if="paramSummary" class="tool-param-summary" :title="paramSummary">{{ paramSummary }}</span>
