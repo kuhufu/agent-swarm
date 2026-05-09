@@ -112,7 +112,7 @@ pnpm test                  # 运行 core + server 单元测试
 - 存储：通过 `IStorage` 接口抽象，默认 `SqliteStorage` + 向量存储实现
 - 事件：所有协作过程通过 `SwarmEvent` 类型的事件流暴露
 - 介入：通过 `InterventionHandler` 抽象类实现，内置 5 种策略
-- 工具注入：统一通过 `packages/core/src/tools/runtime.ts`；`Conversation` 按 `enabledTools` 决定启用，`AgentSwarm.createToolRuntimeAvailability()` 只提供可用工具资源，WebSocket 不创建具体工具；workspace 是用户级资源，未挂载 `workspaceId` 时不注入 workspace 工具
+- 工具注入：统一通过 `packages/core/src/tools/runtime.ts`；`Conversation` 按 `enabledTools` 决定启用，`AgentSwarm.createToolRuntimeAvailability()` 只提供可用工具资源，WebSocket 不创建具体工具；workspace 是用户级资源，由用户手动创建并挂载，未挂载 `workspaceId` 时不注入 workspace 工具
 - API 路由：RESTful 风格，响应格式 `{ data: T }` 或 `{ error: string }`
 - WebSocket 消息格式：`{ type: string, payload: any, conversationId?: string }`
 

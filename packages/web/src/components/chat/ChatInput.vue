@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref, computed, watch, nextTick } from "vue";
 import { useChat } from "../../composables/useChat.js";
 import { useSettingsStore } from "../../stores/settings.js";
 import { useConversationStore } from "../../stores/conversation.js";
+import { showError } from "../../utils/ui-feedback.js";
 import SvgIcon from "../common/SvgIcon.vue";
 import type { SavedModel } from "../../types/index.js";
 
@@ -11,6 +12,7 @@ const props = defineProps<{
   swarmId: string;
   active?: boolean;
   isDirectMode?: boolean;
+  workspaceId?: string | null;
 }>();
 
 const {
@@ -33,7 +35,10 @@ const {
   workspaceToolEnabled,
   browserAutomationToolEnabled,
   thinkingLevel,
-} = useChat(computed(() => props.conversationId ?? null));
+} = useChat(
+  computed(() => props.conversationId ?? null),
+  computed(() => props.workspaceId ?? null),
+);
 
 const settingsStore = useSettingsStore();
 const conversationStore = useConversationStore();
@@ -60,7 +65,7 @@ const activeToolCount = computed(() => {
   let count = 0;
   if (currentTimeToolEnabled.value) count++;
   if (jsExecutionToolEnabled.value) count++;
-  if (workspaceToolEnabled.value) count++;
+  if (workspaceToolEnabled.value && props.workspaceId) count++;
   if (webFetchToolEnabled.value) count++;
   if (wikiToolEnabled.value) count++;
   if (retrieveKnowledgeToolEnabled.value) count++;
@@ -263,7 +268,13 @@ function toggleToolFromDropdown(toggleFn: () => void) {
 
 function toggleCurrentTimeTool() { currentTimeToolEnabled.value = !currentTimeToolEnabled.value; }
 function toggleJsExecutionTool() { jsExecutionToolEnabled.value = !jsExecutionToolEnabled.value; }
-function toggleWorkspaceTool() { workspaceToolEnabled.value = !workspaceToolEnabled.value; }
+function toggleWorkspaceTool() {
+  if (!props.workspaceId) {
+    showError("请先选择工作区");
+    return;
+  }
+  workspaceToolEnabled.value = !workspaceToolEnabled.value;
+}
 function toggleWebFetchTool() { webFetchToolEnabled.value = !webFetchToolEnabled.value; }
 function toggleRetrieveKnowledgeTool() { retrieveKnowledgeToolEnabled.value = !retrieveKnowledgeToolEnabled.value; }
 function toggleWikiTool() { wikiToolEnabled.value = !wikiToolEnabled.value; }
@@ -547,7 +558,7 @@ function handleOutsideClick(event: MouseEvent) {
             >
               <SvgIcon name="folder" :size="14" />
               <span class="dropdown-tool-label">工作区</span>
-              <span class="dropdown-tool-state">{{ workspaceToolEnabled ? '开' : '关' }}</span>
+              <span class="dropdown-tool-state">{{ workspaceId ? (workspaceToolEnabled ? '开' : '关') : '未选' }}</span>
             </button>
             <button
               class="tools-dropdown-item"

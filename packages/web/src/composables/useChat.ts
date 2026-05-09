@@ -8,7 +8,7 @@ export interface DirectModelSelection {
   modelId: string;
 }
 
-export function useChat(conversationId: Ref<string | null>) {
+export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<string | null> = ref(null)) {
   const conversationStore = useConversationStore();
   const { send, connected, connect } = useWebSocket();
   const inputText = ref("");
@@ -147,6 +147,7 @@ export function useChat(conversationId: Ref<string | null>) {
           content: text,
           enabledTools: enabledTools.value,
           thinkingLevel: thinkingLevel.value,
+          ...(workspaceId.value ? { workspaceId: workspaceId.value } : {}),
         },
       });
     } else {
@@ -157,6 +158,7 @@ export function useChat(conversationId: Ref<string | null>) {
           content: text,
           enabledTools: enabledTools.value,
           thinkingLevel: thinkingLevel.value,
+          ...(workspaceId.value ? { workspaceId: workspaceId.value } : {}),
         },
       });
     }
@@ -189,6 +191,7 @@ export function useChat(conversationId: Ref<string | null>) {
         content: text,
         enabledTools: enabledTools.value,
         thinkingLevel: thinkingLevel.value,
+        ...(workspaceId.value ? { workspaceId: workspaceId.value } : {}),
       },
     });
 

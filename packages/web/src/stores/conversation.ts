@@ -1033,6 +1033,13 @@ export const useConversationStore = defineStore("conversation", () => {
     return res.data;
   }
 
+  async function updateConversationWorkspace(conversationId: string, workspaceId: string | null) {
+    updateConversationInfo(conversationId, { workspaceId: workspaceId ?? undefined });
+    const res = await conversationsApi.updateConversationWorkspace(conversationId, workspaceId);
+    updateConversationInfo(conversationId, res.data);
+    return res.data;
+  }
+
   function setDirectModel(
     conversationId: string | null | undefined,
     model: ConversationInfo["directModel"] | null,
@@ -1077,6 +1084,9 @@ export const useConversationStore = defineStore("conversation", () => {
         patch.directModel = normalized;
       }
     }
+    if (typeof raw.workspaceId === "string") {
+      patch.workspaceId = raw.workspaceId;
+    }
 
     if (
       conversationId
@@ -1084,6 +1094,7 @@ export const useConversationStore = defineStore("conversation", () => {
         patch.enabledTools !== undefined
         || patch.thinkingLevel !== undefined
         || patch.directModel !== undefined
+        || patch.workspaceId !== undefined
       )
     ) {
       updateConversationInfo(conversationId, patch);
@@ -1129,6 +1140,7 @@ export const useConversationStore = defineStore("conversation", () => {
     deleteConversation,
     clearConversationContext,
     updateConversationPreferences: persistConversationPreferences,
+    updateConversationWorkspace,
     setDirectModel,
     getDirectModel,
     getEnabledTools,

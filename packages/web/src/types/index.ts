@@ -74,6 +74,16 @@ export interface ConversationInfo {
   updatedAt: number;
 }
 
+export interface WorkspaceInfo {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  archivedAt?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface ConversationEvent {
   id: string;
   agentId?: string | null;

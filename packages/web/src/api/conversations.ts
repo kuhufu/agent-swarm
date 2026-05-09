@@ -68,6 +68,13 @@ export function updateConversationPreferences(
   });
 }
 
+export function updateConversationWorkspace(conversationId: string, workspaceId: string | null) {
+  return apiClient<ConversationDetailResponse>(`/conversations/${conversationId}/workspace`, {
+    method: "PATCH",
+    body: JSON.stringify({ workspaceId }),
+  });
+}
+
 export function getMessages(conversationId: string, since?: number) {
   return apiClient<MessageListResponse>(`/conversations/${conversationId}/messages`);
 }
