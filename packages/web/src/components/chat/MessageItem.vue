@@ -530,6 +530,48 @@ function handleFork() {
   border-top: 1px solid var(--color-border-subtle);
 }
 
+.markdown-content :deep(table) {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 10px 0;
+  font-size: 13px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.markdown-content :deep(th),
+.markdown-content :deep(td) {
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  border-right: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.markdown-content :deep(th) {
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.markdown-content :deep(td) {
+  color: var(--color-text-secondary);
+}
+
+.markdown-content :deep(tr:last-child td) {
+  border-bottom: 0;
+}
+
+.markdown-content :deep(th:last-child),
+.markdown-content :deep(td:last-child) {
+  border-right: 0;
+}
+
+.markdown-content :deep(tr:nth-child(even) td) {
+  background: rgba(255, 255, 255, 0.015);
+}
+
 .markdown-content :deep(.katex) {
   color: var(--color-text-primary);
   font-size: 1.04em;
