@@ -14,6 +14,49 @@ import WorkspaceGrepCard from "./WorkspaceGrepCard.vue";
 import ContainerResultCard from "./ContainerResultCard.vue";
 import NextActionsCard from "./NextActionsCard.vue";
 
+const TOOL_LABELS: Record<string, string> = {
+  web_search: "网页搜索",
+  web_fetch: "抓取网页",
+  browser_automation: "浏览器操作",
+  retrieve_knowledge: "知识库检索",
+  search_wiki: "Wiki 搜索",
+  javascript_execute: "执行 JavaScript",
+  current_time: "获取时间",
+  handoff: "交接 Agent",
+  route_to_agent: "路由到 Agent",
+  workspace_read_file: "读取文件",
+  workspace_write_file: "写入文件",
+  workspace_list_files: "文件列表",
+  workspace_grep: "搜索文件内容",
+  workspace_run_container: "运行容器",
+  workspace_list_containers: "容器列表",
+  workspace_start_containers: "启动容器",
+  workspace_stop_containers: "停止容器",
+  workspace_restart_containers: "重启容器",
+  workspace_remove_containers: "移除容器",
+  workspace_pull_image: "拉取镜像",
+  workspace_docker_exec: "执行 Docker 命令",
+};
+
+const TOOL_COLORS: Record<string, string> = {
+  search: "search",
+  retrieve: "knowledge",
+  web: "search",
+  workspace: "file",
+  handoff: "handoff",
+  javascript: "code",
+  browser: "browser",
+  current: "code",
+};
+
+const TOOL_CATEGORY = [
+  { prefixes: ["web_search", "web_fetch", "browser_automation"], cls: "search" },
+  { prefixes: ["retrieve_knowledge", "search_wiki"], cls: "knowledge" },
+  { prefixes: ["javascript_execute", "current_time"], cls: "code" },
+  { prefixes: ["handoff", "route_to_agent"], cls: "handoff" },
+  { prefixes: ["workspace_"], cls: "file" },
+];
+
 const props = defineProps<{
   toolCall: ToolCallInfo;
 }>();
@@ -21,6 +64,17 @@ const props = defineProps<{
 const expanded = ref(false);
 const showRaw = ref(false);
 const showContent = ref(false);
+
+const toolLabel = computed(() => TOOL_LABELS[props.toolCall.name] ?? props.toolCall.name);
+
+const colorClass = computed(() => {
+  for (const cat of TOOL_CATEGORY) {
+    if (cat.prefixes.some((p) => props.toolCall.name.startsWith(p))) {
+      return cat.cls;
+    }
+  }
+  return "";
+});
 
 const isKnowledgeTool = computed(() => props.toolCall.name === "retrieve_knowledge");
 const isWikiTool = computed(() => props.toolCall.name === "search_wiki");
@@ -137,6 +191,12 @@ const status = computed(() => {
   return { label: "运行中", cls: "running" };
 });
 
+const statusIcon = computed(() => {
+  if (props.toolCall.isError === true) return "close";
+  if (props.toolCall.details !== undefined) return "check";
+  return "wrench";
+});
+
 function extractWorkspaceArtifact(details: unknown, toolName: string): { path: string; size?: number; kind?: string } | null {
   if (toolName !== "workspace_write_file" || !details || typeof details !== "object" || Array.isArray(details)) {
     return null;
@@ -171,10 +231,10 @@ function formatSize(bytes?: number): string {
 <template>
   <div class="tool-call-card" :class="{ expanded }" @click="expanded = !expanded">
     <div class="tool-header">
-      <div class="tool-icon-wrapper">
-        <SvgIcon name="wrench" :size="12" />
+      <div :class="['tool-icon-wrapper', colorClass]">
+        <SvgIcon :name="statusIcon" :size="12" />
       </div>
-      <span class="tool-name">{{ toolCall.name }}</span>
+      <span class="tool-name">{{ toolLabel }}</span>
       <span v-if="paramSummary" class="tool-param-summary" :title="paramSummary">{{ paramSummary }}</span>
       <span v-if="formattedDuration" class="tool-duration">{{ formattedDuration }}</span>
       <span :class="['tool-status', status.cls]">
@@ -270,7 +330,7 @@ function formatSize(bytes?: number): string {
           </div>
         </div>
       </div>
-    </div>
+      </div>
   </div>
 </template>
 
@@ -307,11 +367,33 @@ function formatSize(bytes?: number): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(99, 102, 241, 0.1);
   border-radius: 6px;
+  transition: background 0.2s, color 0.2s;
+}
+.tool-icon-wrapper.search {
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+}
+.tool-icon-wrapper.knowledge {
+  background: rgba(20, 184, 166, 0.12);
+  color: #2dd4bf;
+}
+.tool-icon-wrapper.code {
+  background: rgba(251, 146, 60, 0.12);
+  color: #fb923c;
+}
+.tool-icon-wrapper.handoff {
+  background: rgba(168, 85, 247, 0.12);
+  color: #c084fc;
+}
+.tool-icon-wrapper.file {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+}
+.tool-icon-wrapper:not(.search):not(.knowledge):not(.code):not(.handoff):not(.file) {
+  background: rgba(99, 102, 241, 0.1);
   color: var(--color-accent-light);
 }
-
 .tool-icon-wrapper svg {
   width: 12px;
   height: 12px;
@@ -385,6 +467,20 @@ function formatSize(bytes?: number): string {
   padding: 0 14px 14px;
   border-top: 1px solid var(--color-border-subtle);
   margin-top: 0;
+  overflow: hidden;
+  animation: expandIn 0.2s ease both;
+}
+@keyframes expandIn {
+  from {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  to {
+    max-height: 2000px;
+    opacity: 1;
+  }
 }
 
 .tool-section {

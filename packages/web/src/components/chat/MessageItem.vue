@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import type { ChatMessage } from "../../types/index.js";
+import type { ChatMessage, ToolCallInfo } from "../../types/index.js";
 import { agentColor } from "../../utils/agent-color.js";
 import { formatTimeShort } from "../../utils/format.js";
 import { renderMarkdown } from "../../composables/useMarkdown.js";
@@ -76,6 +76,39 @@ function roleClass(role: string): string {
 const formatTime = formatTimeShort;
 
 const copySuccess = ref(false);
+const foldedExpandedKeys = ref<Set<string>>(new Set());
+
+interface ToolCallGroup {
+  name: string;
+  items: ToolCallInfo[];
+}
+
+const groupedToolCalls = computed(() => {
+  const calls = props.message.toolCalls;
+  if (!calls || calls.length <= 1) return null;
+  const groups: ToolCallGroup[] = [];
+  for (const tc of calls) {
+    const prev = groups[groups.length - 1];
+    if (prev && prev.name === tc.name && prev.items.length > 0) {
+      prev.items.push(tc);
+    } else {
+      groups.push({ name: tc.name, items: [tc] });
+    }
+  }
+  return groups;
+});
+
+const TOOL_FOLD_THRESHOLD = 2;
+
+function toggleFoldedGroup(name: string) {
+  const next = new Set(foldedExpandedKeys.value);
+  if (next.has(name)) {
+    next.delete(name);
+  } else {
+    next.add(name);
+  }
+  foldedExpandedKeys.value = next;
+}
 
 async function handleCopy() {
   try {
@@ -152,6 +185,7 @@ function handleFork() {
               :tool-call="tc"
             />
           </div>
+          <!-- parts path skips folding since streaming messages are transient -->
         </template>
       </template>
       <template v-else>
@@ -173,11 +207,48 @@ function handleFork() {
         />
 
         <div v-if="message.toolCalls?.length" class="msg-tool-calls">
-          <ToolCallCard
-            v-for="tc in message.toolCalls"
-            :key="tc.id"
-            :tool-call="tc"
-          />
+          <template v-if="groupedToolCalls">
+            <template v-for="g in groupedToolCalls" :key="g.name">
+              <template v-if="g.items.length >= TOOL_FOLD_THRESHOLD">
+                <div class="tool-fold-group">
+                  <button
+                    type="button"
+                    class="tool-fold-header"
+                    @click="toggleFoldedGroup(g.name)"
+                  >
+                    <SvgIcon
+                      :name="foldedExpandedKeys.has(g.name) ? 'chevronDown' : 'chevronRight'"
+                      :size="12"
+                    />
+                    <span class="tool-fold-name">{{ g.items[0]?.name ?? g.name }}</span>
+                    <span class="tool-fold-count">&times;{{ g.items.length }}</span>
+                    <span class="tool-fold-dummy" />
+                  </button>
+                  <div v-if="foldedExpandedKeys.has(g.name)" class="tool-fold-children">
+                    <ToolCallCard
+                      v-for="tc in g.items"
+                      :key="tc.id"
+                      :tool-call="tc"
+                    />
+                  </div>
+                </div>
+              </template>
+              <template v-else>
+                <ToolCallCard
+                  v-for="tc in g.items"
+                  :key="tc.id"
+                  :tool-call="tc"
+                />
+              </template>
+            </template>
+          </template>
+          <template v-else>
+            <ToolCallCard
+              v-for="tc in message.toolCalls"
+              :key="tc.id"
+              :tool-call="tc"
+            />
+          </template>
         </div>
       </template>
 
@@ -592,6 +663,52 @@ function handleFork() {
   align-items: flex-start;
   gap: 8px;
   width: 100%;
+}
+
+.tool-fold-group {
+  width: 100%;
+}
+.tool-fold-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--color-border-subtle);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+}
+.tool-fold-header:hover {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: var(--color-border-hover);
+}
+.tool-fold-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+.tool-fold-count {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: rgba(99, 102, 241, 0.1);
+  padding: 1px 7px;
+  border-radius: 9999px;
+  font-weight: 600;
+}
+.tool-fold-dummy {
+  flex: 1;
+}
+.tool-fold-children {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 @keyframes fadeIn {
