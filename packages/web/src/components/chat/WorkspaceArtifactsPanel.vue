@@ -71,6 +71,10 @@ const searchQuery = ref("");
 const artifactVersions = ref<WorkspaceFileVersion[]>([]);
 const previewVersion = ref<WorkspaceFileVersion | null>(null);
 const diffResult = ref<Change[] | null>(null);
+const versionModalOpen = ref(false);
+const versionDiffIndex = ref(-1);
+const versionDiffResult = ref<Change[] | null>(null);
+const versionDiffLoading = ref(false);
 
 const totalSize = computed(() => artifacts.value.reduce((sum, item) => sum + item.size, 0));
 const selectedCount = computed(() => selectedPaths.value.size);
@@ -301,6 +305,45 @@ async function loadArtifactVersions(artifact = selectedArtifact.value) {
     showError(error instanceof Error ? error.message : "加载版本记录失败");
   } finally {
     versionsLoading.value = false;
+  }
+}
+
+async function openVersionModal() {
+  if (!selectedArtifact.value || !props.workspaceId) return;
+  versionDiffIndex.value = -1;
+  versionDiffResult.value = null;
+  versionModalOpen.value = true;
+  await loadArtifactVersions(selectedArtifact.value);
+}
+
+function closeVersionModal() {
+  versionModalOpen.value = false;
+  versionDiffIndex.value = -1;
+  versionDiffResult.value = null;
+}
+
+async function showVersionDiff(index: number) {
+  const version = artifactVersions.value[index];
+  if (!version || !props.workspaceId) return;
+  versionDiffIndex.value = index;
+  versionDiffResult.value = null;
+  versionDiffLoading.value = true;
+  try {
+    const prevIndex = index + 1;
+    const prevVersion = prevIndex < artifactVersions.value.length ? artifactVersions.value[prevIndex] : version;
+    const [currentRes, prevRes] = await Promise.all([
+      apiClient<{ data: ArtifactContent }>(
+        `/workspaces/${props.workspaceId}/files/versions/content?path=${encodeURIComponent(version.path)}&versionId=${encodeURIComponent(version.id)}`,
+      ),
+      apiClient<{ data: ArtifactContent }>(
+        `/workspaces/${props.workspaceId}/files/versions/content?path=${encodeURIComponent(prevVersion.path)}&versionId=${encodeURIComponent(prevVersion.id)}`,
+      ),
+    ]);
+    versionDiffResult.value = diffLines(prevRes.data.content, currentRes.data.content);
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "加载版本对比失败");
+  } finally {
+    versionDiffLoading.value = false;
   }
 }
 
@@ -891,52 +934,85 @@ function getFileColor(name: string): string {
           </div>
         </div>
         <div class="detail-actions">
-          <button type="button" title="预览" :disabled="!selectedArtifact.previewable" @click="openPreview()">
-            <SvgIcon name="search" :size="14" />
-          </button>
-          <button type="button" title="下载" @click="downloadArtifact()">
-            <SvgIcon name="download" :size="14" />
-          </button>
-          <button type="button" title="版本记录" @click="loadArtifactVersions()">
-            <SvgIcon name="history" :size="14" />
-          </button>
-          <button type="button" title="加入文档" @click="importArtifact()">
-            <SvgIcon name="book" :size="14" />
-          </button>
-          <button type="button" :title="selectedArtifact.final ? '取消最终' : '标记最终'" @click="toggleFinalArtifact(selectedArtifact)">
-            <SvgIcon :name="selectedArtifact.final ? 'close' : 'check'" :size="14" />
-          </button>
-          <button type="button" title="删除" class="danger" @click="deleteArtifact()">
-            <SvgIcon name="trash" :size="14" />
-          </button>
-        </div>
-        <section class="version-panel">
-          <div class="version-title">
-            <span>版本记录</span>
-            <button type="button" :disabled="versionsLoading" @click="loadArtifactVersions()">
-              <SvgIcon name="refresh" :size="12" />
+          <div class="detail-actions-left">
+            <button type="button" title="预览" :disabled="!selectedArtifact.previewable" @click="openPreview()">
+              <SvgIcon name="search" :size="14" />
+            </button>
+            <button type="button" title="下载" @click="downloadArtifact()">
+              <SvgIcon name="download" :size="14" />
+            </button>
+            <button type="button" title="加入文档" @click="importArtifact()">
+              <SvgIcon name="book" :size="14" />
+            </button>
+            <button type="button" :title="selectedArtifact.final ? '取消最终' : '标记最终'" @click="toggleFinalArtifact(selectedArtifact)">
+              <SvgIcon :name="selectedArtifact.final ? 'close' : 'check'" :size="14" />
+            </button>
+            <button type="button" title="删除" class="danger" @click="deleteArtifact()">
+              <SvgIcon name="trash" :size="14" />
             </button>
           </div>
-          <div v-if="versionsLoading" class="version-empty">加载中...</div>
-          <div v-else-if="artifactVersions.length === 0" class="version-empty">暂无历史版本，新写入会开始记录</div>
-          <div v-else class="version-list">
-            <button
-              v-for="(version, index) in artifactVersions"
-              :key="version.id"
-              type="button"
-              class="version-item"
-              @click="openVersionPreview(version)"
-            >
-              <span class="version-item-main">
-                <span>{{ index === 0 ? "当前版本" : `历史版本 ${artifactVersions.length - index}` }}</span>
-                <button v-if="index > 0" type="button" title="恢复此版本" @click.stop="restoreArtifactVersion(version)">恢复</button>
-              </span>
-              <small>{{ formatSize(version.size) }} · {{ formatTime(version.updatedAt) }}</small>
+          <button type="button" class="version-btn" @click="openVersionModal">
+            历史版本 · {{ selectedArtifact.versionCount }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 版本历史弹窗 ── -->
+    <teleport to="body">
+      <div v-if="versionModalOpen" class="version-modal" @click.self="closeVersionModal">
+        <section class="version-dialog">
+          <header class="version-dialog-header">
+            <h3>版本记录 · {{ selectedArtifact!.name }}</h3>
+            <button class="icon-btn" type="button" title="关闭" @click="closeVersionModal">
+              <SvgIcon name="close" :size="15" />
             </button>
+          </header>
+          <div class="version-dialog-body">
+            <!-- 左侧列表 -->
+            <aside class="version-dialog-list">
+              <div v-if="versionsLoading" class="version-empty">加载中...</div>
+              <div v-else-if="artifactVersions.length === 0" class="version-empty">暂无历史版本</div>
+              <button
+                v-else
+                v-for="(version, index) in artifactVersions"
+                :key="version.id"
+                type="button"
+                class="version-dialog-item"
+                :class="{ active: versionDiffIndex === index, current: index === 0 }"
+                @click="showVersionDiff(index)"
+              >
+                <span class="version-dialog-item-main">
+                  <span>{{ index === 0 ? "当前版本" : `版本 ${artifactVersions.length - index}` }}</span>
+                  <span class="version-dialog-item-size">{{ formatSize(version.size) }}</span>
+                </span>
+                <small>{{ formatTime(version.updatedAt) }}</small>
+                <button
+                  v-if="index > 0"
+                  type="button"
+                  class="version-dialog-restore"
+                  title="恢复此版本"
+                  @click.stop="restoreArtifactVersion(version)"
+                >恢复</button>
+              </button>
+            </aside>
+            <!-- 右侧 diff -->
+            <div class="version-dialog-diff">
+              <div v-if="versionDiffLoading" class="empty-state compact">加载中...</div>
+              <div v-else-if="versionDiffResult" class="diff-view">
+                <div
+                  v-for="(part, i) in versionDiffResult"
+                  :key="i"
+                  class="diff-line"
+                  :class="{ added: part.added, removed: part.removed }"
+                ><span class="diff-marker">{{ part.added ? '+' : part.removed ? '-' : ' ' }}</span><span class="diff-text">{{ part.value }}</span></div>
+              </div>
+              <div v-else class="empty-state compact">点击左侧版本查看差异对比</div>
+            </div>
           </div>
         </section>
       </div>
-    </div>
+    </teleport>
 
     <teleport to="body">
       <div v-if="previewOpen && selectedArtifact" class="preview-modal" @click.self="closePreview">
@@ -1573,7 +1649,36 @@ function getFileColor(name: string): string {
 
 .detail-actions {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 5px;
+}
+
+.detail-actions-left {
+  display: flex;
+  gap: 5px;
+}
+
+.version-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px;
+  height: auto !important;
+  width: auto !important;
+  border: 0 !important;
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  background: transparent !important;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.version-btn:hover {
+  color: var(--color-accent-light);
+  background: rgba(99, 102, 241, 0.08) !important;
 }
 
 .detail-actions button {
@@ -1613,154 +1718,160 @@ function getFileColor(name: string): string {
   opacity: 0.4;
 }
 
-.version-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-top: 8px;
-  border-top: 1px solid var(--color-border-subtle);
+.version-empty {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  padding: 8px 2px;
 }
 
-.version-title {
+/* ── 版本弹窗 ── */
+.version-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: rgba(2, 6, 23, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.version-dialog {
+  max-width: 860px;
+  max-height: 70vh;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(30, 41, 59, 0.97);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.version-dialog-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  color: var(--color-text-muted);
-  font-size: 11px;
-  font-weight: 700;
+  gap: 16px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
 }
 
-.version-title button {
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
-  color: var(--color-text-muted);
-  background: rgba(255, 255, 255, 0.035);
-  cursor: pointer;
-  transition: all 0.15s ease;
+.version-dialog-header h3 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-weight: 600;
 }
 
-.version-title button:hover:not(:disabled) {
-  color: var(--color-text-secondary);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-.version-title button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
-.version-list {
+.version-dialog-body {
+  flex: 1;
+  min-height: 0;
   display: grid;
-  gap: 4px;
-  max-height: 116px;
-  overflow-y: auto;
+  grid-template-columns: 240px 1fr;
+  overflow: hidden;
 }
 
-.version-item {
+.version-dialog-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border-right: 1px solid var(--color-border-subtle);
+}
+
+.version-dialog-item {
+  position: relative;
   min-width: 0;
   display: grid;
-  gap: 2px;
+  gap: 1px;
   padding: 8px 10px;
   border: 1px solid transparent;
   border-radius: 8px;
   color: var(--color-text-secondary);
-  background: rgba(255, 255, 255, 0.02);
+  background: transparent;
   cursor: pointer;
   text-align: left;
-  transition: all 0.15s ease;
-}
-
-.version-item:hover {
-  border-color: rgba(99, 102, 241, 0.25);
-  background: rgba(99, 102, 241, 0.08);
-}
-
-.version-item-main {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.version-item-main > span {
+  font-family: inherit;
   font-size: 11px;
-  font-weight: 650;
+  transition: all 0.12s ease;
 }
 
-.version-item-main button {
-  min-height: 22px;
-  padding: 0 8px;
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 999px;
-  color: var(--color-accent-light);
+.version-dialog-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--color-border-hover);
+}
+
+.version-dialog-item.active {
+  border-color: rgba(99, 102, 241, 0.3);
   background: rgba(99, 102, 241, 0.08);
-  cursor: pointer;
-  font-size: 10px;
-  font-weight: 700;
-  transition: all 0.15s ease;
 }
 
-.version-item-main button:hover {
-  background: rgba(99, 102, 241, 0.18);
-  border-color: rgba(99, 102, 241, 0.35);
+.version-dialog-item.current {
+  border-color: rgba(99, 102, 241, 0.2);
+  background: rgba(99, 102, 241, 0.04);
 }
 
-.version-item small,
-.version-empty {
+.version-dialog-item small {
   color: var(--color-text-muted);
   font-size: 10px;
 }
 
-.version-empty {
-  padding: 8px 2px;
+.version-dialog-item-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-weight: 600;
 }
 
-.text-preview {
-  height: 100%;
-  min-height: 0;
-  margin: 0;
-  padding: 12px;
-  overflow: auto;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 9px;
-  background: rgba(0, 0, 0, 0.2);
-  color: var(--color-text-secondary);
+.version-dialog-item-size {
+  color: var(--color-text-muted);
+  font-weight: 400;
+  font-size: 10px;
   font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
 }
 
-.code-preview {
-  white-space: pre;
-}
-
-.code-preview code {
-  display: block;
-  padding: 0;
-  background: transparent;
-  color: inherit;
+.version-dialog-restore {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: none;
+  align-items: center;
+  padding: 2px 8px;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 999px;
+  color: var(--color-accent-light);
+  background: rgba(99, 102, 241, 0.1);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
   font-family: inherit;
+  transition: all 0.12s ease;
 }
 
-.image-preview {
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  object-fit: contain;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 9px;
-  background: rgba(0, 0, 0, 0.2);
+.version-dialog-item:hover .version-dialog-restore {
+  display: inline-flex;
 }
 
+.version-dialog-restore:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.version-dialog-diff {
+  overflow: auto;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* ── 旧预览弹窗恢复 ── */
 .preview-modal {
   position: fixed;
   inset: 0;
