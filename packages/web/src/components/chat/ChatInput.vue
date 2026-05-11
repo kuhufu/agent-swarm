@@ -422,11 +422,8 @@ function handleOutsideClick(event: MouseEvent) {
       @keydown="handleKeydown"
     />
     <div class="tool-options">
-      <!-- Attachment / paperclip button -->
       <button class="tool-btn" title="附件" @mousedown="handleKeepTextareaFocusMouseDown">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 15px; height: 15px;">
-          <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-        </svg>
+        <SvgIcon name="attachment" :size="15" />
       </button>
 
       <!-- Direct mode: model selector inline -->
@@ -471,9 +468,7 @@ function handleOutsideClick(event: MouseEvent) {
           @mousedown="handleKeepTextareaFocusMouseDown"
           @click="handleToggleThinkLevel"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
-            <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-          </svg>
+          <SvgIcon name="lightbulb" :size="14" />
         </button>
         <div v-if="showThinkLevelSelect" class="think-level-dropdown">
           <button
@@ -504,12 +499,7 @@ function handleOutsideClick(event: MouseEvent) {
         title="语音输入"
         @mousedown="handleKeepTextareaFocusMouseDown"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-          <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-          <path d="M19 10v2a7 7 0 01-14 0v-2" />
-          <line x1="12" y1="19" x2="12" y2="23" />
-          <line x1="8" y1="23" x2="16" y2="23" />
-        </svg>
+        <SvgIcon name="mic" :size="14" />
       </button>
 
       <!-- Tools dropdown -->
@@ -521,10 +511,7 @@ function handleOutsideClick(event: MouseEvent) {
           @mousedown="handleKeepTextareaFocusMouseDown"
           @click="handleToggleToolsDropdown"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
-            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
+          <SvgIcon name="wrench" :size="14" />
           <span v-if="activeToolCount > 0" class="tool-badge">{{ activeToolCount }}</span>
         </button>
         <div v-if="showToolsDropdown" class="tools-dropdown">
@@ -561,10 +548,7 @@ function handleOutsideClick(event: MouseEvent) {
             @mousedown="handleKeepTextareaFocusMouseDown"
             @click="toggleToolFromDropdown(toggleWebFetchTool)"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
-              <path d="M13.5 2C13.5 2 19 5 19 12C19 19 13.5 22 13.5 22" />
-              <path d="M2 12h18M6 8l-4 4 4 4" />
-            </svg>
+            <SvgIcon name="globe" :size="14" />
             <span class="dropdown-tool-label">抓取网页</span>
           </button>
           <button
@@ -573,12 +557,7 @@ function handleOutsideClick(event: MouseEvent) {
             @mousedown="handleKeepTextareaFocusMouseDown"
             @click="toggleToolFromDropdown(toggleBrowserAutomationTool)"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
-              <circle cx="12" cy="12" r="10" />
-              <circle cx="12" cy="12" r="4" />
-              <line x1="2" y1="12" x2="22" y2="12" />
-              <line x1="12" y1="2" x2="12" y2="22" />
-            </svg>
+            <SvgIcon name="globe" :size="14" />
             <span class="dropdown-tool-label">浏览器</span>
           </button>
           <button
@@ -604,10 +583,7 @@ function handleOutsideClick(event: MouseEvent) {
 
       <!-- Link / chain -->
       <button class="tool-btn" title="链接" @mousedown="handleKeepTextareaFocusMouseDown">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
-          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-        </svg>
+        <SvgIcon name="link" :size="14" />
       </button>
 
       <!-- Spacer -->

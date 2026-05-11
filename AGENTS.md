@@ -130,6 +130,7 @@ pnpm test                  # 运行 core + server 单元测试
   - 阴影：`--shadow-sm / --shadow-md / --shadow-lg` 三层
   - 字号：`--text-xs 10px` / `--text-sm 12px` / `--text-base 14px` / `--text-lg 16px` / `--text-xl 20px`
   - 字重：`--weight-normal 400` / `--weight-medium 500` / `--weight-bold 600`
+- **SVG 图标**：统一使用 `<SvgIcon name="xxx" :size="16" />` 组件（位于 `packages/web/src/components/common/SvgIcon.vue`），所有图标定义集中管理在 `packages/web/src/constants/icons.ts` 的 `ICONS` 对象中。禁止在模板中使用内联 SVG；新增图标时需在 `icons.ts` 中添加对应 `IconDef` 定义后通过组件引用
 - 虚拟滚动：消息列表大量消息时使用虚拟滚动
 - 会话路由：聊天页使用 `/chat/:conversationId?`；切换会话需同步更新 URL 中的 `conversationId`
 
