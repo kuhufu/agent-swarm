@@ -144,7 +144,7 @@ function getEffectiveProtocol(id: string): ApiProtocol {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-accent-bg);
+  background: var(--bg-hover);
   border-radius: 8px;
   font-size: var(--text-base);
   font-weight: 700;
@@ -185,6 +185,6 @@ function getEffectiveProtocol(id: string): ApiProtocol {
 .checkbox-inline input[type="checkbox"] {
   width: 14px;
   height: 14px;
-  accent-color: var(--color-accent);
+  accent-color: var(--border-default);
 }
 </style>

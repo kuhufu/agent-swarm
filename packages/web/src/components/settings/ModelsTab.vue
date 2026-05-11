@@ -334,7 +334,6 @@ async function testModel(provider: string, modelId: string) {
   position: absolute;
   inset: 0;
   background: transparent;
-  backdrop-filter: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -354,8 +353,7 @@ async function testModel(provider: string, modelId: string) {
   overflow: hidden;
   box-shadow:
     0 24px 64px rgba(0, 0, 0, 0.38),
-    0 8px 20px rgba(0, 0, 0, 0.28),
-     0 0 0 1px var(--color-accent-glow);
+    0 8px 20px rgba(0, 0, 0, 0.28);
 }
 .dialog-header {
   display: flex;
@@ -420,8 +418,7 @@ async function testModel(provider: string, modelId: string) {
   cursor: grabbing;
 }
 .model-item.drag-over {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px var(--color-accent-glow);
+  border-color: var(--border-default);
   transform: translateY(2px);
 }
 .model-main {
@@ -435,7 +432,7 @@ async function testModel(provider: string, modelId: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-accent-bg);
+  background: var(--bg-hover);
   border-radius: 10px;
   font-size: var(--text-base);
   font-weight: 700;
@@ -500,13 +497,13 @@ async function testModel(provider: string, modelId: string) {
   transition: all 0.15s;
 }
 .model-pick-item:hover {
-  background: var(--color-accent-bg);
+  background: var(--bg-hover);
   border-color: var(--border-default);
 }
 .model-pick-item.active {
-  background: var(--color-accent-bg);
-  border-color: var(--color-accent);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
 }
 .model-pick-id {
   font-family: var(--font-mono);

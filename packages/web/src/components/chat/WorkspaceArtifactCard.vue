@@ -79,9 +79,8 @@ const emit = defineEmits<{
 
 .artifact-open-btn:hover {
   color: var(--text-secondary);
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
-  box-shadow: 0 0 0 1px var(--color-accent-glow);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .artifact-open-btn svg {

@@ -513,7 +513,6 @@ async function saveSettings() {
   width: 280px;
   border-right: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(20px) saturate(1.3);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -584,9 +583,9 @@ async function saveSettings() {
 }
 
 .settings-item.active {
-  background: var(--color-accent-bg);
-  border-color: var(--color-accent);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
 }
 
 .settings-item-top {
@@ -624,7 +623,7 @@ async function saveSettings() {
 }
 
 .settings-item.active .settings-meta {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .sidebar-status {
@@ -713,7 +712,6 @@ async function saveSettings() {
   position: absolute;
   inset: 0;
   background: transparent;
-  backdrop-filter: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -815,7 +813,7 @@ async function saveSettings() {
 .checkbox-inline input[type="checkbox"] {
   width: 14px;
   height: 14px;
-  accent-color: var(--color-accent);
+  accent-color: var(--border-default);
 }
 
 .dialog-footer {

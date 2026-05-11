@@ -513,7 +513,6 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 .history-sidebar {
   width: 280px;
   background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(20px) saturate(1.3);
   border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
@@ -592,9 +591,9 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 .nav-item.active {
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
-  border-color: var(--color-accent);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border-color: var(--border-default);
 }
 
 .nav-item div {
@@ -618,7 +617,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 .nav-item.active .nav-desc {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .nav-divider {
@@ -643,8 +642,8 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 .nav-item.active .conv-nav-icon {
-  color: var(--color-accent-light);
-  background: var(--color-accent-bg);
+  color: var(--text-secondary);
+  background: var(--bg-hover);
 }
 
 .nav-empty {
@@ -901,8 +900,8 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 .trace-item.accent .trace-dot {
-  background: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-glow);
+  background: var(--text-muted);
+  box-shadow: 0 0 0 3px rgba(156, 163, 175, 0.12);
 }
 
 .trace-item.tool .trace-dot {

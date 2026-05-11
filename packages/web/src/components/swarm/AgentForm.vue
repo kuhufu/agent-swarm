@@ -172,9 +172,9 @@ function handleSubmit() {
 }
 
 .model-chip.active {
-  background: var(--color-accent-bg);
-  border-color: var(--color-accent);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
 }
 
 .agent-form-actions {

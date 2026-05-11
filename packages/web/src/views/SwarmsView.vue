@@ -815,7 +815,6 @@ function clearModelSelection() {
   width: 280px;
   border-right: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(20px) saturate(1.3);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -890,9 +889,9 @@ function clearModelSelection() {
 }
 
 .swarm-item.active {
-  background: var(--color-accent-bg);
-  border-color: var(--color-accent);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
 }
 
 .swarm-item-top {
@@ -925,7 +924,7 @@ function clearModelSelection() {
 }
 
 .swarm-item.active .swarm-meta {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .nav-empty {
@@ -1045,8 +1044,8 @@ function clearModelSelection() {
 }
 
 .detail-title-input:focus {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .detail-actions {
@@ -1111,8 +1110,8 @@ function clearModelSelection() {
 }
 
 .mode-option.active {
-  background: var(--color-accent-bg);
-  border-color: var(--color-accent);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
 }
 
 .mode-icon {
@@ -1145,7 +1144,6 @@ function clearModelSelection() {
   position: fixed;
   inset: 0;
   background: transparent;
-  backdrop-filter: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1281,9 +1279,9 @@ textarea.input-field {
 }
 
 .model-chip.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .agent-list {
@@ -1311,14 +1309,14 @@ textarea.input-field {
 
 .agent-edit-card.dragging {
   opacity: 0.58;
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
   cursor: grabbing;
 }
 
 .agent-edit-card.drag-over {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .agent-info {
@@ -1332,11 +1330,11 @@ textarea.input-field {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: var(--color-accent);
+  background: var(--bg-hover);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--text-primary);
   font-size: var(--text-base);
   font-weight: var(--weight-bold);
   flex-shrink: 0;

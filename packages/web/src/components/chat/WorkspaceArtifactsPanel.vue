@@ -1101,8 +1101,8 @@ function getFileColor(name: string): string {
 }
 
 .icon-btn:hover:not(:disabled) {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
@@ -1126,9 +1126,8 @@ function getFileColor(name: string): string {
 }
 
 .artifact-search:focus-within {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
-  box-shadow: 0 0 0 3px var(--color-accent-glow);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .artifact-search input {
@@ -1378,9 +1377,8 @@ function getFileColor(name: string): string {
 }
 
 .artifact-card.active {
-  background: var(--color-accent-bg);
-  border-color: var(--color-accent);
-  box-shadow: 0 0 12px var(--color-accent-glow);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
 }
 
 .final-card {
@@ -1416,7 +1414,7 @@ function getFileColor(name: string): string {
 }
 
 .artifact-card.active .file-icon {
-  background: var(--color-accent-bg);
+  background: var(--bg-hover);
 }
 
 .file-info {
@@ -1491,18 +1489,18 @@ function getFileColor(name: string): string {
 }
 
 .artifact-checkbox:hover {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .artifact-checkbox.checked {
-  border-color: var(--color-accent);
-  background: var(--color-accent);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .artifact-checkbox.partial {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .artifact-checkbox:disabled {
@@ -1677,8 +1675,8 @@ function getFileColor(name: string): string {
 }
 
 .version-btn:hover {
-  color: var(--color-accent-light);
-  background: var(--color-accent-bg) !important;
+  color: var(--text-secondary);
+  background: var(--bg-hover) !important;
 }
 
 .detail-actions button {
@@ -1808,15 +1806,15 @@ function getFileColor(name: string): string {
 }
 
 .version-dialog-item.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .version-dialog-item.current {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .version-dialog-item small {
@@ -1847,10 +1845,10 @@ function getFileColor(name: string): string {
   display: none;
   align-items: center;
   padding: 2px 8px;
-  border: 1px solid var(--color-accent);
+  border: 1px solid var(--border-default);
   border-radius: 999px;
-  color: var(--color-accent-light);
-  background: var(--color-accent-bg);
+  color: var(--text-secondary);
+  background: var(--bg-hover);
   cursor: pointer;
   font-size: var(--text-xs);
   font-weight: var(--weight-bold);
@@ -1863,8 +1861,8 @@ function getFileColor(name: string): string {
 }
 
 .version-dialog-restore:hover {
-  background: var(--color-accent-bg);
-  border-color: var(--color-accent);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
 }
 
 .version-dialog-diff {

@@ -597,7 +597,6 @@ onBeforeUnmount(() => {
   width: 280px;
   border-right: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(20px) saturate(1.3);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -710,9 +709,9 @@ onBeforeUnmount(() => {
 }
 
 .preset-item.active {
-  background: var(--color-accent-bg);
-  border-color: var(--color-accent);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
 }
 
 .preset-item-row {
@@ -739,14 +738,23 @@ onBeforeUnmount(() => {
 
 .preset-item-row:hover {
   border-color: var(--border-default);
-  background: rgba(255, 255, 255, 0.05);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
-.preset-item-row.active {
-  background: var(--color-accent-bg);
-  border-color: var(--color-accent);
-  color: var(--color-accent-light);
+.model-chip:disabled {
+  border-color: var(--border-subtle);
+  border-style: dashed;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.78;
+}
+
+.model-chip:disabled.active {
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .preset-actions {
@@ -797,7 +805,6 @@ onBeforeUnmount(() => {
   border-radius: 10px;
   background: var(--bg-card);
   box-shadow: var(--shadow-md);
-  backdrop-filter: blur(12px);
 }
 
 .preset-action-danger {
@@ -849,15 +856,15 @@ onBeforeUnmount(() => {
 }
 
 .preset-item.active .preset-meta {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .preset-item-row.active .preset-meta {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .template-item {
-  border-left: 3px solid var(--color-accent);
+
 }
 
 .preset-empty {
@@ -882,7 +889,6 @@ onBeforeUnmount(() => {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  backdrop-filter: blur(16px);
   box-shadow: var(--shadow-md);
   padding: 4px;
 }
@@ -918,7 +924,7 @@ onBeforeUnmount(() => {
 }
 
 .detail-hint.info {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .detail-hint.muted {
@@ -1030,9 +1036,9 @@ onBeforeUnmount(() => {
 }
 
 .model-chip.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .model-chip:disabled {
@@ -1045,9 +1051,9 @@ onBeforeUnmount(() => {
 }
 
 .model-chip:disabled.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 @media (max-width: 1024px) {

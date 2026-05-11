@@ -407,7 +407,6 @@ async function handleForkConversation(messageId?: string) {
   padding: 10px 24px;
   border-bottom: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(12px);
 }
 
 .chat-header-left {
@@ -478,9 +477,9 @@ async function handleForkConversation(messageId?: string) {
 
   .workspace-select-btn:hover:not(:disabled),
   .workspace-select-btn.selected {
-    color: var(--color-accent-light);
-    border-color: var(--color-accent);
-    background: var(--color-accent-bg);
+    color: var(--text-secondary);
+    border-color: var(--border-default);
+    background: var(--bg-hover);
   }
 
 .workspace-select-btn:disabled {
@@ -556,9 +555,9 @@ async function handleForkConversation(messageId?: string) {
 
 .workspace-menu-item:hover,
 .workspace-menu-item.active {
-  background: var(--color-accent-bg);
-  border-color: var(--color-accent);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
 }
 
 .workspace-menu-name,
@@ -608,17 +607,16 @@ async function handleForkConversation(messageId?: string) {
 }
 
 .workspace-create input:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-glow);
+  border-color: var(--border-default);
 }
 
   .workspace-create button {
     height: 32px;
-    border: 1px solid var(--color-accent);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-sm);
     padding: 0 12px;
-    background: var(--color-accent-bg);
-    color: var(--color-accent-light);
+    background: var(--bg-hover);
+    color: var(--text-secondary);
     font-size: var(--text-base);
     font-weight: var(--weight-bold);
     cursor: pointer;
@@ -654,7 +652,6 @@ async function handleForkConversation(messageId?: string) {
 .chat-sidebar-right {
   width: 380px;
   background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(12px);
   padding: 20px;
   overflow-y: auto;
   flex-shrink: 0;
@@ -688,8 +685,8 @@ async function handleForkConversation(messageId?: string) {
 }
 
 .sidebar-tabs button.active {
-  color: var(--color-accent-light);
-  background: var(--color-accent-bg);
+  color: var(--text-secondary);
+  background: var(--bg-hover);
 }
 
 .chat-sidebar-right :deep(.agent-status) {

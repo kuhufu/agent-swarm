@@ -460,7 +460,6 @@ onMounted(() => {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(12px) saturate(1.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -571,8 +570,8 @@ onMounted(() => {
 }
 
 .mode-option.active {
-  background: var(--color-accent-bg);
-  border-color: var(--color-accent);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
 }
 
 .mode-icon {
@@ -612,7 +611,6 @@ onMounted(() => {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -706,9 +704,9 @@ onMounted(() => {
 }
 
 .model-chip.active {
-  background: var(--color-accent-bg);
-  border-color: var(--color-accent);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
 }
 
 .agent-list {
@@ -736,14 +734,14 @@ onMounted(() => {
 
 .agent-list-item.dragging {
   opacity: 0.58;
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
   cursor: grabbing;
 }
 
 .agent-list-item.drag-over {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .agent-info {
@@ -758,7 +756,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-accent);
+  background: var(--bg-hover);
   border-radius: var(--radius-md);
   font-size: var(--text-base);
   font-weight: 700;

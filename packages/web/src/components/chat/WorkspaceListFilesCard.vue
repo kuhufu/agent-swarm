@@ -73,8 +73,8 @@ function formatTime(ts?: number): string {
 .list-summary span {
   padding: 3px 8px;
   border-radius: 9999px;
-  background: var(--color-accent-bg);
-  border: 1px solid var(--color-accent);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
   color: var(--text-muted);
   font-size: var(--text-sm);
 }

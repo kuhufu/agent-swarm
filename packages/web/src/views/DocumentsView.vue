@@ -413,8 +413,8 @@ h3 {
 }
 
 .document-list-item.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .document-title {

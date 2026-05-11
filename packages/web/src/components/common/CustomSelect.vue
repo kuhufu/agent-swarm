@@ -105,8 +105,7 @@ function close() {
 }
 
 .select-trigger:focus-visible {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-glow);
+  border-color: var(--border-default);
   outline: none;
 }
 
@@ -170,8 +169,8 @@ function close() {
 }
 
 .select-option.active {
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .select-empty {

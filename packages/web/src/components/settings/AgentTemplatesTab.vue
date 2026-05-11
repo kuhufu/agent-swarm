@@ -444,7 +444,6 @@ onBeforeUnmount(() => {
   border: 1px solid var(--border-subtle);
   border-radius: 16px;
   background: var(--bg-card);
-  backdrop-filter: blur(20px) saturate(1.3);
 }
 
 .templates-list {
@@ -496,7 +495,6 @@ onBeforeUnmount(() => {
   position: relative;
   width: 100%;
   border: 1px solid var(--border-subtle);
-  border-left: 3px solid var(--color-accent);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.02);
   color: var(--text-secondary);
@@ -522,17 +520,14 @@ onBeforeUnmount(() => {
 
 .template-item-row:hover {
   border-color: var(--border-default);
-  border-left-color: var(--color-accent);
   background: rgba(255, 255, 255, 0.05);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
 }
 
 .template-item-row.active {
-  background: var(--color-accent-bg);
-  border-color: var(--color-accent);
-  border-left-color: var(--color-accent);
-  color: var(--color-accent-light);
-  box-shadow: 0 2px 12px var(--color-accent-glow);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
 }
 
 .template-name {
@@ -596,7 +591,6 @@ onBeforeUnmount(() => {
   border-radius: 12px;
   background: var(--bg-card);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(16px) saturate(1.3);
 }
 
 .template-action-item,
@@ -730,9 +724,9 @@ onBeforeUnmount(() => {
 }
 
 .model-chip.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .compact-btn {

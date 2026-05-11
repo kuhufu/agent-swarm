@@ -209,7 +209,7 @@ function opLabel(name: string): string {
   color: var(--color-danger);
 }
 .run-badge.bg {
-  background: var(--color-accent-bg);
+  background: var(--bg-hover);
   color: var(--text-secondary);
 }
 .run-block {

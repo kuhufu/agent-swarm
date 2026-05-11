@@ -142,15 +142,15 @@
   }
 
   .btn-primary {
-    background: var(--color-accent);
-    color: #ffffff;
-    border: none;
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
     padding: 8px 18px;
     font-size: var(--text-base);
     font-weight: var(--weight-bold);
     cursor: pointer;
-    transition: background 0.15s ease, box-shadow 0.15s ease;
+    transition: all 0.15s ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -159,8 +159,8 @@
   }
 
   .btn-primary:hover {
-    background: var(--color-accent-light);
-    box-shadow: 0 2px 8px var(--color-accent-glow);
+    background: var(--bg-card);
+    border-color: var(--border-default);
   }
 
   .btn-primary:active {
@@ -192,7 +192,7 @@
 
   .btn-secondary:hover {
     background: var(--bg-hover);
-    border-color: var(--color-accent);
+    border-color: var(--border-default);
     color: var(--text-primary);
   }
 
@@ -232,8 +232,8 @@
   }
 
   .input-field:focus {
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px var(--color-accent-glow);
+    border-color: var(--border-default);
+    box-shadow: 0 0 0 2px var(--bg-hover);
   }
 
   .input-field::placeholder {
@@ -386,7 +386,7 @@
   }
 
   .glass-card:hover {
-    border-color: var(--color-accent);
+    border-color: var(--border-default);
     box-shadow: var(--shadow-md);
   }
 }

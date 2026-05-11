@@ -317,9 +317,9 @@ async function handleDelete(workspace: WorkspaceInfo) {
 }
 
 .icon-btn:hover:not(:disabled) {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .secondary-btn {
@@ -336,17 +336,16 @@ async function handleDelete(workspace: WorkspaceInfo) {
 }
 
 .primary-btn {
-  border: 1px solid var(--color-accent);
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  border: 1px solid var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-primary);
   padding: 0 14px;
 }
 
 .primary-btn:hover:not(:disabled) {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: #fff;
-  box-shadow: 0 0 12px var(--color-accent-glow);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+  color: var(--text-primary);
 }
 
 .danger-btn {
@@ -400,8 +399,7 @@ button:disabled {
 
 .create-form input:focus,
 .edit-form input:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-glow);
+  border-color: var(--border-default);
 }
 
 .create-btn {
@@ -411,10 +409,10 @@ button:disabled {
   align-items: center;
   gap: 5px;
   padding: 0 14px;
-  border: 1px solid var(--color-accent);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  color: var(--text-primary);
   font-size: var(--text-base);
   font-weight: var(--weight-bold);
   cursor: pointer;
@@ -423,10 +421,9 @@ button:disabled {
 }
 
 .create-btn:hover:not(:disabled) {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: #fff;
-  box-shadow: 0 0 12px var(--color-accent-glow);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+  color: var(--text-primary);
 }
 
 .create-btn:disabled {
@@ -446,7 +443,7 @@ button:disabled {
 }
 
 .archive-toggle input[type="checkbox"] {
-  accent-color: var(--color-accent);
+  accent-color: var(--border-default);
 }
 
 /* Workspace list */
@@ -482,8 +479,8 @@ button:disabled {
 }
 
 .workspace-card.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .workspace-card.archived {
@@ -498,14 +495,14 @@ button:disabled {
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-md);
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
   margin-top: 1px;
 }
 
 .workspace-card.active .workspace-card-icon {
-  background: var(--color-accent);
-  color: #fff;
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .workspace-card-body {
@@ -601,8 +598,8 @@ button:disabled {
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-lg);
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .detail-empty-title {

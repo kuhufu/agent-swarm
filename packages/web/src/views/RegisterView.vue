@@ -47,14 +47,9 @@ async function handleRegister() {
       <div class="grid-overlay" />
     </div>
     <div class="auth-card">
-      <div class="card-glow" />
       <div class="auth-card-inner">
         <div class="auth-header">
           <div class="auth-logo">
-            <div class="logo-rings">
-              <div class="ring ring-1" />
-              <div class="ring ring-2" />
-            </div>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 2L2 7l10 5 10-5-10-5z" />
               <path d="M2 17l10 5 10-5" />
@@ -172,16 +167,6 @@ async function handleRegister() {
   animation: scaleIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.card-glow {
-  position: absolute;
-  inset: -1px;
-  border-radius: calc(var(--radius-xl) + 1px);
-  background: linear-gradient(135deg, rgba(154, 170, 100, 0.2) 0%, transparent 35%, transparent 65%, rgba(154, 170, 100, 0.15) 100%);
-  z-index: -1;
-  pointer-events: none;
-  filter: blur(1px);
-}
-
 .auth-card-inner {
   padding: 44px 36px 36px;
 }
@@ -198,27 +183,10 @@ async function handleRegister() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-accent);
+  background: var(--bg-hover);
   border-radius: var(--radius-lg);
-  color: #fff;
-  box-shadow: 0 8px 24px var(--color-accent-glow);
+  color: var(--text-primary);
 }
-
-.logo-rings {
-  position: absolute;
-  inset: -12px;
-  pointer-events: none;
-}
-
-.ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgba(154, 170, 100, 0.2);
-  animation: pulseSoft 3s ease-in-out infinite;
-}
-
-.ring-1 { inset: 0; }
-.ring-2 { inset: -8px; border-color: rgba(154, 170, 100, 0.1); animation-delay: 0.5s; }
 
 .auth-logo svg {
   width: 28px; height: 28px;
@@ -229,10 +197,7 @@ async function handleRegister() {
   font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.5px;
-  background: linear-gradient(135deg, var(--text-primary) 0%, var(--color-accent-light) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text-primary);
   margin: 0 0 6px;
 }
 
@@ -289,6 +254,7 @@ async function handleRegister() {
 }
 
 .input-wrap .input-field:focus {
+  border-color: var(--border-default);
   background: var(--bg-hover);
 }
 
@@ -296,10 +262,10 @@ async function handleRegister() {
   width: 100%;
   height: 46px;
   margin-top: 4px;
-  border: none;
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  background: var(--color-accent);
-  color: white;
+  background: var(--bg-hover);
+  color: var(--text-primary);
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
   letter-spacing: -0.01em;
@@ -309,13 +275,10 @@ async function handleRegister() {
   justify-content: center;
   gap: 8px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 16px var(--color-accent-glow);
 }
 
 .auth-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: var(--color-accent-light);
-  box-shadow: 0 8px 24px var(--color-accent-glow);
 }
 
 .auth-btn:disabled { opacity: 0.55; cursor: not-allowed; }

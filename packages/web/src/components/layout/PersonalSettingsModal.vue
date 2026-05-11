@@ -180,13 +180,13 @@ const currentThemeLabel = computed(() => {
 }
 
 .ps-tab:hover {
-  background: var(--color-accent-bg);
+  background: var(--bg-hover);
   color: var(--text-secondary);
 }
 
 .ps-tab.active {
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .ps-content {
@@ -229,14 +229,14 @@ const currentThemeLabel = computed(() => {
 }
 
 .theme-option:hover {
-  background: var(--color-accent-bg);
+  background: var(--bg-hover);
   border-color: var(--border-default);
 }
 
 .theme-option.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .theme-option svg {

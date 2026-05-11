@@ -3,10 +3,10 @@
 ## 概览
 
 - **设计语言**：扁平实色，放弃玻璃拟态
-- **配色原则**：黑白灰 + 橄榄绿主题色，大面积中性色突出关键交互
+- **配色原则**：纯黑白灰，零主题色。大面积中性色通过层级（root → surface → card → hover）区分结构
 - **深色模式**：底色不用纯黑（`#1a1a18`），用暖深灰
 - **浅色模式**：底色不用纯白（`#f5f4f0`），用苹果暖灰
-- **未来扩展**：支持用户自定义主题色（通过 CSS 变量动态注入）
+- **未来扩展**：主题色体系（`--color-accent` 系列）已在 CSS 变量中定义，但默认渲染不使用；留待后续用户自定义主题功能按需启用
 
 ---
 
@@ -19,7 +19,7 @@
 | `--bg-root` | `#1a1a18` | 页面根背景 |
 | `--bg-surface` | `#222220` | 面板/侧边栏背景 |
 | `--bg-card` | `#2a2a28` | 卡片/弹窗背景 |
-| `--bg-hover` | `#323230` | hover 态背景 |
+| `--bg-hover` | `#323230` | hover/选中背景 |
 | `--border-subtle` | `#333330` | 最弱分割线 |
 | `--border-default` | `#444440` | 默认边框 |
 | `--text-primary` | `#e8e6e3` | 主要文字 |
@@ -33,42 +33,48 @@
 | `--bg-root` | `#fafafa` | 页面根背景 |
 | `--bg-surface` | `#ffffff` | 面板/侧边栏背景 |
 | `--bg-card` | `#fcfcfc` | 卡片/弹窗背景 |
-| `--bg-hover` | `#f2f2f2` | hover 态背景 |
+| `--bg-hover` | `#f2f2f2` | hover/选中背景 |
 | `--border-subtle` | `#e8e8e8` | 最弱分割线 |
 | `--border-default` | `#d4d4d4` | 默认边框 |
 | `--text-primary` | `#1a1a1a` | 主要文字 |
 | `--text-secondary` | `#666666` | 次要文字 |
 | `--text-muted` | `#999999` | 禁用/提示文字 |
 
-### 主题色（橄榄绿）
+### 自定义主题色（预留，默认未使用）
 
-| Token | 深色模式 | 浅色模式 | 用途 |
-|-------|---------|---------|------|
-| `--color-accent` | `#9aaa64` | `#5f7038` | 主色：按钮、tab 高亮、链接、brand |
-| `--color-accent-light` | `#b5c47a` | `#7d8f50` | 亮色变体：hover 文本、badge |
-| `--color-accent-bg` | `rgba(154,170,100,0.08)` | `rgba(95,112,56,0.06)` | hover 背景：列表项、tab hover、卡片 hover |
-| `--color-accent-glow` | `rgba(154,170,100,0.2)` | `rgba(95,112,56,0.15)` | 阴影/发光：按钮 hover、focus ring |
+`--color-accent`、`--color-accent-light`、`--color-accent-bg`、`--color-accent-glow` 四个变量已在 CSS 中定义，供未来用户自定义主题功能使用。当前默认渲染中组件**不引用**这些变量——所有交互元素（按钮、tab、链接、brand 图标等）均使用中性色 token。
 
-### 主题色使用规则
+如果启用自定义主题色，遵循以下使用规则：
 
-主题色只出现在以下交互元素上，非功能性元素（背景、普通文字、边框）一律不用：
+| Token | 用途 |
+|-------|------|
+| `--color-accent` | 主按钮背景、brand 图标背景、发送按钮背景、用户头像背景 |
+| `--color-accent-light` | tab active 文字、链接文字、badge/标签文字 |
+| `--color-accent-bg` | 侧边栏对话列表项 hover、tab 按钮 hover、卡片 hover |
+| `--color-accent-glow` | 按钮 hover 阴影、输入框 focus ring |
 
-| 允许 | 禁止 |
-|------|------|
-| 主按钮（`.btn-primary`）背景 | 卡片背景、面板背景 |
-| tab 高亮（active 态文字 + bottom line） | 分割线、边框 |
-| 链接文字 | 普通正文 |
-| Brand logo / 品牌图标 | 图标默认色 |
-| 输入框 focus ring | checkbox、radio 等表单控件底色 |
-| hover 背景（`.hover-bg`）使用 `--color-accent-bg` | 禁用状态文字 |
-
-### 语义色
+### 语义色（始终使用）
 
 | Token | 深色模式 | 浅色模式 | 用途 |
 |-------|---------|---------|------|
 | `--color-success` | `#22c55e` | `#16a34a` | 成功/完成 |
 | `--color-warning` | `#f59e0b` | `#d97706` | 警告/待处理 |
 | `--color-danger` | `#ef4444` | `#dc2626` | 错误/删除/危险操作 |
+
+---
+
+## 交互背景规则
+
+hover/active 背景统一使用 `--bg-hover`，只有以下场景使用 `--bg-hover`（均为列表元素 hover）：
+
+| 场景 | 适用位置 |
+|------|---------|
+| 对话列表项 hover | AppSidebar `.conversation-item:hover` |
+| 侧边栏导航项 hover | SwarmsView/AgentsView/SettingsView 等 `.swarm-item:hover`、`.preset-item:hover` 等 |
+| Tab 按钮 hover | `.tab-btn:hover` |
+| 卡片 hover | `.swarm-card:hover`、`.workspace-card:hover` 等 |
+
+非列表元素（下拉菜单项、chip/标签、设置项等）hover 使用 `--bg-hover`。
 
 ---
 
@@ -136,11 +142,11 @@
 
 ### 按钮
 
-| 类型 | 高度 | 内边距 | 圆角 | 字体 |
-|------|------|--------|------|------|
-| 主按钮 | `36px` | `8px 18px` | `--radius-md` | `--text-base / --weight-bold`，`var(--color-accent)` 背景 |
-| 次按钮 | `36px` | `8px 18px` | `--radius-md` | `--text-base / --weight-medium`，`var(--bg-card)` 背景 + 边框 |
-| 危险按钮 | `36px` | `8px 16px` | `--radius-md` | `--text-sm / --weight-bold`，`var(--color-danger)` 文字 |
+| 类型 | 高度 | 背景 | 边框 | 圆角 | 字体 |
+|------|------|------|------|------|------|
+| 主按钮 | `36px` | `--bg-hover` | `1px solid var(--border-default)` | `--radius-md` | `--text-base / --weight-bold`，`--text-primary` |
+| 次按钮 | `36px` | `--bg-card` | `1px solid var(--border-default)` | `--radius-md` | `--text-base / --weight-medium`，`--text-secondary` |
+| 危险按钮 | `36px` | transparent | `1px solid var(--color-danger)` | `--radius-md` | `--text-sm / --weight-bold`，`--color-danger` |
 
 ### 输入框
 
@@ -151,7 +157,7 @@
 | 圆角 | `--radius-md` |
 | 背景 | `--bg-surface` |
 | 边框 | `1px solid var(--border-default)` |
-| Focus | `border-color: var(--color-accent)` + `box-shadow: 0 0 0 3px var(--color-accent-glow)` |
+| Focus | `border-color: var(--border-default)` + `box-shadow: 0 0 0 2px var(--bg-hover)` |
 
 ### 卡片
 
@@ -169,8 +175,8 @@
 | 宽度 | `350px` |
 | 背景 | `--bg-surface` |
 | 分割线 | `1px solid var(--border-subtle)` |
-| 列表项 hover | `background: var(--color-accent-bg)` |
-| 列表项 active | `background: var(--color-accent-bg)` + `border-left: 2px solid var(--color-accent)` |
+| 列表项 hover | `background: var(--bg-hover)` |
+| 列表项 active | `background: var(--bg-hover)` |
 
 ### 弹窗
 
@@ -199,4 +205,4 @@ document.documentElement.style.setProperty('--color-accent', ...)
 切换时连带更新 --color-accent-light / --color-accent-bg / --color-accent-glow
 ```
 
-无需修改组件代码，无需重新编译。主题色设置 UI 放在「个人设置」弹窗的主题 tab 中。
+如需启用主题色，需先恢复各组件中引用这四个变量的样式（当前默认均使用中性色 token）。主题色设置 UI 放在「个人设置」弹窗的主题 tab 中。

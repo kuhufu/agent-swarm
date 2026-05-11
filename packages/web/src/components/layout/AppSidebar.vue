@@ -434,7 +434,6 @@ onBeforeUnmount(() => {
 .sidebar {
   width: 350px;
   background: var(--bg-surface);
-  backdrop-filter: blur(24px) saturate(1.4);
   border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
@@ -458,10 +457,9 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--color-accent);
+    background: var(--bg-hover);
     border-radius: var(--radius-md);
     color: white;
-    box-shadow: 0 4px 12px var(--color-accent-glow);
     flex-shrink: 0;
   }
 
@@ -474,10 +472,7 @@ onBeforeUnmount(() => {
   font-size: var(--text-lg);
   font-weight: 700;
   letter-spacing: -0.3px;
-  background: linear-gradient(135deg, var(--color-accent-light) 0%, var(--color-accent-light) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text-primary);
 }
 
 /* ── Tabs ── */
@@ -511,8 +506,8 @@ onBeforeUnmount(() => {
 }
 
 .tab-btn.active {
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 /* ── Conversation section ── */
@@ -548,9 +543,9 @@ onBeforeUnmount(() => {
 }
 
 .new-conv-btn:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent-light);
-  background: var(--color-accent-bg);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+  background: var(--bg-hover);
 }
 
 /* ── Bottom nav ── */
@@ -605,7 +600,6 @@ onBeforeUnmount(() => {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   background: var(--bg-surface);
-  backdrop-filter: blur(8px);
   border-radius: 5px;
 }
 
@@ -630,8 +624,7 @@ onBeforeUnmount(() => {
 }
 
 .conversation-item.active {
-  background: var(--color-accent-bg);
-  border-left: 2px solid var(--color-accent);
+  background: var(--bg-hover);
 }
 
 .conversation-main {
@@ -686,9 +679,9 @@ onBeforeUnmount(() => {
 }
 
 .mode-tag.swarm {
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
-  border: 1px solid var(--color-accent);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
 }
 
 .conversation-time {
@@ -822,15 +815,15 @@ onBeforeUnmount(() => {
 }
 
 .auth-user-trigger.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .auth-avatar {
   width: 24px;
   height: 24px;
   border-radius: 7px;
-  background: var(--color-accent);
+  background: var(--bg-hover);
   color: white;
   font-size: var(--text-sm);
   font-weight: 700;
@@ -838,7 +831,6 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px var(--color-accent-glow);
 }
 
 .auth-username {
@@ -884,7 +876,7 @@ onBeforeUnmount(() => {
 .settings-btn:hover {
   background: var(--bg-hover);
   color: var(--text-secondary);
-  border-color: var(--color-accent);
+  border-color: var(--border-default);
 }
 
 </style>

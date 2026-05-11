@@ -351,10 +351,9 @@ function handleFork() {
 }
 
 .msg-user .msg-content {
-  background: var(--color-accent-bg);
-  border: 1px solid var(--color-accent);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
   border-radius: 16px 16px 4px 16px;
-  box-shadow: 0 2px 12px var(--color-accent-glow);
 }
 
 /* ── Tool / System ── */
@@ -400,16 +399,16 @@ function handleFork() {
 }
 
 .bot-avatar {
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
-  border: 1px solid var(--color-accent);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
 }
 
 .user-avatar-small {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-light));
+  background: var(--bg-hover);
   color: white;
 }
 
@@ -520,7 +519,6 @@ function handleFork() {
 .markdown-content :deep(blockquote) {
   margin: 10px 0;
   padding-left: 10px;
-  border-left: 3px solid rgba(148, 163, 184, 0.4);
   color: var(--text-muted);
 }
 
@@ -643,7 +641,7 @@ function handleFork() {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--color-accent);
+  background: var(--text-muted);
   animation: bounce 3.6s ease-in-out infinite both;
 }
 
@@ -737,8 +735,8 @@ function handleFork() {
 }
 .tool-fold-count {
   font-size: var(--text-sm);
-  color: var(--color-accent-light);
-  background: var(--color-accent-bg);
+  color: var(--text-secondary);
+  background: var(--bg-hover);
   padding: 1px 7px;
   border-radius: 9999px;
   font-weight: var(--weight-bold);

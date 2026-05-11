@@ -301,7 +301,7 @@ function eventOffset(event: ConversationEvent): string {
 }
 
 .trace-item.accent .trace-dot {
-  background: var(--color-accent);
+  background: var(--text-muted);
 }
 
 .trace-item.tool .trace-dot {

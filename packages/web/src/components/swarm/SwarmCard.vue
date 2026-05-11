@@ -161,11 +161,11 @@ function handleDelete(e: Event) {
 
 .agent-tag {
   padding: 4px 10px;
-  background: var(--color-accent-bg);
-  border: 1px solid var(--color-accent);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   font-weight: var(--weight-medium);
 }
 

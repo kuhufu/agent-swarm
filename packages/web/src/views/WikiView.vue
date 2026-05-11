@@ -690,8 +690,8 @@ h3 {
 }
 
 .page-list-item.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .page-title {
@@ -766,9 +766,9 @@ h3 {
 }
 
 .tag {
-  color: var(--color-accent-light);
-  background: var(--color-accent-bg);
-  border: 1px solid var(--color-accent);
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
 }
 
 .alias,
@@ -828,8 +828,8 @@ h3 {
 }
 
 .source-item.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .claim-item p {
@@ -955,9 +955,9 @@ h3 {
   padding: 0 14px;
   gap: 7px;
   border-radius: var(--radius-md);
-  color: #fff;
-  background: var(--color-accent);
-  border-color: transparent;
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
 }
 
 .secondary-btn {

@@ -685,9 +685,9 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
 .tool-btn.active {
-  background: var(--color-accent-bg);
-  border-color: var(--color-accent);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
 }
 
   .tool-btn.warn {
@@ -737,9 +737,9 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
 .model-select-btn.selected {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .model-select-label {
@@ -794,8 +794,8 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
 .model-dropdown-item.active {
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .dropdown-model-name {
@@ -812,7 +812,7 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
 .model-dropdown-item.active .dropdown-model-provider {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .model-dropdown-empty {
@@ -836,8 +836,8 @@ function handleOutsideClick(event: MouseEvent) {
   height: 16px;
   padding: 0 4px;
   border-radius: 8px;
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
   font-size: var(--text-xs);
   font-weight: var(--weight-bold);
   line-height: 1;
@@ -878,7 +878,7 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
 .tools-dropdown-item.active {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .tools-dropdown-item.active::before {
@@ -889,7 +889,7 @@ function handleOutsideClick(event: MouseEvent) {
   bottom: 9px;
   width: 2px;
   border-radius: 999px;
-  background: var(--color-accent-light);
+  background: var(--text-secondary);
 }
 
 .tools-dropdown-item.warn {
@@ -924,9 +924,9 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
 .tools-dropdown-item.active .dropdown-tool-state {
-  border-color: var(--color-accent);
-  color: var(--color-accent-light);
-  background: var(--color-accent-bg);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+  background: var(--bg-hover);
 }
 
 .tools-dropdown-separator {
@@ -987,8 +987,8 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
 .think-level-dropdown-item.active {
-  background: var(--color-accent-bg);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .dropdown-level-label {
@@ -1001,7 +1001,7 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
 .think-level-dropdown-item.active .dropdown-level-value {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 /* ── Input area ── */
@@ -1024,8 +1024,7 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
   .textarea-wrapper:focus-within {
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px var(--color-accent-glow);
+    border-color: var(--border-default);
   }
 
 textarea {
@@ -1100,7 +1099,7 @@ textarea:disabled {
   height: 48px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-light));
+  background: var(--bg-hover);
   color: white;
   cursor: pointer;
   display: flex;
@@ -1113,7 +1112,6 @@ textarea:disabled {
 .send-btn:hover:not(:disabled) {
   opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px var(--color-accent-glow);
 }
 
 .send-btn:active:not(:disabled) {
