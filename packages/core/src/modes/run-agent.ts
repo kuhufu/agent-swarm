@@ -1,6 +1,7 @@
 import type { ModeExecutionContext } from "./types.js";
 import type { SwarmEvent } from "../core/types.js";
 import type { AgentEvent as PiAgentEvent } from "@mariozechner/pi-agent-core";
+import type { ImageContent } from "@mariozechner/pi-ai";
 import {
   buildModelFailureMessage,
   extractAssistantErrorMessage,
@@ -141,7 +142,9 @@ export async function* runAgent(
     }
   });
 
-  agent.prompt(input)
+  const images: ImageContent[] | undefined = ctx.images?.length ? ctx.images : undefined;
+
+  agent.prompt(input, images)
     .then(() => {
       if (agentEnded) {
         settle();

@@ -4,9 +4,12 @@ import type { InterventionHandler } from "../intervention/handler.js";
 import type { Agent } from "@mariozechner/pi-agent-core";
 import type { SwarmAgentConfig, LLMBackendConfig, InterventionPoint } from "../core/types.js";
 
+import type { ImageContent } from "@mariozechner/pi-ai";
+
 export interface ModeExecutionContext {
   swarmConfig: SwarmConfig;
   message: string;
+  images?: ImageContent[];
   conversationId: string;
   storage: IStorage;
   interventionHandler?: InterventionHandler;

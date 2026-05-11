@@ -115,6 +115,7 @@ export interface SavedModel {
   name: string;
   provider: string;
   modelId: string;
+  input?: ("text" | "image")[];
 }
 
 export interface LLMConfig {
@@ -138,6 +139,7 @@ export interface ModelInfo {
   provider: string;
   api: string;
   reasoning: boolean;
+  input?: ("text" | "image")[];
   contextWindow: number;
   maxTokens: number;
 }

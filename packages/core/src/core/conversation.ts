@@ -1,7 +1,7 @@
 import { Agent } from "@mariozechner/pi-agent-core";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
 import type { BeforeToolCallResult, AfterToolCallResult } from "@mariozechner/pi-agent-core";
-import type { Message } from "@mariozechner/pi-ai";
+import type { Message, ImageContent } from "@mariozechner/pi-ai";
 import type { SwarmConfig, SwarmEvent, InterventionPoint, LLMBackendConfig, SwarmAgentConfig, EventLogLevel, ThinkingLevel } from "./types.js";
 import type { IStorage } from "../storage/interface.js";
 import type { StoredMessage } from "../storage/interface.js";
@@ -37,6 +37,7 @@ export interface ConversationPromptOptions {
   clientToolExecutor?: (
     request: { toolName: string; toolCallId: string; params: unknown },
   ) => Promise<ClientToolExecutionResult>;
+  images?: ImageContent[];
 }
 
 interface ConversationRuntimeOptions extends ToolRuntimeOptions {
@@ -129,11 +130,16 @@ export class Conversation {
     };
     this.syncActiveAgentTools();
 
-    // Save user message
+    // Save user message with images in metadata
+    const meta: Record<string, unknown> = {};
+    if (options.images?.length) {
+      meta.images = options.images.map((img) => ({ data: img.data, mimeType: img.mimeType }));
+    }
     await this.storage.appendMessage(this.id, {
       id: crypto.randomUUID(),
       role: "user",
       content: message,
+      metadata: Object.keys(meta).length > 0 ? JSON.stringify(meta) : null,
       timestamp: Date.now(),
     });
 
@@ -150,7 +156,7 @@ export class Conversation {
 
     try {
       const executor = this.getModeExecutor();
-      const context = this.createModeContext(message);
+      const context = this.createModeContext(message, options.images);
       yield* executor.execute(context);
     } catch (err) {
       const errorEvent: SwarmEvent = { type: "error", error: err as Error } as SwarmEvent;
@@ -282,10 +288,11 @@ export class Conversation {
     });
   }
 
-  private createModeContext(message: string): ModeExecutionContext {
+  private createModeContext(message: string, images?: ImageContent[]): ModeExecutionContext {
     return {
       swarmConfig: this.swarmConfig,
       message,
+      images,
       conversationId: this.id,
       storage: this.storage,
       interventionHandler: this.interventionHandler,

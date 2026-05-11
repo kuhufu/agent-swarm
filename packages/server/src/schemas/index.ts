@@ -178,6 +178,7 @@ export const updateConfigSchema = z.object({
     name: z.string().min(1, "模型名称不能为空"),
     provider: z.string().min(1, "提供商不能为空"),
     modelId: z.string().min(1, "模型标识不能为空"),
+    input: z.array(z.enum(["text", "image"])).optional(),
   })).optional(),
 });
 

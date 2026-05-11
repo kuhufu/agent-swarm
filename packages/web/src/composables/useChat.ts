@@ -12,6 +12,7 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
   const conversationStore = useConversationStore();
   const { send, connected, connect } = useWebSocket();
   const inputText = ref("");
+  const pendingImageIds = ref<string[]>([]);
   const sending = ref(false);
   const draftDirectModel = ref<DirectModelSelection | null>(null);
   const draftEnabledTools = ref<string[]>(["current_time", "javascript_execute", "web_fetch", "browser_automation"]);
@@ -148,6 +149,7 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
           enabledTools: enabledTools.value,
           thinkingLevel: thinkingLevel.value,
           ...(workspaceId.value ? { workspaceId: workspaceId.value } : {}),
+          ...(pendingImageIds.value.length > 0 ? { imageIds: pendingImageIds.value } : {}),
         },
       });
     } else {
@@ -159,11 +161,13 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
           enabledTools: enabledTools.value,
           thinkingLevel: thinkingLevel.value,
           ...(workspaceId.value ? { workspaceId: workspaceId.value } : {}),
+          ...(pendingImageIds.value.length > 0 ? { imageIds: pendingImageIds.value } : {}),
         },
       });
     }
 
     inputText.value = "";
+    pendingImageIds.value = [];
   }
 
   /** Send message in direct chat mode (no swarm) */
@@ -192,10 +196,12 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
         enabledTools: enabledTools.value,
         thinkingLevel: thinkingLevel.value,
         ...(workspaceId.value ? { workspaceId: workspaceId.value } : {}),
+        ...(pendingImageIds.value.length > 0 ? { imageIds: pendingImageIds.value } : {}),
       },
     });
 
     inputText.value = "";
+    pendingImageIds.value = [];
   }
 
   function abort() {
@@ -230,6 +236,7 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
 
   return {
     inputText,
+    pendingImageIds,
     sending,
     connected,
     connect,

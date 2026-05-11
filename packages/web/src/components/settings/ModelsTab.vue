@@ -57,7 +57,7 @@ function handleDragEnd() {
 }
 
 const showModelDialog = ref(false);
-const modelForm = reactive<SavedModel>({ id: "", name: "", provider: "", modelId: "" });
+const modelForm = reactive<SavedModel>({ id: "", name: "", provider: "", modelId: "", input: undefined });
 const modelProviderOptions = computed(() => props.providerIds);
 const resolvedDialogHostSelector = computed(() => props.dialogHostSelector?.trim() || "body");
 const availableModels = ref<ModelInfo[]>([]);
@@ -97,6 +97,7 @@ function resetModelForm() {
   modelForm.name = "";
   modelForm.provider = "";
   modelForm.modelId = "";
+  modelForm.input = undefined;
   availableModels.value = [];
 }
 
@@ -108,6 +109,18 @@ function openModelDialog() {
 function closeModelDialog() {
   showModelDialog.value = false;
   resetModelForm();
+}
+
+function toggleInputCapability(cap: "image") {
+  const current = modelForm.input ?? ["text"];
+  if (current.includes(cap)) {
+    modelForm.input = current.filter((c) => c !== cap);
+  } else {
+    modelForm.input = [...current, cap];
+  }
+  if (modelForm.input?.length === 0) {
+    modelForm.input = ["text"];
+  }
 }
 
 function addModel() {
@@ -208,6 +221,20 @@ async function testModel(provider: string, modelId: string) {
               <input v-model="modelForm.modelId" class="input-field" placeholder="输入模型 ID 或从下方列表选择" />
             </div>
 
+            <div v-if="modelForm.provider" class="form-row">
+              <label>输入能力</label>
+              <div class="input-chips">
+                <label class="input-chip" :class="{ active: modelForm.input?.includes('text') ?? true }">
+                  <input type="checkbox" :checked="true" disabled>
+                  <span>文本</span>
+                </label>
+                <label class="input-chip" :class="{ active: modelForm.input?.includes('image') ?? false }">
+                  <input type="checkbox" :checked="modelForm.input?.includes('image') ?? false" @change="toggleInputCapability('image')">
+                  <span>图片</span>
+                </label>
+              </div>
+            </div>
+
             <div v-if="loadingModels" class="model-list-hint">加载模型列表中...</div>
             <div v-else-if="modelForm.provider && availableModels.length" class="model-picker">
               <div class="model-picker-label">从 {{ modelForm.provider }} 选择模型：</div>
@@ -259,6 +286,9 @@ async function testModel(provider: string, modelId: string) {
           <div class="model-info">
             <span class="model-name">{{ model.name }}</span>
             <span class="model-meta">{{ model.provider }} / {{ model.modelId }}</span>
+            <div v-if="model.input" class="model-caps">
+              <span v-if="model.input.includes('image')" class="model-cap model-cap-img">图</span>
+            </div>
             <span
               v-if="testResultMap[modelTestKey(model.provider, model.modelId)]"
               class="test-result-text"
@@ -512,6 +542,51 @@ async function testModel(provider: string, modelId: string) {
 .model-pick-meta {
   font-size: var(--text-xs);
   color: var(--text-muted);
+}
+.input-chips {
+  display: flex;
+  gap: 8px;
+}
+.input-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  transition: all 0.15s;
+}
+.input-chip.active {
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.input-chip input {
+  display: none;
+}
+.model-caps {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+.model-cap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+}
+.model-cap-img {
+  background: #2d4a2d;
+  color: #8bc34a;
 }
 .test-result-text {
   font-size: var(--text-sm);

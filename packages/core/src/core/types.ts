@@ -182,6 +182,7 @@ export interface SavedModel {
   name: string;
   provider: string;
   modelId: string;
+  input?: ("text" | "image")[];
 }
 
 export interface LLMBackendConfig {

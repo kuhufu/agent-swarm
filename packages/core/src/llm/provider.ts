@@ -122,6 +122,10 @@ export function resolveModel(config: ModelConfig & { reasoning?: boolean }): Mod
     throw new Error(`Provider ${config.provider} 缺少 baseUrl，当前仅支持通过 baseUrl 调用模型`);
   }
 
+  const modelInput: ("text" | "image")[] = Array.isArray(normalizedOptions.input)
+    ? normalizedOptions.input as ("text" | "image")[]
+    : ["text"];
+
   // Manual model construction with explicit baseUrl
   return {
     id: config.modelId,
@@ -130,7 +134,7 @@ export function resolveModel(config: ModelConfig & { reasoning?: boolean }): Mod
     provider: config.provider,
     baseUrl: normalizedBaseUrl,
     reasoning: modelReasoning,
-    input: ["text"] as const,
+    input: modelInput,
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: 128000,
     maxTokens: 4096,
@@ -177,6 +181,15 @@ export function resolveModelFromProvider(
   if (providerConfig?.thinkingFormat && !modelOptions.compat?.thinkingFormat) {
     mergedOptions.compat = { ...(mergedOptions.compat ?? {}), thinkingFormat: providerConfig.thinkingFormat };
   }
+
+  // Look up input capabilities from SavedModel config
+  if (!mergedOptions.input) {
+    const savedModel = llmConfig.models?.find((m) => m.provider === providerId && m.modelId === modelId);
+    if (savedModel?.input) {
+      mergedOptions.input = savedModel.input;
+    }
+  }
+
   const options = Object.keys(mergedOptions).length > 0 ? mergedOptions : undefined;
 
   return resolveModel({

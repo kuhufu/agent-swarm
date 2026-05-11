@@ -1,4 +1,4 @@
-import type { Message, AssistantMessage, ToolResultMessage, ToolCall, TextContent, ThinkingContent } from "@mariozechner/pi-ai";
+import type { Message, AssistantMessage, ToolResultMessage, ToolCall, TextContent, ThinkingContent, ImageContent } from "@mariozechner/pi-ai";
 import type { StoredMessage } from "./interface.js";
 
 /**
@@ -17,10 +17,21 @@ export function messageToStored(msg: Message, agentId?: string): StoredMessage {
     if (typeof msg.content === "string") {
       stored.content = msg.content;
     } else {
-      stored.content = msg.content
-        .filter((c): c is TextContent => c.type === "text")
-        .map((c) => c.text)
-        .join("\n");
+      const textParts: string[] = [];
+      const images: ImageContent[] = [];
+      for (const part of msg.content) {
+        if (part.type === "text") {
+          textParts.push(part.text);
+        } else if (part.type === "image") {
+          images.push(part);
+        }
+      }
+      stored.content = textParts.join("\n");
+      if (images.length > 0) {
+        const existingMeta = stored.metadata ? JSON.parse(stored.metadata) : {};
+        existingMeta.images = images.map((img) => ({ data: img.data, mimeType: img.mimeType }));
+        stored.metadata = JSON.stringify(existingMeta);
+      }
     }
   } else if (msg.role === "assistant") {
     const assistantMsg = msg as AssistantMessage;
@@ -71,9 +82,28 @@ export function messageToStored(msg: Message, agentId?: string): StoredMessage {
  */
 export function storedToMessage(stored: StoredMessage): Message {
   if (stored.role === "user") {
+    const parts: (TextContent | ImageContent)[] = [];
+    if (stored.content) {
+      parts.push({ type: "text", text: stored.content });
+    }
+    // Restore images from metadata
+    if (stored.metadata) {
+      try {
+        const meta = JSON.parse(stored.metadata);
+        if (Array.isArray(meta.images)) {
+          for (const img of meta.images) {
+            if (typeof img.data === "string" && typeof img.mimeType === "string") {
+              parts.push({ type: "image", data: img.data, mimeType: img.mimeType });
+            }
+          }
+        }
+      } catch { /* ignore */ }
+    }
     return {
       role: "user",
-      content: stored.content ?? "",
+      content: parts.length === 1 && parts[0]?.type === "text"
+        ? (parts[0] as TextContent).text
+        : (parts.length > 0 ? parts : ""),
       timestamp: stored.timestamp,
     };
   }

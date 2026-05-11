@@ -4,6 +4,7 @@ import { useChat } from "../../composables/useChat.js";
 import { useSettingsStore } from "../../stores/settings.js";
 import { useConversationStore } from "../../stores/conversation.js";
 import { showError } from "../../utils/ui-feedback.js";
+import { uploadImage, readFileAsDataURL } from "../../utils/image-upload.js";
 import SvgIcon from "../common/SvgIcon.vue";
 import type { SavedModel } from "../../types/index.js";
 
@@ -34,10 +35,16 @@ const {
   workspaceToolEnabled,
   browserAutomationToolEnabled,
   thinkingLevel,
+  pendingImageIds,
 } = useChat(
   computed(() => props.conversationId ?? null),
   computed(() => props.workspaceId ?? null),
 );
+
+const conversationId = computed(() => props.conversationId ?? null);
+const pendingPreviews = ref<Array<{ id: string; url: string; mimeType: string; name: string }>>([]);
+const uploadingImages = ref(false);
+const fileInputRef = ref<HTMLInputElement | null>(null);
 
 const settingsStore = useSettingsStore();
 const conversationStore = useConversationStore();
@@ -348,6 +355,74 @@ watch(inputText, () => {
   });
 }, { flush: "post" });
 
+watch(pendingImageIds, (ids) => {
+  if (ids.length === 0 && pendingPreviews.value.length > 0) {
+    pendingPreviews.value = [];
+  }
+});
+
+async function handlePaste(event: ClipboardEvent) {
+  const items = event.clipboardData?.items;
+  if (!items?.length) return;
+
+  const imageFiles: File[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.type.startsWith("image/")) {
+      const file = item.getAsFile();
+      if (file) imageFiles.push(file);
+    }
+  }
+
+  if (imageFiles.length === 0) return;
+  event.preventDefault();
+
+  for (const file of imageFiles) {
+    await uploadAndPreview(file);
+  }
+}
+
+async function uploadAndPreview(file: File) {
+  if (pendingPreviews.value.length >= 10) {
+    showError("最多上传 10 张图片");
+    return;
+  }
+
+  try {
+    uploadingImages.value = true;
+    const url = await readFileAsDataURL(file);
+
+    const tempId = crypto.randomUUID();
+    pendingPreviews.value.push({ id: tempId, url, mimeType: file.type, name: file.name });
+
+    const result = await uploadImage(file);
+
+    const preview = pendingPreviews.value.find((p) => p.id === tempId);
+    if (preview) {
+      pendingImageIds.value = [...pendingImageIds.value.filter((id) => id !== tempId), result.id];
+    }
+  } catch (err) {
+    showError(err instanceof Error ? err.message : "上传图片失败");
+  } finally {
+    uploadingImages.value = false;
+  }
+}
+
+function handleFileSelect(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const files = input.files;
+  if (!files?.length) return;
+  for (const file of Array.from(files)) {
+    void uploadAndPreview(file);
+  }
+  input.value = "";
+}
+
+function removePreview(id: string) {
+  pendingPreviews.value = pendingPreviews.value.filter((p) => p.id !== id);
+  pendingImageIds.value = pendingImageIds.value.filter((i) => i !== id);
+}
+
 onMounted(() => {
   captureTextareaSelection();
   requestTextareaFocus();
@@ -363,11 +438,13 @@ onMounted(() => {
 
   document.addEventListener("mousedown", handleOutsideClick);
   window.addEventListener("agent-swarm:fill-input", handleFillInput);
+  window.addEventListener("paste", handlePaste as unknown as EventListener);
 });
 
 onUnmounted(() => {
   document.removeEventListener("mousedown", handleOutsideClick);
   window.removeEventListener("agent-swarm:fill-input", handleFillInput);
+  window.removeEventListener("paste", handlePaste as unknown as EventListener);
   if (focusDebounceTimer) {
     clearTimeout(focusDebounceTimer);
   }
@@ -421,8 +498,20 @@ function handleOutsideClick(event: MouseEvent) {
       @select="captureTextareaSelection"
       @keydown="handleKeydown"
     />
+    <div v-if="pendingPreviews.length > 0" class="image-preview-bar">
+      <div v-for="preview in pendingPreviews" :key="preview.id" class="image-preview-item">
+        <img :src="preview.url" :alt="preview.name" />
+        <button class="image-preview-remove" type="button" @click="removePreview(preview.id)">
+          <SvgIcon name="close" :size="10" />
+        </button>
+      </div>
+      <div v-if="uploadingImages" class="image-preview-item uploading">
+        <div class="upload-spinner" />
+      </div>
+    </div>
     <div class="tool-options">
-      <button class="tool-btn" title="附件" @mousedown="handleKeepTextareaFocusMouseDown">
+      <input ref="fileInputRef" type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple style="display:none" @change="handleFileSelect" />
+      <button class="tool-btn" title="附件" @mousedown="handleKeepTextareaFocusMouseDown" @click="fileInputRef?.click()">
         <SvgIcon name="attachment" :size="15" />
       </button>
 
@@ -937,6 +1026,71 @@ textarea:disabled {
 .think-level-select-inline {
   position: relative;
   display: inline-flex;
+}
+
+.image-preview-bar {
+  display: flex;
+  gap: 8px;
+  padding: 0 0 8px;
+  flex-wrap: wrap;
+}
+
+.image-preview-item {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.image-preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-preview-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.image-preview-item:hover .image-preview-remove {
+  opacity: 1;
+}
+
+.image-preview-item.uploading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-hover);
+}
+
+.upload-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-subtle);
+  border-top-color: var(--text-muted);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 @media (max-width: 768px) {

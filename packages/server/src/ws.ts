@@ -4,6 +4,13 @@ import type { Express } from "express";
 import { WebSocketServer, WebSocket } from "ws";
 import type { AgentSwarm, SwarmEvent, ThinkingLevel, SwarmConversation } from "@agent-swarm/core";
 import { verifyAccessToken } from "./middleware/auth.js";
+import { loadImageAsBase64 } from "./utils/uploads.js";
+
+interface ImageContent {
+  type: "image";
+  data: string;
+  mimeType: string;
+}
 
 interface WSClient {
   ws: WebSocket;
@@ -179,7 +186,7 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
       ? msg.payload as Record<string, unknown>
       : {};
     const swarmId = typeof payload.swarmId === "string" ? payload.swarmId : undefined;
-    const content = typeof payload.content === "string" ? payload.content : undefined;
+    const content = typeof payload.content === "string" ? payload.content : "";
     const conversationId = typeof payload.conversationId === "string" ? payload.conversationId : undefined;
     const provider = typeof payload.provider === "string" ? payload.provider : undefined;
     const modelId = typeof payload.modelId === "string" ? payload.modelId : undefined;
@@ -188,10 +195,28 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
       : undefined;
     const thinkingLevel = typeof payload.thinkingLevel === "string" ? payload.thinkingLevel as ThinkingLevel : undefined;
     const preferencesPatch = parseConversationPreferencesPatch(payload);
+    const imageIds: string[] = Array.isArray(payload.imageIds) ? payload.imageIds.filter((id): id is string => typeof id === "string") : [];
 
-    if (typeof content !== "string" || content.trim().length === 0) {
-      send(client, { type: "error", payload: { message: "content must be a non-empty string" } });
+    if (!content.trim() && imageIds.length === 0) {
+      send(client, { type: "error", payload: { message: "content must be a non-empty string or provide images" } });
       return;
+    }
+
+    // Load images from uploaded files
+    const images: ImageContent[] = [];
+    if (imageIds.length > 0) {
+      const results = await Promise.allSettled(
+        imageIds.map((id) => loadImageAsBase64(id)),
+      );
+      for (const result of results) {
+        if (result.status === "fulfilled" && result.value) {
+          images.push(result.value);
+        }
+      }
+      if (images.length === 0) {
+        send(client, { type: "error", payload: { message: "Failed to load uploaded images" } });
+        return;
+      }
     }
 
     let conversation: SwarmConversation | undefined;
@@ -319,6 +344,7 @@ export function createWSServer(app: Express, swarm: AgentSwarm) {
       const stream = conversation.prompt(content, {
         enabledTools: effectivePreferences.enabledTools,
         thinkingLevel: (effectivePreferences.thinkingLevel ?? thinkingLevel) as ThinkingLevel | undefined,
+        images: images.length > 0 ? images : undefined,
         clientToolExecutor: async ({ toolName, toolCallId, params }) => {
           const result = await requestClientToolExecution(
             client,
