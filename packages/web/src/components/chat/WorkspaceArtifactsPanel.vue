@@ -1480,8 +1480,8 @@ function getFileColor(name: string): string {
   padding: 0;
   border: 1.5px solid var(--border-default);
   border-radius: 4px;
-  color: #fff;
-  background: var(--bg-surface);
+  color: var(--text-primary);
+  background: transparent;
   cursor: pointer;
   transition: all 0.15s ease;
   box-sizing: border-box;
