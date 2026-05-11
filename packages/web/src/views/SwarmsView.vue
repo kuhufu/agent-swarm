@@ -814,7 +814,7 @@ function clearModelSelection() {
 .swarms-sidebar {
   width: 280px;
   border-right: 1px solid var(--border-subtle);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -873,7 +873,7 @@ function clearModelSelection() {
   border-radius: 10px;
   padding: 10px 12px;
   text-align: left;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
@@ -884,7 +884,7 @@ function clearModelSelection() {
 
 .swarm-item:hover {
   border-color: var(--border-default);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
@@ -944,7 +944,7 @@ function clearModelSelection() {
   max-width: 960px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   padding: 20px;
 }
 
@@ -964,7 +964,7 @@ function clearModelSelection() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
   border-radius: 14px;
   border: 1px solid var(--border-subtle);
   margin-bottom: 14px;
@@ -1013,7 +1013,7 @@ function clearModelSelection() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
   border-radius: 12px;
   border: 1px solid var(--border-subtle);
   flex-shrink: 0;
@@ -1040,7 +1040,7 @@ function clearModelSelection() {
 
 .detail-title-input:hover {
   border-color: var(--border-subtle);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
 }
 
 .detail-title-input:focus {
@@ -1097,7 +1097,7 @@ function clearModelSelection() {
   align-items: center;
   gap: 10px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   cursor: pointer;
@@ -1105,7 +1105,7 @@ function clearModelSelection() {
 }
 
 .mode-option:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
   border-color: var(--border-default);
 }
 
@@ -1196,7 +1196,7 @@ function clearModelSelection() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
   color: var(--text-muted);
@@ -1206,7 +1206,7 @@ function clearModelSelection() {
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
@@ -1263,7 +1263,7 @@ textarea.input-field {
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   color: var(--text-secondary);
   cursor: pointer;
   font-size: var(--text-sm);
@@ -1274,7 +1274,7 @@ textarea.input-field {
 }
 
 .model-chip:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
   border-color: var(--border-default);
 }
 
@@ -1295,7 +1295,7 @@ textarea.input-field {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   cursor: grab;
@@ -1303,7 +1303,7 @@ textarea.input-field {
 }
 
 .agent-edit-card:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   border-color: var(--border-default);
 }
 
@@ -1379,7 +1379,7 @@ textarea.input-field {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   color: var(--text-muted);
@@ -1388,14 +1388,14 @@ textarea.input-field {
 }
 
 .action-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
 .action-btn.danger:hover {
-  background: rgba(248, 113, 113, 0.15);
-  color: #f87171;
-  border-color: rgba(248, 113, 113, 0.3);
+  background: var(--bg-danger);
+  color: var(--color-danger);
+  border-color: var(--border-danger);
 }
 
 .debate-config {
@@ -1432,7 +1432,7 @@ textarea.input-field {
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
 }

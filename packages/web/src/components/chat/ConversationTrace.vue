@@ -237,7 +237,7 @@ function eventOffset(event: ConversationEvent): string {
 .trace-count {
   font-size: var(--text-sm);
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   border: 1px solid var(--border-subtle);
   border-radius: 999px;
   padding: 2px 7px;
@@ -305,26 +305,26 @@ function eventOffset(event: ConversationEvent): string {
 }
 
 .trace-item.tool .trace-dot {
-  background: #60a5fa;
+  background: var(--text-secondary);
 }
 
 .trace-item.warning .trace-dot {
-  background: #fbbf24;
+  background: var(--color-warning);
 }
 
 .trace-item.danger .trace-dot {
-  background: #f87171;
+  background: var(--color-danger);
 }
 
 .trace-item.system .trace-dot {
-  background: #34d399;
+  background: var(--color-success);
 }
 
 .trace-body {
   min-width: 0;
   padding: 8px 9px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
 }
 

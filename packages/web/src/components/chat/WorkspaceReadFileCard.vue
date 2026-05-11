@@ -29,7 +29,7 @@ defineProps<{
 .file-card {
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   display: grid;
   gap: 8px;
@@ -49,7 +49,7 @@ defineProps<{
 .file-kind {
   padding: 1px 6px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   color: var(--text-muted);
   font-size: var(--text-sm);
 }
@@ -69,8 +69,8 @@ defineProps<{
   font-size: var(--text-xs); font-weight: var(--weight-bold);
 }
 .file-badge-warn {
-  background: rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.2);
+  background: var(--bg-warning);
+  border-color: var(--border-warning);
   color: var(--color-warning);
 }
 </style>

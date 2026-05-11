@@ -512,7 +512,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 /* Left Sidebar */
 .history-sidebar {
   width: 280px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
   border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
@@ -585,7 +585,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   color: var(--text-primary);
   border-color: var(--border-default);
 }
@@ -635,7 +635,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
   border-radius: 8px;
   color: var(--text-muted);
   flex-shrink: 0;
@@ -676,7 +676,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
   border-radius: 14px;
   border: 1px solid var(--border-subtle);
   margin-bottom: 14px;
@@ -723,7 +723,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
   border-radius: 12px;
   border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
@@ -796,7 +796,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   padding: 2px 8px;
   border-radius: 9999px;
 }
@@ -817,9 +817,9 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
-  border: 1px solid rgba(34, 197, 94, 0.22);
+  border: 1px solid var(--border-success);
   border-radius: 10px;
-  background: rgba(34, 197, 94, 0.08);
+  background: var(--bg-success);
 }
 
 .final-artifact-card div {
@@ -852,7 +852,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
   cursor: pointer;
   flex: 0 0 auto;
 }
@@ -905,22 +905,22 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 .trace-item.tool .trace-dot {
-  background: #60a5fa;
+  background: var(--text-secondary);
   box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.16);
 }
 
 .trace-item.warning .trace-dot {
-  background: #fbbf24;
+  background: var(--color-warning);
   box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.16);
 }
 
 .trace-item.danger .trace-dot {
-  background: #f87171;
-  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.18);
+  background: var(--color-danger);
+  box-shadow: 0 0 0 3px var(--bg-danger);
 }
 
 .trace-item.system .trace-dot {
-  background: #34d399;
+  background: var(--color-success);
   box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.16);
 }
 
@@ -928,7 +928,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   min-width: 0;
   padding: 8px 10px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
 }
 

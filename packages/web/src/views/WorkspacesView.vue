@@ -244,7 +244,7 @@ async function handleDelete(workspace: WorkspaceInfo) {
   height: 100%;
   min-height: 0;
   padding: 24px;
-  background: rgba(255, 255, 255, 0.01);
+  background: var(--bg-surface);
   box-sizing: border-box;
 }
 
@@ -255,7 +255,7 @@ async function handleDelete(workspace: WorkspaceInfo) {
   flex-direction: column;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
 }
 
 .workspace-list-pane {
@@ -312,7 +312,7 @@ async function handleDelete(workspace: WorkspaceInfo) {
 .icon-btn {
   width: 34px;
   border: 1px solid var(--border-subtle);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
   color: var(--text-secondary);
 }
 
@@ -324,14 +324,14 @@ async function handleDelete(workspace: WorkspaceInfo) {
 
 .secondary-btn {
   border: 1px solid var(--border-subtle);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
   color: var(--text-secondary);
   padding: 0 12px;
 }
 
 .secondary-btn:hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
@@ -349,15 +349,15 @@ async function handleDelete(workspace: WorkspaceInfo) {
 }
 
 .danger-btn {
-  border: 1px solid rgba(248, 113, 113, 0.35);
-  background: rgba(248, 113, 113, 0.12);
-  color: #f87171;
+  border: 1px solid var(--border-danger);
+  background: var(--bg-danger);
+  color: var(--color-danger);
   padding: 0 12px;
 }
 
 .danger-btn:hover:not(:disabled) {
-  background: rgba(248, 113, 113, 0.2);
-  border-color: rgba(248, 113, 113, 0.5);
+  background: var(--bg-danger);
+  border-color: var(--border-danger);
 }
 
 button:disabled {
@@ -373,7 +373,7 @@ button:disabled {
   padding: 12px;
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
 }
 
 .create-form-row {
@@ -388,7 +388,7 @@ button:disabled {
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 0 11px;
-  background: rgba(0, 0, 0, 0.22);
+  background: var(--bg-card);
   color: var(--text-primary);
   outline: none;
   font: inherit;
@@ -465,7 +465,7 @@ button:disabled {
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--bg-card);
   color: var(--text-secondary);
   text-align: left;
   cursor: pointer;
@@ -473,8 +473,8 @@ button:disabled {
 }
 
 .workspace-card:hover {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
 }
 
@@ -558,7 +558,7 @@ button:disabled {
   flex: 1;
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
   overflow: hidden;
 }
 

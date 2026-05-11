@@ -18,7 +18,7 @@ pre {
   margin: 0;
   font-size: var(--text-sm);
   color: var(--text-secondary);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--bg-card);
   padding: 10px 12px;
   border-radius: 8px;
   overflow-x: auto;

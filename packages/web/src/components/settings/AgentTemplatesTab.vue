@@ -442,7 +442,7 @@ onBeforeUnmount(() => {
 .templates-list,
 .template-editor {
   border: 1px solid var(--border-subtle);
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   background: var(--bg-card);
 }
 
@@ -462,7 +462,7 @@ onBeforeUnmount(() => {
   gap: 12px;
   padding: 16px 18px;
   border-bottom: 1px solid var(--border-subtle);
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--bg-surface);
 }
 
 .templates-list-header h4,
@@ -495,8 +495,8 @@ onBeforeUnmount(() => {
   position: relative;
   width: 100%;
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
   color: var(--text-secondary);
   transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   display: grid;
@@ -520,7 +520,7 @@ onBeforeUnmount(() => {
 
 .template-item-row:hover {
   border-color: var(--border-default);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
 }
 
@@ -552,7 +552,7 @@ onBeforeUnmount(() => {
   width: 26px;
   height: 26px;
   border: none;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -572,7 +572,7 @@ onBeforeUnmount(() => {
 }
 
 .template-action-trigger:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
@@ -588,7 +588,7 @@ onBeforeUnmount(() => {
   min-width: 136px;
   padding: 4px;
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--bg-card);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
 }
@@ -597,7 +597,7 @@ onBeforeUnmount(() => {
 .template-action-danger {
   width: 100%;
   border: none;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   padding: 8px 12px;
   background: transparent;
   cursor: pointer;
@@ -611,7 +611,7 @@ onBeforeUnmount(() => {
 }
 
 .template-action-item:hover {
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
@@ -620,7 +620,7 @@ onBeforeUnmount(() => {
 }
 
 .template-action-danger:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--bg-danger);
 }
 
 .template-action-danger:disabled {
@@ -681,7 +681,7 @@ onBeforeUnmount(() => {
 .input-field:disabled {
   border-color: var(--border-subtle);
   border-style: dashed;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
   color: var(--text-muted);
   cursor: not-allowed;
   box-shadow: none;
@@ -707,9 +707,9 @@ onBeforeUnmount(() => {
 
 .model-chip {
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   color: var(--text-secondary);
   cursor: pointer;
   font-size: var(--text-sm);
@@ -719,7 +719,7 @@ onBeforeUnmount(() => {
 
 .model-chip:hover {
   border-color: var(--border-default);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 

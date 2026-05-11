@@ -506,7 +506,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
   color: var(--text-muted);
@@ -516,7 +516,7 @@ onMounted(() => {
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
@@ -556,7 +556,7 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   cursor: pointer;
@@ -564,7 +564,7 @@ onMounted(() => {
 }
 
 .mode-option:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   border-color: var(--border-default);
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
@@ -692,14 +692,14 @@ onMounted(() => {
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   border: 1px solid var(--border-subtle);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-surface);
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .model-chip:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
   border-color: var(--border-default);
 }
 
@@ -720,7 +720,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
   cursor: grab;
@@ -728,7 +728,7 @@ onMounted(() => {
 }
 
 .agent-list-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   border-color: var(--border-default);
 }
 
@@ -760,7 +760,7 @@ onMounted(() => {
   border-radius: var(--radius-md);
   font-size: var(--text-base);
   font-weight: 700;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .agent-name {
@@ -799,7 +799,7 @@ onMounted(() => {
 }
 
 .remove-btn:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--bg-danger);
   color: var(--color-danger);
 }
 

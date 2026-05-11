@@ -459,7 +459,7 @@ onBeforeUnmount(() => {
     justify-content: center;
     background: var(--bg-hover);
     border-radius: var(--radius-md);
-    color: white;
+    color: var(--text-primary);
     flex-shrink: 0;
   }
 
@@ -673,9 +673,9 @@ onBeforeUnmount(() => {
 }
 
 .mode-tag.direct {
-  background: rgba(34, 197, 94, 0.1);
-  color: #4ade80;
-  border: 1px solid rgba(34, 197, 94, 0.18);
+  background: var(--bg-success);
+  color: var(--color-success);
+  border: 1px solid var(--border-success);
 }
 
 .mode-tag.swarm {
@@ -768,7 +768,7 @@ onBeforeUnmount(() => {
 }
 
 .conversation-menu-item.danger:hover {
-  background: rgba(239,68,68,0.1);
+  background: var(--bg-danger);
 }
 
 .conversation-empty {
@@ -824,7 +824,7 @@ onBeforeUnmount(() => {
   height: 24px;
   border-radius: 7px;
   background: var(--bg-hover);
-  color: white;
+  color: var(--text-primary);
   font-size: var(--text-sm);
   font-weight: 700;
   display: flex;

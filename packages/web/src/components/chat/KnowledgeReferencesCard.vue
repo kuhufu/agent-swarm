@@ -175,7 +175,7 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
 .knowledge-reference {
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
 }
 
@@ -241,9 +241,9 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--bg-card);
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.16s ease;
@@ -252,7 +252,7 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
 .reference-copy:hover {
   color: var(--text-primary);
   border-color: var(--border-default);
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--bg-hover);
 }
 
 .reference-content {
@@ -268,7 +268,7 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
   padding: 10px 12px;
   border-radius: 8px;
   color: var(--text-muted);
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--bg-card);
   border: 1px dashed var(--border-subtle);
   font-size: var(--text-sm);
 }

@@ -103,13 +103,13 @@ const statusClass = computed(() => props.isError ? "error" : "success");
   gap: 10px;
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
 }
 
 .js-result-card.error {
-  border-color: rgba(239, 68, 68, 0.22);
-  background: rgba(239, 68, 68, 0.055);
+  border-color: var(--border-danger);
+  background: var(--bg-danger);
 }
 
 .js-result-grid {
@@ -126,8 +126,8 @@ const statusClass = computed(() => props.isError ? "error" : "success");
   gap: 5px;
   padding: 8px 10px;
   border-radius: 7px;
-  background: rgba(0, 0, 0, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
 }
 
 .js-metric-label,
@@ -155,12 +155,12 @@ const statusClass = computed(() => props.isError ? "error" : "success");
 
 .js-status-pill.success {
   color: var(--color-success);
-  background: rgba(34, 197, 94, 0.12);
+  background: var(--bg-success);
 }
 
 .js-status-pill.error {
   color: var(--color-danger);
-  background: rgba(239, 68, 68, 0.12);
+  background: var(--bg-danger);
 }
 
 .js-output-block {
@@ -174,8 +174,8 @@ const statusClass = computed(() => props.isError ? "error" : "success");
   padding: 9px 10px;
   border-radius: 7px;
   color: var(--text-primary);
-  background: rgba(0, 0, 0, 0.24);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   line-height: 1.6;
@@ -196,8 +196,8 @@ const statusClass = computed(() => props.isError ? "error" : "success");
   padding: 7px 9px;
   border-radius: 7px;
   color: var(--text-secondary);
-  background: rgba(0, 0, 0, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   line-height: 1.55;
@@ -219,7 +219,7 @@ const statusClass = computed(() => props.isError ? "error" : "success");
   padding: 9px 10px;
   border-radius: 7px;
   color: var(--text-muted);
-  background: rgba(0, 0, 0, 0.14);
+  background: var(--bg-card);
   border: 1px dashed var(--border-subtle);
   font-size: var(--text-sm);
 }

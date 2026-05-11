@@ -329,7 +329,7 @@ function handleFork() {
 }
 
 .msg-assistant .msg-content {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 14px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.12);
@@ -358,8 +358,8 @@ function handleFork() {
 
 /* ── Tool / System ── */
 .msg-tool .msg-content {
-  background: rgba(34, 197, 94, 0.08);
-  border: 1px solid rgba(34, 197, 94, 0.15);
+  background: var(--bg-success);
+  border: 1px solid var(--border-success);
   border-radius: 12px;
 }
 
@@ -370,7 +370,7 @@ function handleFork() {
 
 .msg-system .msg-content,
 .msg-notification .msg-content {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   text-align: center;
@@ -409,7 +409,7 @@ function handleFork() {
   height: 24px;
   border-radius: 50%;
   background: var(--bg-hover);
-  color: white;
+  color: var(--text-primary);
 }
 
 .user-avatar-small svg {
@@ -496,8 +496,8 @@ function handleFork() {
   padding: 10px 12px;
   border-radius: 8px;
   overflow-x: auto;
-  background: rgba(15, 23, 42, 0.55);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: var(--bg-root);
+  border: 1px solid var(--border-subtle);
 }
 
 .markdown-content :deep(pre code.hljs) {
@@ -511,7 +511,7 @@ function handleFork() {
 }
 
 .markdown-content :deep(code:not(pre code)) {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-hover);
   border-radius: 4px;
   padding: 2px 5px;
 }
@@ -534,7 +534,7 @@ function handleFork() {
   border-spacing: 0;
   margin: 10px 0;
   font-size: var(--text-base);
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -543,12 +543,12 @@ function handleFork() {
 .markdown-content :deep(td) {
   padding: 7px 10px;
   text-align: left;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
-  border-right: 1px solid rgba(148, 163, 184, 0.25);
+  border-bottom: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
 }
 
 .markdown-content :deep(th) {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
   font-weight: var(--weight-bold);
   color: var(--text-primary);
 }
@@ -567,7 +567,7 @@ function handleFork() {
 }
 
 .markdown-content :deep(tr:nth-child(even) td) {
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--bg-surface);
 }
 
 .markdown-content :deep(.katex) {
@@ -609,7 +609,7 @@ function handleFork() {
   justify-content: center;
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-surface);
   color: var(--text-muted);
   cursor: pointer;
   opacity: 0;
@@ -623,7 +623,7 @@ function handleFork() {
 .msg-action-btn:hover {
   color: var(--text-primary);
   border-color: var(--border-default);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-hover);
 }
 
 .msg-action-btn svg {
@@ -715,7 +715,7 @@ function handleFork() {
   width: 100%;
   padding: 8px 10px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   cursor: pointer;
   transition: all 0.15s;
@@ -724,7 +724,7 @@ function handleFork() {
   text-align: left;
 }
 .tool-fold-header:hover {
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--bg-hover);
   border-color: var(--border-default);
 }
 .tool-fold-name {

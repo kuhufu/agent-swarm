@@ -1092,7 +1092,7 @@ function getFileColor(name: string): string {
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: var(--text-secondary);
   background: var(--bg-surface);
   cursor: pointer;
@@ -1119,7 +1119,7 @@ function getFileColor(name: string): string {
   gap: 7px;
   padding: 0 10px;
   border: 1px solid var(--border-subtle);
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   color: var(--text-muted);
   background: var(--bg-surface);
   transition: all 0.2s ease;
@@ -1153,7 +1153,7 @@ function getFileColor(name: string): string {
   justify-content: center;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   background: transparent;
   cursor: pointer;
@@ -1173,7 +1173,7 @@ function getFileColor(name: string): string {
   gap: 8px;
   padding: 7px 10px;
   border: 1px solid var(--border-subtle);
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   backdrop-filter: blur(8px);
   flex-shrink: 0;
@@ -1207,7 +1207,7 @@ function getFileColor(name: string): string {
   justify-content: center;
   padding: 0;
   border: 1px solid var(--border-subtle);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
   background: var(--bg-surface);
   cursor: pointer;
@@ -1256,7 +1256,7 @@ function getFileColor(name: string): string {
   gap: 7px;
   padding: 0 8px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: var(--text-muted);
   background: transparent;
   cursor: pointer;
@@ -1312,9 +1312,9 @@ function getFileColor(name: string): string {
   gap: 6px;
   flex-shrink: 0;
   padding: 10px;
-  border: 1px solid rgba(34, 197, 94, 0.12);
-  border-radius: 10px;
-  background: rgba(34, 197, 94, 0.04);
+  border: 1px solid var(--border-success);
+  border-radius: var(--radius-lg);
+  background: var(--bg-success);
 }
 
 .final-list {
@@ -1343,7 +1343,7 @@ function getFileColor(name: string): string {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #22c55e;
+  background: var(--color-success);
   box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
 }
 
@@ -1363,7 +1363,7 @@ function getFileColor(name: string): string {
   gap: 8px;
   padding: 8px 36px 8px 8px;
   border: 1px solid var(--border-subtle);
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   background: transparent;
   text-align: left;
   cursor: pointer;
@@ -1382,18 +1382,18 @@ function getFileColor(name: string): string {
 }
 
 .final-card {
-  background: rgba(34, 197, 94, 0.05);
-  border-color: rgba(34, 197, 94, 0.1);
+  background: var(--bg-success);
+  border-color: var(--border-success);
 }
 
 .final-card:hover {
-  background: rgba(34, 197, 94, 0.1);
-  border-color: rgba(34, 197, 94, 0.2);
+  background: var(--bg-success);
+  border-color: var(--border-success);
 }
 
 .final-card.active {
-  background: rgba(34, 197, 94, 0.12);
-  border-color: rgba(34, 197, 94, 0.35);
+  background: var(--bg-success);
+  border-color: var(--border-success);
   box-shadow: 0 0 12px rgba(34, 197, 94, 0.08);
 }
 
@@ -1404,7 +1404,7 @@ function getFileColor(name: string): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--bg-hover);
   transition: background 0.15s ease;
 }
@@ -1464,8 +1464,8 @@ function getFileColor(name: string): string {
   flex-shrink: 0;
   padding: 1px 6px;
   border-radius: 999px;
-  color: #22c55e;
-  background: rgba(34, 197, 94, 0.12);
+  color: var(--color-success);
+  background: var(--bg-success);
   font-size: 9px;
   font-weight: 700;
 }
@@ -1519,7 +1519,7 @@ function getFileColor(name: string): string {
   align-items: center;
   justify-content: center;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   background: transparent;
   cursor: pointer;
@@ -1547,7 +1547,7 @@ function getFileColor(name: string): string {
   gap: 2px;
   padding: 6px;
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   background: rgba(15, 23, 42, 0.98);
   backdrop-filter: blur(16px);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
@@ -1560,7 +1560,7 @@ function getFileColor(name: string): string {
   gap: 8px;
   padding: 0 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
   background: transparent;
   cursor: pointer;
@@ -1579,7 +1579,7 @@ function getFileColor(name: string): string {
 }
 
 .artifact-menu button.danger:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--bg-danger);
 }
 
 .artifact-menu button:disabled {
@@ -1594,7 +1594,7 @@ function getFileColor(name: string): string {
   gap: 10px;
   padding: 14px;
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   background: var(--bg-surface);
   backdrop-filter: blur(8px);
 }
@@ -1612,7 +1612,7 @@ function getFileColor(name: string): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   background: var(--bg-hover);
 }
 
@@ -1664,7 +1664,7 @@ function getFileColor(name: string): string {
   height: auto !important;
   width: auto !important;
   border: 0 !important;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   background: transparent !important;
   cursor: pointer;
@@ -1688,7 +1688,7 @@ function getFileColor(name: string): string {
   gap: 6px;
   padding: 0 10px;
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: var(--text-secondary);
   background: var(--bg-surface);
   cursor: pointer;
@@ -1709,13 +1709,13 @@ function getFileColor(name: string): string {
 
 .detail-actions button.danger {
   color: var(--color-danger);
-  border-color: rgba(239, 68, 68, 0.15);
-  background: rgba(239, 68, 68, 0.06);
+  border-color: var(--border-danger);
+  background: var(--bg-danger);
 }
 
 .detail-actions button.danger:hover {
-  background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.3);
+  background: var(--bg-danger);
+  border-color: var(--border-danger);
 }
 
 .detail-actions button:disabled {
@@ -1796,7 +1796,7 @@ function getFileColor(name: string): string {
   gap: 1px;
   padding: 8px 10px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: var(--text-secondary);
   background: transparent;
   cursor: pointer;
@@ -1874,7 +1874,7 @@ function getFileColor(name: string): string {
 .version-dialog-diff {
   overflow: auto;
   padding: 12px;
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--bg-card);
 }
 
 /* ── 旧预览弹窗恢复 ── */
@@ -1924,7 +1924,7 @@ function getFileColor(name: string): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   background: var(--bg-hover);
   flex-shrink: 0;
 }
@@ -1982,7 +1982,7 @@ function getFileColor(name: string): string {
 .empty-state.compact {
   padding: 14px 10px;
   border: 1px solid var(--border-subtle);
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
 }
 
@@ -2008,11 +2008,11 @@ function getFileColor(name: string): string {
 }
 
 .diff-line.added {
-  background: rgba(34, 197, 94, 0.12);
+  background: var(--bg-success);
 }
 
 .diff-line.removed {
-  background: rgba(239, 68, 68, 0.12);
+  background: var(--bg-danger);
 }
 
 .diff-marker {
@@ -2029,10 +2029,10 @@ function getFileColor(name: string): string {
 }
 
 .diff-line.added .diff-marker {
-  color: #22c55e;
+  color: var(--color-success);
 }
 
 .diff-line.removed .diff-marker {
-  color: #ef4444;
+  color: var(--color-danger);
 }
 </style>

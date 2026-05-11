@@ -21,7 +21,7 @@ const renderedContent = computed(() => renderMarkdown(props.content));
 }
 
 .markdown-renderer :deep(pre) {
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-card);
   padding: 12px;
   border-radius: var(--radius-md);
   overflow-x: auto;
@@ -34,7 +34,7 @@ const renderedContent = computed(() => renderMarkdown(props.content));
 }
 
 .markdown-renderer :deep(code:not(pre code)) {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-hover);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   font-size: var(--text-base);

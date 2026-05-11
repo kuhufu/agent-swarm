@@ -53,7 +53,7 @@ const showContent = ref(false);
   gap: 8px;
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
 }
 .fetch-field {
@@ -86,7 +86,7 @@ const showContent = ref(false);
 .fetch-type {
   padding: 1px 6px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
 }
@@ -111,8 +111,8 @@ const showContent = ref(false);
   padding: 9px 10px;
   border-radius: 7px;
   color: var(--text-secondary);
-  background: rgba(0, 0, 0, 0.24);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
   font-family: var(--font-mono);
   font-size: var(--text-sm); line-height: 1.6;
   white-space: pre-wrap; overflow-wrap: anywhere;

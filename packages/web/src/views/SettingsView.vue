@@ -487,7 +487,7 @@ async function saveSettings() {
   padding: 24px;
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   text-align: center;
 }
 
@@ -512,7 +512,7 @@ async function saveSettings() {
 .settings-sidebar {
   width: 280px;
   border-right: 1px solid var(--border-subtle);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -567,7 +567,7 @@ async function saveSettings() {
   border-radius: 10px;
   padding: 10px 12px;
   text-align: left;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
@@ -578,7 +578,7 @@ async function saveSettings() {
 
 .settings-item:hover {
   border-color: var(--border-default);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
@@ -632,13 +632,13 @@ async function saveSettings() {
   gap: 4px;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(248, 113, 113, 0.28);
-  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid var(--border-danger);
+  background: var(--bg-danger);
 }
 
 .sidebar-status p {
   margin: 0;
-  color: #fca5a5;
+  color: var(--text-secondary);
   font-size: var(--text-sm);
 }
 
@@ -656,7 +656,7 @@ async function saveSettings() {
   width: min(960px, 100%);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   padding: 20px;
   flex: 1;
   min-height: 0;
@@ -760,7 +760,7 @@ async function saveSettings() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
   color: var(--text-muted);
@@ -770,7 +770,7 @@ async function saveSettings() {
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 

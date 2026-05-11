@@ -12,7 +12,7 @@ defineProps<{
 
 <style scoped>
 .streaming-text {
-  color: #d0d0d0;
+  color: var(--text-muted);
 }
 
 .cursor {

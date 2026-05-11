@@ -51,7 +51,7 @@ const status = computed(() => getToolStatus(props.toolCall));
 
 <style scoped>
 .tool-call-card {
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   cursor: pointer;
@@ -59,7 +59,7 @@ const status = computed(() => getToolStatus(props.toolCall));
 }
 
 .tool-call-card:hover {
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--bg-hover);
   border-color: var(--border-default);
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
@@ -132,7 +132,7 @@ const status = computed(() => getToolStatus(props.toolCall));
   font-family: var(--font-mono);
   padding: 1px 6px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
 }
 
 .tool-duration {
@@ -153,17 +153,17 @@ const status = computed(() => getToolStatus(props.toolCall));
 }
 
 .tool-status.success {
-  background: rgba(34, 197, 94, 0.12);
+  background: var(--bg-success);
   color: var(--color-success);
 }
 
 .tool-status.error {
-  background: rgba(239, 68, 68, 0.12);
+  background: var(--bg-danger);
   color: var(--color-danger);
 }
 
 .tool-status.running {
-  background: rgba(245, 158, 11, 0.12);
+  background: var(--bg-warning);
   color: var(--color-warning);
 }
 

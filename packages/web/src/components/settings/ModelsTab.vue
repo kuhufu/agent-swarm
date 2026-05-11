@@ -347,7 +347,7 @@ async function testModel(provider: string, modelId: string) {
   max-height: calc(100% - 48px);
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -373,16 +373,16 @@ async function testModel(provider: string, modelId: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
   flex-shrink: 0;
 }
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 .close-btn svg {
@@ -433,7 +433,7 @@ async function testModel(provider: string, modelId: string) {
   align-items: center;
   justify-content: center;
   background: var(--bg-hover);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   font-size: var(--text-base);
   font-weight: 700;
   color: var(--text-secondary);
@@ -488,9 +488,9 @@ async function testModel(provider: string, modelId: string) {
   align-items: center;
   gap: 6px;
   padding: 5px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   color: var(--text-secondary);
   font-size: var(--text-sm);
   cursor: pointer;
@@ -518,10 +518,10 @@ async function testModel(provider: string, modelId: string) {
   line-height: 1.4;
 }
 .test-result-text.ok {
-  color: #22c55e;
+  color: var(--color-success);
 }
 .test-result-text.fail {
-  color: #f87171;
+  color: var(--color-danger);
 }
 .empty-state {
   display: flex;
@@ -537,8 +537,8 @@ async function testModel(provider: string, modelId: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 14px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
   border: 1px solid var(--border-subtle);
   margin-bottom: 14px;
 }

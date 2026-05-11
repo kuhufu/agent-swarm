@@ -145,7 +145,7 @@ function getEffectiveProtocol(id: string): ApiProtocol {
   align-items: center;
   justify-content: center;
   background: var(--bg-hover);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: var(--text-base);
   font-weight: 700;
   color: var(--text-secondary);

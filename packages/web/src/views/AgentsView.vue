@@ -596,7 +596,7 @@ onBeforeUnmount(() => {
 .agents-sidebar {
   width: 280px;
   border-right: 1px solid var(--border-subtle);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -690,10 +690,10 @@ onBeforeUnmount(() => {
 .preset-item {
   width: 100%;
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   padding: 10px 12px;
   text-align: left;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
@@ -704,7 +704,7 @@ onBeforeUnmount(() => {
 
 .preset-item:hover {
   border-color: var(--border-default);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
@@ -718,8 +718,8 @@ onBeforeUnmount(() => {
   position: relative;
   width: 100%;
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
   color: var(--text-secondary);
   transition: all 0.2s;
   display: grid;
@@ -768,7 +768,7 @@ onBeforeUnmount(() => {
   width: 24px;
   height: 24px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -802,7 +802,7 @@ onBeforeUnmount(() => {
   min-width: 128px;
   padding: 4px;
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   background: var(--bg-card);
   box-shadow: var(--shadow-md);
 }
@@ -810,7 +810,7 @@ onBeforeUnmount(() => {
 .preset-action-danger {
   width: 100%;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 7px 10px;
   background: transparent;
   color: var(--color-danger);
@@ -822,7 +822,7 @@ onBeforeUnmount(() => {
 .preset-action-item {
   width: 100%;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 7px 10px;
   background: transparent;
   color: var(--text-secondary);
@@ -837,7 +837,7 @@ onBeforeUnmount(() => {
 }
 
 .preset-action-danger:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--bg-danger);
 }
 
 .preset-action-danger:disabled {
@@ -888,7 +888,7 @@ onBeforeUnmount(() => {
   z-index: 50;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
   padding: 4px;
 }
@@ -902,7 +902,7 @@ onBeforeUnmount(() => {
   padding: 8px 10px;
   border: none;
   background: transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: var(--text-base);
   text-align: left;
@@ -942,7 +942,7 @@ onBeforeUnmount(() => {
   max-width: 960px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   padding: 20px;
 }
 
@@ -1021,9 +1021,9 @@ onBeforeUnmount(() => {
 
 .model-chip {
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   color: var(--text-secondary);
   cursor: pointer;
   font-size: var(--text-sm);
@@ -1032,7 +1032,7 @@ onBeforeUnmount(() => {
 
 .model-chip:hover {
   border-color: var(--border-default);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
 }
 
 .model-chip.active {

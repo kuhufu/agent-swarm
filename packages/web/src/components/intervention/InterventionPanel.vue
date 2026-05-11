@@ -83,8 +83,8 @@ function submitEdit() {
 <style scoped>
 .intervention-panel {
   padding: 16px 24px;
-  background: rgba(245, 158, 11, 0.05);
-  border-top: 1px solid rgba(245, 158, 11, 0.18);
+  background: var(--bg-warning);
+  border-top: 1px solid var(--border-warning);
   box-shadow: 0 -4px 20px rgba(245,158,11,0.06);
 }
 
@@ -104,7 +104,7 @@ function submitEdit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(245, 158, 11, 0.15);
+  background: var(--bg-warning);
   border-radius: 10px;
   color: var(--color-warning);
 }
@@ -117,7 +117,7 @@ function submitEdit() {
 .intervention-badge {
   display: inline-block;
   padding: 2px 10px;
-  background: rgba(245, 158, 11, 0.2);
+  background: var(--bg-warning);
   border-radius: 9999px;
   font-size: var(--text-sm);
   color: var(--color-warning);
@@ -136,8 +136,8 @@ function submitEdit() {
 }
 
 .intervention-context {
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(245, 158, 11, 0.1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-warning);
   border-radius: 10px;
   padding: 12px 16px;
   overflow-x: auto;
@@ -158,7 +158,7 @@ function submitEdit() {
 }
 
 .intervention-edit textarea {
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--bg-card);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: var(--text-base);

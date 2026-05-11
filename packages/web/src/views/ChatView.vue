@@ -406,7 +406,7 @@ async function handleForkConversation(messageId?: string) {
   justify-content: space-between;
   padding: 10px 24px;
   border-bottom: 1px solid var(--border-subtle);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
 }
 
 .chat-header-left {
@@ -435,9 +435,9 @@ async function handleForkConversation(messageId?: string) {
 }
 
 .mode-badge.direct {
-  background: rgba(34, 197, 94, 0.12);
-  color: #4ade80;
-  border-color: rgba(34, 197, 94, 0.25);
+  background: var(--bg-success);
+  color: var(--color-success);
+  border-color: var(--border-success);
 }
 
 .chat-header-right {
@@ -461,7 +461,7 @@ async function handleForkConversation(messageId?: string) {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   padding: 0 10px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
   color: var(--text-secondary);
   font-size: var(--text-base);
   font-weight: var(--weight-medium);
@@ -524,7 +524,7 @@ async function handleForkConversation(messageId?: string) {
 }
 
 .workspace-menu-header button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
@@ -601,7 +601,7 @@ async function handleForkConversation(messageId?: string) {
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
   padding: 0 10px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
   color: var(--text-primary);
   outline: none;
 }
@@ -628,7 +628,7 @@ async function handleForkConversation(messageId?: string) {
 }
 
 .new-chat-btn {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
@@ -644,14 +644,14 @@ async function handleForkConversation(messageId?: string) {
 }
 
 .new-chat-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-hover);
   border-color: var(--border-default);
   color: var(--text-primary);
 }
 
 .chat-sidebar-right {
   width: 380px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
   padding: 20px;
   overflow-y: auto;
   flex-shrink: 0;

@@ -136,15 +136,15 @@ function opLabel(name: string): string {
   padding: 6px 8px;
 }
 .ct-header {
-  background: rgba(255,255,255,0.04);
+  background: var(--bg-surface);
   color: var(--text-muted);
   font-weight: var(--weight-bold);
 }
 .ct-row {
-  background: rgba(255,255,255,0.02);
+  background: var(--bg-surface);
 }
 .ct-row:hover {
-  background: rgba(255,255,255,0.04);
+  background: var(--bg-surface);
 }
 .ct-id {
   font-family: var(--font-mono);
@@ -188,11 +188,11 @@ function opLabel(name: string): string {
 }
 .run-exit-code.success {
   color: var(--color-success);
-  background: rgba(34,197,94,0.1);
+  background: var(--bg-success);
 }
 .run-exit-code.error {
   color: var(--color-danger);
-  background: rgba(239,68,68,0.1);
+  background: var(--bg-danger);
 }
 .run-badge {
   padding: 2px 7px;
@@ -201,11 +201,11 @@ function opLabel(name: string): string {
   font-weight: var(--weight-bold);
 }
 .run-badge.timedout {
-  background: rgba(245,158,11,0.1);
+  background: var(--bg-warning);
   color: var(--color-warning);
 }
 .run-badge.aborted {
-  background: rgba(239,68,68,0.1);
+  background: var(--bg-danger);
   color: var(--color-danger);
 }
 .run-badge.bg {
@@ -226,8 +226,8 @@ function opLabel(name: string): string {
   padding: 9px 10px;
   border-radius: 7px;
   color: var(--text-secondary);
-  background: rgba(0,0,0,0.24);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   line-height: 1.6;
@@ -238,14 +238,14 @@ function opLabel(name: string): string {
 }
 .run-pre-error {
   color: var(--color-danger);
-  border-color: rgba(239,68,68,0.15);
+  border-color: var(--border-danger);
 }
 
 /* pull image */
 .pull-card {
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(255,255,255,0.03);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   display: grid;
   gap: 8px;
@@ -273,18 +273,18 @@ function opLabel(name: string): string {
 }
 .pull-status.success {
   color: var(--color-success);
-  background: rgba(34,197,94,0.1);
+  background: var(--bg-success);
 }
 .pull-status.error {
   color: var(--color-danger);
-  background: rgba(239,68,68,0.1);
+  background: var(--bg-danger);
 }
 
 /* simple ops */
 .simple-op-card {
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(255,255,255,0.03);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   display: grid;
   gap: 8px;
@@ -314,7 +314,7 @@ function opLabel(name: string): string {
 .fallback-card {
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(255,255,255,0.03);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
 }
 .fallback-pre {

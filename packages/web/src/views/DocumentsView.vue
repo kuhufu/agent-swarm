@@ -317,7 +317,7 @@ async function generateWikiFromDocument() {
 .document-detail {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
 }
 
 .documents-sidebar {
@@ -384,8 +384,8 @@ h3 {
   height: 36px;
   padding: 0 11px;
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.22);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
   color: var(--text-primary);
   font: inherit;
   font-size: var(--text-base);
@@ -406,8 +406,8 @@ h3 {
   gap: 4px;
   padding: 11px 12px;
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
   text-align: left;
   cursor: pointer;
 }
@@ -469,8 +469,8 @@ h3 {
 .chunk-item,
 .empty-list {
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.16);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
   padding: 10px 12px;
 }
 
@@ -524,7 +524,7 @@ h3 {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-subtle);
   cursor: pointer;
   font-size: var(--text-base);
@@ -535,7 +535,7 @@ h3 {
   width: 36px;
   padding: 0;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
   border-radius: var(--radius-md);
 }
 
@@ -546,15 +546,15 @@ h3 {
 .secondary-btn {
   padding: 0 12px;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--bg-card);
   border-radius: var(--radius-md);
 }
 
 .danger-btn {
   padding: 0 12px;
   color: var(--color-danger);
-  background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.18);
+  background: var(--bg-danger);
+  border-color: var(--border-danger);
   border-radius: var(--radius-md);
 }
 

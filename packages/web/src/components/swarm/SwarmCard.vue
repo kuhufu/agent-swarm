@@ -112,7 +112,7 @@ function handleDelete(e: Event) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   color: var(--text-muted);
@@ -121,15 +121,15 @@ function handleDelete(e: Event) {
 }
 
 .action-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-hover);
   color: var(--text-primary);
   border-color: var(--border-default);
 }
 
 .action-btn.danger:hover {
-  background: rgba(239, 68, 68, 0.15);
+  background: var(--bg-danger);
   color: var(--color-danger);
-  border-color: rgba(239, 68, 68, 0.3);
+  border-color: var(--border-danger);
 }
 
 .swarm-name {

@@ -558,7 +558,7 @@ function sourcePreview(source: SourceDocument): string {
 .detail-panel {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
 }
 
 .wiki-sidebar {
@@ -587,7 +587,7 @@ function sourcePreview(source: SourceDocument): string {
   padding-bottom: 12px;
   margin-bottom: -12px;
   background: var(--bg-card);
-  border-radius: 10px 10px 0 0;
+  border-radius: var(--radius-lg);
 }
 
 h1,
@@ -642,8 +642,8 @@ h3 {
 .source-textarea {
   width: 100%;
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.22);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
   color: var(--text-primary);
   font: inherit;
   font-size: var(--text-base);
@@ -683,8 +683,8 @@ h3 {
   gap: 4px;
   padding: 11px 12px;
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
   text-align: left;
   cursor: pointer;
 }
@@ -774,7 +774,7 @@ h3 {
 .alias,
 .link-list span {
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   border: 1px solid var(--border-subtle);
 }
 
@@ -814,8 +814,8 @@ h3 {
 .empty-block,
 .empty-list {
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.16);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
   padding: 10px 12px;
 }
 
@@ -934,7 +934,7 @@ h3 {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-subtle);
   cursor: pointer;
   font-size: var(--text-base);
@@ -944,7 +944,7 @@ h3 {
   width: 36px;
   padding: 0;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
 }
 
 .icon-btn.muted {
@@ -963,14 +963,14 @@ h3 {
 .secondary-btn {
   padding: 0 12px;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--bg-card);
 }
 
 .danger-btn {
   padding: 0 12px;
   color: var(--color-danger);
-  background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.18);
+  background: var(--bg-danger);
+  border-color: var(--border-danger);
 }
 
 button:disabled {

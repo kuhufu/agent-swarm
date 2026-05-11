@@ -38,7 +38,7 @@ const emit = defineEmits<{
   padding: 10px 12px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--bg-card);
 }
 
 .artifact-result div {
@@ -66,10 +66,10 @@ const emit = defineEmits<{
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
   cursor: pointer;
   flex-shrink: 0;
   font-size: var(--text-sm);
