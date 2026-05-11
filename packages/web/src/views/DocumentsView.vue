@@ -212,52 +212,73 @@ async function generateWikiFromDocument() {
 
 <template>
   <div class="documents-view">
+    <!-- Left Sidebar -->
     <aside class="documents-sidebar">
       <div class="sidebar-header">
-        <div>
-          <h1>文档</h1>
-          <p>{{ documents.length }} 个源文件</p>
-        </div>
-        <button class="icon-btn" type="button" title="导入文件" @click="fileInput?.click()">
-          <SvgIcon name="upload" :size="16" />
-        </button>
-        <input ref="fileInput" class="file-input" type="file" accept=".txt,.md,.markdown,.json,.html,.htm,.pdf,.docx" @change="uploadFile">
+        <h2>文档</h2>
+        <p>管理和检索文档知识库</p>
       </div>
 
-      <div class="search-row">
-        <input v-model="searchQuery" class="search-input" type="search" placeholder="搜索文档原文" @keyup.enter="searchDocuments">
-        <button class="icon-btn" type="button" title="搜索" @click="searchDocuments">
-          <SvgIcon name="search" :size="15" />
-        </button>
-        <button v-if="searchResults.length" class="icon-btn muted" type="button" title="清除搜索" @click="clearSearch">
-          <SvgIcon name="close" :size="15" />
+      <div class="search-box">
+        <SvgIcon name="search" class="search-icon" :size="16" />
+        <input
+          v-model="searchQuery"
+          class="input-field search-input"
+          placeholder="搜索文档原文..."
+          @keyup.enter="searchDocuments"
+        />
+        <button v-if="searchResults.length" class="clear-btn" type="button" title="清除搜索" @click="clearSearch">
+          <SvgIcon name="close" :size="12" />
         </button>
       </div>
 
-      <div class="document-list">
+      <nav class="doc-nav">
+        <div class="nav-divider">文档列表</div>
         <button
           v-for="doc in visibleDocuments"
           :key="doc.id"
-          class="document-list-item"
+          class="nav-item doc-nav-item"
           :class="{ active: selectedDoc?.id === doc.id }"
           type="button"
           @click="selectDocument(doc.id)"
         >
-          <span class="document-title">{{ doc.title }}</span>
-          <span class="document-meta">{{ doc.source }} · {{ new Date(doc.createdAt).toLocaleString() }}</span>
+          <div class="doc-nav-icon">
+            <SvgIcon name="file" :size="16" />
+          </div>
+          <div>
+            <span class="nav-label">{{ doc.title }}</span>
+            <span class="nav-desc">{{ doc.source }} · {{ new Date(doc.createdAt).toLocaleString() }}</span>
+          </div>
         </button>
-        <div v-if="!loading && visibleDocuments.length === 0" class="empty-list">没有文档</div>
+        <div v-if="!loading && visibleDocuments.length === 0" class="nav-empty">没有文档</div>
+      </nav>
+
+      <div class="sidebar-actions">
+        <button class="upload-btn" type="button" @click="fileInput?.click()">
+          <SvgIcon name="upload" :size="14" />
+          导入文件
+        </button>
       </div>
+      <input ref="fileInput" class="file-input" type="file" accept=".txt,.md,.markdown,.json,.html,.htm,.pdf,.docx" @change="uploadFile">
     </aside>
 
+    <!-- Right Content -->
     <main class="documents-main">
-      <section v-if="selectedDoc" class="document-detail">
-        <div class="detail-toolbar">
-          <div>
-            <h2>{{ selectedDoc.title }}</h2>
-            <p>{{ selectedDoc.source }} · {{ new Date(selectedDoc.createdAt).toLocaleString() }}</p>
+      <section v-if="selectedDoc" class="detail-panel">
+        <div class="detail-header">
+          <div class="detail-title-row">
+            <div class="detail-icon">
+              <SvgIcon name="file" :size="22" />
+            </div>
+            <div class="detail-title-info">
+              <h3 class="detail-title">{{ selectedDoc.title }}</h3>
+              <div class="detail-meta">
+                <span class="meta-text">{{ selectedDoc.source }}</span>
+                <span class="meta-text">{{ new Date(selectedDoc.createdAt).toLocaleString() }}</span>
+              </div>
+            </div>
           </div>
-          <div class="toolbar-actions">
+          <div class="detail-actions">
             <button class="secondary-btn" type="button" :disabled="generatingWiki" @click="generateWikiFromDocument">
               <SvgIcon name="book" :size="14" />
               {{ generatingWiki ? "生成中..." : "生成 Wiki" }}
@@ -282,7 +303,7 @@ async function generateWikiFromDocument() {
         </article>
 
         <section class="chunks-section">
-          <h3>切片</h3>
+          <h4 class="section-title">切片</h4>
           <div class="chunk-list">
             <article v-for="chunk in selectedChunks" :key="chunk.id" class="chunk-item">
               <strong>#{{ chunk.index + 1 }}</strong>
@@ -292,9 +313,12 @@ async function generateWikiFromDocument() {
         </section>
       </section>
 
-      <section v-else class="document-detail empty-detail">
-        <SvgIcon name="book" :size="32" />
-        <h2>选择或导入一个文档</h2>
+      <section v-else class="empty-state">
+        <div class="empty-icon">
+          <SvgIcon name="book" :size="24" />
+        </div>
+        <p class="empty-title">选择或导入一个文档</p>
+        <p class="empty-desc">从左侧选择文档，或点击导入按钮添加新文件</p>
       </section>
     </main>
   </div>
@@ -302,176 +326,361 @@ async function generateWikiFromDocument() {
 
 <style scoped>
 .documents-view {
-  height: 100dvh;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
-  gap: 18px;
-  padding: 24px;
-  color: var(--text-primary);
+  height: 100%;
   overflow: hidden;
-  box-sizing: border-box;
 }
 
-.documents-sidebar,
-.document-detail {
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  background: var(--bg-card);
+.documents-layout,
+.documents-view {
+  display: flex;
+  height: 100%;
 }
 
+/* Left Sidebar */
 .documents-sidebar {
-  min-height: 0;
+  width: 320px;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
-  padding: 16px;
-  overflow: hidden;
+  flex-shrink: 0;
+  padding: 24px 16px;
 }
 
-.sidebar-header,
-.detail-toolbar {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
+.sidebar-header {
+  margin-bottom: 16px;
+  padding: 0 8px;
 }
 
-h1,
-h2,
-h3,
-p {
+.sidebar-header h2 {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+  letter-spacing: -0.3px;
+}
+
+.sidebar-header p {
+  font-size: var(--text-base);
+  color: var(--text-muted);
   margin: 0;
 }
 
-h1 {
-  font-size: var(--text-xl);
+/* Search Box */
+.search-box {
+  position: relative;
+  margin-bottom: 12px;
+  padding: 0 4px;
 }
 
-h2 {
-  font-size: var(--text-xl);
-}
-
-h3 {
-  color: var(--text-secondary);
-  font-size: var(--text-base);
-}
-
-.sidebar-header p,
-.detail-toolbar p {
-  margin-top: 5px;
+.search-icon {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
   color: var(--text-muted);
-  font-size: var(--text-base);
+  pointer-events: none;
 }
 
-.search-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.search-row .search-input {
-  flex: 1;
-  min-width: 0;
-}
-
-.search-row .icon-btn {
-  flex-shrink: 0;
-}
-
-.search-input {
+.input-field.search-input {
   width: 100%;
-  min-width: 0;
-  height: 36px;
-  padding: 0 11px;
+  height: 40px;
+  padding: 0 36px 0 40px;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--bg-card);
+  border-radius: 12px;
+  background: transparent;
   color: var(--text-primary);
   font: inherit;
   font-size: var(--text-base);
   outline: none;
   box-sizing: border-box;
+  transition: border-color 0.15s;
 }
 
-.document-list {
-  display: grid;
-  gap: 8px;
-  min-height: 0;
-  margin-top: 14px;
+.input-field.search-input:focus {
+  border-color: var(--border-default);
+}
+
+.input-field.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.clear-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.clear-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+/* Nav */
+.doc-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   overflow-y: auto;
 }
 
-.document-list-item {
-  display: grid;
-  gap: 4px;
-  padding: 11px 12px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  text-align: left;
-  cursor: pointer;
+.nav-divider {
+  padding: 12px 8px 6px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
-.document-list-item.active {
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  background: transparent;
+  text-align: left;
+  width: 100%;
+}
+
+.nav-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
   border-color: var(--border-default);
+}
+
+.nav-item.active {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border-color: var(--border-default);
+}
+
+.nav-item div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nav-label {
+  font-weight: var(--weight-bold);
+  font-size: var(--text-base);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-desc {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.nav-item.active .nav-desc {
+  color: var(--text-secondary);
+}
+
+.doc-nav-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border-radius: 8px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.nav-item.active .doc-nav-icon {
+  color: var(--text-secondary);
   background: var(--bg-hover);
 }
 
-.document-title {
-  color: var(--text-primary);
+.nav-empty {
+  padding: 20px 8px;
   font-size: var(--text-base);
-  font-weight: 700;
-}
-
-.document-meta {
   color: var(--text-muted);
-  font-size: var(--text-sm);
+  text-align: center;
 }
 
-.documents-main {
-  min-height: 0;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 18px;
-  overflow: hidden;
+/* Sidebar Actions */
+.sidebar-actions {
+  padding: 12px 4px 0;
 }
 
-.document-detail {
-  min-height: 0;
-  padding: 18px;
-  overflow-y: auto;
-}
-
-.toolbar-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.document-content,
-.chunk-card,
-.chunks-section {
-  margin-top: 18px;
-}
-
-.document-content pre,
-.chunk-item p,
-.chunk-card p {
-  margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  color: var(--text-secondary);
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 0;
+  border: 1px dashed var(--border-subtle);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-muted);
   font-size: var(--text-base);
-  line-height: 1.7;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.upload-btn:hover {
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.file-input {
+  display: none;
+}
+
+/* Right Content */
+.documents-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 32px;
+}
+
+/* Detail Panel */
+.detail-panel {
+  max-width: 720px;
+}
+
+.detail-header {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.detail-icon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.detail-title-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.detail-title {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.meta-text {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.detail-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.secondary-btn,
+.danger-btn {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  font-size: var(--text-base);
+  box-sizing: border-box;
+  transition: all 0.15s;
+}
+
+.secondary-btn {
+  color: var(--text-secondary);
+  background: var(--bg-card);
+}
+
+.secondary-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.danger-btn {
+  color: var(--color-danger);
+  background: var(--bg-danger);
+  border-color: var(--border-danger);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Content Sections */
+.section-title {
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+
+.chunks-section {
+  margin-top: 24px;
 }
 
 .chunk-card,
-.chunk-item,
-.empty-list {
+.chunk-item {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--bg-card);
-  padding: 10px 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
 }
 
 .chunk-card header {
@@ -492,7 +701,7 @@ h3 {
 
 .chunk-list {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   margin-top: 10px;
 }
 
@@ -503,80 +712,71 @@ h3 {
   font-size: var(--text-sm);
 }
 
-.empty-detail {
-  min-height: 320px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 10px;
+.document-content pre,
+.chunk-item p,
+.chunk-card p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  line-height: 1.7;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 80px 0;
   color: var(--text-muted);
 }
 
-.file-input {
-  display: none;
-}
-
-.icon-btn,
-.secondary-btn,
-.danger-btn {
-  min-height: 36px;
-  display: inline-flex;
+.empty-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-subtle);
-  cursor: pointer;
-  font-size: var(--text-base);
-  box-sizing: border-box;
-}
-
-.icon-btn {
-  width: 36px;
-  padding: 0;
-  color: var(--text-secondary);
   background: var(--bg-surface);
-  border-radius: var(--radius-md);
-}
-
-.icon-btn.muted {
+  border-radius: 14px;
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 14px;
   color: var(--text-muted);
 }
 
-.secondary-btn {
-  padding: 0 12px;
+.empty-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
   color: var(--text-secondary);
-  background: var(--bg-card);
-  border-radius: var(--radius-md);
+  margin: 0 0 4px;
 }
 
-.danger-btn {
-  padding: 0 12px;
-  color: var(--color-danger);
-  background: var(--bg-danger);
-  border-color: var(--border-danger);
-  border-radius: var(--radius-md);
-}
-
-button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+.empty-desc {
+  font-size: var(--text-base);
+  margin: 0;
+  color: var(--text-muted);
 }
 
 @media (max-width: 960px) {
   .documents-view {
     height: auto;
     min-height: 100dvh;
-    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .documents-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 16px;
+    min-height: auto;
+  }
+
+  .documents-main {
     padding: 16px;
     overflow: visible;
   }
-
-  .documents-sidebar,
-  .documents-main,
-  .document-detail {
-    overflow: visible;
-  }
-
 }
 </style>
