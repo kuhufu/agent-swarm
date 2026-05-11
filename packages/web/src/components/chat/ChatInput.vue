@@ -753,6 +753,7 @@ function handleOutsideClick(event: MouseEvent) {
   align-items: center;
   gap: 5px;
   padding: 4px 0;
+  margin-left: 6px;
   border: none;
   background: none;
   color: var(--text-muted);
