@@ -1767,15 +1767,15 @@ function getFileColor(name: string): string {
   align-items: center;
   justify-content: center;
   padding: 40px;
-  background: rgba(2, 6, 23, 0.6);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.6);
 }
 
 .version-dialog {
   position: relative;
-  max-height: 70vh;
-  width: 100%;
-  height: 100%;
+  width: 1300px;
+  max-width: calc(100vw - 80px);
+  height: 900px;
+  max-height: calc(100vh - 80px);
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border-subtle);
