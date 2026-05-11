@@ -352,6 +352,24 @@ function closePreview() {
   previewVersion.value = null;
 }
 
+function copyPreviewContent() {
+  const content = preview.value?.content;
+  if (!content) return;
+  navigator.clipboard.writeText(content).then(() => {
+    showSuccess("已复制");
+  }).catch(() => {
+    const textarea = document.createElement("textarea");
+    textarea.value = content;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+    showSuccess("已复制");
+  });
+}
+
 async function loadImagePreview(artifact: WorkspaceArtifact) {
   previewLoading.value = true;
   try {
@@ -1027,9 +1045,14 @@ function getFileColor(name: string): string {
                 <span>{{ previewVersion ? `${selectedArtifact.path} · ${formatTime(previewVersion.updatedAt)}` : selectedArtifact.path }}</span>
               </div>
             </div>
-            <button class="icon-btn" type="button" title="关闭" @click="closePreview">
-              <SvgIcon name="close" :size="15" />
-            </button>
+            <div class="preview-actions">
+              <button class="icon-btn" type="button" title="复制内容" @click="copyPreviewContent">
+                <SvgIcon name="copy" :size="14" />
+              </button>
+              <button class="icon-btn" type="button" title="关闭" @click="closePreview">
+                <SvgIcon name="close" :size="15" />
+              </button>
+            </div>
           </header>
           <div class="preview-body">
             <div v-if="previewLoading" class="empty-state compact">加载中...</div>
@@ -1935,7 +1958,7 @@ function getFileColor(name: string): string {
   flex-shrink: 0;
 }
 
-.preview-header div:last-child:not(.preview-title) {
+.preview-header div:last-child:not(.preview-title):not(.preview-actions) {
   min-width: 0;
   display: grid;
   gap: 4px;
@@ -1955,6 +1978,13 @@ function getFileColor(name: string): string {
   font-weight: var(--weight-bold);
 }
 
+.preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 .preview-header span {
   color: var(--text-muted);
   font-size: var(--text-sm);
@@ -1965,7 +1995,7 @@ function getFileColor(name: string): string {
   flex: 1;
   min-height: 0;
   padding: 16px;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .empty-state {
@@ -1997,6 +2027,24 @@ function getFileColor(name: string): string {
   color: var(--text-muted);
   font-size: var(--text-sm);
   text-align: center;
+}
+
+.text-preview {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-secondary);
+}
+
+.code-preview code.hljs {
+  background: transparent;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.6;
 }
 
 .diff-view {
