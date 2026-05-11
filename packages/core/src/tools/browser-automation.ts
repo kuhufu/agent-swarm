@@ -23,6 +23,7 @@ const BrowserAutomationParams = Type.Object({
     description: "元素引用 ID，格式 @e1、@e2 等（action=click/fill 时必填）。从 snap 操作的输出中获取。",
   })),
   value: Type.Optional(Type.String({ description: "输入值（action=fill 时必填）" })),
+  userAgent: Type.Optional(Type.String({ description: "自定义 User-Agent（仅在 action=open 时生效）" })),
   waitUntil: Type.Optional(Type.String({ description: "等待条件：load/networkidle（action=wait 时使用）" })),
   timeout: Type.Optional(Type.Number({ description: "超时时间（毫秒）" })),
 });
@@ -66,7 +67,7 @@ export function createBrowserAutomationTool(): AgentTool<
       _toolCallId: string,
       params: BrowserAutomationParams,
     ) => {
-      const { action, url, ref, value, waitUntil, timeout } = params;
+      const { action, url, ref, value, userAgent, waitUntil, timeout } = params;
 
       try {
         let result: string;
@@ -81,6 +82,7 @@ export function createBrowserAutomationTool(): AgentTool<
             }
             const openArgs = ["open", url];
             if (timeout) openArgs.push("--timeout", String(timeout));
+            if (userAgent) openArgs.push("--user-agent", userAgent);
             result = await execAgentBrowser(openArgs);
             break;
           }
