@@ -467,6 +467,8 @@ function handleOutsideClick(event: MouseEvent) {
             @mousedown="handleKeepTextareaFocusMouseDown"
             @click="selectSavedModel(sm)"
           >
+            <SvgIcon v-if="selectedModelValue === sm.id" name="check" :size="12" />
+            <span v-else class="model-check-placeholder" />
             <span class="dropdown-model-name">{{ sm.name }}</span>
             <span class="dropdown-model-provider">{{ sm.provider }}</span>
           </button>
@@ -802,7 +804,6 @@ function handleOutsideClick(event: MouseEvent) {
 .model-dropdown-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   width: 100%;
   padding: 8px 10px;
@@ -814,6 +815,20 @@ function handleOutsideClick(event: MouseEvent) {
   font-size: var(--text-base);
   text-align: left;
   color: var(--text-secondary);
+}
+
+.model-dropdown-item:hover {
+  background: var(--bg-hover);
+}
+
+.model-dropdown-item.active {
+  color: var(--text-primary);
+  font-weight: var(--weight-bold);
+}
+
+.model-check-placeholder {
+  width: 12px;
+  flex-shrink: 0;
 }
 
 .model-dropdown-item:hover {
