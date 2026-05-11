@@ -8,6 +8,9 @@ import { apiClient } from "../api/client.js";
 import { getModeConfig } from "../constants/swarm-modes.js";
 import { formatTimeLong } from "../utils/format.js";
 import ModeIcon from "../components/common/ModeIcon.vue";
+import SidebarPanel from "../components/common/SidebarPanel.vue";
+import EmptyState from "../components/common/EmptyState.vue";
+import DetailHeader from "../components/common/DetailHeader.vue";
 import type { ConversationInfo, SwarmConfig, ChatMessage, ConversationEvent } from "../types/index.js";
 import { confirmDialog, showError } from "../utils/ui-feedback.js";
 import SvgIcon from "../components/common/SvgIcon.vue";
@@ -40,6 +43,15 @@ const filteredConversations = computed(() => {
   );
 });
 
+const navItems = computed(() =>
+  filteredConversations.value.map((c) => ({
+    id: c.id,
+    label: c.title ?? "新对话",
+    description: `${getSwarmName(c.swarmId)} · ${formatTimeLong(c.updatedAt)}`,
+    active: selectedConvId.value === c.id,
+  })),
+);
+
 const selectedConv = computed(() =>
   conversationStore.conversations.find((c: ConversationInfo) => c.id === selectedConvId.value) ?? null
 );
@@ -57,6 +69,12 @@ const selectedFinalArtifacts = computed(() =>
 onMounted(async () => {
   await conversationStore.fetchAllConversations();
 });
+
+async function selectNav(id: string) {
+  const conv = conversationStore.conversations.find((c: ConversationInfo) => c.id === id);
+  if (!conv) return;
+  await selectConv(conv);
+}
 
 async function selectConv(conv: ConversationInfo) {
   selectedConvId.value = conv.id;
@@ -111,9 +129,7 @@ async function deleteConversation(conv: ConversationInfo) {
     cancelText: "取消",
     theme: "danger",
   });
-  if (!confirmed) {
-    return;
-  }
+  if (!confirmed) return;
 
   try {
     await conversationStore.deleteConversation(conv.id);
@@ -128,8 +144,6 @@ async function deleteConversation(conv: ConversationInfo) {
     showError(message);
   }
 }
-
-const formatTime = formatTimeLong;
 
 function getSwarmName(swarmId: string): string {
   if (swarmId.startsWith("__direct_")) {
@@ -169,12 +183,8 @@ function getRoleColor(role: string): string {
 
 function parseMessageMetadata(message: ChatMessage): Record<string, unknown> | null {
   const raw = (message as { metadata?: unknown }).metadata;
-  if (!raw) {
-    return null;
-  }
-  if (typeof raw === "object" && !Array.isArray(raw)) {
-    return raw as Record<string, unknown>;
-  }
+  if (!raw) return null;
+  if (typeof raw === "object" && !Array.isArray(raw)) return raw as Record<string, unknown>;
   if (typeof raw === "string") {
     try {
       const parsed = JSON.parse(raw) as unknown;
@@ -192,16 +202,12 @@ function messageMetadataModelLabel(message: ChatMessage): string | null {
   const metadata = parseMessageMetadata(message);
   const provider = typeof metadata?.provider === "string" ? metadata.provider.trim() : "";
   const model = typeof metadata?.model === "string" ? metadata.model.trim() : "";
-  if (!provider || !model) {
-    return null;
-  }
+  if (!provider || !model) return null;
   return `${provider}/${model}`;
 }
 
 function getMessageLabel(message: ChatMessage, conversation: ConversationInfo): string {
-  if (message.role !== "assistant") {
-    return getRoleLabel(message.role);
-  }
+  if (message.role !== "assistant") return getRoleLabel(message.role);
 
   const metadataModelLabel = messageMetadataModelLabel(message);
   const isDirectConversation = conversation.swarmId.startsWith("__direct_");
@@ -212,9 +218,7 @@ function getMessageLabel(message: ChatMessage, conversation: ConversationInfo): 
 }
 
 function parseEventData(event: ConversationEvent): Record<string, any> {
-  if (!event.eventData) {
-    return {};
-  }
+  if (!event.eventData) return {};
   try {
     const parsed = JSON.parse(event.eventData) as unknown;
     return parsed && typeof parsed === "object" && !Array.isArray(parsed)
@@ -227,17 +231,11 @@ function parseEventData(event: ConversationEvent): Record<string, any> {
 
 function getEventLabel(event: ConversationEvent): string {
   const labels: Record<string, string> = {
-    swarm_start: "开始",
-    swarm_end: "结束",
-    agent_start: "Agent 开始",
-    agent_end: "Agent 结束",
-    turn_start: "轮次开始",
-    turn_end: "轮次结束",
-    message_end: "消息完成",
-    tool_execution_end: "工具完成",
-    handoff: "交接",
-    intervention_required: "需要介入",
-    error: "错误",
+    swarm_start: "开始", swarm_end: "结束",
+    agent_start: "Agent 开始", agent_end: "Agent 结束",
+    turn_start: "轮次开始", turn_end: "轮次结束",
+    message_end: "消息完成", tool_execution_end: "工具完成",
+    handoff: "交接", intervention_required: "需要介入", error: "错误",
   };
   return labels[event.eventType] ?? event.eventType;
 }
@@ -275,9 +273,7 @@ function getEventDetail(event: ConversationEvent): string {
   }
   if (event.eventType === "error") {
     const error = data.error;
-    if (error && typeof error === "object" && typeof error.message === "string") {
-      return error.message;
-    }
+    if (error && typeof error === "object" && typeof error.message === "string") return error.message;
     return "运行过程中发生错误";
   }
   if (event.eventType === "swarm_end" && typeof data.finalMessage === "string" && data.finalMessage.trim()) {
@@ -288,9 +284,7 @@ function getEventDetail(event: ConversationEvent): string {
 
 function formatEventOffset(event: ConversationEvent, events: ConversationEvent[] | null): string {
   const first = events?.[0]?.timestamp;
-  if (!first) {
-    return formatTime(event.timestamp);
-  }
+  if (!first) return formatTimeLong(event.timestamp);
   const diff = Math.max(0, event.timestamp - first);
   if (diff < 1000) return "+0.0s";
   if (diff < 60_000) return `+${(diff / 1000).toFixed(1)}s`;
@@ -334,79 +328,40 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   <div class="history-view">
     <div class="history-layout">
       <!-- Left Sidebar -->
-      <aside class="history-sidebar">
-        <div class="sidebar-header">
-          <h2>历史对话</h2>
-          <p>查看和管理对话记录</p>
-        </div>
-
-        <div class="search-box">
-          <SvgIcon name="search" class="search-icon" :size="16" />
-          <input
-            v-model="searchQuery"
-            class="input-field search-input"
-            placeholder="搜索对话..."
-          />
-        </div>
-
-        <nav class="history-nav">
-          <div class="nav-divider">对话列表</div>
-
-          <button
-            v-for="conv in filteredConversations"
-            :key="conv.id"
-            class="nav-item conv-nav-item"
-            :class="{ active: selectedConvId === conv.id }"
-            @click="selectConv(conv)"
-          >
-            <div class="conv-nav-icon">
-              <SvgIcon name="chat" :size="16" />
-            </div>
-            <div>
-              <span class="nav-label">{{ conv.title ?? "新对话" }}</span>
-              <span class="nav-desc">{{ getSwarmName(conv.swarmId) }} · {{ formatTime(conv.updatedAt) }}</span>
-            </div>
-          </button>
-
-          <div v-if="!filteredConversations.length" class="nav-empty">
-            {{ searchQuery ? "未找到匹配" : "暂无对话" }}
-          </div>
-        </nav>
-      </aside>
+      <SidebarPanel
+        title="历史对话"
+        description="查看和管理对话记录"
+        search-placeholder="搜索对话..."
+        v-model:search-model-value="searchQuery"
+        nav-divider="对话列表"
+        :nav-items="navItems"
+        nav-item-icon="chat"
+        :sidebar-width="320"
+        @select-nav="selectNav"
+      />
 
       <!-- Right Content -->
       <main class="history-content">
         <!-- No selection -->
-        <div v-if="!selectedConv" class="empty-state">
-          <div class="empty-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-          </div>
-          <p class="empty-title">选择一个对话查看详情</p>
-          <p class="empty-desc">点击左侧对话项查看消息记录</p>
-        </div>
+        <EmptyState
+          v-if="!selectedConv"
+          icon="chat"
+          title="选择一个对话查看详情"
+          description="点击左侧对话项查看消息记录"
+        />
 
         <!-- Detail Panel -->
         <div v-else class="detail-panel">
-          <div class="detail-header">
-            <div class="detail-title-row">
-              <div class="detail-icon">
-                <SvgIcon name="chat" :size="22" />
-              </div>
-              <div class="detail-title-info">
-                <h3 class="detail-title">{{ selectedConv.title ?? "新对话" }}</h3>
-                <div class="detail-meta">
-                  <span class="swarm-badge" :style="{ background: getModeConfig(getSwarmMode(selectedConv.swarmId)).color + '20', color: getModeConfig(getSwarmMode(selectedConv.swarmId)).color }">
-                    <ModeIcon :mode="getSwarmMode(selectedConv.swarmId)" :size="12" />
-                    {{ getSwarmName(selectedConv.swarmId) }}
-                  </span>
-                  <span class="meta-text">{{ formatTime(selectedConv.updatedAt) }}</span>
-                  <span class="meta-text mono">{{ selectedConv.id.slice(0, 8) }}</span>
-                </div>
-              </div>
-            </div>
-            <div class="detail-actions">
+          <DetailHeader icon="chat" :title="selectedConv.title ?? '新对话'">
+            <template #meta>
+              <span class="swarm-badge" :style="{ background: getModeConfig(getSwarmMode(selectedConv.swarmId)).color + '20', color: getModeConfig(getSwarmMode(selectedConv.swarmId)).color }">
+                <ModeIcon :mode="getSwarmMode(selectedConv.swarmId)" :size="12" />
+                {{ getSwarmName(selectedConv.swarmId) }}
+              </span>
+              <span class="meta-text">{{ formatTimeLong(selectedConv.updatedAt) }}</span>
+              <span class="meta-text mono">{{ selectedConv.id.slice(0, 8) }}</span>
+            </template>
+            <template #actions>
               <button class="btn-primary" @click="resumeConversation(selectedConv)">
                 <SvgIcon name="chat" :size="14" />
                 继续对话
@@ -415,9 +370,10 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
                 <SvgIcon name="trash" :size="14" />
                 删除
               </button>
-            </div>
-          </div>
+            </template>
+          </DetailHeader>
 
+          <!-- Final Artifacts -->
           <div v-if="loadingArtifacts || (selectedFinalArtifacts && selectedFinalArtifacts.length)" class="detail-section final-artifacts-section">
             <h4 class="detail-section-title">
               <SvgIcon name="folder" :size="16" />
@@ -439,7 +395,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
             </div>
           </div>
 
-          <!-- Messages -->
+          <!-- Trace Events -->
           <div class="detail-section trace-section">
             <h4 class="detail-section-title">
               <SvgIcon name="pulse" :size="16" />
@@ -469,6 +425,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
             <div v-else class="detail-empty">暂无 Trace 事件</div>
           </div>
 
+          <!-- Messages -->
           <div class="detail-section">
             <h4 class="detail-section-title">
               <SvgIcon name="chat" :size="16" />
@@ -477,11 +434,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
             </h4>
 
             <div v-if="selectedMessages && selectedMessages.length" class="detail-messages">
-              <div
-                v-for="msg in selectedMessages"
-                :key="msg.id"
-                class="detail-message card"
-              >
+              <div v-for="msg in selectedMessages" :key="msg.id" class="detail-message card">
                 <div class="msg-header">
                   <span class="msg-role-badge" :style="{ background: getRoleColor(msg.role) + '20', color: getRoleColor(msg.role) }">
                     {{ getMessageLabel(msg, selectedConv) }}
@@ -509,150 +462,6 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   height: 100%;
 }
 
-/* Left Sidebar */
-.history-sidebar {
-  width: 280px;
-  background: var(--bg-surface);
-  border-right: 1px solid var(--border-subtle);
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  padding: 24px 16px;
-}
-
-.sidebar-header {
-  margin-bottom: 16px;
-  padding: 0 8px;
-}
-
-.sidebar-header h2 {
-  font-size: var(--text-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 4px;
-  letter-spacing: -0.3px;
-}
-
-.sidebar-header p {
-  font-size: var(--text-base);
-  color: var(--text-muted);
-  margin: 0;
-}
-
-.search-box {
-  position: relative;
-  margin-bottom: 12px;
-  padding: 0 4px;
-}
-
-.search-icon {
-  position: absolute;
-  left: 18px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
-  color: var(--text-muted);
-  pointer-events: none;
-}
-
-.input-field.search-input {
-  padding-left: 40px;
-}
-
-.history-nav {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  overflow-y: auto;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 12px;
-  color: var(--text-secondary);
-  font-size: var(--text-base);
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  background: transparent;
-  text-align: left;
-  width: 100%;
-}
-
-.nav-item:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  border-color: var(--border-default);
-}
-
-.nav-item.active {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-  border-color: var(--border-default);
-}
-
-.nav-item div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.nav-label {
-  font-weight: var(--weight-bold);
-  font-size: var(--text-base);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.nav-desc {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-
-.nav-item.active .nav-desc {
-  color: var(--text-secondary);
-}
-
-.nav-divider {
-  padding: 12px 8px 6px;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-bold);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.conv-nav-icon {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-surface);
-  border-radius: 8px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.nav-item.active .conv-nav-icon {
-  color: var(--text-secondary);
-  background: var(--bg-hover);
-}
-
-.nav-empty {
-  padding: 20px 8px;
-  font-size: var(--text-base);
-  color: var(--text-muted);
-  text-align: center;
-}
-
 /* Right Content */
 .history-content {
   flex: 1;
@@ -660,122 +469,10 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   padding: 28px 32px;
 }
 
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 80px 0;
-  color: var(--text-muted);
-}
-
-.empty-icon {
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-surface);
-  border-radius: 14px;
-  border: 1px solid var(--border-subtle);
-  margin-bottom: 14px;
-}
-
-.empty-icon svg {
-  width: 24px;
-  height: 24px;
-}
-
-.empty-title {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-bold);
-  color: var(--text-secondary);
-  margin: 0 0 4px;
-}
-
-.empty-desc {
-  font-size: var(--text-base);
-  margin: 0;
-}
-
 /* Detail Panel */
 .detail-panel {
   max-width: 720px;
 }
-
-.detail-header {
-  margin-bottom: 24px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.detail-title-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 16px;
-}
-
-.detail-icon {
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-surface);
-  border-radius: 12px;
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  flex-shrink: 0;
-}
-
-.detail-title-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.detail-title {
-  font-size: var(--text-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.detail-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.swarm-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: 9999px;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-}
-
-.meta-text {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-
-.meta-text.mono {
-  font-family: var(--font-mono);
-}
-
-.detail-actions {
-  display: flex;
-  gap: 10px;
-}
-
-
 
 /* Detail Section */
 .detail-section {
@@ -1009,8 +706,66 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   word-break: break-word;
 }
 
-/* Shared */
+/* Buttons */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: none;
+  background: var(--color-accent, #5f7038);
+  color: #fff;
+  cursor: pointer;
+  font-size: var(--text-base);
+  box-sizing: border-box;
+  transition: all 0.15s;
+}
 
+.btn-primary:hover {
+  opacity: 0.9;
+}
 
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 1px solid var(--border-danger);
+  color: var(--color-danger);
+  background: var(--bg-danger);
+  cursor: pointer;
+  font-size: var(--text-base);
+  box-sizing: border-box;
+  transition: all 0.15s;
+}
 
+.btn-danger:hover {
+  opacity: 0.85;
+}
+
+/* Meta */
+.swarm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.meta-text {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.meta-text.mono {
+  font-family: var(--font-mono);
+}
 </style>

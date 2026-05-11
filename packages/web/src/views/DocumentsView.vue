@@ -2,6 +2,9 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiClient } from "../api/client.js";
+import SidebarPanel from "../components/common/SidebarPanel.vue";
+import EmptyState from "../components/common/EmptyState.vue";
+import DetailHeader from "../components/common/DetailHeader.vue";
 import SvgIcon from "../components/common/SvgIcon.vue";
 import { showError, showSuccess } from "../utils/ui-feedback.js";
 
@@ -57,6 +60,15 @@ const visibleDocuments = computed(() => {
   return result;
 });
 
+const navItems = computed(() =>
+  visibleDocuments.value.map((doc) => ({
+    id: doc.id,
+    label: doc.title,
+    description: `${doc.source} · ${new Date(doc.createdAt).toLocaleString()}`,
+    active: selectedDoc.value?.id === doc.id,
+  })),
+);
+
 onMounted(async () => {
   await loadDocuments();
   await openRouteDocument();
@@ -85,6 +97,10 @@ async function openRouteDocument() {
   const docId = typeof route.query.doc === "string" ? route.query.doc : "";
   if (!docId) return;
   await selectDocument(docId, false);
+}
+
+function handleSelectNav(id: string) {
+  selectDocument(id);
 }
 
 async function selectDocument(id: string, syncRoute = true) {
@@ -175,7 +191,7 @@ async function uploadFile(event: Event) {
 
 async function deleteDocument() {
   if (!selectedDoc.value) return;
-  if (!window.confirm(`删除文档“${selectedDoc.value.title}”？`)) return;
+  if (!window.confirm(`删除文档"${selectedDoc.value.title}"？`)) return;
   try {
     await apiClient(`/documents/${selectedDoc.value.id}`, { method: "DELETE" });
     selectedDoc.value = null;
@@ -212,73 +228,45 @@ async function generateWikiFromDocument() {
 
 <template>
   <div class="documents-view">
-    <!-- Left Sidebar -->
-    <aside class="documents-sidebar">
-      <div class="sidebar-header">
-        <h2>文档</h2>
-        <p>管理和检索文档知识库</p>
-      </div>
-
-      <div class="search-box">
-        <SvgIcon name="search" class="search-icon" :size="16" />
-        <input
-          v-model="searchQuery"
-          class="input-field search-input"
-          placeholder="搜索文档原文..."
-          @keyup.enter="searchDocuments"
-        />
-        <button v-if="searchResults.length" class="clear-btn" type="button" title="清除搜索" @click="clearSearch">
-          <SvgIcon name="close" :size="12" />
-        </button>
-      </div>
-
-      <nav class="doc-nav">
-        <div class="nav-divider">文档列表</div>
+    <SidebarPanel
+      title="文档"
+      description="管理和检索文档知识库"
+      search-placeholder="搜索文档原文..."
+      v-model:search-model-value="searchQuery"
+      nav-divider="文档列表"
+      :nav-items="navItems"
+      nav-item-icon="file"
+      :loading="loading"
+      @select-nav="handleSelectNav"
+      @search="searchDocuments"
+      @clearSearch="clearSearch"
+    >
+      <template #actions>
         <button
-          v-for="doc in visibleDocuments"
-          :key="doc.id"
-          class="nav-item doc-nav-item"
-          :class="{ active: selectedDoc?.id === doc.id }"
+          class="upload-btn"
           type="button"
-          @click="selectDocument(doc.id)"
+          :disabled="uploading"
+          @click="fileInput?.click()"
         >
-          <div class="doc-nav-icon">
-            <SvgIcon name="file" :size="16" />
-          </div>
-          <div>
-            <span class="nav-label">{{ doc.title }}</span>
-            <span class="nav-desc">{{ doc.source }} · {{ new Date(doc.createdAt).toLocaleString() }}</span>
-          </div>
-        </button>
-        <div v-if="!loading && visibleDocuments.length === 0" class="nav-empty">没有文档</div>
-      </nav>
-
-      <div class="sidebar-actions">
-        <button class="upload-btn" type="button" @click="fileInput?.click()">
           <SvgIcon name="upload" :size="14" />
-          导入文件
+          {{ uploading ? "上传中..." : "导入文件" }}
         </button>
-      </div>
+      </template>
+
       <input ref="fileInput" class="file-input" type="file" accept=".txt,.md,.markdown,.json,.html,.htm,.pdf,.docx" @change="uploadFile">
-    </aside>
+
+      <template #empty-text>没有文档</template>
+    </SidebarPanel>
 
     <!-- Right Content -->
     <main class="documents-main">
       <section v-if="selectedDoc" class="detail-panel">
-        <div class="detail-header">
-          <div class="detail-title-row">
-            <div class="detail-icon">
-              <SvgIcon name="file" :size="22" />
-            </div>
-            <div class="detail-title-info">
-              <h3 class="detail-title">{{ selectedDoc.title }}</h3>
-              <div class="detail-meta">
-                <span class="meta-text">{{ selectedDoc.source }}</span>
-                <span class="meta-text">{{ new Date(selectedDoc.createdAt).toLocaleString() }}</span>
-              </div>
-            </div>
-          </div>
-          <div class="detail-actions">
+        <DetailHeader icon="file" :title="selectedDoc.title">
+          <template #meta>
+            <span class="meta-text">{{ selectedDoc.source }}</span>
+            <span class="meta-text">{{ new Date(selectedDoc.createdAt).toLocaleString() }}</span>
+          </template>
+          <template #actions>
             <button class="secondary-btn" type="button" :disabled="generatingWiki" @click="generateWikiFromDocument">
               <SvgIcon name="book" :size="14" />
               {{ generatingWiki ? "生成中..." : "生成 Wiki" }}
@@ -287,8 +275,8 @@ async function generateWikiFromDocument() {
               <SvgIcon name="trash" :size="14" />
               删除
             </button>
-          </div>
-        </div>
+          </template>
+        </DetailHeader>
 
         <article v-if="routeChunk" class="chunk-card">
           <header>
@@ -313,13 +301,12 @@ async function generateWikiFromDocument() {
         </section>
       </section>
 
-      <section v-else class="empty-state">
-        <div class="empty-icon">
-          <SvgIcon name="book" :size="24" />
-        </div>
-        <p class="empty-title">选择或导入一个文档</p>
-        <p class="empty-desc">从左侧选择文档，或点击导入按钮添加新文件</p>
-      </section>
+      <EmptyState
+        v-else
+        icon="book"
+        title="选择或导入一个文档"
+        description="从左侧选择文档，或点击导入按钮添加新文件"
+      />
     </main>
   </div>
 </template>
@@ -328,232 +315,7 @@ async function generateWikiFromDocument() {
 .documents-view {
   height: 100%;
   overflow: hidden;
-}
-
-.documents-layout,
-.documents-view {
   display: flex;
-  height: 100%;
-}
-
-/* Left Sidebar */
-.documents-sidebar {
-  width: 320px;
-  background: var(--bg-surface);
-  border-right: 1px solid var(--border-subtle);
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  padding: 24px 16px;
-}
-
-.sidebar-header {
-  margin-bottom: 16px;
-  padding: 0 8px;
-}
-
-.sidebar-header h2 {
-  font-size: var(--text-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 4px;
-  letter-spacing: -0.3px;
-}
-
-.sidebar-header p {
-  font-size: var(--text-base);
-  color: var(--text-muted);
-  margin: 0;
-}
-
-/* Search Box */
-.search-box {
-  position: relative;
-  margin-bottom: 12px;
-  padding: 0 4px;
-}
-
-.search-icon {
-  position: absolute;
-  left: 18px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
-  color: var(--text-muted);
-  pointer-events: none;
-}
-
-.input-field.search-input {
-  width: 100%;
-  height: 40px;
-  padding: 0 36px 0 40px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  background: transparent;
-  color: var(--text-primary);
-  font: inherit;
-  font-size: var(--text-base);
-  outline: none;
-  box-sizing: border-box;
-  transition: border-color 0.15s;
-}
-
-.input-field.search-input:focus {
-  border-color: var(--border-default);
-}
-
-.input-field.search-input::placeholder {
-  color: var(--text-muted);
-}
-
-.clear-btn {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.12s;
-}
-
-.clear-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-}
-
-/* Nav */
-.doc-nav {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  overflow-y: auto;
-}
-
-.nav-divider {
-  padding: 12px 8px 6px;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-bold);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 12px;
-  color: var(--text-secondary);
-  font-size: var(--text-base);
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  background: transparent;
-  text-align: left;
-  width: 100%;
-}
-
-.nav-item:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  border-color: var(--border-default);
-}
-
-.nav-item.active {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-  border-color: var(--border-default);
-}
-
-.nav-item div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.nav-label {
-  font-weight: var(--weight-bold);
-  font-size: var(--text-base);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.nav-desc {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-
-.nav-item.active .nav-desc {
-  color: var(--text-secondary);
-}
-
-.doc-nav-icon {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-surface);
-  border-radius: 8px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.nav-item.active .doc-nav-icon {
-  color: var(--text-secondary);
-  background: var(--bg-hover);
-}
-
-.nav-empty {
-  padding: 20px 8px;
-  font-size: var(--text-base);
-  color: var(--text-muted);
-  text-align: center;
-}
-
-/* Sidebar Actions */
-.sidebar-actions {
-  padding: 12px 4px 0;
-}
-
-.upload-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  padding: 9px 0;
-  border: 1px dashed var(--border-subtle);
-  border-radius: 9px;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: var(--text-base);
-  font-weight: var(--weight-medium);
-  cursor: pointer;
-  transition: all 0.18s ease;
-}
-
-.upload-btn:hover {
-  border-color: var(--border-default);
-  color: var(--text-secondary);
-  background: var(--bg-hover);
-}
-
-.file-input {
-  display: none;
 }
 
 /* Right Content */
@@ -568,106 +330,11 @@ async function generateWikiFromDocument() {
   max-width: 720px;
 }
 
-.detail-header {
-  margin-bottom: 24px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.detail-title-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 16px;
-}
-
-.detail-icon {
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-surface);
-  border-radius: 12px;
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  flex-shrink: 0;
-}
-
-.detail-title-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.detail-title {
-  font-size: var(--text-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.detail-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.meta-text {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-
-.detail-actions {
-  display: flex;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.secondary-btn,
-.danger-btn {
-  min-height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 0 14px;
-  border-radius: 9px;
-  border: 1px solid var(--border-subtle);
-  cursor: pointer;
-  font-size: var(--text-base);
-  box-sizing: border-box;
-  transition: all 0.15s;
-}
-
-.secondary-btn {
-  color: var(--text-secondary);
-  background: var(--bg-card);
-}
-
-.secondary-btn:hover:not(:disabled) {
-  background: var(--bg-hover);
-}
-
-.danger-btn {
-  color: var(--color-danger);
-  background: var(--bg-danger);
-  border-color: var(--border-danger);
-}
-
-button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-/* Content Sections */
 .section-title {
   font-size: var(--text-base);
   font-weight: var(--weight-bold);
   color: var(--text-secondary);
-  margin: 0 0 12px;
+  margin: 24px 0 12px;
 }
 
 .chunks-section {
@@ -723,40 +390,80 @@ button:disabled {
   line-height: 1.7;
 }
 
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 80px 0;
-  color: var(--text-muted);
-}
-
-.empty-icon {
-  width: 48px;
-  height: 48px;
-  display: flex;
+/* Buttons */
+.upload-btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-surface);
-  border-radius: 14px;
-  border: 1px solid var(--border-subtle);
-  margin-bottom: 14px;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 0;
+  border: 1px dashed var(--border-subtle);
+  border-radius: 9px;
+  background: transparent;
   color: var(--text-muted);
-}
-
-.empty-title {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-bold);
-  color: var(--text-secondary);
-  margin: 0 0 4px;
-}
-
-.empty-desc {
   font-size: var(--text-base);
-  margin: 0;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.upload-btn:hover:not(:disabled) {
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.secondary-btn,
+.danger-btn {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  font-size: var(--text-base);
+  box-sizing: border-box;
+  transition: all 0.15s;
+}
+
+.secondary-btn {
+  color: var(--text-secondary);
+  background: var(--bg-card);
+}
+
+.secondary-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.danger-btn {
+  color: var(--color-danger);
+  background: var(--bg-danger);
+  border-color: var(--border-danger);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.meta-text {
+  font-size: var(--text-sm);
   color: var(--text-muted);
+}
+
+.nav-empty {
+  padding: 20px 8px;
+  font-size: var(--text-base);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.file-input {
+  display: none;
 }
 
 @media (max-width: 960px) {
@@ -764,14 +471,6 @@ button:disabled {
     height: auto;
     min-height: 100dvh;
     flex-direction: column;
-  }
-
-  .documents-sidebar {
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--border-subtle);
-    padding: 16px;
-    min-height: auto;
   }
 
   .documents-main {

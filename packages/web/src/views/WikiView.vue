@@ -2,6 +2,9 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiClient } from "../api/client.js";
+import SidebarPanel from "../components/common/SidebarPanel.vue";
+import EmptyState from "../components/common/EmptyState.vue";
+import DetailHeader from "../components/common/DetailHeader.vue";
 import SvgIcon from "../components/common/SvgIcon.vue";
 import { showError, showSuccess } from "../utils/ui-feedback.js";
 
@@ -70,11 +73,18 @@ const draft = ref({
 });
 
 const visiblePages = computed(() => {
-  if (searchResults.value.length > 0) {
-    return searchResults.value.map((result) => result.page);
-  }
+  if (searchResults.value.length > 0) return searchResults.value.map((result) => result.page);
   return pages.value;
 });
+
+const navItems = computed(() =>
+  visiblePages.value.map((page) => ({
+    id: page.id,
+    label: page.title,
+    description: page.summary || "暂无摘要",
+    active: selectedPage.value?.id === page.id,
+  })),
+);
 
 const selectedClaims = computed(() => selectedPage.value?.claims ?? []);
 const selectedLinks = computed(() => selectedPage.value?.links ?? []);
@@ -123,6 +133,10 @@ async function openRouteTarget() {
   if (!selectedPage.value && !selectedSourceDocument.value && pages.value[0]) {
     await selectPage(pages.value[0].id);
   }
+}
+
+function handleSelectNav(id: string) {
+  selectPage(id);
 }
 
 async function selectPage(id: string, syncRoute = true, sourceDocumentId?: string) {
@@ -293,7 +307,7 @@ async function savePage() {
 
 async function deletePage() {
   if (!selectedPage.value) return;
-  if (!window.confirm(`删除 Wiki 页面“${selectedPage.value.title}”？`)) return;
+  if (!window.confirm(`删除 Wiki 页面"${selectedPage.value.title}"？`)) return;
   const pageId = selectedPage.value.id;
   try {
     await apiClient(`/wiki/pages/${pageId}`, { method: "DELETE" });
@@ -342,73 +356,42 @@ function sourcePreview(source: SourceDocument): string {
 
 <template>
   <div class="wiki-view">
-    <!-- Left Sidebar -->
-    <aside class="wiki-sidebar">
-      <div class="sidebar-header">
-        <h2>LLM Wiki</h2>
-        <p>管理和检索知识库页面</p>
-      </div>
-
-      <div class="search-box">
-        <SvgIcon name="search" class="search-icon" :size="16" />
-        <input
-          v-model="searchQuery"
-          class="input-field search-input"
-          placeholder="搜索概念、标签或问题..."
-          @keyup.enter="searchWiki"
-        />
-        <button v-if="searchResults.length" class="clear-btn" type="button" title="清除搜索" @click="clearSearch">
-          <SvgIcon name="close" :size="12" />
-        </button>
-      </div>
-
-      <nav class="wiki-nav">
-        <div class="nav-divider">Wiki 页面</div>
-
-        <button
-          v-for="page in visiblePages"
-          :key="page.id"
-          class="nav-item page-nav-item"
-          :class="{ active: selectedPage?.id === page.id }"
-          type="button"
-          @click="selectPage(page.id)"
-        >
-          <div class="page-nav-icon">
-            <SvgIcon name="book" :size="16" />
-          </div>
-          <div>
-            <span class="nav-label">{{ page.title }}</span>
-            <span class="nav-desc">{{ page.summary || "暂无摘要" }}</span>
-          </div>
-        </button>
-
-        <div v-if="!loading && visiblePages.length === 0" class="nav-empty">没有 Wiki 页面</div>
-      </nav>
-
-      <div class="sidebar-actions">
+    <SidebarPanel
+      title="Wiki"
+      description="管理和检索知识库页面"
+      search-placeholder="搜索概念、标签或问题..."
+      v-model:search-model-value="searchQuery"
+      nav-divider="Wiki 页面"
+      :nav-items="navItems"
+      nav-item-icon="book"
+      :loading="loading"
+      @select-nav="handleSelectNav"
+      @search="searchWiki"
+      @clearSearch="clearSearch"
+    >
+      <template #actions>
         <button class="upload-btn" type="button" @click="startCreate">
           <SvgIcon name="plus" :size="14" />
           新建页面
         </button>
-      </div>
-    </aside>
+      </template>
+
+      <template #empty-text>没有 Wiki 页面</template>
+    </SidebarPanel>
 
     <!-- Right Content -->
     <main class="wiki-main">
 
       <!-- Editor Panel -->
       <section v-if="editing" class="detail-panel editor-panel">
-        <div class="detail-header">
-          <div class="detail-title-row">
-            <h3 class="detail-title">{{ selectedPage ? "编辑页面" : "新建页面" }}</h3>
-          </div>
-          <div class="detail-actions">
+        <DetailHeader icon="book" :title="selectedPage ? '编辑页面' : '新建页面'">
+          <template #actions>
             <button class="secondary-btn" type="button" @click="editing = false">取消</button>
             <button class="primary-btn" type="button" :disabled="saving" @click="savePage">
               {{ saving ? "保存中..." : "保存" }}
             </button>
-          </div>
-        </div>
+          </template>
+        </DetailHeader>
 
         <label class="field-label">标题</label>
         <input v-model="draft.title" class="text-input" type="text">
@@ -424,19 +407,11 @@ function sourcePreview(source: SourceDocument): string {
 
       <!-- Page Detail -->
       <section v-else-if="selectedPage" class="detail-panel">
-        <div class="detail-header">
-          <div class="detail-title-row">
-            <div class="detail-icon">
-              <SvgIcon name="book" :size="22" />
-            </div>
-            <div class="detail-title-info">
-              <h3 class="detail-title">{{ selectedPage.title }}</h3>
-              <div class="detail-meta">
-                <span class="meta-text">{{ selectedPage.summary }}</span>
-              </div>
-            </div>
-          </div>
-          <div class="detail-actions">
+        <DetailHeader icon="book" :title="selectedPage.title">
+          <template #meta>
+            <span class="meta-text">{{ selectedPage.summary }}</span>
+          </template>
+          <template #actions>
             <button class="secondary-btn" type="button" @click="openDocumentsTab">
               <SvgIcon name="book" :size="14" />
               打开文档
@@ -458,8 +433,8 @@ function sourcePreview(source: SourceDocument): string {
               <SvgIcon name="trash" :size="14" />
               删除
             </button>
-          </div>
-        </div>
+          </template>
+        </DetailHeader>
 
         <div v-if="selectedTags.length || selectedAliases.length" class="meta-row">
           <span v-for="tag in selectedTags" :key="`tag-${tag}`" class="tag">{{ tag }}</span>
@@ -536,37 +511,26 @@ function sourcePreview(source: SourceDocument): string {
 
       <!-- Source Detail (direct) -->
       <section v-else-if="selectedSourceDocument" class="detail-panel">
-        <div class="detail-header">
-          <div class="detail-title-row">
-            <div class="detail-icon">
-              <SvgIcon name="file" :size="22" />
-            </div>
-            <div class="detail-title-info">
-              <h3 class="detail-title">{{ selectedSourceDocument.title }}</h3>
-              <div class="detail-meta">
-                <span class="meta-text">{{ selectedSourceDocument.source }} · {{ new Date(selectedSourceDocument.createdAt).toLocaleString() }}</span>
-              </div>
-            </div>
-          </div>
-          <div class="detail-actions">
-            <button class="secondary-btn" type="button" @click="showDefaultWiki">
-              返回 Wiki
-            </button>
-          </div>
-        </div>
+        <DetailHeader icon="file" :title="selectedSourceDocument.title">
+          <template #meta>
+            <span class="meta-text">{{ selectedSourceDocument.source }} · {{ new Date(selectedSourceDocument.createdAt).toLocaleString() }}</span>
+          </template>
+          <template #actions>
+            <button class="secondary-btn" type="button" @click="showDefaultWiki">返回 Wiki</button>
+          </template>
+        </DetailHeader>
         <article class="source-content direct">
           <pre>{{ selectedSourceDocument.content }}</pre>
         </article>
       </section>
 
       <!-- Empty State -->
-      <section v-else class="empty-state">
-        <div class="empty-icon">
-          <SvgIcon name="book" :size="24" />
-        </div>
-        <p class="empty-title">选择或创建一个 Wiki 页面</p>
-        <p class="empty-desc">从文档列表中选取来源文档，或点击新建按钮创建知识页面</p>
-      </section>
+      <EmptyState
+        v-else
+        icon="book"
+        title="选择或创建一个 Wiki 页面"
+        description="从文档列表中选取来源文档，或点击新建按钮创建知识页面"
+      />
 
     </main>
   </div>
@@ -577,226 +541,6 @@ function sourcePreview(source: SourceDocument): string {
   height: 100%;
   overflow: hidden;
   display: flex;
-}
-
-/* Left Sidebar */
-.wiki-sidebar {
-  width: 320px;
-  background: var(--bg-surface);
-  border-right: 1px solid var(--border-subtle);
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  padding: 24px 16px;
-}
-
-.sidebar-header {
-  margin-bottom: 16px;
-  padding: 0 8px;
-}
-
-.sidebar-header h2 {
-  font-size: var(--text-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 4px;
-  letter-spacing: -0.3px;
-}
-
-.sidebar-header p {
-  font-size: var(--text-base);
-  color: var(--text-muted);
-  margin: 0;
-}
-
-/* Search Box */
-.search-box {
-  position: relative;
-  margin-bottom: 12px;
-  padding: 0 4px;
-}
-
-.search-icon {
-  position: absolute;
-  left: 18px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
-  color: var(--text-muted);
-  pointer-events: none;
-}
-
-.input-field.search-input {
-  width: 100%;
-  height: 40px;
-  padding: 0 36px 0 40px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  background: transparent;
-  color: var(--text-primary);
-  font: inherit;
-  font-size: var(--text-base);
-  outline: none;
-  box-sizing: border-box;
-  transition: border-color 0.15s;
-}
-
-.input-field.search-input:focus {
-  border-color: var(--border-default);
-}
-
-.input-field.search-input::placeholder {
-  color: var(--text-muted);
-}
-
-.clear-btn {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.12s;
-}
-
-.clear-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-}
-
-/* Nav */
-.wiki-nav {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  overflow-y: auto;
-}
-
-.nav-divider {
-  padding: 12px 8px 6px;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-bold);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 12px;
-  color: var(--text-secondary);
-  font-size: var(--text-base);
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  background: transparent;
-  text-align: left;
-  width: 100%;
-}
-
-.nav-item:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  border-color: var(--border-default);
-}
-
-.nav-item.active {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-  border-color: var(--border-default);
-}
-
-.nav-item div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.nav-label {
-  font-weight: var(--weight-bold);
-  font-size: var(--text-base);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.nav-desc {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.nav-item.active .nav-desc {
-  color: var(--text-secondary);
-}
-
-.page-nav-icon {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-surface);
-  border-radius: 8px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.nav-item.active .page-nav-icon {
-  color: var(--text-secondary);
-  background: var(--bg-hover);
-}
-
-.nav-empty {
-  padding: 20px 8px;
-  font-size: var(--text-base);
-  color: var(--text-muted);
-  text-align: center;
-}
-
-/* Sidebar Actions */
-.sidebar-actions {
-  padding: 12px 4px 0;
-}
-
-.upload-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  padding: 9px 0;
-  border: 1px dashed var(--border-subtle);
-  border-radius: 9px;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: var(--text-base);
-  font-weight: var(--weight-medium);
-  cursor: pointer;
-  transition: all 0.18s ease;
-}
-
-.upload-btn:hover {
-  border-color: var(--border-default);
-  color: var(--text-secondary);
-  background: var(--bg-hover);
 }
 
 /* Right Content */
@@ -815,65 +559,7 @@ function sourcePreview(source: SourceDocument): string {
   max-width: 720px;
 }
 
-.detail-header {
-  margin-bottom: 24px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.detail-title-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 16px;
-}
-
-.detail-icon {
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-surface);
-  border-radius: 12px;
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  flex-shrink: 0;
-}
-
-.detail-title-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.detail-title {
-  font-size: var(--text-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.detail-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.meta-text {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-
-.detail-actions {
-  display: flex;
-  gap: 10px;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-}
-
+/* Buttons */
 .primary-btn,
 .secondary-btn,
 .danger-btn {
@@ -916,6 +602,29 @@ function sourcePreview(source: SourceDocument): string {
 button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 0;
+  border: 1px dashed var(--border-subtle);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.upload-btn:hover {
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+  background: var(--bg-hover);
 }
 
 /* Editor fields */
@@ -966,10 +675,9 @@ button:disabled {
   font-family: var(--font-mono);
 }
 
-/* Content sections */
+/* Meta row */
 .meta-row,
-.link-list,
-.tag-list {
+.link-list {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
@@ -1034,9 +742,7 @@ button:disabled {
 .claim-item,
 .source-item,
 .empty-block,
-.source-content,
-.chunk-card,
-.chunk-item {
+.source-content {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--bg-card);
@@ -1141,39 +847,8 @@ button:disabled {
   margin-top: 10px;
 }
 
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 80px 0;
-  color: var(--text-muted);
-}
-
-.empty-icon {
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-surface);
-  border-radius: 14px;
-  border: 1px solid var(--border-subtle);
-  margin-bottom: 14px;
-  color: var(--text-muted);
-}
-
-.empty-title {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-bold);
-  color: var(--text-secondary);
-  margin: 0 0 4px;
-}
-
-.empty-desc {
-  font-size: var(--text-base);
-  margin: 0;
+.meta-text {
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 
@@ -1182,14 +857,6 @@ button:disabled {
     height: auto;
     min-height: 100dvh;
     flex-direction: column;
-  }
-
-  .wiki-sidebar {
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--border-subtle);
-    padding: 16px;
-    min-height: auto;
   }
 
   .wiki-main {
