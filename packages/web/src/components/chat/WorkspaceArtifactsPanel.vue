@@ -1121,7 +1121,7 @@ function getFileColor(name: string): string {
   border: 1px solid var(--border-subtle);
   border-radius: 9px;
   color: var(--text-muted);
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--bg-surface);
   transition: all 0.2s ease;
 }
 
