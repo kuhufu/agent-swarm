@@ -707,7 +707,8 @@ function handleOutsideClick(event: MouseEvent) {
 .tools-dropdown {
   position: absolute;
   bottom: calc(100% + 6px);
-  right: 0;
+  left: 50%;
+  transform: translateX(-50%);
   min-width: 180px;
   z-index: 50;
   background: var(--bg-card);
@@ -869,8 +870,9 @@ function handleOutsideClick(event: MouseEvent) {
 .think-level-dropdown {
   position: absolute;
   bottom: calc(100% + 6px);
-  left: 0;
-  min-width: 140px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 120px;
   z-index: 50;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
