@@ -351,6 +351,14 @@ async function handleForkConversation(messageId?: string) {
       <div class="sidebar-tabs">
         <button
           type="button"
+          :class="{ active: activeSidebarTab === 'artifacts' }"
+          title="产物"
+          @click="activeSidebarTab = 'artifacts'"
+        >
+          <SvgIcon name="folder" :size="14" />
+        </button>
+        <button
+          type="button"
           :class="{ active: activeSidebarTab === 'agents' }"
           title="Agent"
           @click="activeSidebarTab = 'agents'"
@@ -365,19 +373,15 @@ async function handleForkConversation(messageId?: string) {
         >
           <SvgIcon name="pulse" :size="14" />
         </button>
-        <button
-          type="button"
-          :class="{ active: activeSidebarTab === 'artifacts' }"
-          title="产物"
-          @click="activeSidebarTab = 'artifacts'"
-        >
-          <SvgIcon name="folder" :size="14" />
-        </button>
       </div>
-      <AgentStatus v-if="activeSidebarTab === 'agents'" :agents="agentStates" :swarm-id="swarmId" />
-      <ConversationTrace v-else-if="activeSidebarTab === 'trace'" :events="traceEvents" />
       <WorkspaceArtifactsPanel
-        v-else
+        v-if="activeSidebarTab === 'artifacts'"
+        :workspace-id="currentWorkspaceId"
+        :selected-path="selectedArtifactPath"
+        :refresh-key="artifactRefreshKey"
+      />
+      <AgentStatus v-else-if="activeSidebarTab === 'agents'" :agents="agentStates" :swarm-id="swarmId" />
+      <ConversationTrace v-else :events="traceEvents" />
         :workspace-id="currentWorkspaceId"
         :selected-path="selectedArtifactPath"
         :refresh-key="artifactRefreshKey"
