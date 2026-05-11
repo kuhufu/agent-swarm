@@ -702,6 +702,43 @@ function handleOutsideClick(event: MouseEvent) {
   pointer-events: none;
 }
 
+.tools-dropdown {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  z-index: 50;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 4px;
+}
+
+.tools-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--text-base);
+  text-align: left;
+  color: var(--text-secondary);
+  transition: background 0.1s;
+}
+
+.tools-dropdown-item:hover {
+  background: var(--bg-hover);
+}
+
+.tools-dropdown-item.active {
+  color: var(--text-primary);
+}
+
 /* ── Inline model selector ── */
 .model-select-inline {
   position: relative;
