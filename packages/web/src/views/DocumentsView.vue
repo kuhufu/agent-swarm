@@ -166,6 +166,11 @@ function clearSearch() {
   searchResults.value = [];
 }
 
+function openFilePicker() {
+  if (uploading.value) return;
+  fileInput.value?.click();
+}
+
 async function uploadFile(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
@@ -246,14 +251,13 @@ async function generateWikiFromDocument() {
           class="upload-btn"
           type="button"
           :disabled="uploading"
-          @click="fileInput?.click()"
+          @click="openFilePicker"
         >
           <SvgIcon name="upload" :size="14" />
           {{ uploading ? "上传中..." : "导入文件" }}
         </button>
+        <input ref="fileInput" class="file-input" type="file" accept=".txt,.md,.markdown,.json,.html,.htm,.pdf,.docx" @change="uploadFile">
       </template>
-
-      <input ref="fileInput" class="file-input" type="file" accept=".txt,.md,.markdown,.json,.html,.htm,.pdf,.docx" @change="uploadFile">
 
       <template #empty-text>没有文档</template>
     </SidebarPanel>

@@ -4,7 +4,7 @@
 
 ## 写入方式
 
-- 写入文档：文档 tab 以 JSON `{ filename, content }` 或 `multipart/form-data` 调用 `POST /api/documents/upload`，文件字段名为 `file`。
+- 写入文档：文档 tab 侧边栏的“导入文件”按钮会打开浏览器文件选择器，并以 JSON `{ filename, content }` 或 `multipart/form-data` 调用 `POST /api/documents/upload`，文件字段名为 `file`。
 - 从文档生成 Wiki：文档详情通过 `POST /api/wiki/ingest-document/:documentId` 读取已有文档并生成 Wiki 页面，不重复保存来源文件。
 - 直接导入 Wiki：`POST /api/wiki/ingest-document` 仍支持 JSON `{ filename, content }` 和 multipart `file`，会先保存来源文档再生成 Wiki 页面。
 - 手动维护页面：通过 `POST /api/wiki/pages` 和 `PUT /api/wiki/pages/:id` 创建或编辑 Wiki 页面。
