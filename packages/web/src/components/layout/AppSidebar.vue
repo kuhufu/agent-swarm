@@ -1,41 +1,38 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount } from "vue";
+import { computed, ref, onMounted, onBeforeUnmount, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useSwarmStore } from "../../stores/swarm.js";
 import { useConversationStore } from "../../stores/conversation.js";
-import { useThemeStore } from "../../stores/theme.js";
 import { useAuthStore } from "../../stores/auth.js";
 import { useWebSocket } from "../../composables/useWebSocket.js";
 import { formatTimeLocale } from "../../utils/format.js";
 import type { ConversationInfo } from "../../types/index.js";
 import { showError } from "../../utils/ui-feedback.js";
 import SvgIcon from "../common/SvgIcon.vue";
+import PersonalSettingsModal from "./PersonalSettingsModal.vue";
+import SystemSettingsModal from "./SystemSettingsModal.vue";
 
 const route = useRoute();
 const router = useRouter();
 const swarmStore = useSwarmStore();
 const conversationStore = useConversationStore();
-const themeStore = useThemeStore();
-const currentThemeLabel = computed(() => {
-  const labels: Record<string, string> = { auto: "自动", light: "浅色", dark: "深色" };
-  return labels[themeStore.mode] ?? "自动";
-});
 const authStore = useAuthStore();
 const { disconnect } = useWebSocket();
 
-const navItems = computed(() => [
-  { label: "对话", route: "/chat", icon: MessageIcon },
-  { label: "历史", route: "/history", icon: HistoryIcon },
-  { label: "Swarm", route: "/swarms", icon: SwarmIcon },
-  { label: "Agents", route: "/agents", icon: AgentsIcon },
-  { label: "工作区", route: "/workspaces", icon: WorkspaceIcon },
-  { label: "文档", route: "/documents", icon: KnowledgeIcon },
-  { label: "Wiki", route: "/wiki", icon: KnowledgeIcon },
-  ...(authStore.user?.role === "admin" ? [{ label: "设置", route: "/settings", icon: SettingsIcon }] : []),
-]);
+const personalSettingsOpen = ref(false);
+const systemSettingsOpen = ref(false);
 
 const isChatRoute = computed(() => route.name === "chat");
-const showAuthSection = computed(() => authStore.isAuthenticated);
+const chatMode = ref<"direct" | "swarm">("direct");
+watch(
+  () => route.query.mode,
+  (mode) => {
+    if (mode === "swarm" || mode === "direct") {
+      chatMode.value = mode;
+    }
+  },
+  { immediate: true },
+);
 const routeConversationId = computed(() => {
   const rawConversationId = route.params.conversationId;
   if (typeof rawConversationId !== "string") {
@@ -44,7 +41,18 @@ const routeConversationId = computed(() => {
   const normalizedConversationId = rawConversationId.trim();
   return normalizedConversationId.length > 0 ? normalizedConversationId : null;
 });
-const isActive = (path: string) => (path === "/chat" ? isChatRoute.value : route.path === path);
+watch(
+  () => routeConversationId.value,
+  (id) => {
+    if (!id) return;
+    const convs = conversationStore.conversations;
+    const conv = convs.find((c) => c.id === id);
+    if (conv) {
+      chatMode.value = conv.swarmId.startsWith("__direct_") ? "direct" : "swarm";
+    }
+  },
+);
+const showAuthSection = computed(() => authStore.isAuthenticated);
 const isConversationActive = (id: string) => isChatRoute.value && routeConversationId.value === id;
 const openedMenuConversationId = ref<string | null>(null);
 const menuPosition = ref<{ left: number; top: number } | null>(null);
@@ -55,6 +63,14 @@ const recentConversations = computed(() =>
   [...conversationStore.conversations]
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .slice(0, 30),
+);
+
+const directConversations = computed(() =>
+  recentConversations.value.filter((c) => c.swarmId.startsWith("__direct_")),
+);
+
+const swarmConversations = computed(() =>
+  recentConversations.value.filter((c) => !c.swarmId.startsWith("__direct_")),
 );
 
 interface ConversationDayGroup {
@@ -97,8 +113,9 @@ function dayLabel(timestamp: number): string {
 }
 
 const conversationGroups = computed<ConversationDayGroup[]>(() => {
+  const conversations = chatMode.value === "direct" ? directConversations.value : swarmConversations.value;
   const groups = new Map<string, ConversationDayGroup>();
-  for (const conversation of recentConversations.value) {
+  for (const conversation of conversations) {
     const key = dateKey(conversation.updatedAt);
     const existing = groups.get(key);
     if (existing) {
@@ -119,14 +136,12 @@ const conversationGroups = computed<ConversationDayGroup[]>(() => {
  * - Direct mode conversations have swarmId prefixed with "__direct_"
  * - Regular conversations reference a real swarm
  */
-function getConversationMode(conv: ConversationInfo): { type: "direct" | "swarm"; label: string } {
+function getConversationLabel(conv: ConversationInfo): string {
   if (conv.swarmId.startsWith("__direct_")) {
-    const provider = conv.directModel?.provider?.trim() ?? "";
-    const modelId = conv.directModel?.modelId?.trim() ?? "";
-    return { type: "direct", label: modelId || provider || "直接对话" };
+    return conv.directModel?.modelId || "直接对话";
   }
   const swarm = swarmStore.swarms.find((s) => s.id === conv.swarmId);
-  return { type: "swarm", label: swarm?.name ?? conv.swarmId };
+  return swarm?.name ?? conv.swarmId;
 }
 
 const openedMenuConversation = computed(() =>
@@ -159,29 +174,7 @@ async function handleOpenConversation(conv: ConversationInfo) {
 
 async function handleNewConversation() {
   closeConversationMenu();
-  if (swarmStore.swarms.length === 0) {
-    try {
-      await swarmStore.fetchSwarms();
-    } catch {
-      // ignore fetch failure and surface user-friendly message below
-    }
-  }
-
-  if (swarmStore.swarms.length === 0) {
-    showError("暂无可用 Swarm，请先创建");
-    return;
-  }
-
-  if (!isChatRoute.value || routeConversationId.value || route.query.mode !== "swarm") {
-    await router.push({ name: "chat", params: {}, query: { mode: "swarm" } });
-  }
-}
-
-function handleNewDirectConversation() {
-  closeConversationMenu();
-  if (!isChatRoute.value || routeConversationId.value || route.query.mode !== "direct") {
-    void router.push({ name: "chat", params: {}, query: { mode: "direct" } });
-  }
+  void router.push({ name: "chat", params: {}, query: { mode: chatMode.value } });
 }
 
 function closeConversationMenu() {
@@ -305,41 +298,6 @@ onBeforeUnmount(() => {
 
 </script>
 
-<script lang="ts">
-function MessageIcon() {
-  return h(SvgIcon, { name: "chat", size: 16, class: "nav-icon" });
-}
-
-function HistoryIcon() {
-  return h(SvgIcon, { name: "history", size: 16, class: "nav-icon" });
-}
-
-function SwarmIcon() {
-  return h(SvgIcon, { name: "swarm", size: 16, class: "nav-icon" });
-}
-
-function AgentsIcon() {
-  return h(SvgIcon, { name: "user", size: 18, class: "nav-icon" });
-}
-
-function SettingsIcon() {
-  return h("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", class: "nav-icon" }, [
-    h("circle", { cx: "12", cy: "12", r: "3" }),
-    h("path", { d: "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" }),
-  ]);
-}
-
-function KnowledgeIcon() {
-  return h(SvgIcon, { name: "book", size: 16, class: "nav-icon" });
-}
-
-function WorkspaceIcon() {
-  return h(SvgIcon, { name: "folder", size: 16, class: "nav-icon" });
-}
-
-import { h } from "vue";
-</script>
-
 <template>
   <aside class="sidebar">
     <div class="sidebar-brand" @click="navigateTo('/chat')">
@@ -349,32 +307,31 @@ import { h } from "vue";
       <span class="brand-text">Agent Swarm</span>
     </div>
 
-    <nav class="sidebar-nav">
+    <div class="sidebar-tabs">
       <button
-        v-for="item in navItems"
-        :key="item.route"
-        class="nav-item"
-        :class="{ active: isActive(item.route) }"
-        @click="navigateTo(item.route)"
+        class="tab-btn"
+        :class="{ active: chatMode === 'direct' }"
+        @click="chatMode = 'direct'"
       >
-        <component :is="item.icon" />
-        <span>{{ item.label }}</span>
+        <SvgIcon name="chat" :size="14" />
+        <span>Chat</span>
       </button>
-    </nav>
+      <button
+        class="tab-btn"
+        :class="{ active: chatMode === 'swarm' }"
+        @click="chatMode = 'swarm'"
+      >
+        <SvgIcon name="swarm" :size="14" />
+        <span>Swarm</span>
+      </button>
+    </div>
 
     <section class="sidebar-section">
       <div class="section-header">
-        <span>会话</span>
-        <div class="section-actions">
-          <button class="action-btn direct" title="直接对话" @click="handleNewDirectConversation">
-            <SvgIcon name="chat" :size="13" />
-            直接对话
-          </button>
-          <button class="action-btn new" title="新 Swarm 对话" @click="handleNewConversation">
-            <SvgIcon name="plus" :size="13" />
-            新建
-          </button>
-        </div>
+        <button class="new-conv-btn" @click="handleNewConversation">
+          <SvgIcon name="plus" :size="14" />
+          <span>新建{{ chatMode === 'direct' ? 'Chat' : 'Swarm' }}对话</span>
+        </button>
       </div>
       <div class="conversation-list">
         <template v-for="group in conversationGroups" :key="group.key">
@@ -392,10 +349,7 @@ import { h } from "vue";
             <div class="conversation-main">
               <div class="conversation-title-row">
                 <span class="conversation-title">{{ conv.title ?? "新对话" }}</span>
-                <span
-                  class="mode-tag"
-                  :class="getConversationMode(conv).type"
-                >{{ getConversationMode(conv).label }}</span>
+                <span class="mode-tag" :class="conv.swarmId.startsWith('__direct_') ? 'direct' : 'swarm'">{{ getConversationLabel(conv) }}</span>
               </div>
               <span class="conversation-time">{{ formatTime(conv.updatedAt) }}</span>
             </div>
@@ -408,9 +362,24 @@ import { h } from "vue";
             </button>
           </div>
         </template>
-        <div v-if="!recentConversations.length" class="conversation-empty">暂无会话</div>
+        <div v-if="!conversationGroups.length" class="conversation-empty">暂无会话</div>
       </div>
     </section>
+
+    <nav class="sidebar-bottom-nav">
+      <button class="bottom-nav-item" @click="router.push('/documents')">
+        <SvgIcon name="book" :size="14" />
+        <span>文档</span>
+      </button>
+      <button class="bottom-nav-item" @click="router.push('/wiki')">
+        <SvgIcon name="book" :size="14" />
+        <span>Wiki</span>
+      </button>
+      <button class="bottom-nav-item" @click="router.push('/history')">
+        <SvgIcon name="history" :size="14" />
+        <span>全部历史</span>
+      </button>
+    </nav>
 
     <div class="sidebar-footer">
       <div v-if="showAuthSection" class="footer-row">
@@ -419,26 +388,11 @@ import { h } from "vue";
           <span class="auth-username">{{ authStore.user?.username }}</span>
           <SvgIcon name="chevronDown" class="auth-chevron" :class="{ expanded: showUserMenu }" :size="13" />
         </button>
-        <button class="theme-toggle" @click="themeStore.cycleMode()" :title="currentThemeLabel">
-        <svg v-if="themeStore.mode === 'auto'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 2a10 10 0 0 0 0 20z" />
-        </svg>
-        <svg v-else-if="themeStore.mode === 'light'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon">
-          <circle cx="12" cy="12" r="5" />
-          <line x1="12" y1="1" x2="12" y2="3" />
-          <line x1="12" y1="21" x2="12" y2="23" />
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-          <line x1="1" y1="12" x2="3" y2="12" />
-          <line x1="21" y1="12" x2="23" y2="12" />
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-        </svg>
-        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-        </svg>
-        <span class="theme-label">{{ currentThemeLabel }}</span>
+        <button class="settings-btn" title="个人设置" @click="personalSettingsOpen = true">
+          <SvgIcon name="user" :size="15" />
+        </button>
+        <button v-if="authStore.user?.role === 'admin'" class="settings-btn" title="系统设置" @click="systemSettingsOpen = true">
+          <SvgIcon name="wrench" :size="15" />
         </button>
       </div>
     </div>
@@ -467,6 +421,12 @@ import { h } from "vue";
         删除会话
       </button>
     </div>
+
+    <!-- 个人设置弹窗 -->
+    <PersonalSettingsModal :open="personalSettingsOpen" @close="personalSettingsOpen = false" />
+
+    <!-- 系统设置弹窗 -->
+    <SystemSettingsModal :open="systemSettingsOpen" @close="systemSettingsOpen = false" />
   </teleport>
 </template>
 
@@ -520,52 +480,40 @@ import { h } from "vue";
   background-clip: text;
 }
 
-/* ── Nav ── */
-.sidebar-nav {
-  padding: 6px 10px;
+/* ── Tabs ── */
+.sidebar-tabs {
+  padding: 8px 10px 0;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
-.nav-item {
-  display: flex;
+.tab-btn {
+  flex: 1;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
   border-radius: 9px;
   color: var(--color-text-muted);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 500;
-  letter-spacing: -0.01em;
   cursor: pointer;
   transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
   background: transparent;
-  text-align: left;
-  width: 100%;
+  letter-spacing: -0.01em;
 }
 
-.nav-item:hover {
+.tab-btn:hover {
   background: var(--glass-hover-bg);
   color: var(--color-text-primary);
 }
 
-.nav-item.active {
+.tab-btn.active {
   background: rgba(99, 102, 241, 0.1);
   color: var(--color-accent-light);
-  box-shadow: inset 2px 0 0 var(--color-accent);
-}
-
-.nav-icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  opacity: 0.8;
-}
-
-.nav-item.active .nav-icon {
-  opacity: 1;
+  box-shadow: inset 0 -2px 0 var(--color-accent);
 }
 
 /* ── Conversation section ── */
@@ -573,74 +521,67 @@ import { h } from "vue";
   flex: 1;
   min-height: 0;
   padding: 8px 10px 10px;
-  border-top: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
 .section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 10.5px;
-  font-weight: 700;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 0 4px;
-}
-
-.section-actions {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-}
-
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  border: 1px solid transparent;
-  background: transparent;
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 3px 8px;
-  border-radius: 6px;
-  transition: all 0.15s;
-  letter-spacing: -0.01em;
-}
-
-.action-btn.direct {
-  color: #4ade80;
-  border-color: rgba(34, 197, 94, 0.2);
-  background: rgba(34, 197, 94, 0.07);
-}
-
-.action-btn.direct:hover {
-  background: rgba(34, 197, 94, 0.13);
-  border-color: rgba(34, 197, 94, 0.3);
-}
-
-.action-btn.new {
-  color: var(--color-accent-light);
-  border-color: rgba(99, 102, 241, 0.2);
-  background: rgba(99, 102, 241, 0.07);
-}
-
-.action-btn.new:hover {
-  background: rgba(99, 102, 241, 0.13);
-  border-color: rgba(99, 102, 241, 0.3);
+  padding: 0 2px;
 }
 
 .new-conv-btn {
-  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 0;
+  border: 1px dashed var(--color-border-subtle);
+  border-radius: 9px;
   background: transparent;
-  color: var(--color-accent-light);
-  font-size: 12px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  padding: 0;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: -0.01em;
+}
+
+.new-conv-btn:hover {
+  border-color: rgba(99, 102, 241, 0.35);
+  color: var(--color-accent-light);
+  background: rgba(99, 102, 241, 0.06);
+}
+
+/* ── Bottom nav ── */
+.sidebar-bottom-nav {
+  padding: 8px 10px;
+  border-top: 1px solid var(--color-border-subtle);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.bottom-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 7px;
+  color: var(--color-text-muted);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  letter-spacing: -0.01em;
+}
+
+.bottom-nav-item:hover {
+  background: var(--glass-hover-bg);
+  color: var(--color-text-secondary);
 }
 
 /* ── Conversation list ── */
@@ -927,81 +868,25 @@ import { h } from "vue";
   opacity: 0.7;
 }
 
-.theme-toggle {
-  flex-shrink: 0;
-  height: 34px;
-  display: flex;
+.settings-btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 0 8px;
-  background: var(--btn-secondary-bg);
+  width: 34px;
+  height: 34px;
   border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
+  background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
   transition: all 0.15s;
+  flex-shrink: 0;
 }
 
-.theme-toggle:hover {
+.settings-btn:hover {
   background: var(--btn-secondary-hover-bg);
   color: var(--color-accent-light);
   border-color: rgba(99, 102, 241, 0.3);
 }
 
-.theme-toggle svg {
-  width: 14px;
-  height: 14px;
-}
-
-.theme-label {
-  font-size: 11.5px;
-  font-weight: 500;
-  line-height: 1;
-}
-
-.current-swarm {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 12px;
-  background: rgba(99, 102, 241, 0.08);
-  border-radius: 10px;
-  border: 1px solid rgba(99, 102, 241, 0.12);
-  cursor: pointer;
-  transition: all 0.15s;
-  overflow: hidden;
-  min-width: 0;
-}
-
-.current-swarm:hover {
-  background: rgba(99, 102, 241, 0.12);
-}
-
-.current-swarm.direct {
-  background: rgba(34, 197, 94, 0.08);
-  border-color: rgba(34, 197, 94, 0.12);
-}
-
-.current-swarm.direct:hover {
-  background: rgba(34, 197, 94, 0.12);
-}
-
-.swarm-label {
-  font-size: 11px;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.swarm-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-accent-light);
-}
-
-.swarm-name.direct-name {
-  color: #4ade80;
-}
 </style>

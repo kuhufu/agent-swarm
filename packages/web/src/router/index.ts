@@ -23,24 +23,9 @@ const router = createRouter({
       component: () => import("../views/ChatView.vue"),
     },
     {
-      path: "/swarms",
-      name: "swarms",
-      component: () => import("../views/SwarmsView.vue"),
-    },
-    {
-      path: "/agents",
-      name: "agents",
-      component: () => import("../views/AgentsView.vue"),
-    },
-    {
       path: "/history",
       name: "history",
       component: () => import("../views/HistoryView.vue"),
-    },
-    {
-      path: "/settings",
-      name: "settings",
-      component: () => import("../views/SettingsView.vue"),
     },
     {
       path: "/documents",
