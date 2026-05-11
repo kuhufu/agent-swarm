@@ -36,6 +36,7 @@ const {
   browserAutomationToolEnabled,
   thinkingLevel,
   pendingImageIds,
+  pendingImageUrls,
 } = useChat(
   computed(() => props.conversationId ?? null),
   computed(() => props.workspaceId ?? null),
@@ -396,10 +397,12 @@ async function uploadAndPreview(file: File) {
     pendingPreviews.value.push({ id: tempId, url, mimeType: file.type, name: file.name });
 
     const result = await uploadImage(file);
-
+    
+    // Replace temp ID with real server ID
     const preview = pendingPreviews.value.find((p) => p.id === tempId);
     if (preview) {
       pendingImageIds.value = [...pendingImageIds.value.filter((id) => id !== tempId), result.id];
+      pendingImageUrls.value = [...pendingImageUrls.value, preview.url];
     }
   } catch (err) {
     showError(err instanceof Error ? err.message : "上传图片失败");

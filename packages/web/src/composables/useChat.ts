@@ -12,8 +12,9 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
   const conversationStore = useConversationStore();
   const { send, connected, connect } = useWebSocket();
   const inputText = ref("");
-  const pendingImageIds = ref<string[]>([]);
   const sending = ref(false);
+  const pendingImageIds = ref<string[]>([]);
+  const pendingImageUrls = ref<string[]>([]);
   const draftDirectModel = ref<DirectModelSelection | null>(null);
   const draftEnabledTools = ref<string[]>(["current_time", "javascript_execute", "web_fetch", "browser_automation"]);
   const draftThinkingLevel = ref<string>("off");
@@ -130,10 +131,15 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
     conversationStore.setActive(true, runtimeConversationId);
 
     // Add user message to store
+    const msgMeta: Record<string, unknown> = {};
+    if (pendingImageUrls.value.length > 0) {
+      msgMeta.images = pendingImageUrls.value.map((url) => ({ data: url, mimeType: "image/jpeg" }));
+    }
     conversationStore.addMessage({
       id: crypto.randomUUID(),
       role: "user",
       content: text,
+      metadata: Object.keys(msgMeta).length > 0 ? msgMeta : undefined,
       timestamp: Date.now(),
     }, runtimeConversationId);
 
@@ -168,6 +174,7 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
 
     inputText.value = "";
     pendingImageIds.value = [];
+    pendingImageUrls.value = [];
   }
 
   /** Send message in direct chat mode (no swarm) */
@@ -179,10 +186,15 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
     const runtimeConversationId = conversationId.value ?? undefined;
     conversationStore.setActive(true, runtimeConversationId);
 
+    const msgMeta: Record<string, unknown> = {};
+    if (pendingImageUrls.value.length > 0) {
+      msgMeta.images = pendingImageUrls.value.map((url) => ({ data: url, mimeType: "image/jpeg" }));
+    }
     conversationStore.addMessage({
       id: crypto.randomUUID(),
       role: "user",
       content: text,
+      metadata: Object.keys(msgMeta).length > 0 ? msgMeta : undefined,
       timestamp: Date.now(),
     }, runtimeConversationId);
 
@@ -202,6 +214,7 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
 
     inputText.value = "";
     pendingImageIds.value = [];
+    pendingImageUrls.value = [];
   }
 
   function abort() {
@@ -237,6 +250,7 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
   return {
     inputText,
     pendingImageIds,
+    pendingImageUrls,
     sending,
     connected,
     connect,

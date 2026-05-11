@@ -135,12 +135,12 @@ function close() {
 .select-overlay {
   position: fixed;
   inset: 0;
-  z-index: 999;
+  z-index: 2499;
 }
 
 .select-dropdown {
   position: fixed;
-  z-index: 1000;
+  z-index: 2500;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);

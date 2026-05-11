@@ -63,6 +63,12 @@ const displayAgentName = computed(() => {
   return props.message.agentName ?? props.message.agentId ?? "Assistant";
 });
 
+const messageImages = computed<Array<{ data: string; mimeType: string }>>(() => {
+  const meta = props.message.metadata;
+  if (!meta || !Array.isArray(meta.images)) return [];
+  return meta.images.filter((img: any) => typeof img.data === "string" && typeof img.mimeType === "string");
+});
+
 function roleClass(role: string): string {
   switch (role) {
     case "user": return "msg-user";
@@ -205,6 +211,17 @@ function handleFork() {
           class="msg-content markdown-content"
           v-html="renderedContent"
         />
+
+        <div v-if="messageImages.length > 0" class="msg-images">
+          <img
+            v-for="(img, i) in messageImages"
+            :key="i"
+            :src="`data:${img.mimeType};base64,${img.data}`"
+            class="msg-image"
+            alt=""
+            loading="lazy"
+          />
+        </div>
 
         <div v-if="message.toolCalls?.length" class="msg-tool-calls">
           <template v-if="groupedToolCalls">
@@ -466,6 +483,21 @@ function handleFork() {
   font-size: var(--text-base);
   margin: 0;
   color: var(--text-primary);
+}
+
+.msg-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.msg-image {
+  max-width: 300px;
+  max-height: 300px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  object-fit: cover;
 }
 
 .markdown-content :deep(p) {
