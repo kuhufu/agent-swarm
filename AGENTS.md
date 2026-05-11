@@ -123,10 +123,11 @@ pnpm test                  # 运行 core + server 单元测试
 - 路径别名：`@/` 映射到 `src/`
 - UI 组件库：TDesign Vue Next（`t-button`、`t-input`、`t-select` 等）
 - 样式：Tailwind CSS v4 优先，复杂样式使用 `<style scoped>` + CSS 变量
-- 设计风格：Glassmorphism 毛玻璃拟态，暗色主题
-  - 背景：`linear-gradient(135deg, #0a0e1a, #1a1f35, #0d1220)`
-  - 卡片：`rgba(255,255,255,0.03)` + `backdrop-filter: blur(12px)` + `border: 1px solid rgba(255,255,255,0.08)`
-  - 主色调：`#6366f1`（indigo），状态色用 green/amber/red
+- UI 设计规范：参见 [docs/design/ui-spec.md](docs/design/ui-spec.md)
+  - 风格：扁平实色，黑白灰 + 橄榄绿主题色
+  - 主色调：`#9aaa64`（深色）/ `#5f7038`（浅色）
+  - 圆角：`--radius-sm 6px` / `--radius-md 8px` / `--radius-lg 12px` / `--radius-xl 16px`
+  - 阴影：`--shadow-sm / --shadow-md / --shadow-lg` 三层
 - 虚拟滚动：消息列表大量消息时使用虚拟滚动
 - 会话路由：聊天页使用 `/chat/:conversationId?`；切换会话需同步更新 URL 中的 `conversationId`
 
