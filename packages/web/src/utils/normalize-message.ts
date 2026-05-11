@@ -114,7 +114,31 @@ export function normalizeHistoryMessage(
 
   const message = raw as Record<string, unknown>;
   const role = normalizeRole(message.role);
-  const content = typeof message.content === "string" ? message.content : "";
+  let content = typeof message.content === "string" ? message.content : "";
+  let contentImages: Array<{ data: string; mimeType: string }> | undefined;
+
+  // Parse JSON ContentPart array from stored content
+  if (content.startsWith("[") && content.includes('"type"')) {
+    try {
+      const parsed = JSON.parse(content) as Array<{ type: string; text?: string; data?: string; mimeType?: string }>;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const textParts: string[] = [];
+        const images: Array<{ data: string; mimeType: string }> = [];
+        for (const part of parsed) {
+          if (part.type === "text" && typeof part.text === "string") {
+            textParts.push(part.text);
+          } else if (part.type === "image" && typeof part.data === "string" && typeof part.mimeType === "string") {
+            images.push({ data: part.data, mimeType: part.mimeType });
+          }
+        }
+        content = textParts.join("\n");
+        if (images.length > 0) {
+          contentImages = images;
+        }
+      }
+    } catch { /* fall through */ }
+  }
+
   const toolCalls = normalizeToolCalls(message.toolCalls);
   const thinking = typeof message.thinking === "string" ? message.thinking : undefined;
   const agentId = typeof message.agentId === "string" ? message.agentId : undefined;
@@ -138,6 +162,7 @@ export function normalizeHistoryMessage(
     agentId,
     agentName,
     metadata: metadata ?? undefined,
+    contentImages,
     timestamp,
     createdAt,
   };

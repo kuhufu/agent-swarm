@@ -186,6 +186,7 @@ export interface ChatMessage {
   thinking?: string;
   toolCalls?: ToolCallInfo[];
   metadata?: Record<string, unknown>;
+  contentImages?: Array<{ data: string; mimeType: string }>;
   timestamp: number;
   createdAt?: number;
   parts?: MessagePart[];

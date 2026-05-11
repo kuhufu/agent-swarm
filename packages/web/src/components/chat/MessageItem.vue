@@ -64,9 +64,7 @@ const displayAgentName = computed(() => {
 });
 
 const messageImages = computed<Array<{ data: string; mimeType: string }>>(() => {
-  const meta = props.message.metadata;
-  if (!meta || !Array.isArray(meta.images)) return [];
-  return meta.images.filter((img: any) => typeof img.data === "string" && typeof img.mimeType === "string");
+  return props.message.contentImages ?? [];
 });
 
 const previewImageUrl = ref<string | null>(null);

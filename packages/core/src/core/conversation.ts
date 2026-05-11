@@ -130,23 +130,30 @@ export class Conversation {
     };
     this.syncActiveAgentTools();
 
-    // Save user message with images in metadata
-    const meta: Record<string, unknown> = {};
+    // Save user message as ContentPart array
+    const userContentParts: Array<{ type: string; text?: string; data?: string; mimeType?: string }> = [];
+    if (message) userContentParts.push({ type: "text", text: message });
     if (options.images?.length) {
-      meta.images = options.images.map((img) => ({ data: img.data, mimeType: img.mimeType }));
+      for (const img of options.images) {
+        userContentParts.push({ type: "image", data: img.data, mimeType: img.mimeType });
+      }
     }
+    const userContentStr = userContentParts.length === 1 && userContentParts[0]?.type === "text"
+      ? userContentParts[0].text ?? ""
+      : JSON.stringify(userContentParts);
+
     await this.storage.appendMessage(this.id, {
       id: crypto.randomUUID(),
       role: "user",
-      content: message,
-      metadata: Object.keys(meta).length > 0 ? JSON.stringify(meta) : null,
+      content: userContentStr,
       timestamp: Date.now(),
     });
 
     // Use first message as conversation title
     const history = await this.storage.getMessages(this.id);
     if (history.length === 1) {
-      const title = message.length > 50 ? message.slice(0, 50) + "…" : message;
+      const titleText = message || (options.images?.length ? "图片消息" : "消息");
+      const title = titleText.length > 50 ? titleText.slice(0, 50) + "…" : titleText;
       await this.storage.updateConversationTitle(this.id, title);
     }
 

@@ -17,21 +17,8 @@ export function messageToStored(msg: Message, agentId?: string): StoredMessage {
     if (typeof msg.content === "string") {
       stored.content = msg.content;
     } else {
-      const textParts: string[] = [];
-      const images: ImageContent[] = [];
-      for (const part of msg.content) {
-        if (part.type === "text") {
-          textParts.push(part.text);
-        } else if (part.type === "image") {
-          images.push(part);
-        }
-      }
-      stored.content = textParts.join("\n");
-      if (images.length > 0) {
-        const existingMeta = stored.metadata ? JSON.parse(stored.metadata) : {};
-        existingMeta.images = images.map((img) => ({ data: img.data, mimeType: img.mimeType }));
-        stored.metadata = JSON.stringify(existingMeta);
-      }
+      // Store full ContentPart array as JSON
+      stored.content = JSON.stringify(msg.content);
     }
   } else if (msg.role === "assistant") {
     const assistantMsg = msg as AssistantMessage;
@@ -82,23 +69,8 @@ export function messageToStored(msg: Message, agentId?: string): StoredMessage {
  */
 export function storedToMessage(stored: StoredMessage): Message {
   if (stored.role === "user") {
-    const parts: (TextContent | ImageContent)[] = [];
-    if (stored.content) {
-      parts.push({ type: "text", text: stored.content });
-    }
-    // Restore images from metadata
-    if (stored.metadata) {
-      try {
-        const meta = JSON.parse(stored.metadata);
-        if (Array.isArray(meta.images)) {
-          for (const img of meta.images) {
-            if (typeof img.data === "string" && typeof img.mimeType === "string") {
-              parts.push({ type: "image", data: img.data, mimeType: img.mimeType });
-            }
-          }
-        }
-      } catch { /* ignore */ }
-    }
+    // Try to parse content as JSON ContentPart array
+    const parts = parseUserContent(stored.content);
     return {
       role: "user",
       content: parts.length === 1 && parts[0]?.type === "text"
@@ -178,6 +150,35 @@ export function storedToMessage(stored: StoredMessage): Message {
       timestamp: stored.timestamp,
     } as AssistantMessage;
   }
+
+/**
+ * Parse stored user message content back into ContentPart array.
+ * Supports both new JSON array format and legacy plain text.
+ */
+function parseUserContent(content: string | null | undefined): (TextContent | ImageContent)[] {
+  if (!content) return [];
+
+  // Try parsing as JSON array (new format)
+  if (content.startsWith("[") && content.includes('"type"')) {
+    try {
+      const parsed = JSON.parse(content) as Array<{ type: string; text?: string; data?: string; mimeType?: string }>;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const parts: (TextContent | ImageContent)[] = [];
+        for (const item of parsed) {
+          if (item.type === "text" && typeof item.text === "string") {
+            parts.push({ type: "text", text: item.text });
+          } else if (item.type === "image" && typeof item.data === "string" && typeof item.mimeType === "string") {
+            parts.push({ type: "image", data: item.data, mimeType: item.mimeType });
+          }
+        }
+        return parts;
+      }
+    } catch { /* fall through to legacy handling */ }
+  }
+
+  // Legacy: plain text string
+  return [{ type: "text" as const, text: content }];
+}
 
   // Fallback: treat as user message
   return {
