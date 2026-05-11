@@ -473,11 +473,11 @@ onMounted(() => {
   max-height: 85vh;
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: 20px;
+  border-radius: var(--radius-xl);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.05);
+  box-shadow: var(--shadow-lg);
   animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -571,9 +571,8 @@ onMounted(() => {
 }
 
 .mode-option.active {
-  background: rgba(99, 102, 241, 0.1);
-  border-color: rgba(99, 102, 241, 0.3);
-  box-shadow: inset 0 0 0 1px rgba(99,102,241,0.1);
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent);
 }
 
 .mode-icon {
@@ -626,7 +625,7 @@ onMounted(() => {
   max-height: 80vh;
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -707,9 +706,9 @@ onMounted(() => {
 }
 
 .model-chip.active {
-  background: rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.3);
-  color: var(--text-secondary);
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent);
+  color: var(--color-accent-light);
 }
 
 .agent-list {
@@ -737,14 +736,14 @@ onMounted(() => {
 
 .agent-list-item.dragging {
   opacity: 0.58;
-  border-color: rgba(99, 102, 241, 0.45);
-  background: rgba(99, 102, 241, 0.08);
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
   cursor: grabbing;
 }
 
 .agent-list-item.drag-over {
-  border-color: rgba(99, 102, 241, 0.5);
-  background: rgba(99, 102, 241, 0.12);
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
 }
 
 .agent-info {
@@ -759,11 +758,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.15));
-  border-radius: 8px;
+  background: var(--color-accent);
+  border-radius: var(--radius-md);
   font-size: var(--text-base);
   font-weight: 700;
-  color: var(--text-secondary);
+  color: #fff;
 }
 
 .agent-name {

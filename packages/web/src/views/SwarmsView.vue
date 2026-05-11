@@ -890,10 +890,9 @@ function clearModelSelection() {
 }
 
 .swarm-item.active {
-  background: rgba(99, 102, 241, 0.12);
-  border-color: rgba(99, 102, 241, 0.2);
-  color: var(--text-secondary);
-  box-shadow: inset 2px 0 0 var(--color-accent);
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent);
+  color: var(--color-accent-light);
 }
 
 .swarm-item-top {
@@ -926,7 +925,7 @@ function clearModelSelection() {
 }
 
 .swarm-item.active .swarm-meta {
-  color: rgba(129, 140, 248, 0.8);
+  color: var(--color-accent-light);
 }
 
 .nav-empty {
@@ -945,9 +944,8 @@ function clearModelSelection() {
 .detail-card {
   max-width: 960px;
   border: 1px solid var(--border-subtle);
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
   padding: 20px;
 }
 
@@ -1047,8 +1045,8 @@ function clearModelSelection() {
 }
 
 .detail-title-input:focus {
-  border-color: rgba(99, 102, 241, 0.5);
-  background: rgba(99, 102, 241, 0.05);
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
 }
 
 .detail-actions {
@@ -1113,8 +1111,8 @@ function clearModelSelection() {
 }
 
 .mode-option.active {
-  background: rgba(99, 102, 241, 0.1);
-  border-color: rgba(99, 102, 241, 0.3);
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent);
 }
 
 .mode-icon {
@@ -1160,14 +1158,11 @@ function clearModelSelection() {
   max-height: 85vh;
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: 20px;
+  border-radius: var(--radius-xl);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow:
-    0 24px 64px rgba(0, 0, 0, 0.38),
-    0 8px 20px rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(99, 102, 241, 0.16);
+  box-shadow: var(--shadow-lg);
 }
 
 .agent-dialog .dialog-header {
@@ -1286,9 +1281,9 @@ textarea.input-field {
 }
 
 .model-chip.active {
-  border-color: rgba(99, 102, 241, 0.3);
-  background: rgba(99, 102, 241, 0.14);
-  color: var(--text-secondary);
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
 }
 
 .agent-list {
@@ -1316,14 +1311,14 @@ textarea.input-field {
 
 .agent-edit-card.dragging {
   opacity: 0.58;
-  border-color: rgba(99, 102, 241, 0.45);
-  background: rgba(99, 102, 241, 0.08);
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
   cursor: grabbing;
 }
 
 .agent-edit-card.drag-over {
-  border-color: rgba(99, 102, 241, 0.5);
-  background: rgba(99, 102, 241, 0.12);
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
 }
 
 .agent-info {

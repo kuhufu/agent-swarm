@@ -55,8 +55,8 @@ function hostname(url: string): string {
   display: inline-flex; align-items: center; justify-content: center;
   flex: 0 0 auto;
   border-radius: 9999px;
-  background: rgba(99, 102, 241, 0.16);
-  color: var(--text-secondary);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
   font-size: var(--text-sm); font-weight: 700; font-variant-numeric: tabular-nums;
 }
 .search-item-meta {

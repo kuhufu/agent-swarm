@@ -584,10 +584,9 @@ async function saveSettings() {
 }
 
 .settings-item.active {
-  background: rgba(99, 102, 241, 0.12);
-  border-color: rgba(99, 102, 241, 0.2);
-  color: var(--text-secondary);
-  box-shadow: inset 2px 0 0 var(--color-accent);
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent);
+  color: var(--color-accent-light);
 }
 
 .settings-item-top {
@@ -625,7 +624,7 @@ async function saveSettings() {
 }
 
 .settings-item.active .settings-meta {
-  color: rgba(129, 140, 248, 0.8);
+  color: var(--color-accent-light);
 }
 
 .sidebar-status {
@@ -657,9 +656,8 @@ async function saveSettings() {
 .detail-card {
   width: min(960px, 100%);
   border: 1px solid var(--border-subtle);
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
   padding: 20px;
   flex: 1;
   min-height: 0;
@@ -741,10 +739,7 @@ async function saveSettings() {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow:
-    0 24px 64px rgba(0, 0, 0, 0.38),
-    0 8px 20px rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(99, 102, 241, 0.16);
+  box-shadow: var(--shadow-lg);
 }
 
 .dialog-header {

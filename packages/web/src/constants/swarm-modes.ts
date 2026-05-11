@@ -18,7 +18,7 @@ const MODE_CONFIGS: Record<string, ModeConfig> = {
     label: "Router 路由",
     labelZh: "路由",
     color: "#9aaa64",
-    bg: "rgba(99, 102, 241, 0.1)",
+    bg: "rgba(154, 170, 100, 0.1)",
     desc: "智能路由到最合适的 Agent",
     icon: "🔀",
   },

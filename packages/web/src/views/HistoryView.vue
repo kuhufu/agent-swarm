@@ -592,10 +592,9 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 .nav-item.active {
-  background: rgba(99, 102, 241, 0.12);
-  color: var(--text-secondary);
-  border-color: rgba(99, 102, 241, 0.2);
-  box-shadow: inset 2px 0 0 var(--color-accent);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
+  border-color: var(--color-accent);
 }
 
 .nav-item div {
@@ -619,7 +618,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 .nav-item.active .nav-desc {
-  color: rgba(129, 140, 248, 0.7);
+  color: var(--color-accent-light);
 }
 
 .nav-divider {
@@ -644,8 +643,8 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 .nav-item.active .conv-nav-icon {
-  color: var(--text-secondary);
-  background: rgba(99, 102, 241, 0.12);
+  color: var(--color-accent-light);
+  background: var(--color-accent-bg);
 }
 
 .nav-empty {
@@ -777,43 +776,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   gap: 10px;
 }
 
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  background: rgba(99, 102, 241, 0.15);
-  color: var(--text-secondary);
-  font-size: var(--text-base);
-  font-weight: var(--weight-medium);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
 
-.btn-primary:hover {
-  background: rgba(99, 102, 241, 0.25);
-}
-
-.btn-danger {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid rgba(248, 113, 113, 0.3);
-  background: rgba(248, 113, 113, 0.1);
-  color: #f87171;
-  font-size: var(--text-base);
-  font-weight: var(--weight-medium);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-danger:hover {
-  background: rgba(248, 113, 113, 0.2);
-}
 
 /* Detail Section */
 .detail-section {
@@ -939,7 +902,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 
 .trace-item.accent .trace-dot {
   background: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
 .trace-item.tool .trace-dot {
@@ -1048,31 +1011,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 /* Shared */
-.input-field {
-  width: 100%;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  color: var(--text-primary);
-  font-size: var(--text-base);
-  outline: none;
-  transition: all 0.2s;
-  box-sizing: border-box;
-}
 
-.input-field:focus {
-  border-color: rgba(99, 102, 241, 0.5);
-  background: rgba(99, 102, 241, 0.05);
-}
 
-.input-field::placeholder {
-  color: var(--text-muted);
-}
 
-.card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-}
 </style>

@@ -121,7 +121,7 @@ function submitEdit() {
   background: rgba(245, 158, 11, 0.2);
   border-radius: 9999px;
   font-size: var(--text-sm);
-  color: #fbbf24;
+  color: var(--color-warning);
   font-weight: var(--weight-bold);
   margin-right: 8px;
 }

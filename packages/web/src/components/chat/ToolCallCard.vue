@@ -65,8 +65,8 @@ const status = computed(() => getToolStatus(props.toolCall));
 }
 
 .tool-call-card.expanded {
-  border-color: rgba(99, 102, 241, 0.25);
-  box-shadow: 0 0 0 1px rgba(99,102,241,0.08);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent-glow);
 }
 
 .tool-header {
@@ -106,8 +106,8 @@ const status = computed(() => getToolStatus(props.toolCall));
   color: #4ade80;
 }
 .tool-icon-wrapper:not(.search):not(.knowledge):not(.code):not(.handoff):not(.file) {
-  background: rgba(99, 102, 241, 0.1);
-  color: var(--text-secondary);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
 }
 .tool-icon-wrapper svg {
   width: 12px;

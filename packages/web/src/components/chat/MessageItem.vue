@@ -351,10 +351,10 @@ function handleFork() {
 }
 
 .msg-user .msg-content {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(139, 92, 246, 0.12));
-  border: 1px solid rgba(99, 102, 241, 0.25);
+  background: var(--color-accent-bg);
+  border: 1px solid var(--color-accent);
   border-radius: 16px 16px 4px 16px;
-  box-shadow: 0 2px 12px rgba(99,102,241,0.15);
+  box-shadow: 0 2px 12px var(--color-accent-glow);
 }
 
 /* ── Tool / System ── */
@@ -400,9 +400,9 @@ function handleFork() {
 }
 
 .bot-avatar {
-  background: rgba(99, 102, 241, 0.1);
-  color: var(--text-secondary);
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
+  border: 1px solid var(--color-accent);
 }
 
 .user-avatar-small {
@@ -737,8 +737,8 @@ function handleFork() {
 }
 .tool-fold-count {
   font-size: var(--text-sm);
-  color: var(--text-muted);
-  background: rgba(99, 102, 241, 0.1);
+  color: var(--color-accent-light);
+  background: var(--color-accent-bg);
   padding: 1px 7px;
   border-radius: 9999px;
   font-weight: var(--weight-bold);

@@ -228,9 +228,9 @@ function agentSystemPrompt(agent: AgentState): string {
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
   padding: 2px 8px;
-  border-radius: 6px;
-  background: rgba(99, 102, 241, 0.15);
-  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
   flex-shrink: 0;
 }
 

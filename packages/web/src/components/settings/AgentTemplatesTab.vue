@@ -496,7 +496,7 @@ onBeforeUnmount(() => {
   position: relative;
   width: 100%;
   border: 1px solid var(--border-subtle);
-  border-left: 3px solid rgba(99, 102, 241, 0.25);
+  border-left: 3px solid var(--color-accent);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.02);
   color: var(--text-secondary);
@@ -522,17 +522,17 @@ onBeforeUnmount(() => {
 
 .template-item-row:hover {
   border-color: var(--border-default);
-  border-left-color: rgba(99, 102, 241, 0.5);
+  border-left-color: var(--color-accent);
   background: rgba(255, 255, 255, 0.05);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
 }
 
 .template-item-row.active {
-  background: rgba(99, 102, 241, 0.1);
-  border-color: rgba(99, 102, 241, 0.3);
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent);
   border-left-color: var(--color-accent);
-  color: var(--text-secondary);
-  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.15);
+  color: var(--color-accent-light);
+  box-shadow: 0 2px 12px var(--color-accent-glow);
 }
 
 .template-name {
@@ -730,9 +730,9 @@ onBeforeUnmount(() => {
 }
 
 .model-chip.active {
-  border-color: rgba(99, 102, 241, 0.4);
-  background: rgba(99, 102, 241, 0.12);
-  color: var(--text-secondary);
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
 }
 
 .compact-btn {

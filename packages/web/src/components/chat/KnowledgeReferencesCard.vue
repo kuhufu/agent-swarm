@@ -163,8 +163,8 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
   align-items: center;
   padding: 3px 8px;
   border-radius: 9999px;
-  background: rgba(99, 102, 241, 0.09);
-  border: 1px solid rgba(99, 102, 241, 0.16);
+  background: var(--color-accent-bg);
+  border: 1px solid var(--color-accent);
 }
 
 .knowledge-list {
@@ -194,8 +194,8 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
   justify-content: center;
   flex: 0 0 auto;
   border-radius: 9999px;
-  background: rgba(99, 102, 241, 0.16);
-  color: var(--text-secondary);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
   font-size: var(--text-sm);
   font-weight: 700;
   font-variant-numeric: tabular-nums;

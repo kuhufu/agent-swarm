@@ -403,8 +403,8 @@ onMounted(async () => {
 }
 
 .swarm-card.active {
-  background: rgba(99, 102, 241, 0.1);
-  border-color: rgba(99, 102, 241, 0.3);
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent);
 }
 
 .swarm-card-icon {
@@ -413,13 +413,14 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
-  border-radius: 8px;
+  background: var(--color-accent-bg);
+  border-radius: var(--radius-md);
   flex-shrink: 0;
 }
 
 .swarm-card.active .swarm-card-icon {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.25));
+  background: var(--color-accent);
+  color: #fff;
 }
 
 .swarm-card-icon svg {

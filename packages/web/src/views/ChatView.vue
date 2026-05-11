@@ -476,12 +476,12 @@ async function handleForkConversation(messageId?: string) {
   white-space: nowrap;
 }
 
-.workspace-select-btn:hover:not(:disabled),
-.workspace-select-btn.selected {
-  color: var(--text-primary);
-  border-color: rgba(99, 102, 241, 0.35);
-  background: rgba(99, 102, 241, 0.12);
-}
+  .workspace-select-btn:hover:not(:disabled),
+  .workspace-select-btn.selected {
+    color: var(--color-accent-light);
+    border-color: var(--color-accent);
+    background: var(--color-accent-bg);
+  }
 
 .workspace-select-btn:disabled {
   opacity: 0.55;
@@ -496,10 +496,9 @@ async function handleForkConversation(messageId?: string) {
   width: 300px;
   padding: 8px;
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: rgba(12, 17, 31, 0.96);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.36);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-lg);
 }
 
 .workspace-menu-header {
@@ -557,9 +556,9 @@ async function handleForkConversation(messageId?: string) {
 
 .workspace-menu-item:hover,
 .workspace-menu-item.active {
-  background: rgba(99, 102, 241, 0.14);
-  border-color: rgba(99, 102, 241, 0.26);
-  color: var(--text-primary);
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent);
+  color: var(--color-accent-light);
 }
 
 .workspace-menu-name,
@@ -609,20 +608,21 @@ async function handleForkConversation(messageId?: string) {
 }
 
 .workspace-create input:focus {
-  border-color: rgba(99, 102, 241, 0.45);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
-.workspace-create button {
-  height: 32px;
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  border-radius: 6px;
-  padding: 0 12px;
-  background: rgba(99, 102, 241, 0.16);
-  color: var(--text-secondary);
-  font-size: var(--text-base);
-  font-weight: var(--weight-bold);
-  cursor: pointer;
-}
+  .workspace-create button {
+    height: 32px;
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius-sm);
+    padding: 0 12px;
+    background: var(--color-accent-bg);
+    color: var(--color-accent-light);
+    font-size: var(--text-base);
+    font-weight: var(--weight-bold);
+    cursor: pointer;
+  }
 
 .workspace-create button:disabled {
   opacity: 0.45;
@@ -688,8 +688,8 @@ async function handleForkConversation(messageId?: string) {
 }
 
 .sidebar-tabs button.active {
-  color: var(--text-secondary);
-  background: rgba(99, 102, 241, 0.16);
+  color: var(--color-accent-light);
+  background: var(--color-accent-bg);
 }
 
 .chat-sidebar-right :deep(.agent-status) {

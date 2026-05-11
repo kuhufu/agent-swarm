@@ -163,8 +163,8 @@ defineProps<{
   padding: 2px 7px;
   border-radius: 999px;
   color: var(--text-secondary);
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid rgba(99, 102, 241, 0.16);
+  background: var(--color-accent-bg);
+  border: 1px solid var(--color-accent);
   font-size: var(--text-sm);
 }
 

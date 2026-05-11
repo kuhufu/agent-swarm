@@ -254,9 +254,8 @@ async function handleDelete(workspace: WorkspaceInfo) {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
 }
 
 .workspace-list-pane {
@@ -318,9 +317,9 @@ async function handleDelete(workspace: WorkspaceInfo) {
 }
 
 .icon-btn:hover:not(:disabled) {
-  border-color: rgba(99, 102, 241, 0.35);
-  background: rgba(99, 102, 241, 0.1);
-  color: var(--text-primary);
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
 }
 
 .secondary-btn {
@@ -337,16 +336,17 @@ async function handleDelete(workspace: WorkspaceInfo) {
 }
 
 .primary-btn {
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  background: rgba(99, 102, 241, 0.18);
-  color: var(--text-secondary);
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
   padding: 0 14px;
 }
 
 .primary-btn:hover:not(:disabled) {
-  background: rgba(99, 102, 241, 0.28);
-  border-color: rgba(99, 102, 241, 0.5);
-  box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+  box-shadow: 0 0 12px var(--color-accent-glow);
 }
 
 .danger-btn {
@@ -400,8 +400,8 @@ button:disabled {
 
 .create-form input:focus,
 .edit-form input:focus {
-  border-color: rgba(99, 102, 241, 0.45);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
 .create-btn {
@@ -411,10 +411,10 @@ button:disabled {
   align-items: center;
   gap: 5px;
   padding: 0 14px;
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  border-radius: 8px;
-  background: rgba(99, 102, 241, 0.18);
-  color: var(--text-secondary);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
   font-size: var(--text-base);
   font-weight: var(--weight-bold);
   cursor: pointer;
@@ -423,9 +423,10 @@ button:disabled {
 }
 
 .create-btn:hover:not(:disabled) {
-  background: rgba(99, 102, 241, 0.28);
-  border-color: rgba(99, 102, 241, 0.5);
-  box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+  box-shadow: 0 0 12px var(--color-accent-glow);
 }
 
 .create-btn:disabled {
@@ -481,9 +482,8 @@ button:disabled {
 }
 
 .workspace-card.active {
-  border-color: rgba(99, 102, 241, 0.4);
-  background: rgba(99, 102, 241, 0.1);
-  box-shadow: 0 0 16px rgba(99, 102, 241, 0.08);
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
 }
 
 .workspace-card.archived {
@@ -497,14 +497,15 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  background: rgba(99, 102, 241, 0.12);
-  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
   margin-top: 1px;
 }
 
 .workspace-card.active .workspace-card-icon {
-  background: rgba(99, 102, 241, 0.2);
+  background: var(--color-accent);
+  color: #fff;
 }
 
 .workspace-card-body {
@@ -599,9 +600,9 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 16px;
-  background: rgba(99, 102, 241, 0.08);
-  color: var(--text-secondary);
+  border-radius: var(--radius-lg);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
 }
 
 .detail-empty-title {

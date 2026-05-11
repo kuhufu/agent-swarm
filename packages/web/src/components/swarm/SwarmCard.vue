@@ -114,7 +114,7 @@ function handleDelete(e: Event) {
   justify-content: center;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
@@ -135,8 +135,8 @@ function handleDelete(e: Event) {
 .swarm-name {
   margin: 0;
   color: var(--text-primary);
-  font-size: 17px;
-  font-weight: 700;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
   letter-spacing: -0.3px;
 }
 
@@ -161,11 +161,11 @@ function handleDelete(e: Event) {
 
 .agent-tag {
   padding: 4px 10px;
-  background: rgba(99, 102, 241, 0.08);
-  border: 1px solid rgba(99, 102, 241, 0.15);
-  border-radius: 8px;
+  background: var(--color-accent-bg);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
   font-size: var(--text-sm);
-  color: var(--text-secondary);
+  color: var(--color-accent-light);
   font-weight: var(--weight-medium);
 }
 

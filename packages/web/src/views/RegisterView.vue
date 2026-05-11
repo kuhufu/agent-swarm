@@ -133,21 +133,21 @@ async function handleRegister() {
 
 .orb-1 {
   width: 600px; height: 600px;
-  background: radial-gradient(circle, rgba(99,102,241,0.18), rgba(139,92,246,0.1), transparent 70%);
+  background: radial-gradient(circle, rgba(154, 170, 100, 0.18), rgba(154, 170, 100, 0.1), transparent 70%);
   top: -15%; right: -10%;
   animation: float 10s ease-in-out infinite;
 }
 
 .orb-2 {
   width: 500px; height: 500px;
-  background: radial-gradient(circle, rgba(167,139,250,0.12), rgba(99,102,241,0.08), transparent 70%);
+  background: radial-gradient(circle, rgba(154, 170, 100, 0.12), rgba(154, 170, 100, 0.08), transparent 70%);
   bottom: -15%; left: -10%;
   animation: float-delayed 13s ease-in-out infinite;
 }
 
 .orb-3 {
   width: 300px; height: 300px;
-  background: radial-gradient(circle, rgba(56,189,248,0.08), transparent 70%);
+  background: radial-gradient(circle, rgba(154, 170, 100, 0.05), transparent 70%);
   top: 40%; left: 30%;
   animation: float 16s ease-in-out infinite;
 }
@@ -156,8 +156,8 @@ async function handleRegister() {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px);
+    linear-gradient(rgba(154, 170, 100, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(154, 170, 100, 0.04) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
 }
@@ -165,20 +165,18 @@ async function handleRegister() {
 .auth-card {
   position: relative;
   width: 400px;
-  border-radius: 24px;
+  border-radius: var(--radius-xl);
   background: var(--bg-card);
-  backdrop-filter: blur(24px) saturate(1.5);
-  -webkit-backdrop-filter: blur(24px) saturate(1.5);
   border: 1px solid var(--border-default);
-  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.07);
+  box-shadow: var(--shadow-lg);
   animation: scaleIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .card-glow {
   position: absolute;
   inset: -1px;
-  border-radius: 25px;
-  background: linear-gradient(135deg, rgba(99,102,241,0.25) 0%, transparent 35%, transparent 65%, rgba(167,139,250,0.2) 100%);
+  border-radius: calc(var(--radius-xl) + 1px);
+  background: linear-gradient(135deg, rgba(154, 170, 100, 0.2) 0%, transparent 35%, transparent 65%, rgba(154, 170, 100, 0.15) 100%);
   z-index: -1;
   pointer-events: none;
   filter: blur(1px);
@@ -201,9 +199,9 @@ async function handleRegister() {
   align-items: center;
   justify-content: center;
   background: var(--color-accent);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   color: #fff;
-  box-shadow: 0 8px 24px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+  box-shadow: 0 8px 24px var(--color-accent-glow);
 }
 
 .logo-rings {
@@ -215,12 +213,12 @@ async function handleRegister() {
 .ring {
   position: absolute;
   border-radius: 50%;
-  border: 1px solid rgba(99,102,241,0.2);
+  border: 1px solid rgba(154, 170, 100, 0.2);
   animation: pulseSoft 3s ease-in-out infinite;
 }
 
 .ring-1 { inset: 0; }
-.ring-2 { inset: -8px; border-color: rgba(99,102,241,0.1); animation-delay: 0.5s; }
+.ring-2 { inset: -8px; border-color: rgba(154, 170, 100, 0.1); animation-delay: 0.5s; }
 
 .auth-logo svg {
   width: 28px; height: 28px;
@@ -287,7 +285,7 @@ async function handleRegister() {
   padding-left: 38px;
   height: 44px;
   font-size: var(--text-base);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .input-wrap .input-field:focus {
@@ -299,8 +297,8 @@ async function handleRegister() {
   height: 46px;
   margin-top: 4px;
   border: none;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
   color: white;
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
@@ -311,22 +309,13 @@ async function handleRegister() {
   justify-content: center;
   gap: 8px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 4px 16px rgba(99,102,241,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
-}
-
-.auth-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
-  pointer-events: none;
+  box-shadow: 0 4px 16px var(--color-accent-glow);
 }
 
 .auth-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(99,102,241,0.45), inset 0 1px 0 rgba(255,255,255,0.15);
+  background: var(--color-accent-light);
+  box-shadow: 0 8px 24px var(--color-accent-glow);
 }
 
 .auth-btn:disabled { opacity: 0.55; cursor: not-allowed; }

@@ -53,8 +53,8 @@ const grouped = computed(() => {
 .grep-summary span {
   padding: 3px 8px;
   border-radius: 9999px;
-  background: rgba(99, 102, 241, 0.09);
-  border: 1px solid rgba(99, 102, 241, 0.16);
+  background: var(--color-accent-bg);
+  border: 1px solid var(--color-accent);
   color: var(--text-muted);
   font-size: var(--text-sm);
 }

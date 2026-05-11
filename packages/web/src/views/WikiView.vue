@@ -557,9 +557,8 @@ function sourcePreview(source: SourceDocument): string {
 .editor-panel,
 .detail-panel {
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
 }
 
 .wiki-sidebar {
@@ -691,8 +690,8 @@ h3 {
 }
 
 .page-list-item.active {
-  border-color: rgba(99, 102, 241, 0.4);
-  background: rgba(99, 102, 241, 0.12);
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
 }
 
 .page-title {
@@ -767,9 +766,9 @@ h3 {
 }
 
 .tag {
-  color: var(--text-secondary);
-  background: rgba(99, 102, 241, 0.11);
-  border: 1px solid rgba(99, 102, 241, 0.18);
+  color: var(--color-accent-light);
+  background: var(--color-accent-bg);
+  border: 1px solid var(--color-accent);
 }
 
 .alias,
@@ -829,8 +828,8 @@ h3 {
 }
 
 .source-item.active {
-  border-color: rgba(99, 102, 241, 0.35);
-  background: rgba(99, 102, 241, 0.1);
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
 }
 
 .claim-item p {
@@ -954,6 +953,8 @@ h3 {
 
 .primary-btn {
   padding: 0 14px;
+  gap: 7px;
+  border-radius: var(--radius-md);
   color: #fff;
   background: var(--color-accent);
   border-color: transparent;

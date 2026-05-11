@@ -316,9 +316,8 @@ async function generateWikiFromDocument() {
 .documents-sidebar,
 .document-detail {
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
 }
 
 .documents-sidebar {
@@ -414,8 +413,8 @@ h3 {
 }
 
 .document-list-item.active {
-  border-color: rgba(99, 102, 241, 0.4);
-  background: rgba(99, 102, 241, 0.12);
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
 }
 
 .document-title {
@@ -537,6 +536,7 @@ h3 {
   padding: 0;
   color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-md);
 }
 
 .icon-btn.muted {
@@ -547,6 +547,7 @@ h3 {
   padding: 0 12px;
   color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.045);
+  border-radius: var(--radius-md);
 }
 
 .danger-btn {
@@ -554,6 +555,7 @@ h3 {
   color: var(--color-danger);
   background: rgba(239, 68, 68, 0.08);
   border-color: rgba(239, 68, 68, 0.18);
+  border-radius: var(--radius-md);
 }
 
 button:disabled {

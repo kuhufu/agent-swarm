@@ -88,9 +88,9 @@ function close() {
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   padding: 10px 14px;
   color: var(--text-primary);
   font-size: var(--text-base);
@@ -106,7 +106,7 @@ function close() {
 
 .select-trigger:focus-visible {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
   outline: none;
 }
 
@@ -142,11 +142,10 @@ function close() {
 .select-dropdown {
   position: fixed;
   z-index: 1000;
-  background: rgba(20, 22, 35, 0.98);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  backdrop-filter: blur(16px);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
   padding: 4px;
   max-height: 260px;
   overflow-y: auto;
@@ -158,7 +157,7 @@ function close() {
   padding: 8px 10px;
   border: none;
   background: transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: var(--text-base);
   text-align: left;
@@ -167,12 +166,12 @@ function close() {
 }
 
 .select-option:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
 }
 
 .select-option.active {
-  background: rgba(99, 102, 241, 0.12);
-  color: var(--text-secondary);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
 }
 
 .select-empty {

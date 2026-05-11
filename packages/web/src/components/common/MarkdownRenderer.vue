@@ -15,7 +15,7 @@ const renderedContent = computed(() => renderMarkdown(props.content));
 
 <style scoped>
 .markdown-renderer {
-  color: #d0d0d0;
+  color: var(--text-primary);
   line-height: 1.6;
   font-size: var(--text-base);
 }
@@ -23,29 +23,29 @@ const renderedContent = computed(() => renderMarkdown(props.content));
 .markdown-renderer :deep(pre) {
   background: rgba(0, 0, 0, 0.3);
   padding: 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   overflow-x: auto;
   margin: 8px 0;
 }
 
 .markdown-renderer :deep(code) {
-  font-family: "SF Mono", "Fira Code", monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-base);
 }
 
 .markdown-renderer :deep(code:not(pre code)) {
   background: rgba(255, 255, 255, 0.08);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: var(--text-base);
 }
 
 .markdown-renderer :deep(strong) {
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 
 .markdown-renderer :deep(.katex) {
-  color: #f8fafc;
+  color: var(--text-primary);
   font-size: 1.04em;
 }
 

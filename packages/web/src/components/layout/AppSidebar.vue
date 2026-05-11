@@ -452,18 +452,18 @@ onBeforeUnmount(() => {
   user-select: none;
 }
 
-.brand-icon {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-accent);
-  border-radius: 9px;
-  color: white;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35), inset 0 1px 0 rgba(255,255,255,0.2);
-  flex-shrink: 0;
-}
+  .brand-icon {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-accent);
+    border-radius: var(--radius-md);
+    color: white;
+    box-shadow: 0 4px 12px var(--color-accent-glow);
+    flex-shrink: 0;
+  }
 
 .brand-icon svg {
   width: 16px;
@@ -511,9 +511,8 @@ onBeforeUnmount(() => {
 }
 
 .tab-btn.active {
-  background: rgba(99, 102, 241, 0.1);
-  color: var(--text-secondary);
-  box-shadow: inset 0 -2px 0 var(--color-accent);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
 }
 
 /* ── Conversation section ── */
@@ -549,9 +548,9 @@ onBeforeUnmount(() => {
 }
 
 .new-conv-btn:hover {
-  border-color: rgba(99, 102, 241, 0.35);
-  color: var(--text-secondary);
-  background: rgba(99, 102, 241, 0.06);
+  border-color: var(--color-accent);
+  color: var(--color-accent-light);
+  background: var(--color-accent-bg);
 }
 
 /* ── Bottom nav ── */
@@ -631,8 +630,8 @@ onBeforeUnmount(() => {
 }
 
 .conversation-item.active {
-  background: rgba(99, 102, 241, 0.08);
-  border-color: rgba(99, 102, 241, 0.15);
+  background: var(--color-accent-bg);
+  border-left: 2px solid var(--color-accent);
 }
 
 .conversation-main {
@@ -652,7 +651,7 @@ onBeforeUnmount(() => {
 
 .conversation-title {
   color: var(--text-secondary);
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   white-space: nowrap;
   overflow: hidden;
@@ -667,10 +666,10 @@ onBeforeUnmount(() => {
 }
 
 .mode-tag {
-  font-size: 9.5px;
+  font-size: var(--text-xs);
   font-weight: var(--weight-bold);
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   white-space: nowrap;
   flex-shrink: 0;
   max-width: 90px;
@@ -687,14 +686,14 @@ onBeforeUnmount(() => {
 }
 
 .mode-tag.swarm {
-  background: rgba(99, 102, 241, 0.1);
-  color: var(--text-secondary);
-  border: 1px solid rgba(99, 102, 241, 0.18);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
+  border: 1px solid var(--color-accent);
 }
 
 .conversation-time {
   color: var(--text-muted);
-  font-size: 10.5px;
+  font-size: var(--text-xs);
 }
 
 .conversation-more {
@@ -738,10 +737,9 @@ onBeforeUnmount(() => {
   z-index: 3000;
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   padding: 4px;
   box-shadow: var(--shadow-md);
-  backdrop-filter: blur(20px);
 }
 
 .conversation-menu-floating {
@@ -758,10 +756,10 @@ onBeforeUnmount(() => {
   background: transparent;
   color: var(--text-secondary);
   text-align: left;
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   padding: 7px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.15s;
   letter-spacing: -0.01em;
@@ -824,8 +822,8 @@ onBeforeUnmount(() => {
 }
 
 .auth-user-trigger.active {
-  border-color: rgba(99, 102, 241, 0.3);
-  background: rgba(99, 102, 241, 0.06);
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
 }
 
 .auth-avatar {
@@ -840,7 +838,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 2px 6px var(--color-accent-glow);
 }
 
 .auth-username {
@@ -886,7 +884,7 @@ onBeforeUnmount(() => {
 .settings-btn:hover {
   background: var(--bg-hover);
   color: var(--text-secondary);
-  border-color: rgba(99, 102, 241, 0.3);
+  border-color: var(--color-accent);
 }
 
 </style>

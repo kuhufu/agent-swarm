@@ -63,9 +63,9 @@ defineProps<{
 .file-badge {
   padding: 2px 7px;
   border-radius: 9999px;
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid rgba(99, 102, 241, 0.16);
-  color: var(--text-secondary);
+  background: var(--color-accent-bg);
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent-light);
   font-size: var(--text-xs); font-weight: var(--weight-bold);
 }
 .file-badge-warn {

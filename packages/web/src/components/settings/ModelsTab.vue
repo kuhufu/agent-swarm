@@ -355,7 +355,7 @@ async function testModel(provider: string, modelId: string) {
   box-shadow:
     0 24px 64px rgba(0, 0, 0, 0.38),
     0 8px 20px rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(99, 102, 241, 0.16);
+     0 0 0 1px var(--color-accent-glow);
 }
 .dialog-header {
   display: flex;
@@ -421,7 +421,7 @@ async function testModel(provider: string, modelId: string) {
 }
 .model-item.drag-over {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 2px var(--color-accent-glow);
   transform: translateY(2px);
 }
 .model-main {
@@ -435,7 +435,7 @@ async function testModel(provider: string, modelId: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.15));
+  background: var(--color-accent-bg);
   border-radius: 10px;
   font-size: var(--text-base);
   font-weight: 700;
@@ -500,13 +500,13 @@ async function testModel(provider: string, modelId: string) {
   transition: all 0.15s;
 }
 .model-pick-item:hover {
-  background: rgba(99, 102, 241, 0.08);
+  background: var(--color-accent-bg);
   border-color: var(--border-default);
 }
 .model-pick-item.active {
-  background: rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.4);
-  color: var(--text-secondary);
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent);
+  color: var(--color-accent-light);
 }
 .model-pick-id {
   font-family: var(--font-mono);

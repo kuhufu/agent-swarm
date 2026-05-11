@@ -710,10 +710,9 @@ onBeforeUnmount(() => {
 }
 
 .preset-item.active {
-  background: rgba(99, 102, 241, 0.12);
-  border-color: rgba(99, 102, 241, 0.2);
-  color: var(--text-secondary);
-  box-shadow: inset 2px 0 0 var(--color-accent);
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent);
+  color: var(--color-accent-light);
 }
 
 .preset-item-row {
@@ -745,10 +744,9 @@ onBeforeUnmount(() => {
 }
 
 .preset-item-row.active {
-  background: rgba(99, 102, 241, 0.12);
-  border-color: rgba(99, 102, 241, 0.2);
-  color: var(--text-secondary);
-  box-shadow: inset 2px 0 0 var(--color-accent);
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent);
+  color: var(--color-accent-light);
 }
 
 .preset-actions {
@@ -832,7 +830,7 @@ onBeforeUnmount(() => {
 }
 
 .preset-action-danger:hover {
-  background: var(--bg-root);
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .preset-action-danger:disabled {
@@ -851,15 +849,15 @@ onBeforeUnmount(() => {
 }
 
 .preset-item.active .preset-meta {
-  color: rgba(129, 140, 248, 0.8);
+  color: var(--color-accent-light);
 }
 
 .preset-item-row.active .preset-meta {
-  color: rgba(129, 140, 248, 0.8);
+  color: var(--color-accent-light);
 }
 
 .template-item {
-  border-left: 3px solid rgba(99, 102, 241, 0.3);
+  border-left: 3px solid var(--color-accent);
 }
 
 .preset-empty {
@@ -920,7 +918,7 @@ onBeforeUnmount(() => {
 }
 
 .detail-hint.info {
-  color: var(--color-info);
+  color: var(--color-accent-light);
 }
 
 .detail-hint.muted {
@@ -937,9 +935,8 @@ onBeforeUnmount(() => {
 .detail-card {
   max-width: 960px;
   border: 1px solid var(--border-subtle);
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
   padding: 20px;
 }
 
@@ -960,7 +957,7 @@ onBeforeUnmount(() => {
 
 .detail-hint {
   margin: 6px 0 0;
-  color: #fbbf24;
+  color: var(--color-warning);
   font-size: var(--text-sm);
 }
 
@@ -1033,9 +1030,9 @@ onBeforeUnmount(() => {
 }
 
 .model-chip.active {
-  border-color: rgba(99, 102, 241, 0.3);
-  background: rgba(99, 102, 241, 0.14);
-  color: var(--text-secondary);
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
 }
 
 .model-chip:disabled {
@@ -1050,7 +1047,7 @@ onBeforeUnmount(() => {
 .model-chip:disabled.active {
   border-color: var(--color-accent);
   background: var(--color-accent-bg);
-  color: var(--text-secondary);
+  color: var(--color-accent-light);
 }
 
 @media (max-width: 1024px) {

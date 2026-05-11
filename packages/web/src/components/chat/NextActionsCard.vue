@@ -49,15 +49,15 @@ const emit = defineEmits<{
   color: inherit;
 }
 .action-btn:hover {
-  background: rgba(99, 102, 241, 0.08);
-  border-color: rgba(99, 102, 241, 0.2);
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent);
 }
 .action-tool {
   flex-shrink: 0;
   padding: 2px 7px;
   border-radius: 4px;
-  background: rgba(99, 102, 241, 0.1);
-  color: var(--text-secondary);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
