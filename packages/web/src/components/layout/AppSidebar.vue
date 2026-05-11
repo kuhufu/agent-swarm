@@ -310,19 +310,19 @@ onBeforeUnmount(() => {
     <div class="sidebar-tabs">
       <button
         class="tab-btn"
+        :class="{ active: chatMode === 'swarm' }"
+        @click="chatMode = 'swarm'"
+      >
+        <SvgIcon name="swarm" :size="14" />
+        <span>Agent</span>
+      </button>
+      <button
+        class="tab-btn"
         :class="{ active: chatMode === 'direct' }"
         @click="chatMode = 'direct'"
       >
         <SvgIcon name="chat" :size="14" />
         <span>Chat</span>
-      </button>
-      <button
-        class="tab-btn"
-        :class="{ active: chatMode === 'swarm' }"
-        @click="chatMode = 'swarm'"
-      >
-        <SvgIcon name="swarm" :size="14" />
-        <span>Swarm</span>
       </button>
     </div>
 
@@ -330,7 +330,7 @@ onBeforeUnmount(() => {
       <div class="section-header">
         <button class="new-conv-btn" @click="handleNewConversation">
           <SvgIcon name="plus" :size="14" />
-          <span>新建对话</span>
+          <span>新对话</span>
         </button>
       </div>
       <div class="conversation-list">
@@ -477,9 +477,11 @@ onBeforeUnmount(() => {
 
 /* ── Tabs ── */
 .sidebar-tabs {
-  padding: 8px 10px 0;
+  margin: 0 10px 8px;
   display: flex;
-  gap: 4px;
+  background: var(--bg-hover);
+  border-radius: 16px;
+  padding: 5px;
 }
 
 .tab-btn {
@@ -488,26 +490,26 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px 12px;
-  border-radius: 9px;
+  padding: 9px 16px;
+  border-radius: 12px;
   color: var(--text-muted);
   font-size: var(--text-base);
   font-weight: var(--weight-medium);
   cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
   background: transparent;
   letter-spacing: -0.01em;
 }
 
-.tab-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+.tab-btn:hover:not(.active) {
+  color: var(--text-secondary);
 }
 
 .tab-btn.active {
-  background: var(--color-accent);
+  background: var(--color-accent, #5f7038);
   color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 /* ── Conversation section ── */
