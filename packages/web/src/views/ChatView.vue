@@ -258,7 +258,6 @@ async function handleForkConversation(messageId?: string) {
           <template v-else>
             <h2>{{ isDirectMode ? '直接对话' : '对话' }}</h2>
           </template>
-          <span v-if="isDirectMode" class="mode-badge direct">直接对话模式</span>
         </div>
         <div class="chat-header-spacer"></div>
         <div class="chat-header-right">
@@ -428,20 +427,6 @@ async function handleForkConversation(messageId?: string) {
   font-weight: var(--weight-bold);
   color: var(--text-primary);
   margin: 0;
-}
-
-.mode-badge {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-bold);
-  padding: 3px 10px;
-  border-radius: 9999px;
-  border: 1px solid;
-}
-
-.mode-badge.direct {
-  background: var(--bg-success);
-  color: var(--color-success);
-  border-color: var(--border-success);
 }
 
 .chat-header-right {
