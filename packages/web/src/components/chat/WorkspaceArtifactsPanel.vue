@@ -1094,7 +1094,7 @@ function getFileColor(name: string): string {
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
@@ -1162,7 +1162,7 @@ function getFileColor(name: string): string {
 
 .artifact-search button:hover {
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
 }
 
 .bulk-actions {
@@ -1174,7 +1174,7 @@ function getFileColor(name: string): string {
   padding: 7px 10px;
   border: 1px solid var(--border-subtle);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-surface);
   backdrop-filter: blur(8px);
   flex-shrink: 0;
   height: 40px;
@@ -1209,14 +1209,14 @@ function getFileColor(name: string): string {
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .batch-trigger:hover {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .batch-menu {
@@ -1258,7 +1258,7 @@ function getFileColor(name: string): string {
   border: 1px solid transparent;
   border-radius: 8px;
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.02);
+  background: transparent;
   cursor: pointer;
   text-align: left;
   transition: all 0.15s ease;
@@ -1266,8 +1266,8 @@ function getFileColor(name: string): string {
 
 .folder-header:hover {
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
 }
 
 .folder-chevron {
@@ -1297,7 +1297,7 @@ function getFileColor(name: string): string {
   font-weight: var(--weight-bold);
   padding: 1px 6px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
 }
 
 .folder-files {
@@ -1351,7 +1351,7 @@ function getFileColor(name: string): string {
   color: var(--text-muted);
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
   padding: 1px 8px;
   border-radius: 999px;
 }
@@ -1362,17 +1362,17 @@ function getFileColor(name: string): string {
   align-items: center;
   gap: 8px;
   padding: 8px 36px 8px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.02);
+  background: transparent;
   text-align: left;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .artifact-card:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
@@ -1405,12 +1405,12 @@ function getFileColor(name: string): string {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   transition: background 0.15s ease;
 }
 
 .artifact-card:hover .file-icon {
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--bg-hover);
 }
 
 .artifact-card.active .file-icon {
@@ -1449,7 +1449,7 @@ function getFileColor(name: string): string {
   font-weight: var(--weight-medium);
   padding: 1px 5px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
 }
 
 .file-path {
@@ -1478,10 +1478,10 @@ function getFileColor(name: string): string {
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 1.5px solid rgba(148, 163, 184, 0.22);
+  border: 1.5px solid var(--border-default);
   border-radius: 4px;
   color: #fff;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
   cursor: pointer;
   transition: all 0.15s ease;
   box-sizing: border-box;
@@ -1533,8 +1533,8 @@ function getFileColor(name: string): string {
 
 .menu-btn:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
 }
 
 .artifact-menu {
@@ -1571,7 +1571,7 @@ function getFileColor(name: string): string {
 
 .artifact-menu button:hover:not(:disabled) {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
 }
 
 .artifact-menu button.danger {
@@ -1595,7 +1595,7 @@ function getFileColor(name: string): string {
   padding: 14px;
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-surface);
   backdrop-filter: blur(8px);
 }
 
@@ -1613,7 +1613,7 @@ function getFileColor(name: string): string {
   align-items: center;
   justify-content: center;
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
 }
 
 .detail-info {
@@ -1680,24 +1680,31 @@ function getFileColor(name: string): string {
 }
 
 .detail-actions button {
-  width: 32px;
-  height: 32px;
+  height: 36px;
+  min-width: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
+  gap: 6px;
+  padding: 0 10px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .detail-actions button:hover:not(:disabled) {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+}
+
+.detail-actions button:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
 }
 
 .detail-actions button.danger {
@@ -1736,17 +1743,16 @@ function getFileColor(name: string): string {
 }
 
 .version-dialog {
-  max-width: 860px;
+  position: relative;
   max-height: 70vh;
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  background: rgba(30, 41, 59, 0.97);
-  backdrop-filter: blur(20px);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-lg);
 }
 
 .version-dialog-header {
@@ -1801,7 +1807,7 @@ function getFileColor(name: string): string {
 }
 
 .version-dialog-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   border-color: var(--border-default);
 }
 
@@ -1890,11 +1896,10 @@ function getFileColor(name: string): string {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  background: rgba(30, 41, 59, 0.97);
-  backdrop-filter: blur(20px);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-lg);
 }
 
 .preview-header {
@@ -1920,7 +1925,7 @@ function getFileColor(name: string): string {
   align-items: center;
   justify-content: center;
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
   flex-shrink: 0;
 }
 
@@ -1978,7 +1983,7 @@ function getFileColor(name: string): string {
   padding: 14px 10px;
   border: 1px solid var(--border-subtle);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
 }
 
 .preview-note {
