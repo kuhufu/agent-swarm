@@ -23,7 +23,7 @@ const route = useRoute();
 const router = useRouter();
 const draftSwarmId = ref<string>("");
 const draftWorkspaceId = ref<string | null>(null);
-const activeSidebarTab = ref<"agents" | "trace" | "artifacts">("agents");
+const activeSidebarTab = ref<"artifacts" | "agents" | "trace">("artifacts");
 const selectedArtifactPath = ref<string | null>(null);
 const workspaces = ref<WorkspaceInfo[]>([]);
 const workspacesLoading = ref(false);
@@ -381,10 +381,6 @@ async function handleForkConversation(messageId?: string) {
       />
       <AgentStatus v-else-if="activeSidebarTab === 'agents'" :agents="agentStates" :swarm-id="swarmId" />
       <ConversationTrace v-else :events="traceEvents" />
-        :workspace-id="currentWorkspaceId"
-        :selected-path="selectedArtifactPath"
-        :refresh-key="artifactRefreshKey"
-      />
     </aside>
   </div>
 </template>
