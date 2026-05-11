@@ -69,6 +69,33 @@ const messageImages = computed<Array<{ data: string; mimeType: string }>>(() => 
   return meta.images.filter((img: any) => typeof img.data === "string" && typeof img.mimeType === "string");
 });
 
+const previewImageUrl = ref<string | null>(null);
+const previewImageMeta = ref<{ data: string; mimeType: string } | null>(null);
+
+function imageDataUrl(img: { data: string; mimeType: string }): string {
+  return `data:${img.mimeType};base64,${img.data}`;
+}
+
+function openPreview(img: { data: string; mimeType: string }) {
+  previewImageUrl.value = imageDataUrl(img);
+  previewImageMeta.value = img;
+}
+
+function closePreview() {
+  previewImageUrl.value = null;
+  previewImageMeta.value = null;
+}
+
+function downloadImage(img: { data: string; mimeType: string }) {
+  const url = imageDataUrl(img);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `image.${img.mimeType.split("/")[1] ?? "png"}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 function roleClass(role: string): string {
   switch (role) {
     case "user": return "msg-user";
@@ -206,22 +233,26 @@ function handleFork() {
           </details>
         </div>
 
+        <div v-if="messageImages.length > 0" class="msg-images">
+          <div v-for="(img, i) in messageImages" :key="i" class="msg-image-wrap">
+            <img
+              :src="imageDataUrl(img)"
+              class="msg-image"
+              alt=""
+              loading="lazy"
+              @dblclick="openPreview(img)"
+            />
+            <button class="msg-image-download" type="button" title="下载" @click="downloadImage(img)">
+              <SvgIcon name="download" :size="12" />
+            </button>
+          </div>
+        </div>
+
         <div
           v-if="hasRenderableContent"
           class="msg-content markdown-content"
           v-html="renderedContent"
         />
-
-        <div v-if="messageImages.length > 0" class="msg-images">
-          <img
-            v-for="(img, i) in messageImages"
-            :key="i"
-            :src="`data:${img.mimeType};base64,${img.data}`"
-            class="msg-image"
-            alt=""
-            loading="lazy"
-          />
-        </div>
 
         <div v-if="message.toolCalls?.length" class="msg-tool-calls">
           <template v-if="groupedToolCalls">
@@ -302,6 +333,19 @@ function handleFork() {
       </div>
     </div>
   </div>
+
+  <!-- Image preview overlay -->
+  <Teleport to="body">
+    <div v-if="previewImageUrl" class="image-preview-overlay" @click.self="closePreview">
+      <button class="image-preview-close-btn" type="button" @click="closePreview">
+        <SvgIcon name="close" :size="18" />
+      </button>
+      <img :src="previewImageUrl" class="image-preview-full" alt="" />
+      <button class="image-preview-download-btn" type="button" title="下载" @click="previewImageMeta && downloadImage(previewImageMeta)">
+        <SvgIcon name="download" :size="20" />
+      </button>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -492,12 +536,41 @@ function handleFork() {
   padding: 8px 0;
 }
 
+.msg-image-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.msg-image-wrap:hover .msg-image-download {
+  opacity: 1;
+}
+
 .msg-image {
+  display: block;
   max-width: 300px;
   max-height: 300px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-subtle);
   object-fit: cover;
+  cursor: pointer;
+}
+
+.msg-image-download {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
 }
 
 .markdown-content :deep(p) {
@@ -786,5 +859,64 @@ function handleFork() {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Image preview overlay ── */
+.image-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  cursor: zoom-out;
+}
+
+.image-preview-full {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+}
+
+.image-preview-close-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  cursor: pointer;
+  z-index: 5001;
+}
+
+.image-preview-download-btn {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  cursor: pointer;
+  z-index: 5001;
+  transition: background 0.15s;
+}
+
+.image-preview-download-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 </style>
