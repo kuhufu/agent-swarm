@@ -668,7 +668,7 @@ async function handleForkConversation(messageId?: string) {
   padding: 4px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--bg-surface);
   flex: 0 0 auto;
 }
 
