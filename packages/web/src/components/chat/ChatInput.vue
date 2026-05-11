@@ -50,6 +50,17 @@ const fileInputRef = ref<HTMLInputElement | null>(null);
 const settingsStore = useSettingsStore();
 const conversationStore = useConversationStore();
 
+// ── Model image support check ──
+const modelSupportsImages = computed(() => {
+  if (!props.isDirectMode) return false;
+  const model = directModel.value;
+  if (!model) return false;
+  const saved = savedModels.value.find(
+    (m) => m.provider === model.provider && m.modelId === model.modelId,
+  );
+  return saved?.input?.includes("image") ?? false;
+});
+
 // ── Model selector state ──
 const selectedModelValue = ref("");
 const showModelSelect = ref(false);
@@ -376,6 +387,13 @@ async function handlePaste(event: ClipboardEvent) {
   }
 
   if (imageFiles.length === 0) return;
+
+  // Check if model supports images
+  if (!modelSupportsImages.value) {
+    showError("当前模型不支持图片");
+    return;
+  }
+
   event.preventDefault();
 
   for (const file of imageFiles) {
@@ -513,8 +531,8 @@ function handleOutsideClick(event: MouseEvent) {
       </div>
     </div>
     <div class="tool-options">
-      <input ref="fileInputRef" type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple style="display:none" @change="handleFileSelect" />
-      <button class="tool-btn" title="附件" @mousedown="handleKeepTextareaFocusMouseDown" @click="fileInputRef?.click()">
+      <input ref="fileInputRef" type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple style="display:none" :disabled="!modelSupportsImages" @change="handleFileSelect" />
+      <button class="tool-btn" :class="{ disabled: !modelSupportsImages }" :title="modelSupportsImages ? '附件' : '当前模型不支持图片'" @mousedown="handleKeepTextareaFocusMouseDown" @click="modelSupportsImages && fileInputRef?.click()">
         <SvgIcon name="attachment" :size="15" />
       </button>
 
