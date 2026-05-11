@@ -349,7 +349,6 @@ onBeforeUnmount(() => {
             <div class="conversation-main">
               <div class="conversation-title-row">
                 <span class="conversation-title">{{ conv.title ?? "新对话" }}</span>
-                <span class="mode-tag" :class="conv.swarmId.startsWith('__direct_') ? 'direct' : 'swarm'">{{ getConversationLabel(conv) }}</span>
               </div>
               <span class="conversation-time">{{ formatTime(conv.updatedAt) }}</span>
             </div>
@@ -646,7 +645,7 @@ onBeforeUnmount(() => {
 
 .conversation-title {
   color: var(--text-secondary);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: var(--weight-medium);
   white-space: nowrap;
   overflow: hidden;
@@ -658,32 +657,6 @@ onBeforeUnmount(() => {
 
 .conversation-item.active .conversation-title {
   color: var(--text-secondary);
-}
-
-.mode-tag {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-bold);
-  padding: 1px 5px;
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
-  flex-shrink: 0;
-  max-width: 90px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.6;
-  letter-spacing: 0.01em;
-}
-
-.mode-tag.direct {
-  background: var(--bg-success);
-  color: var(--color-success);
-  border: 1px solid var(--border-success);
-}
-
-.mode-tag.swarm {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-default);
 }
 
 .conversation-time {
