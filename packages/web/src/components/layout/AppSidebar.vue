@@ -506,8 +506,8 @@ onBeforeUnmount(() => {
 }
 
 .tab-btn.active {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
+  background: var(--color-accent);
+  color: #fff;
 }
 
 /* ── Conversation section ── */
