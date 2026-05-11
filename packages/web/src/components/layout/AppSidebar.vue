@@ -330,7 +330,7 @@ onBeforeUnmount(() => {
       <div class="section-header">
         <button class="new-conv-btn" @click="handleNewConversation">
           <SvgIcon name="plus" :size="14" />
-          <span>新建{{ chatMode === 'direct' ? 'Chat' : 'Swarm' }}对话</span>
+          <span>新建对话</span>
         </button>
       </div>
       <div class="conversation-list">
