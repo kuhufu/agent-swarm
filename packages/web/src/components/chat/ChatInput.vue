@@ -28,7 +28,6 @@ const {
   directModel,
   currentTimeToolEnabled,
   jsExecutionToolEnabled,
-  searchToolEnabled,
   webFetchToolEnabled,
   retrieveKnowledgeToolEnabled,
   wikiToolEnabled,
@@ -409,42 +408,28 @@ function handleOutsideClick(event: MouseEvent) {
 
 <template>
   <div class="chat-input" @mousedown="handleContainerMouseDown">
-    <div class="input-wrapper">
-      <div class="textarea-wrapper">
-        <textarea
-          ref="textareaRef"
-          v-model="inputText"
-          placeholder="输入消息..."
-          rows="1"
-          autofocus
-          :disabled="sending || (isDirectMode ? !canSendDirect : !swarmId)"
-          @focus="captureTextareaSelection"
-          @click="captureTextareaSelection"
-          @keyup="captureTextareaSelection"
-          @select="captureTextareaSelection"
-          @keydown="handleKeydown"
-        />
-        <span v-if="isDirectMode && !canSendDirect" class="input-hint">请先选择模型</span>
-        <span v-else-if="!isDirectMode && !swarmId" class="input-hint">请先选择一个 Swarm</span>
-      </div>
-      <button
-        v-if="!active"
-        class="send-btn"
-        :disabled="(isDirectMode ? !canSendDirect : !swarmId) || sending || !inputText.trim()"
-        @click="handleSend"
-      >
-        <SvgIcon name="send" />
-      </button>
-      <button
-        v-else
-        class="send-btn stop"
-        @click="abort"
-      >
-        <SvgIcon name="stop" />
-      </button>
-    </div>
+    <textarea
+      ref="textareaRef"
+      v-model="inputText"
+      placeholder="输入消息...（Enter 发送，Shift+Enter 换行）"
+      rows="1"
+      autofocus
+      :disabled="sending || (isDirectMode ? !canSendDirect : !swarmId)"
+      @focus="captureTextareaSelection"
+      @click="captureTextareaSelection"
+      @keyup="captureTextareaSelection"
+      @select="captureTextareaSelection"
+      @keydown="handleKeydown"
+    />
     <div class="tool-options">
-      <!-- Direct mode: model selector inline (left-aligned) -->
+      <!-- Attachment / paperclip button -->
+      <button class="tool-btn" title="附件" @mousedown="handleKeepTextareaFocusMouseDown">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 15px; height: 15px;">
+          <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+        </svg>
+      </button>
+
+      <!-- Direct mode: model selector inline -->
       <div v-if="isDirectMode" class="model-select-inline">
         <button
           class="model-select-btn"
@@ -452,12 +437,11 @@ function handleOutsideClick(event: MouseEvent) {
           @mousedown="handleKeepTextareaFocusMouseDown"
           @click="toggleModelSelect"
         >
-          <SvgIcon name="monitor" :size="14" />
+          <SvgIcon name="monitor" :size="13" />
           <span v-if="canSendDirect" class="model-select-label">{{ selectedModelLabel }}</span>
           <span v-else class="model-select-label placeholder">选择模型</span>
-          <SvgIcon name="chevronDown" :size="12" />
+          <SvgIcon name="chevronDown" :size="11" />
         </button>
-        <!-- Dropdown -->
         <div v-if="showModelSelect" class="model-dropdown">
           <button
             v-for="sm in savedModels"
@@ -477,18 +461,8 @@ function handleOutsideClick(event: MouseEvent) {
           </div>
         </div>
       </div>
-      <!-- Tool toggles (right-aligned) -->
-      <div class="tool-toggles-right">
-        <button
-        class="tool-btn"
-        :class="{ active: searchToolEnabled }"
-        title="搜索"
-        @mousedown="handleKeepTextareaFocusMouseDown"
-        @click="searchToolEnabled = !searchToolEnabled"
-      >
-        <SvgIcon name="search" />
-      </button>
-      <!-- Thinking level (not an agent tool) -->
+
+      <!-- Thinking level -->
       <div class="think-level-select-inline">
         <button
           class="tool-btn"
@@ -514,6 +488,31 @@ function handleOutsideClick(event: MouseEvent) {
           </button>
         </div>
       </div>
+
+      <!-- Chat / conversation toggle -->
+      <button
+        class="tool-btn"
+        title="对话历史"
+        @mousedown="handleKeepTextareaFocusMouseDown"
+      >
+        <SvgIcon name="chat" :size="14" />
+      </button>
+
+      <!-- Voice input -->
+      <button
+        class="tool-btn"
+        title="语音输入"
+        @mousedown="handleKeepTextareaFocusMouseDown"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+          <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+          <path d="M19 10v2a7 7 0 01-14 0v-2" />
+          <line x1="12" y1="19" x2="12" y2="23" />
+          <line x1="8" y1="23" x2="16" y2="23" />
+        </svg>
+      </button>
+
+      <!-- Tools dropdown -->
       <div class="tools-dropdown-inline">
         <button
           class="tool-btn"
@@ -523,7 +522,7 @@ function handleOutsideClick(event: MouseEvent) {
           @click="handleToggleToolsDropdown"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
-            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
             <circle cx="12" cy="12" r="3" />
           </svg>
           <span v-if="activeToolCount > 0" class="tool-badge">{{ activeToolCount }}</span>
@@ -602,7 +601,36 @@ function handleOutsideClick(event: MouseEvent) {
           </button>
         </div>
       </div>
-      <!-- Clear context (not an agent tool) -->
+
+      <!-- Link / chain -->
+      <button class="tool-btn" title="链接" @mousedown="handleKeepTextareaFocusMouseDown">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+        </svg>
+      </button>
+
+      <!-- Spacer -->
+      <div class="toolbar-spacer" />
+
+      <!-- Send / Stop button -->
+      <button
+        v-if="!active"
+        class="send-btn"
+        :disabled="(isDirectMode ? !canSendDirect : !swarmId) || sending || !inputText.trim()"
+        @click="handleSend"
+      >
+        <SvgIcon name="send" :size="16" />
+      </button>
+      <button
+        v-else
+        class="send-btn stop"
+        @click="abort"
+      >
+        <SvgIcon name="stop" :size="16" />
+      </button>
+
+      <!-- Clear context -->
       <button
         class="tool-btn"
         :class="{ disabled: !canClearContext }"
@@ -612,7 +640,6 @@ function handleOutsideClick(event: MouseEvent) {
       >
         <SvgIcon name="eraser" :size="14" />
       </button>
-      </div>
     </div>
   </div>
 </template>
@@ -620,8 +647,8 @@ function handleOutsideClick(event: MouseEvent) {
 <style scoped>
 .chat-input {
   width: min(820px, calc(100% - 32px));
-  margin: 6px auto 28px;
-  padding: 14px 16px 6px;
+  margin: 0px auto 28px;
+  padding: 14px 18px 12px;
   border: 1px solid var(--border-subtle);
   border-radius: 20px;
   background: var(--bg-surface);
@@ -630,41 +657,96 @@ function handleOutsideClick(event: MouseEvent) {
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
   position: relative;
   z-index: 3;
+  display: flex;
+  flex-direction: column;
 }
 
+textarea {
+  width: 100%;
+  display: block;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: var(--text-base);
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  min-height: 72px;
+  max-height: 280px;
+  line-height: 1.6;
+  transition: all 0.2s;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(128, 128, 128, 0.28) transparent;
+  padding: 0;
+}
+
+textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+textarea::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.24);
+  border-radius: 999px;
+  border: 1.5px solid transparent;
+  background-clip: padding-box;
+}
+
+textarea::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.38);
+  background-clip: padding-box;
+}
+
+textarea:focus {
+  box-shadow: none;
+}
+
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Toolbar ── */
 .tool-options {
-  max-width: none;
-  margin: 10px 0 0;
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 30px;
+  gap: 4px;
+  min-height: 32px;
+  margin-top: 10px;
 }
 
-.tool-toggles-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  margin-left: auto;
+.toolbar-spacer {
+  flex: 1;
 }
 
 .tool-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   padding: 0;
   border: none;
-  background: none;
+  border-radius: 7px;
+  background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: color 0.15s;
+  transition: all 0.15s ease;
   line-height: 1;
+  flex-shrink: 0;
 }
 
-.tool-btn:hover {
+.tool-btn:hover:not(.disabled) {
+  background: var(--bg-hover);
   color: var(--text-secondary);
 }
 
@@ -673,20 +755,191 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
 .tool-btn.disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .tool-btn svg {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
 }
 
-.tools-dropdown-inline {
+/* ── Send button (inline in toolbar) ── */
+.send-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 30px;
+  border-radius: 7px;
+  border: none;
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+}
+
+.send-btn:hover:not(:disabled) {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.send-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.send-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.send-btn.stop {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.send-btn.stop:hover {
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.35);
+}
+
+/* ── Model selector inline ── */
+.model-select-inline {
   position: relative;
   display: inline-flex;
 }
 
+.model-select-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px 0 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.4;
+  height: 30px;
+}
+
+.model-select-btn:hover {
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+.model-select-btn.selected {
+  color: var(--text-primary);
+}
+
+.model-select-label {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--weight-medium);
+}
+
+.model-select-label.placeholder {
+  color: var(--text-muted);
+  font-weight: var(--weight-normal);
+}
+
+/* ── Dropdowns ── */
+.model-dropdown,
+.tools-dropdown,
+.think-level-dropdown {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 4px;
+}
+
+.model-dropdown {
+  min-width: 220px;
+  max-width: 320px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.tools-dropdown {
+  min-width: 160px;
+}
+
+.think-level-dropdown {
+  min-width: 110px;
+}
+
+.tools-dropdown-item,
+.model-dropdown-item,
+.think-level-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--text-base);
+  text-align: left;
+  color: var(--text-secondary);
+  transition: background 0.1s;
+}
+
+.tools-dropdown-item:hover,
+.model-dropdown-item:hover,
+.think-level-dropdown-item:hover {
+  background: var(--bg-hover);
+}
+
+.tools-dropdown-item.active,
+.model-dropdown-item.active,
+.think-level-dropdown-item.active {
+  color: var(--text-primary);
+}
+
+.model-check-placeholder {
+  width: 12px;
+  flex-shrink: 0;
+}
+
+.dropdown-model-name {
+  flex: 1;
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dropdown-model-provider {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.model-dropdown-empty {
+  padding: 10px 12px;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.dropdown-tool-label,
+.dropdown-level-label {
+  font-weight: var(--weight-medium);
+}
+
+/* ── Tool badge ── */
 .tool-badge {
   position: absolute;
   top: -2px;
@@ -704,392 +957,33 @@ function handleOutsideClick(event: MouseEvent) {
   pointer-events: none;
 }
 
-.tools-dropdown {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  min-width: 180px;
-  z-index: 50;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  padding: 4px;
-}
-
-.tools-dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 10px;
-  border: none;
-  background: transparent;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: var(--text-base);
-  text-align: left;
-  color: var(--text-secondary);
-  transition: background 0.1s;
-}
-
-.tools-dropdown-item:hover {
-  background: var(--bg-hover);
-}
-
-.tools-dropdown-item.active {
-  color: var(--text-primary);
-}
-
-/* ── Inline model selector ── */
-.model-select-inline {
-  position: relative;
-  display: inline-flex;
-}
-
-.model-select-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 0;
-  margin-left: 6px;
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  font-size: var(--text-base);
-  cursor: pointer;
-  transition: color 0.15s;
-  line-height: 1.4;
-}
-
-.model-select-btn:hover {
-  color: var(--text-secondary);
-}
-
-.model-select-btn.selected {
-  color: var(--text-primary);
-}
-
-.model-select-label {
-  max-width: 140px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: var(--weight-medium);
-}
-
-.model-select-label.placeholder {
-  color: var(--text-muted);
-  font-weight: var(--weight-normal);
-}
-
-/* ── Dropdown ── */
-.model-dropdown {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  min-width: 100%;
-  width: max-content;
-  max-width: 320px;
-  max-height: 260px;
-  overflow-y: auto;
-  z-index: 50;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  padding: 4px;
-}
-
-.model-dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 10px;
-  border: none;
-  background: transparent;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: background 0.1s;
-  font-size: var(--text-base);
-  text-align: left;
-  color: var(--text-secondary);
-}
-
-.model-dropdown-item:hover {
-  background: var(--bg-hover);
-}
-
-.model-dropdown-item.active {
-  color: var(--text-primary);
-  font-weight: var(--weight-bold);
-}
-
-.model-check-placeholder {
-  width: 12px;
-  flex-shrink: 0;
-}
-
-.model-dropdown-item:hover {
-  background: var(--bg-hover);
-}
-
-.model-dropdown-item.active {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.tools-dropdown-item.disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.dropdown-tool-label {
-  flex: 1;
-  font-weight: var(--weight-medium);
-}
-
-.tools-dropdown-separator {
-  height: 1px;
-  margin: 4px 6px;
-  background: var(--border-subtle);
-}
-
-/* ── Thinking level selector ── */
+.tools-dropdown-inline,
 .think-level-select-inline {
   position: relative;
   display: inline-flex;
-}
-
-.think-level-select-inline .tool-btn {
-  width: 28px;
-}
-
-.think-level-dropdown {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  min-width: 120px;
-  z-index: 50;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  padding: 4px;
-}
-
-.think-level-dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 6px 10px;
-  border: none;
-  background: transparent;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.1s;
-  font-size: var(--text-base);
-  text-align: left;
-  color: var(--text-secondary);
-}
-
-.think-level-dropdown-item:hover {
-  background: var(--bg-hover);
-}
-
-.think-level-dropdown-item.active {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-}
-
-.dropdown-level-label {
-  font-weight: var(--weight-medium);
-}
-
-.dropdown-level-value {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-
-.think-level-dropdown-item.active .dropdown-level-value {
-  color: var(--text-secondary);
-}
-
-/* ── Input area ── */
-.input-wrapper {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  max-width: none;
-  margin: 0;
-}
-
-.textarea-wrapper {
-  flex: 1;
-  position: relative;
-  border: 1px solid var(--border-subtle);
-  border-radius: 16px;
-  background: var(--bg-surface);
-  overflow: hidden;
-  transition: all 0.2s;
-}
-
-  .textarea-wrapper:focus-within {
-    border-color: var(--border-default);
-  }
-
-textarea {
-  width: 100%;
-  display: block;
-  box-sizing: border-box;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 16px 16px;
-  color: var(--text-primary);
-  font-size: var(--text-base);
-  resize: none;
-  outline: none;
-  font-family: inherit;
-  min-height: 60px;
-  max-height: none;
-  line-height: 1.6;
-  transition: all 0.2s;
-  /* Keep content paddings fixed at 16px while reserving scrollbar slot. */
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
-}
-
-textarea::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-textarea::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-textarea::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.28);
-  border-radius: 999px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-
-textarea::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.4);
-  background-clip: padding-box;
-}
-
-textarea:focus {
-  box-shadow: none;
-}
-
-textarea::placeholder {
-  color: var(--text-muted);
-}
-
-textarea:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.input-hint {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-  pointer-events: none;
-}
-
-.send-btn {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: none;
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: all 0.2s;
-}
-
-.send-btn:hover:not(:disabled) {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-.send-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.send-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.send-btn.stop {
-  background: var(--color-danger);
-}
-
-.send-btn.stop:hover {
-  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
-}
-
-.send-btn svg {
-  width: 18px;
-  height: 18px;
 }
 
 @media (max-width: 768px) {
   .chat-input {
     width: calc(100% - 16px);
     margin: 8px auto 10px;
-    padding: 10px 12px 12px;
+    padding: 12px 14px 10px;
     border-radius: 16px;
   }
 
-  .input-wrapper {
-    gap: 8px;
-  }
-
   textarea {
-    min-height: 52px;
-    padding: 14px 14px;
-  }
-
-  .send-btn {
-    width: 44px;
-    height: 44px;
+    min-height: 40px;
+    max-height: 200px;
   }
 
   .tool-options {
-    margin-top: 8px;
-    gap: 8px;
+    gap: 2px;
     flex-wrap: wrap;
   }
 
-  .tool-toggles-right {
-    width: 100%;
-    margin-left: 0;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .model-select-label {
-    max-width: 140px;
+  .send-btn {
+    width: 32px;
+    height: 28px;
   }
 }
 </style>
