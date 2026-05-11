@@ -867,7 +867,7 @@ textarea:disabled {
 }
 
 .send-btn:hover:not(:disabled) {
-  background: var(--color-accent);
+  background: var(--text-muted);
   color: #fff;
 }
 

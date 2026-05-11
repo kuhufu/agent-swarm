@@ -785,7 +785,7 @@ function getFileColor(name: string): string {
             v-for="artifact in visibleFinalArtifacts"
             :key="`final-${artifact.path}`"
             class="artifact-card final-card"
-            :class="{ active: selectedArtifact?.path === artifact.path }"
+            :class="{ active: selectedArtifact?.path === artifact.path, 'menu-open': openMenuPath === artifact.path }"
             @click="selectArtifact(artifact)"
             @dblclick="openPreview(artifact)"
           >
@@ -855,7 +855,7 @@ function getFileColor(name: string): string {
               v-for="artifact in group.artifacts"
               :key="artifact.path"
               class="artifact-card"
-              :class="{ active: selectedArtifact?.path === artifact.path }"
+              :class="{ active: selectedArtifact?.path === artifact.path, 'menu-open': openMenuPath === artifact.path }"
               @click="selectArtifact(artifact)"
               @dblclick="openPreview(artifact)"
             >
@@ -1167,6 +1167,7 @@ function getFileColor(name: string): string {
 
 .bulk-actions {
   position: relative;
+  z-index: 40;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1197,6 +1198,7 @@ function getFileColor(name: string): string {
 .batch-menu-wrap {
   position: relative;
   flex: 0 0 auto;
+  z-index: 100;
 }
 
 .batch-trigger {
@@ -1222,6 +1224,7 @@ function getFileColor(name: string): string {
 .batch-menu {
   top: 32px;
   right: 0;
+  z-index: 120;
 }
 
 .artifact-layout {
@@ -1379,6 +1382,10 @@ function getFileColor(name: string): string {
 .artifact-card.active {
   background: var(--bg-hover);
   border-color: var(--border-default);
+}
+
+.artifact-card.menu-open {
+  z-index: 30;
 }
 
 .final-card {
@@ -1541,16 +1548,15 @@ function getFileColor(name: string): string {
   position: absolute;
   top: 30px;
   right: 4px;
-  z-index: 12;
+  z-index: 80;
   min-width: 150px;
   display: grid;
   gap: 2px;
-  padding: 6px;
+  padding: 4px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  background: rgba(15, 23, 42, 0.98);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-md);
 }
 
 .artifact-menu button {
