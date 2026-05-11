@@ -910,7 +910,7 @@ function getFileColor(name: string): string {
                   <SvgIcon name="download" :size="13" />
                   下载
                 </button>
-                <button type="button" @click="loadArtifactVersions(artifact)">
+                <button type="button" @click="selectedArtifact = artifact; openVersionModal()">
                   <SvgIcon name="history" :size="13" />
                   版本记录
                 </button>
