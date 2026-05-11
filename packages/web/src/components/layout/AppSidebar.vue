@@ -457,9 +457,9 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-hover);
+    background: var(--color-accent);
     border-radius: var(--radius-md);
-    color: var(--text-primary);
+    color: #fff;
     flex-shrink: 0;
   }
 
