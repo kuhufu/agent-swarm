@@ -749,30 +749,26 @@ function handleOutsideClick(event: MouseEvent) {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
+  padding: 4px 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
   font-size: var(--text-base);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color 0.15s;
   line-height: 1.4;
 }
 
 .model-select-btn:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-default);
-}
-
-.model-select-btn.selected {
-  border-color: var(--border-default);
-  background: var(--bg-hover);
   color: var(--text-secondary);
 }
 
+.model-select-btn.selected {
+  color: var(--text-primary);
+}
+
 .model-select-label {
-  max-width: 180px;
+  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
