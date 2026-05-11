@@ -784,8 +784,10 @@ function handleOutsideClick(event: MouseEvent) {
 .model-dropdown {
   position: absolute;
   bottom: calc(100% + 6px);
-  left: 0;
-  min-width: 220px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 100%;
+  width: max-content;
   max-width: 320px;
   max-height: 260px;
   overflow-y: auto;
@@ -806,12 +808,21 @@ function handleOutsideClick(event: MouseEvent) {
   padding: 8px 10px;
   border: none;
   background: transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 0.1s;
   font-size: var(--text-base);
   text-align: left;
   color: var(--text-secondary);
+}
+
+.model-dropdown-item:hover {
+  background: var(--bg-hover);
+}
+
+.model-dropdown-item.active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .tools-dropdown-item.disabled {
