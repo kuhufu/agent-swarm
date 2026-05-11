@@ -35,8 +35,7 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(2, 6, 23, 0.55);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.55);
 }
 
 .sys-modal {
@@ -44,11 +43,10 @@ const emit = defineEmits<{
   height: 900px;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  background: rgba(30, 41, 59, 0.97);
-  backdrop-filter: blur(20px);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 
@@ -75,7 +73,7 @@ const emit = defineEmits<{
   width: 28px;
   height: 28px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   color: var(--text-muted);
   background: transparent;
   cursor: pointer;
@@ -83,7 +81,7 @@ const emit = defineEmits<{
 }
 
 .sys-close:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
   color: var(--text-secondary);
 }
 

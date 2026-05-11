@@ -95,8 +95,7 @@ const currentThemeLabel = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(2, 6, 23, 0.55);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.55);
 }
 
 .ps-modal {
@@ -104,11 +103,10 @@ const currentThemeLabel = computed(() => {
   height: 900px;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  background: rgba(30, 41, 59, 0.97);
-  backdrop-filter: blur(20px);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 
@@ -135,7 +133,7 @@ const currentThemeLabel = computed(() => {
   width: 28px;
   height: 28px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   color: var(--text-muted);
   background: transparent;
   cursor: pointer;
@@ -143,7 +141,7 @@ const currentThemeLabel = computed(() => {
 }
 
 .ps-close:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
   color: var(--text-secondary);
 }
 
@@ -161,7 +159,7 @@ const currentThemeLabel = computed(() => {
   gap: 2px;
   padding: 10px;
   border-right: 1px solid var(--border-subtle);
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--bg-surface);
 }
 
 .ps-tab {
@@ -170,7 +168,7 @@ const currentThemeLabel = computed(() => {
   gap: 8px;
   padding: 8px 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--text-muted);
   font-size: var(--text-base);
@@ -182,13 +180,13 @@ const currentThemeLabel = computed(() => {
 }
 
 .ps-tab:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--color-accent-bg);
   color: var(--text-secondary);
 }
 
 .ps-tab.active {
-  background: rgba(99, 102, 241, 0.1);
-  color: var(--text-secondary);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
 }
 
 .ps-content {
@@ -221,8 +219,8 @@ const currentThemeLabel = computed(() => {
   gap: 12px;
   padding: 12px 16px;
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.025);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
   cursor: pointer;
   transition: all 0.15s;
   text-align: left;
@@ -231,14 +229,14 @@ const currentThemeLabel = computed(() => {
 }
 
 .theme-option:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-accent-bg);
   border-color: var(--border-default);
 }
 
 .theme-option.active {
-  border-color: rgba(99, 102, 241, 0.3);
-  background: rgba(99, 102, 241, 0.08);
-  color: var(--text-secondary);
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-light);
 }
 
 .theme-option svg {
