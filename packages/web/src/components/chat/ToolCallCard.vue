@@ -116,9 +116,9 @@ const status = computed(() => getToolStatus(props.toolCall));
 
 .tool-name {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   flex-shrink: 0;
 }
 
@@ -129,7 +129,7 @@ const status = computed(() => getToolStatus(props.toolCall));
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
   padding: 1px 6px;
   border-radius: 4px;
@@ -139,7 +139,7 @@ const status = computed(() => getToolStatus(props.toolCall));
 .tool-duration {
   flex-shrink: 0;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
@@ -147,10 +147,10 @@ const status = computed(() => getToolStatus(props.toolCall));
 .tool-status {
   margin-left: auto;
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: var(--text-sm);
   padding: 3px 10px;
   border-radius: 9999px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 
 .tool-status.success {

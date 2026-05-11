@@ -239,7 +239,7 @@ async function handleRegister() {
 }
 
 .auth-subtitle {
-  font-size: 13px;
+  font-size: var(--text-base);
   color: var(--text-muted);
   margin: 0;
   letter-spacing: 0.02em;
@@ -258,8 +258,8 @@ async function handleRegister() {
 }
 
 .form-field label {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -286,7 +286,7 @@ async function handleRegister() {
 .input-wrap .input-field {
   padding-left: 38px;
   height: 44px;
-  font-size: 14px;
+  font-size: var(--text-base);
   border-radius: 10px;
 }
 
@@ -302,8 +302,8 @@ async function handleRegister() {
   border-radius: 12px;
   background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
   color: white;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
   letter-spacing: -0.01em;
   cursor: pointer;
   display: flex;
@@ -346,14 +346,14 @@ async function handleRegister() {
 .auth-footer {
   text-align: center;
   margin-top: 24px;
-  font-size: 13px;
+  font-size: var(--text-base);
   color: var(--text-muted);
 }
 
 .auth-link {
   color: var(--text-secondary);
   text-decoration: none;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   transition: color 0.2s;
 }
 

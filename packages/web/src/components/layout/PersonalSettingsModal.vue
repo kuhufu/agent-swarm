@@ -124,8 +124,8 @@ const currentThemeLabel = computed(() => {
 .ps-header h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
 }
 
 .ps-close {
@@ -173,8 +173,8 @@ const currentThemeLabel = computed(() => {
   border-radius: 8px;
   background: transparent;
   color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
   cursor: pointer;
   transition: all 0.15s;
   text-align: left;
@@ -204,8 +204,8 @@ const currentThemeLabel = computed(() => {
 .theme-panel-title {
   margin: 0 0 20px;
   color: var(--text-primary);
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
 }
 
 .theme-options {
@@ -253,12 +253,12 @@ const currentThemeLabel = computed(() => {
 }
 
 .theme-option-label {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
 }
 
 .theme-option-desc {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
   margin-left: auto;
 }

@@ -89,8 +89,8 @@ function handleDelete(e: Event) {
   gap: 6px;
   padding: 4px 12px;
   border-radius: 9999px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
 }
 
 
@@ -150,7 +150,7 @@ function handleDelete(e: Event) {
   align-items: center;
   gap: 6px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .agent-tags {
@@ -164,9 +164,9 @@ function handleDelete(e: Event) {
   background: rgba(99, 102, 241, 0.08);
   border: 1px solid rgba(99, 102, 241, 0.15);
   border-radius: 8px;
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 
 .card-footer {
@@ -179,7 +179,7 @@ function handleDelete(e: Event) {
 }
 
 .swarm-id {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
   font-family: var(--font-mono);
 }

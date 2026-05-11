@@ -470,7 +470,7 @@ onBeforeUnmount(() => {
 .editor-header h4 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: var(--text-lg);
   font-weight: 700;
   letter-spacing: -0.3px;
 }
@@ -479,7 +479,7 @@ onBeforeUnmount(() => {
 .editor-header p {
   margin: 4px 0 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
   line-height: 1.5;
 }
 
@@ -536,13 +536,13 @@ onBeforeUnmount(() => {
 }
 
 .template-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
 }
 
 .template-meta {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 
 /* ── Row action trigger ── */
@@ -608,7 +608,7 @@ onBeforeUnmount(() => {
   background: transparent;
   cursor: pointer;
   text-align: left;
-  font-size: 13px;
+  font-size: var(--text-base);
   transition: background 0.15s;
 }
 
@@ -639,7 +639,7 @@ onBeforeUnmount(() => {
   padding: 32px 16px;
   text-align: center;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
   line-height: 1.7;
 }
 
@@ -677,8 +677,8 @@ onBeforeUnmount(() => {
 
 .form-row label {
   color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
@@ -718,8 +718,8 @@ onBeforeUnmount(() => {
   background: rgba(255, 255, 255, 0.03);
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
   transition: all 0.18s;
 }
 
@@ -737,7 +737,7 @@ onBeforeUnmount(() => {
 
 .compact-btn {
   padding: 6px 14px;
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 @media (max-width: 900px) {

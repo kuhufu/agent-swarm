@@ -76,7 +76,7 @@ function formatTime(ts?: number): string {
   background: rgba(99, 102, 241, 0.09);
   border: 1px solid rgba(99, 102, 241, 0.16);
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 .file-table {
   display: grid;
@@ -91,12 +91,12 @@ function formatTime(ts?: number): string {
   gap: 8px;
   align-items: center;
   padding: 7px 10px;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .file-table-header {
   background: rgba(255, 255, 255, 0.04);
   color: var(--text-muted);
-  font-size: 11px; font-weight: 600;
+  font-size: var(--text-sm); font-weight: var(--weight-bold);
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
@@ -122,14 +122,14 @@ function formatTime(ts?: number): string {
 .ft-path {
   color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .ft-size, .ft-time {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -139,14 +139,14 @@ function formatTime(ts?: number): string {
   color: var(--text-muted);
   background: rgba(0, 0, 0, 0.18);
   border: 1px dashed var(--border-subtle);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .list-toggle {
   margin-top: 8px;
   border: none;
   background: none;
   color: var(--text-secondary);
-  font-size: 12px; font-weight: 600;
+  font-size: var(--text-sm); font-weight: var(--weight-bold);
   cursor: pointer;
   padding: 0;
   transition: opacity 0.16s;

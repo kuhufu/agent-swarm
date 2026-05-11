@@ -50,13 +50,13 @@ const emit = defineEmits<{
 .artifact-result strong {
   color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-sm);
   overflow-wrap: anywhere;
 }
 
 .artifact-result span {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 
 .artifact-open-btn {
@@ -72,8 +72,8 @@ const emit = defineEmits<{
   background: rgba(255, 255, 255, 0.04);
   cursor: pointer;
   flex-shrink: 0;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
   transition: all 0.15s ease;
 }
 

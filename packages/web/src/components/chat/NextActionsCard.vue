@@ -42,7 +42,7 @@ const emit = defineEmits<{
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid var(--border-subtle);
-  font-size: 12px;
+  font-size: var(--text-sm);
   cursor: pointer;
   transition: all 0.15s;
   font-family: inherit;
@@ -59,8 +59,8 @@ const emit = defineEmits<{
   background: rgba(99, 102, 241, 0.1);
   color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
 }
 .action-reason {
   color: var(--text-secondary);

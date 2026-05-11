@@ -827,7 +827,7 @@ function clearModelSelection() {
 .sidebar-header h2 {
   margin: 0 0 4px;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--text-xl);
   font-weight: 700;
   letter-spacing: -0.3px;
 }
@@ -835,7 +835,7 @@ function clearModelSelection() {
 .sidebar-header p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .create-btn {
@@ -854,10 +854,10 @@ function clearModelSelection() {
   margin-top: 6px;
   padding: 0 4px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 
 .swarms-nav {
@@ -913,15 +913,15 @@ function clearModelSelection() {
 }
 
 .swarm-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .swarm-meta {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 
@@ -932,7 +932,7 @@ function clearModelSelection() {
 .nav-empty {
   padding: 10px 12px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .swarms-content {
@@ -981,13 +981,13 @@ function clearModelSelection() {
 .empty-title {
   margin: 0 0 4px;
   color: var(--text-secondary);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
 }
 
 .empty-desc {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .detail-panel {
@@ -1029,7 +1029,7 @@ function clearModelSelection() {
 
 .detail-title-input {
   width: 100%;
-  font-size: 20px;
+  font-size: var(--text-xl);
   font-weight: 700;
   color: var(--text-primary);
   background: transparent;
@@ -1070,8 +1070,8 @@ function clearModelSelection() {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   color: var(--text-secondary);
   margin: 0 0 16px;
 }
@@ -1086,7 +1086,7 @@ function clearModelSelection() {
 
 .compact-btn {
   padding: 6px 12px;
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .mode-grid {
@@ -1133,13 +1133,13 @@ function clearModelSelection() {
 }
 
 .mode-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   color: var(--text-primary);
 }
 
 .mode-desc {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 
@@ -1180,7 +1180,7 @@ function clearModelSelection() {
 .agent-dialog .dialog-header h3 {
   color: var(--text-primary);
   margin: 0;
-  font-size: 18px;
+  font-size: var(--text-xl);
   font-weight: 700;
 }
 
@@ -1231,15 +1231,15 @@ function clearModelSelection() {
 
 .form-row label {
   color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
 }
 
 .form-label {
   display: block;
   color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1273,7 +1273,7 @@ textarea.input-field {
   background: rgba(255, 255, 255, 0.03);
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--text-sm);
   transition: all 0.2s;
   display: inline-flex;
   align-items: center;
@@ -1342,28 +1342,28 @@ textarea.input-field {
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   flex-shrink: 0;
 }
 
 .agent-name {
   display: block;
   color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
 }
 
 .agent-desc {
   display: block;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .agent-model {
   display: block;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
   margin-top: 2px;
 }
@@ -1415,7 +1415,7 @@ textarea.input-field {
 
 .router-config-hint {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 
@@ -1423,7 +1423,7 @@ textarea.input-field {
   text-align: center;
   padding: 24px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .badge {
@@ -1431,8 +1431,8 @@ textarea.input-field {
   align-items: center;
   padding: 4px 10px;
   border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
   border: 1px solid;
   white-space: nowrap;
   flex-shrink: 0;

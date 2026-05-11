@@ -494,13 +494,13 @@ async function saveSettings() {
 .access-denied-card h2 {
   margin: 0 0 8px;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--text-xl);
 }
 
 .access-denied-card p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--text-base);
   line-height: 1.6;
 }
 
@@ -525,7 +525,7 @@ async function saveSettings() {
 .sidebar-header h2 {
   margin: 0 0 4px;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--text-xl);
   font-weight: 700;
   letter-spacing: -0.3px;
 }
@@ -533,7 +533,7 @@ async function saveSettings() {
 .sidebar-header p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .settings-section {
@@ -548,10 +548,10 @@ async function saveSettings() {
   margin-top: 6px;
   padding: 0 4px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 
 .settings-nav {
@@ -612,15 +612,15 @@ async function saveSettings() {
 }
 
 .settings-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .settings-meta {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 
@@ -641,7 +641,7 @@ async function saveSettings() {
 .sidebar-status p {
   margin: 0;
   color: #fca5a5;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .settings-content {
@@ -681,14 +681,14 @@ async function saveSettings() {
 .detail-header h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--text-xl);
   font-weight: 700;
 }
 
 .detail-hint {
   margin: 6px 0 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .tab-panel {
@@ -708,7 +708,7 @@ async function saveSettings() {
 
 .compact-btn {
   padding: 6px 12px;
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .dialog-overlay {
@@ -757,7 +757,7 @@ async function saveSettings() {
 .dialog-header h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--text-xl);
   font-weight: 700;
 }
 
@@ -799,14 +799,14 @@ async function saveSettings() {
 
 .form-row label {
   color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
 }
 
 .dialog-hint {
   margin: 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .checkbox-inline {
@@ -814,7 +814,7 @@ async function saveSettings() {
   align-items: center;
   gap: 8px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .checkbox-inline input[type="checkbox"] {

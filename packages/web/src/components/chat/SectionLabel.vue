@@ -20,8 +20,8 @@ defineProps<{
   align-items: center;
   gap: 6px;
   color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 6px;

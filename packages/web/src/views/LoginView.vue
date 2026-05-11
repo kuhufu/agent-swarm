@@ -263,7 +263,7 @@ async function handleLogin() {
 }
 
 .auth-subtitle {
-  font-size: 13px;
+  font-size: var(--text-base);
   color: var(--text-muted);
   margin: 0;
   letter-spacing: 0.02em;
@@ -283,8 +283,8 @@ async function handleLogin() {
 }
 
 .form-field label {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -316,7 +316,7 @@ async function handleLogin() {
   border: 1px solid var(--border-default);
   border-radius: 10px;
   height: 44px;
-  font-size: 14px;
+  font-size: var(--text-base);
   transition: all 0.2s;
 }
 
@@ -334,8 +334,8 @@ async function handleLogin() {
   border-radius: 12px;
   background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
   color: white;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
   letter-spacing: -0.01em;
   cursor: pointer;
   display: flex;
@@ -394,14 +394,14 @@ async function handleLogin() {
 .auth-footer {
   text-align: center;
   margin-top: 28px;
-  font-size: 13px;
+  font-size: var(--text-base);
   color: var(--text-muted);
 }
 
 .auth-link {
   color: var(--text-secondary);
   text-decoration: none;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   transition: color 0.2s;
 }
 

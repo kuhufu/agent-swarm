@@ -133,23 +133,23 @@ const statusClass = computed(() => props.isError ? "error" : "success");
 .js-metric-label,
 .js-block-title {
   color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
 
 .js-metric-value {
   color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
 }
 
 .js-status-pill {
   width: fit-content;
   padding: 3px 8px;
   border-radius: 9999px;
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-weight: 700;
 }
 
@@ -177,7 +177,7 @@ const statusClass = computed(() => props.isError ? "error" : "success");
   background: rgba(0, 0, 0, 0.24);
   border: 1px solid rgba(255, 255, 255, 0.06);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-sm);
   line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -199,7 +199,7 @@ const statusClass = computed(() => props.isError ? "error" : "success");
   background: rgba(0, 0, 0, 0.18);
   border: 1px solid rgba(255, 255, 255, 0.05);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-sm);
   line-height: 1.55;
 }
 
@@ -221,7 +221,7 @@ const statusClass = computed(() => props.isError ? "error" : "success");
   color: var(--text-muted);
   background: rgba(0, 0, 0, 0.14);
   border: 1px dashed var(--border-subtle);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .js-code-details {
@@ -231,7 +231,7 @@ const statusClass = computed(() => props.isError ? "error" : "success");
 .js-code-details summary {
   width: fit-content;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
   cursor: pointer;
   transition: color 0.16s ease;
 }

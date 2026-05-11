@@ -128,6 +128,8 @@ pnpm test                  # 运行 core + server 单元测试
   - 主色调：`#9aaa64`（深色）/ `#5f7038`（浅色）
   - 圆角：`--radius-sm 6px` / `--radius-md 8px` / `--radius-lg 12px` / `--radius-xl 16px`
   - 阴影：`--shadow-sm / --shadow-md / --shadow-lg` 三层
+  - 字号：`--text-xs 10px` / `--text-sm 12px` / `--text-base 14px` / `--text-lg 16px` / `--text-xl 20px`
+  - 字重：`--weight-normal 400` / `--weight-medium 500` / `--weight-bold 600`
 - 虚拟滚动：消息列表大量消息时使用虚拟滚动
 - 会话路由：聊天页使用 `/chat/:conversationId?`；切换会话需同步更新 URL 中的 `conversationId`
 

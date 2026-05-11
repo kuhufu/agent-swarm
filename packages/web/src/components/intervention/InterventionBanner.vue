@@ -21,7 +21,7 @@ defineProps<{
   padding: 8px 16px;
   background: rgba(245, 158, 11, 0.1);
   border-bottom: 1px solid rgba(245, 158, 11, 0.2);
-  font-size: 13px;
+  font-size: var(--text-base);
   color: #f59e0b;
 }
 

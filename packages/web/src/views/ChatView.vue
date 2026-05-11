@@ -421,15 +421,15 @@ async function handleForkConversation(messageId?: string) {
 }
 
 .chat-header h2 {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
   color: var(--text-primary);
   margin: 0;
 }
 
 .mode-badge {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
   padding: 3px 10px;
   border-radius: 9999px;
   border: 1px solid;
@@ -464,8 +464,8 @@ async function handleForkConversation(messageId?: string) {
   padding: 0 10px;
   background: rgba(255, 255, 255, 0.04);
   color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
   cursor: pointer;
 }
 
@@ -508,8 +508,8 @@ async function handleForkConversation(messageId?: string) {
   justify-content: space-between;
   padding: 4px 4px 8px;
   color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
 }
 
 .workspace-menu-header button {
@@ -572,19 +572,19 @@ async function handleForkConversation(messageId?: string) {
 }
 
 .workspace-menu-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
 }
 
 .workspace-menu-meta {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 
 .workspace-empty {
   padding: 18px 10px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
   text-align: center;
 }
 
@@ -619,8 +619,8 @@ async function handleForkConversation(messageId?: string) {
   padding: 0 12px;
   background: rgba(99, 102, 241, 0.16);
   color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   cursor: pointer;
 }
 
@@ -635,8 +635,8 @@ async function handleForkConversation(messageId?: string) {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
   cursor: pointer;
   transition: all 0.2s;
   display: inline-flex;

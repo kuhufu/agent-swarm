@@ -16,7 +16,7 @@ defineProps<{
 <style scoped>
 pre {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   background: rgba(0, 0, 0, 0.25);
   padding: 10px 12px;

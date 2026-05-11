@@ -102,7 +102,7 @@ defineProps<{
 .wiki-summary {
   margin-bottom: 10px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .wiki-list {
@@ -126,7 +126,7 @@ defineProps<{
 
 .wiki-title {
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--text-base);
   font-weight: 700;
   line-height: 1.4;
   text-decoration: none;
@@ -141,13 +141,13 @@ defineProps<{
   flex: 0 0 auto;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 
 .wiki-summary-text {
   margin: 6px 0 0;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--text-sm);
   line-height: 1.6;
   white-space: pre-wrap;
 }
@@ -165,7 +165,7 @@ defineProps<{
   color: var(--text-secondary);
   background: rgba(99, 102, 241, 0.1);
   border: 1px solid rgba(99, 102, 241, 0.16);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 
 .wiki-claims {
@@ -174,7 +174,7 @@ defineProps<{
   margin: 8px 0 0;
   padding-left: 18px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
   line-height: 1.5;
 }
 
@@ -184,6 +184,6 @@ defineProps<{
   color: var(--text-muted);
   background: rgba(0, 0, 0, 0.18);
   border: 1px dashed var(--border-subtle);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 </style>

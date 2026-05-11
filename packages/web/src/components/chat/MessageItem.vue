@@ -304,8 +304,8 @@ function handleFork() {
 
 .context-divider-label {
   flex-shrink: 0;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
   color: var(--text-muted);
   letter-spacing: 0.2px;
 }
@@ -376,7 +376,7 @@ function handleFork() {
   border-radius: 12px;
   text-align: center;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 /* ── Avatar ── */
@@ -438,9 +438,9 @@ function handleFork() {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .status-dot {
@@ -451,9 +451,9 @@ function handleFork() {
 }
 
 .msg-role {
-  font-size: 13px;
+  font-size: var(--text-base);
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 
 /* ── Content ── */
@@ -464,7 +464,7 @@ function handleFork() {
 }
 
 .markdown-content {
-  font-size: 14px;
+  font-size: var(--text-base);
   margin: 0;
   color: var(--text-primary);
 }
@@ -508,7 +508,7 @@ function handleFork() {
 
 .markdown-content :deep(code) {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .markdown-content :deep(code:not(pre code)) {
@@ -535,7 +535,7 @@ function handleFork() {
   border-collapse: separate;
   border-spacing: 0;
   margin: 10px 0;
-  font-size: 13px;
+  font-size: var(--text-base);
   border: 1px solid rgba(148, 163, 184, 0.25);
   border-radius: 10px;
   overflow: hidden;
@@ -551,7 +551,7 @@ function handleFork() {
 
 .markdown-content :deep(th) {
   background: rgba(255, 255, 255, 0.04);
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   color: var(--text-primary);
 }
 
@@ -599,7 +599,7 @@ function handleFork() {
 }
 
 .timestamp {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 
@@ -663,7 +663,7 @@ function handleFork() {
 
 .msg-thinking details {
   padding: 8px 0;
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .msg-thinking summary {
@@ -672,7 +672,7 @@ function handleFork() {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   list-style: none;
 }
 
@@ -690,7 +690,7 @@ function handleFork() {
 
 .msg-thinking .thinking-content {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--text-sm);
   line-height: 1.6;
   margin-top: 8px;
   overflow-wrap: break-word;
@@ -731,17 +731,17 @@ function handleFork() {
 }
 .tool-fold-name {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 .tool-fold-count {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
   background: rgba(99, 102, 241, 0.1);
   padding: 1px 7px;
   border-radius: 9999px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 .tool-fold-dummy {
   flex: 1;

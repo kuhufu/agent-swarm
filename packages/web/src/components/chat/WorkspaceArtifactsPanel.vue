@@ -1074,7 +1074,7 @@ function getFileColor(name: string): string {
 .header-info h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--text-base);
   font-weight: 700;
   letter-spacing: -0.01em;
 }
@@ -1082,7 +1082,7 @@ function getFileColor(name: string): string {
 .header-info p {
   margin: 3px 0 0;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 
 .icon-btn {
@@ -1139,7 +1139,7 @@ function getFileColor(name: string): string {
   color: var(--text-secondary);
   background: transparent;
   font: inherit;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .artifact-search input::placeholder {
@@ -1191,8 +1191,8 @@ function getFileColor(name: string): string {
 
 .bulk-count {
   color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 500;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
 }
 
 .batch-menu-wrap {
@@ -1284,7 +1284,7 @@ function getFileColor(name: string): string {
   min-width: 0;
   flex: 1;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-weight: 650;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1294,8 +1294,8 @@ function getFileColor(name: string): string {
 .folder-meta {
   flex: 0 0 auto;
   color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
   padding: 1px 6px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.04);
@@ -1336,8 +1336,8 @@ function getFileColor(name: string): string {
   align-items: center;
   gap: 6px;
   color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
 }
 
 .final-dot {
@@ -1350,8 +1350,8 @@ function getFileColor(name: string): string {
 
 .section-count {
   color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
   background: rgba(255, 255, 255, 0.06);
   padding: 1px 8px;
   border-radius: 999px;
@@ -1437,8 +1437,8 @@ function getFileColor(name: string): string {
 .file-name {
   min-width: 0;
   color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1447,8 +1447,8 @@ function getFileColor(name: string): string {
 .file-size {
   flex-shrink: 0;
   color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 500;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
   padding: 1px 5px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.04);
@@ -1456,7 +1456,7 @@ function getFileColor(name: string): string {
 
 .file-path {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--text-xs);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1566,7 +1566,7 @@ function getFileColor(name: string): string {
   color: var(--text-secondary);
   background: transparent;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--text-sm);
   text-align: left;
   transition: all 0.12s ease;
 }
@@ -1628,8 +1628,8 @@ function getFileColor(name: string): string {
 
 .detail-name {
   color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1640,7 +1640,7 @@ function getFileColor(name: string): string {
   flex-direction: column;
   gap: 1px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--text-xs);
 }
 
 .meta-sep {
@@ -1670,7 +1670,7 @@ function getFileColor(name: string): string {
   color: var(--text-muted);
   background: transparent !important;
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-family: inherit;
   transition: all 0.15s ease;
   white-space: nowrap;
@@ -1720,7 +1720,7 @@ function getFileColor(name: string): string {
 
 .version-empty {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--text-xs);
   padding: 8px 2px;
 }
 
@@ -1764,8 +1764,8 @@ function getFileColor(name: string): string {
 .version-dialog-header h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
 }
 
 .version-dialog-body {
@@ -1798,7 +1798,7 @@ function getFileColor(name: string): string {
   cursor: pointer;
   text-align: left;
   font-family: inherit;
-  font-size: 11px;
+  font-size: var(--text-sm);
   transition: all 0.12s ease;
 }
 
@@ -1819,7 +1819,7 @@ function getFileColor(name: string): string {
 
 .version-dialog-item small {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--text-xs);
 }
 
 .version-dialog-item-main {
@@ -1827,13 +1827,13 @@ function getFileColor(name: string): string {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 
 .version-dialog-item-size {
   color: var(--text-muted);
-  font-weight: 400;
-  font-size: 10px;
+  font-weight: var(--weight-normal);
+  font-size: var(--text-xs);
   font-family: var(--font-mono);
 }
 
@@ -1850,8 +1850,8 @@ function getFileColor(name: string): string {
   color: var(--text-secondary);
   background: rgba(99, 102, 241, 0.1);
   cursor: pointer;
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
   font-family: inherit;
   transition: all 0.12s ease;
 }
@@ -1932,7 +1932,7 @@ function getFileColor(name: string): string {
 
 .preview-header strong {
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--text-base);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1941,12 +1941,12 @@ function getFileColor(name: string): string {
 .preview-header strong em {
   color: var(--text-muted);
   font-style: normal;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 
 .preview-header span {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
   overflow-wrap: anywhere;
 }
 
@@ -1967,7 +1967,7 @@ function getFileColor(name: string): string {
   padding: 28px 10px;
   color: var(--text-muted);
   text-align: center;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .empty-state :deep(svg) {
@@ -1984,7 +1984,7 @@ function getFileColor(name: string): string {
 .preview-note {
   margin: 8px 0 0;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
   text-align: center;
 }
 
@@ -1992,7 +1992,7 @@ function getFileColor(name: string): string {
   height: 100%;
   overflow: auto;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-sm);
   line-height: 1.5;
 }
 

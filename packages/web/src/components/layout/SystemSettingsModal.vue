@@ -64,8 +64,8 @@ const emit = defineEmits<{
 .sys-header h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
 }
 
 .sys-close {

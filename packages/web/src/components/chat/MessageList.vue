@@ -362,14 +362,14 @@ onMounted(async () => {
 }
 
 .empty-title {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
   color: var(--text-secondary);
   margin: 0;
 }
 
 .empty-desc {
-  font-size: 14px;
+  font-size: var(--text-base);
   color: var(--text-muted);
   margin: 0;
 }
@@ -436,8 +436,8 @@ onMounted(async () => {
 }
 
 .swarm-card-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -449,7 +449,7 @@ onMounted(async () => {
 }
 
 .swarm-card-meta {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 

@@ -109,13 +109,13 @@ function getEffectiveProtocol(id: string): ApiProtocol {
   margin-bottom: 24px;
 }
 .content-header h3 {
-  font-size: 20px;
+  font-size: var(--text-xl);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 4px;
 }
 .content-header p {
-  font-size: 14px;
+  font-size: var(--text-base);
   color: var(--text-muted);
   margin: 0;
 }
@@ -146,14 +146,14 @@ function getEffectiveProtocol(id: string): ApiProtocol {
   justify-content: center;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.15));
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--text-base);
   font-weight: 700;
   color: var(--text-secondary);
 }
 .provider-name {
   color: var(--text-primary);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
 }
 .provider-fields {
   display: flex;
@@ -168,8 +168,8 @@ function getEffectiveProtocol(id: string): ApiProtocol {
 .field-row label {
   color: var(--text-muted);
   min-width: 70px;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
   flex-shrink: 0;
 }
 .field-row input {
@@ -180,7 +180,7 @@ function getEffectiveProtocol(id: string): ApiProtocol {
   align-items: center;
   gap: 8px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .checkbox-inline input[type="checkbox"] {
   width: 14px;

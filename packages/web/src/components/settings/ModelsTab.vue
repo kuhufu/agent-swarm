@@ -302,13 +302,13 @@ async function testModel(provider: string, modelId: string) {
   margin-bottom: 24px;
 }
 .content-header h3 {
-  font-size: 20px;
+  font-size: var(--text-xl);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 4px;
 }
 .content-header p {
-  font-size: 14px;
+  font-size: var(--text-base);
   color: var(--text-muted);
   margin: 0;
 }
@@ -317,7 +317,7 @@ async function testModel(provider: string, modelId: string) {
 }
 .compact-btn {
   padding: 6px 12px;
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 .form-row {
   display: flex;
@@ -327,8 +327,8 @@ async function testModel(provider: string, modelId: string) {
 }
 .form-row label {
   color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
 }
 .dialog-overlay {
   position: absolute;
@@ -366,7 +366,7 @@ async function testModel(provider: string, modelId: string) {
 .dialog-header h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--text-xl);
   font-weight: 700;
 }
 .close-btn {
@@ -437,7 +437,7 @@ async function testModel(provider: string, modelId: string) {
   justify-content: center;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.15));
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--text-base);
   font-weight: 700;
   color: var(--text-secondary);
 }
@@ -448,12 +448,12 @@ async function testModel(provider: string, modelId: string) {
 }
 .model-name {
   color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
 }
 .model-meta {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
 }
 .model-actions {
@@ -463,10 +463,10 @@ async function testModel(provider: string, modelId: string) {
 }
 .model-test-btn {
   padding: 6px 10px;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .model-list-hint {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
   margin-bottom: 12px;
 }
@@ -474,7 +474,7 @@ async function testModel(provider: string, modelId: string) {
   margin-bottom: 12px;
 }
 .model-picker-label {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
   margin-bottom: 6px;
 }
@@ -495,7 +495,7 @@ async function testModel(provider: string, modelId: string) {
   border: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.03);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--text-sm);
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -510,14 +510,14 @@ async function testModel(provider: string, modelId: string) {
 }
 .model-pick-id {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 .model-pick-meta {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--text-muted);
 }
 .test-result-text {
-  font-size: 12px;
+  font-size: var(--text-sm);
   line-height: 1.4;
 }
 .test-result-text.ok {
@@ -550,13 +550,13 @@ async function testModel(provider: string, modelId: string) {
   height: 24px;
 }
 .empty-title {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
   color: var(--text-secondary);
   margin: 0 0 4px;
 }
 .empty-desc {
-  font-size: 13px;
+  font-size: var(--text-base);
   margin: 0;
 }
 </style>

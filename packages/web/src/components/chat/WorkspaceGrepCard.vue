@@ -56,7 +56,7 @@ const grouped = computed(() => {
   background: rgba(99, 102, 241, 0.09);
   border: 1px solid rgba(99, 102, 241, 0.16);
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 .grep-files {
   display: grid;
@@ -72,7 +72,7 @@ const grouped = computed(() => {
   background: rgba(255, 255, 255, 0.04);
   color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 12px; font-weight: 600;
+  font-size: var(--text-sm); font-weight: var(--weight-bold);
 }
 .grep-matches {
   display: grid;
@@ -91,7 +91,7 @@ const grouped = computed(() => {
 .grep-line-num {
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-sm);
   text-align: right;
   font-variant-numeric: tabular-nums;
   line-height: 1.6;
@@ -99,7 +99,7 @@ const grouped = computed(() => {
 .grep-line-content {
   color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-sm);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   line-height: 1.6;
@@ -110,6 +110,6 @@ const grouped = computed(() => {
   color: var(--text-muted);
   background: rgba(0, 0, 0, 0.18);
   border: 1px dashed var(--border-subtle);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 </style>

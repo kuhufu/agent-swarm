@@ -93,7 +93,7 @@ function close() {
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--text-base);
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s;
@@ -160,7 +160,7 @@ function close() {
   background: transparent;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--text-base);
   text-align: left;
   color: var(--text-secondary);
   transition: background 0.1s;
@@ -177,7 +177,7 @@ function close() {
 
 .select-empty {
   padding: 12px 10px;
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
   text-align: center;
 }

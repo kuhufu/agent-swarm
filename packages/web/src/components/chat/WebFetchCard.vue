@@ -64,14 +64,14 @@ const showContent = ref(false);
 }
 .fetch-label {
   color: var(--text-muted);
-  font-size: 11px; font-weight: 600;
+  font-size: var(--text-sm); font-weight: var(--weight-bold);
   text-transform: uppercase;
   letter-spacing: 0.4px;
   min-width: 36px;
 }
 .fetch-url, .fetch-value {
   color: var(--text-secondary);
-  font-size: 12px; line-height: 1.5;
+  font-size: var(--text-sm); line-height: 1.5;
   overflow-wrap: anywhere;
   min-width: 0; flex: 1;
 }
@@ -88,17 +88,17 @@ const showContent = ref(false);
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.05);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 .fetch-content-size {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 .fetch-toggle {
   border: none;
   background: none;
   color: var(--text-secondary);
-  font-size: 11px; font-weight: 600;
+  font-size: var(--text-sm); font-weight: var(--weight-bold);
   cursor: pointer;
   padding: 0;
   transition: opacity 0.16s;
@@ -114,7 +114,7 @@ const showContent = ref(false);
   background: rgba(0, 0, 0, 0.24);
   border: 1px solid rgba(255, 255, 255, 0.06);
   font-family: var(--font-mono);
-  font-size: 11px; line-height: 1.6;
+  font-size: var(--text-sm); line-height: 1.6;
   white-space: pre-wrap; overflow-wrap: anywhere;
   max-height: 300px;
   overflow-y: auto;

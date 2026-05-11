@@ -623,7 +623,7 @@ onBeforeUnmount(() => {
 .sidebar-header h2 {
   margin: 0 0 4px;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--text-xl);
   font-weight: 700;
   letter-spacing: -0.3px;
 }
@@ -631,7 +631,7 @@ onBeforeUnmount(() => {
 .sidebar-header p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .create-btn {
@@ -648,10 +648,10 @@ onBeforeUnmount(() => {
   margin-top: 6px;
   padding: 0 4px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 
 .preset-section-toggle {
@@ -675,7 +675,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 4px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 
 .preset-section-toggle-meta svg {
@@ -811,7 +811,7 @@ onBeforeUnmount(() => {
   color: var(--color-danger);
   cursor: pointer;
   text-align: left;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .preset-action-item {
@@ -823,7 +823,7 @@ onBeforeUnmount(() => {
   color: var(--text-secondary);
   cursor: pointer;
   text-align: left;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .preset-action-item:hover {
@@ -841,12 +841,12 @@ onBeforeUnmount(() => {
 }
 
 .preset-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
 }
 
 .preset-meta {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 
@@ -865,7 +865,7 @@ onBeforeUnmount(() => {
 .preset-empty {
   padding: 10px 12px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 /* ── Template selector ── */
@@ -900,7 +900,7 @@ onBeforeUnmount(() => {
   background: transparent;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--text-base);
   text-align: left;
   color: var(--text-secondary);
 }
@@ -910,11 +910,11 @@ onBeforeUnmount(() => {
 }
 
 .dropdown-t-name {
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 
 .dropdown-t-cat {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
   flex-shrink: 0;
 }
@@ -954,14 +954,14 @@ onBeforeUnmount(() => {
 .detail-header h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--text-xl);
   font-weight: 700;
 }
 
 .detail-hint {
   margin: 6px 0 0;
   color: #fbbf24;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .header-actions {
@@ -985,8 +985,8 @@ onBeforeUnmount(() => {
 
 .form-row label {
   color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
 }
 
 .form-row :deep(.input-field:disabled),
@@ -1023,7 +1023,7 @@ onBeforeUnmount(() => {
   background: rgba(255, 255, 255, 0.03);
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--text-sm);
   transition: all 0.2s;
 }
 

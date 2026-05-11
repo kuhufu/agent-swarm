@@ -207,8 +207,8 @@ function agentSystemPrompt(agent: AgentState): string {
   align-items: center;
   gap: 8px;
   color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   margin: 0 0 10px 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -225,8 +225,8 @@ function agentSystemPrompt(agent: AgentState): string {
 }
 
 .swarm-badge {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
   padding: 2px 8px;
   border-radius: 6px;
   background: rgba(99, 102, 241, 0.15);
@@ -235,8 +235,8 @@ function agentSystemPrompt(agent: AgentState): string {
 }
 
 .swarm-name {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -294,15 +294,15 @@ function agentSystemPrompt(agent: AgentState): string {
 
 .agent-name {
   color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
 }
 
 .agent-status-text {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 
@@ -318,7 +318,7 @@ function agentSystemPrompt(agent: AgentState): string {
 }
 
 .agent-desc {
-  font-size: 11px;
+  font-size: var(--text-sm);
   line-height: 1.5;
   color: var(--text-muted);
   padding: 6px 8px;
@@ -336,7 +336,7 @@ function agentSystemPrompt(agent: AgentState): string {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: var(--text-sm);
   min-width: 0;
 }
 
@@ -348,7 +348,7 @@ function agentSystemPrompt(agent: AgentState): string {
 
 .meta-value {
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   text-align: right;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -357,7 +357,7 @@ function agentSystemPrompt(agent: AgentState): string {
 
 .meta-value.mono {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 
 .no-agents {
@@ -374,13 +374,13 @@ function agentSystemPrompt(agent: AgentState): string {
 
 .no-agents p {
   margin: 0 0 4px;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
   color: var(--text-secondary);
 }
 
 .no-agents span {
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 

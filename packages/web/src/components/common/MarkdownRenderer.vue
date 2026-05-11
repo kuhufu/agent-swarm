@@ -17,7 +17,7 @@ const renderedContent = computed(() => renderMarkdown(props.content));
 .markdown-renderer {
   color: #d0d0d0;
   line-height: 1.6;
-  font-size: 14px;
+  font-size: var(--text-base);
 }
 
 .markdown-renderer :deep(pre) {
@@ -30,14 +30,14 @@ const renderedContent = computed(() => renderMarkdown(props.content));
 
 .markdown-renderer :deep(code) {
   font-family: "SF Mono", "Fira Code", monospace;
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .markdown-renderer :deep(code:not(pre code)) {
   background: rgba(255, 255, 255, 0.08);
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .markdown-renderer :deep(strong) {

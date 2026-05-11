@@ -527,7 +527,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 .sidebar-header h2 {
-  font-size: 20px;
+  font-size: var(--text-xl);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 4px;
@@ -535,7 +535,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 .sidebar-header p {
-  font-size: 13px;
+  font-size: var(--text-base);
   color: var(--text-muted);
   margin: 0;
 }
@@ -576,7 +576,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   padding: 12px;
   border-radius: 12px;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--text-base);
   cursor: pointer;
   transition: all 0.2s;
   border: none;
@@ -606,15 +606,15 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 .nav-label {
-  font-weight: 600;
-  font-size: 14px;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-base);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .nav-desc {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 
@@ -624,8 +624,8 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 
 .nav-divider {
   padding: 12px 8px 6px;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -650,7 +650,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 
 .nav-empty {
   padding: 20px 8px;
-  font-size: 13px;
+  font-size: var(--text-base);
   color: var(--text-muted);
   text-align: center;
 }
@@ -690,14 +690,14 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 .empty-title {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
   color: var(--text-secondary);
   margin: 0 0 4px;
 }
 
 .empty-desc {
-  font-size: 13px;
+  font-size: var(--text-base);
   margin: 0;
 }
 
@@ -738,7 +738,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 .detail-title {
-  font-size: 20px;
+  font-size: var(--text-xl);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 6px;
@@ -759,12 +759,12 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   gap: 4px;
   padding: 3px 10px;
   border-radius: 9999px;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
 }
 
 .meta-text {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 
@@ -786,8 +786,8 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   border: 1px solid rgba(99, 102, 241, 0.3);
   background: rgba(99, 102, 241, 0.15);
   color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -805,8 +805,8 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   border: 1px solid rgba(248, 113, 113, 0.3);
   background: rgba(248, 113, 113, 0.1);
   color: #f87171;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -824,15 +824,15 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   color: var(--text-secondary);
   margin: 0 0 16px;
 }
 
 .msg-count {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
   color: var(--text-muted);
   background: rgba(255, 255, 255, 0.05);
   padding: 2px 8px;
@@ -868,7 +868,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 
 .final-artifact-card strong {
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--text-base);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -877,7 +877,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 .final-artifact-card span,
 .final-artifact-card small {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
   overflow-wrap: anywhere;
 }
 
@@ -978,8 +978,8 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 .trace-label {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   color: var(--text-primary);
 }
 
@@ -988,14 +988,14 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 
 .trace-time {
   margin-left: auto;
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -1003,7 +1003,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 .trace-detail {
   margin-top: 4px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--text-sm);
   line-height: 1.5;
   word-break: break-word;
 }
@@ -1013,7 +1013,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 .detail-empty {
   text-align: center;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--text-base);
   padding: 40px 0;
 }
 
@@ -1035,12 +1035,12 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   display: inline-flex;
   padding: 3px 10px;
   border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
 }
 
 .msg-body {
-  font-size: 14px;
+  font-size: var(--text-base);
   color: var(--text-secondary);
   line-height: 1.7;
   white-space: pre-wrap;
@@ -1055,7 +1055,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--text-base);
   outline: none;
   transition: all 0.2s;
   box-sizing: border-box;

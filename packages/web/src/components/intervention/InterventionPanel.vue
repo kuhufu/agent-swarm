@@ -120,14 +120,14 @@ function submitEdit() {
   padding: 2px 10px;
   background: rgba(245, 158, 11, 0.2);
   border-radius: 9999px;
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: #fbbf24;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   margin-right: 8px;
 }
 
 .intervention-point {
-  font-size: 13px;
+  font-size: var(--text-base);
   color: var(--text-secondary);
   font-family: var(--font-mono);
 }
@@ -146,7 +146,7 @@ function submitEdit() {
 
 .intervention-context pre {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   font-family: var(--font-mono);
   line-height: 1.6;
@@ -162,7 +162,7 @@ function submitEdit() {
   background: rgba(0, 0, 0, 0.2);
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .intervention-actions {

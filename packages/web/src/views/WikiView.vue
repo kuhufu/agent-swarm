@@ -599,17 +599,17 @@ p {
 }
 
 h1 {
-  font-size: 20px;
+  font-size: var(--text-xl);
   line-height: 1.2;
 }
 
 h2 {
-  font-size: 18px;
+  font-size: var(--text-xl);
   line-height: 1.35;
 }
 
 h3 {
-  font-size: 13px;
+  font-size: var(--text-base);
   color: var(--text-secondary);
 }
 
@@ -617,7 +617,7 @@ h3 {
 .detail-toolbar p {
   margin-top: 5px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--text-base);
   line-height: 1.5;
 }
 
@@ -647,7 +647,7 @@ h3 {
   background: rgba(0, 0, 0, 0.22);
   color: var(--text-primary);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--text-base);
   outline: none;
 }
 
@@ -697,13 +697,13 @@ h3 {
 
 .page-title {
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--text-base);
   font-weight: 700;
 }
 
 .page-summary {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
   line-height: 1.45;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -742,7 +742,7 @@ h3 {
   display: block;
   margin: 14px 0 6px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-weight: 700;
 }
 
@@ -763,7 +763,7 @@ h3 {
 .link-list span {
   padding: 4px 8px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .tag {
@@ -789,7 +789,7 @@ h3 {
   overflow-wrap: anywhere;
   color: var(--text-secondary);
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--text-base);
   line-height: 1.75;
 }
 
@@ -835,7 +835,7 @@ h3 {
 
 .claim-item p {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--text-base);
   line-height: 1.55;
 }
 
@@ -845,7 +845,7 @@ h3 {
 .empty-block,
 .empty-list {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .claim-source {
@@ -864,7 +864,7 @@ h3 {
 
 .source-title {
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--text-base);
   font-weight: 700;
 }
 
@@ -885,7 +885,7 @@ h3 {
   gap: 12px;
   margin-bottom: 8px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .source-content pre {
@@ -896,7 +896,7 @@ h3 {
   overflow-wrap: anywhere;
   color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-sm);
   line-height: 1.6;
 }
 
@@ -906,7 +906,7 @@ h3 {
   color: var(--text-muted);
   background: transparent;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .source-close:hover {
@@ -938,7 +938,7 @@ h3 {
   border-radius: 8px;
   border: 1px solid var(--border-subtle);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .icon-btn {

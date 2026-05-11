@@ -43,7 +43,7 @@ defineProps<{
 .file-path {
   color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-sm);
   overflow-wrap: anywhere;
 }
 .file-kind {
@@ -51,14 +51,14 @@ defineProps<{
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 .file-meta-row {
   display: flex;
   align-items: center;
   gap: 8px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 .file-badge {
   padding: 2px 7px;
@@ -66,7 +66,7 @@ defineProps<{
   background: rgba(99, 102, 241, 0.1);
   border: 1px solid rgba(99, 102, 241, 0.16);
   color: var(--text-secondary);
-  font-size: 10px; font-weight: 600;
+  font-size: var(--text-xs); font-weight: var(--weight-bold);
 }
 .file-badge-warn {
   background: rgba(245, 158, 11, 0.1);

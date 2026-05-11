@@ -30,15 +30,15 @@
 
 | Token | 值 | 用途 |
 |-------|-----|------|
-| `--bg-root` | `#f5f4f0` | 页面根背景 |
-| `--bg-surface` | `#faf9f7` | 面板/侧边栏背景 |
-| `--bg-card` | `#ffffff` | 卡片/弹窗背景 |
-| `--bg-hover` | `#eeede9` | hover 态背景 |
-| `--border-subtle` | `#e6e4df` | 最弱分割线 |
-| `--border-default` | `#d6d4ce` | 默认边框 |
-| `--text-primary` | `#2d2b28` | 主要文字 |
-| `--text-secondary` | `#6b6966` | 次要文字 |
-| `--text-muted` | `#999794` | 禁用/提示文字 |
+| `--bg-root` | `#fafafa` | 页面根背景 |
+| `--bg-surface` | `#ffffff` | 面板/侧边栏背景 |
+| `--bg-card` | `#fcfcfc` | 卡片/弹窗背景 |
+| `--bg-hover` | `#f2f2f2` | hover 态背景 |
+| `--border-subtle` | `#e8e8e8` | 最弱分割线 |
+| `--border-default` | `#d4d4d4` | 默认边框 |
+| `--text-primary` | `#1a1a1a` | 主要文字 |
+| `--text-secondary` | `#666666` | 次要文字 |
+| `--text-muted` | `#999999` | 禁用/提示文字 |
 
 ### 主题色（橄榄绿）
 
@@ -100,16 +100,35 @@
 
 ## 排版
 
+### 字体
+
 | Token | 值 |
 |-------|-----|
 | `--font-sans` | `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif` |
 | `--font-mono` | `'JetBrains Mono', ui-monospace, monospace` |
-| `--font-heading` | `'Inter', -apple-system, sans-serif` |
 
 - body：`letter-spacing: -0.01em`，`font-feature-settings: cv02 cv03 cv04 cv11`
-- 标题(h2/h3)：`font-weight: 600`，`letter-spacing: -0.01em`
-- 正文：`font-weight: 400`，行高 `1.6` — `1.7`（markdown 内容）
-- 标签/辅助信息：`font-size: 11px — 12px`
+- 正文：行高 `1.6 — 1.7`（markdown 内容）
+
+### 字号 Token
+
+使用 token 定义字号，禁止硬编码 `px` 值。
+
+| Token | 值 | 默认字重 | 用途 |
+|-------|-----|---------|------|
+| `--text-xs` | `10px` | 400 | 辅助标签、badge 内数字 |
+| `--text-sm` | `12px` | 400 | 元信息、时间戳、placeholder |
+| `--text-base` | `14px` | 400 | **正文**、输入框、列表项 |
+| `--text-lg` | `16px` | 600 | 标题、弹窗标题 |
+| `--text-xl` | `20px` | 600 | 页面标题 |
+
+### 字重 Token
+
+| Token | 值 | 用途 |
+|-------|-----|------|
+| `--weight-normal` | `400` | 正文、placeholder |
+| `--weight-medium` | `500` | 按钮文字、次要标题 |
+| `--weight-bold` | `600` | 主按钮、主标题、强调文字 |
 
 ---
 
@@ -119,9 +138,9 @@
 
 | 类型 | 高度 | 内边距 | 圆角 | 字体 |
 |------|------|--------|------|------|
-| 主按钮 | `36px` | `8px 18px` | `--radius-md` | `14px / 600`，`var(--color-accent)` 背景 |
-| 次按钮 | `36px` | `8px 18px` | `--radius-md` | `14px / 500`，`var(--bg-card)` 背景 + 边框 |
-| 危险按钮 | `36px` | `8px 16px` | `--radius-md` | `13px / 600`，`var(--color-danger)` 文字 |
+| 主按钮 | `36px` | `8px 18px` | `--radius-md` | `--text-base / --weight-bold`，`var(--color-accent)` 背景 |
+| 次按钮 | `36px` | `8px 18px` | `--radius-md` | `--text-base / --weight-medium`，`var(--bg-card)` 背景 + 边框 |
+| 危险按钮 | `36px` | `8px 16px` | `--radius-md` | `--text-sm / --weight-bold`，`var(--color-danger)` 文字 |
 
 ### 输入框
 

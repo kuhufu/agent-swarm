@@ -345,23 +345,23 @@ p {
 }
 
 h1 {
-  font-size: 20px;
+  font-size: var(--text-xl);
 }
 
 h2 {
-  font-size: 18px;
+  font-size: var(--text-xl);
 }
 
 h3 {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .sidebar-header p,
 .detail-toolbar p {
   margin-top: 5px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .search-row {
@@ -389,7 +389,7 @@ h3 {
   background: rgba(0, 0, 0, 0.22);
   color: var(--text-primary);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--text-base);
   outline: none;
   box-sizing: border-box;
 }
@@ -420,13 +420,13 @@ h3 {
 
 .document-title {
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--text-base);
   font-weight: 700;
 }
 
 .document-meta {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .documents-main {
@@ -462,7 +462,7 @@ h3 {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--text-base);
   line-height: 1.7;
 }
 
@@ -481,7 +481,7 @@ h3 {
   gap: 12px;
   margin-bottom: 8px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .chunk-card button {
@@ -501,7 +501,7 @@ h3 {
   display: block;
   margin-bottom: 5px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .empty-detail {
@@ -528,7 +528,7 @@ h3 {
   border-radius: 8px;
   border: 1px solid var(--border-subtle);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--text-base);
   box-sizing: border-box;
 }
 

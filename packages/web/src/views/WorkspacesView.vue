@@ -281,7 +281,7 @@ async function handleDelete(workspace: WorkspaceInfo) {
 .detail-title h2 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 20px;
+  font-size: var(--text-xl);
   font-weight: 700;
   letter-spacing: -0.01em;
 }
@@ -290,7 +290,7 @@ async function handleDelete(workspace: WorkspaceInfo) {
 .detail-title p {
   margin: 6px 0 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--text-base);
   line-height: 1.4;
 }
 
@@ -304,8 +304,8 @@ async function handleDelete(workspace: WorkspaceInfo) {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -393,7 +393,7 @@ button:disabled {
   color: var(--text-primary);
   outline: none;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--text-base);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   box-sizing: border-box;
 }
@@ -415,8 +415,8 @@ button:disabled {
   border-radius: 8px;
   background: rgba(99, 102, 241, 0.18);
   color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
@@ -439,7 +439,7 @@ button:disabled {
   align-items: center;
   gap: 8px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--text-base);
   cursor: pointer;
   user-select: none;
 }
@@ -517,8 +517,8 @@ button:disabled {
 
 .workspace-card-name {
   color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -527,7 +527,7 @@ button:disabled {
 .workspace-card-desc {
   min-width: 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -535,7 +535,7 @@ button:disabled {
 
 .workspace-card-meta {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 
 /* Detail pane */
@@ -607,14 +607,14 @@ button:disabled {
 .detail-empty-title {
   margin: 0;
   color: var(--text-primary);
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
 }
 
 .detail-empty-hint {
   margin: 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 @media (max-width: 1024px) {

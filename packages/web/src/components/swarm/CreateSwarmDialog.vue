@@ -306,7 +306,7 @@ onMounted(() => {
         <div class="form-section">
           <div class="section-header">
             <label class="form-label">Agents ({{ agents.length }})</label>
-            <button class="btn-secondary" style="padding: 6px 12px; font-size: 13px;" @click="showAgentForm = !showAgentForm">
+            <button class="btn-secondary" style="padding: 6px 12px; font-size: var(--text-base);" @click="showAgentForm = !showAgentForm">
               <SvgIcon v-if="!showAgentForm" name="plus" :size="14" />
               <SvgIcon v-else name="close" :size="14" />
               {{ showAgentForm ? '取消' : '添加 Agent' }}
@@ -491,13 +491,13 @@ onMounted(() => {
 .dialog-header h3 {
   color: var(--text-primary);
   margin: 0;
-  font-size: 20px;
+  font-size: var(--text-xl);
   font-weight: 700;
 }
 
 .dialog-subtitle {
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: var(--text-base);
   margin: 4px 0 0;
 }
 
@@ -539,8 +539,8 @@ onMounted(() => {
 .form-label {
   display: block;
   color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -592,13 +592,13 @@ onMounted(() => {
 }
 
 .mode-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   color: var(--text-primary);
 }
 
 .mode-desc {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 
@@ -643,7 +643,7 @@ onMounted(() => {
 .sub-dialog-header h4 {
   color: var(--text-primary);
   margin: 0;
-  font-size: 16px;
+  font-size: var(--text-lg);
   font-weight: 700;
 }
 
@@ -669,14 +669,14 @@ onMounted(() => {
 
 .form-row label {
   color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
 }
 
 .orchestrator-hint {
   margin: 8px 0 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .model-selection {
@@ -692,8 +692,8 @@ onMounted(() => {
 .model-chip {
   padding: 5px 12px;
   border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
   border: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.03);
   color: var(--text-secondary);
@@ -761,7 +761,7 @@ onMounted(() => {
   justify-content: center;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.15));
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--text-base);
   font-weight: 700;
   color: var(--text-secondary);
 }
@@ -769,20 +769,20 @@ onMounted(() => {
 .agent-name {
   display: block;
   color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
 }
 
 .agent-desc {
   display: block;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 
 .agent-model {
   display: block;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
   margin-top: 2px;
 }

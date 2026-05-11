@@ -133,14 +133,14 @@ function formatTokens(n: number): string {
 
 .title {
   font-size: 22px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   color: var(--text-primary);
   margin: 0 0 6px;
   letter-spacing: -0.3px;
 }
 
 .subtitle {
-  font-size: 14px;
+  font-size: var(--text-base);
   color: var(--text-muted);
   margin: 0;
 }
@@ -167,7 +167,7 @@ function formatTokens(n: number): string {
 }
 
 .card-label {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
   margin-bottom: 6px;
   text-transform: uppercase;
@@ -176,7 +176,7 @@ function formatTokens(n: number): string {
 
 .card-value {
   font-size: 24px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   color: var(--text-primary);
 }
 
@@ -190,7 +190,7 @@ function formatTokens(n: number): string {
   border: 1px solid var(--border-default);
   border-radius: 8px;
   padding: 6px 12px;
-  font-size: 14px;
+  font-size: var(--text-base);
   cursor: pointer;
   outline: none;
 }
@@ -213,8 +213,8 @@ function formatTokens(n: number): string {
 }
 
 .table-header h2 {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
   color: var(--text-primary);
   margin: 0;
 }
@@ -222,16 +222,16 @@ function formatTokens(n: number): string {
 .usage-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .usage-table th {
   text-align: left;
   padding: 10px 16px;
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   border-bottom: 1px solid var(--border-subtle);
-  font-size: 11px;
+  font-size: var(--text-sm);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -248,7 +248,7 @@ function formatTokens(n: number): string {
 
 .usage-table td.date {
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 
 .usage-table td.model {
@@ -265,7 +265,7 @@ function formatTokens(n: number): string {
 
 .usage-table td.cost {
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 
 .usage-table th.num {
@@ -276,6 +276,6 @@ function formatTokens(n: number): string {
   text-align: center;
   padding: 48px 20px;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: var(--text-base);
 }
 </style>

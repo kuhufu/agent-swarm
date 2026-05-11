@@ -126,7 +126,7 @@ function opLabel(name: string): string {
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--border-subtle);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 .ct-header, .ct-row {
   display: grid;
@@ -138,7 +138,7 @@ function opLabel(name: string): string {
 .ct-header {
   background: rgba(255,255,255,0.04);
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 .ct-row {
   background: rgba(255,255,255,0.02);
@@ -156,7 +156,7 @@ function opLabel(name: string): string {
 .ct-ports {
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-xs);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -175,13 +175,13 @@ function opLabel(name: string): string {
 }
 .run-label {
   color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
   text-transform: uppercase;
 }
 .run-exit-code {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--text-base);
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 6px;
@@ -197,8 +197,8 @@ function opLabel(name: string): string {
 .run-badge {
   padding: 2px 7px;
   border-radius: 9999px;
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
 }
 .run-badge.timedout {
   background: rgba(245,158,11,0.1);
@@ -218,8 +218,8 @@ function opLabel(name: string): string {
 }
 .run-block-title {
   color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
 }
 .run-pre {
   margin: 0;
@@ -229,7 +229,7 @@ function opLabel(name: string): string {
   background: rgba(0,0,0,0.24);
   border: 1px solid rgba(255,255,255,0.06);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-sm);
   line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -257,19 +257,19 @@ function opLabel(name: string): string {
 }
 .pull-label {
   color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
   min-width: 36px;
 }
 .pull-value {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .pull-status {
   padding: 1px 7px;
   border-radius: 9999px;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
 }
 .pull-status.success {
   color: var(--color-success);
@@ -296,18 +296,18 @@ function opLabel(name: string): string {
 }
 .op-label {
   color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
 }
 .op-count {
-  font-size: 18px;
+  font-size: var(--text-xl);
   font-weight: 700;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 .op-value {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 /* fallback */
@@ -321,7 +321,7 @@ function opLabel(name: string): string {
   margin: 0;
   color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-sm);
   white-space: pre-wrap;
 }
 </style>

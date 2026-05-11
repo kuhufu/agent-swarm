@@ -471,7 +471,7 @@ onBeforeUnmount(() => {
 }
 
 .brand-text {
-  font-size: 15px;
+  font-size: var(--text-lg);
   font-weight: 700;
   letter-spacing: -0.3px;
   background: linear-gradient(135deg, var(--color-accent-light) 0%, var(--color-accent-light) 100%);
@@ -496,8 +496,8 @@ onBeforeUnmount(() => {
   padding: 8px 12px;
   border-radius: 9px;
   color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
   cursor: pointer;
   transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
@@ -541,8 +541,8 @@ onBeforeUnmount(() => {
   border-radius: 9px;
   background: transparent;
   color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
   cursor: pointer;
   transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   letter-spacing: -0.01em;
@@ -572,8 +572,8 @@ onBeforeUnmount(() => {
   border-radius: 7px;
   color: var(--text-muted);
   background: transparent;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
   cursor: pointer;
   transition: all 0.15s ease;
   letter-spacing: -0.01em;
@@ -600,7 +600,7 @@ onBeforeUnmount(() => {
   margin-top: 6px;
   margin-bottom: 2px;
   padding: 3px 6px;
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -653,7 +653,7 @@ onBeforeUnmount(() => {
 .conversation-title {
   color: var(--text-secondary);
   font-size: 12.5px;
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -668,7 +668,7 @@ onBeforeUnmount(() => {
 
 .mode-tag {
   font-size: 9.5px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   padding: 1px 5px;
   border-radius: 4px;
   white-space: nowrap;
@@ -759,7 +759,7 @@ onBeforeUnmount(() => {
   color: var(--text-secondary);
   text-align: left;
   font-size: 12.5px;
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   padding: 7px 10px;
   border-radius: 6px;
   cursor: pointer;
@@ -782,7 +782,7 @@ onBeforeUnmount(() => {
 
 .conversation-empty {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
   padding: 12px 8px;
   text-align: center;
 }
@@ -834,7 +834,7 @@ onBeforeUnmount(() => {
   border-radius: 7px;
   background: var(--color-accent);
   color: white;
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -846,8 +846,8 @@ onBeforeUnmount(() => {
 .auth-username {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

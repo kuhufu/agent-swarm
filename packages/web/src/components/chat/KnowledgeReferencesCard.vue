@@ -154,7 +154,7 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
   gap: 8px;
   margin-bottom: 10px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .knowledge-summary span {
@@ -196,7 +196,7 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
   border-radius: 9999px;
   background: rgba(99, 102, 241, 0.16);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -209,8 +209,8 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
 .reference-title {
   display: inline-block;
   color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
@@ -230,7 +230,7 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
   gap: 6px;
   margin-top: 3px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
   line-height: 1.4;
 }
 
@@ -258,7 +258,7 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
 .reference-content {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--text-sm);
   line-height: 1.65;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -270,6 +270,6 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
   color: var(--text-muted);
   background: rgba(0, 0, 0, 0.18);
   border: 1px dashed var(--border-subtle);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 </style>
