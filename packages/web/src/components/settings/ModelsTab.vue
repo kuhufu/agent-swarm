@@ -304,12 +304,12 @@ async function testModel(provider: string, modelId: string) {
 .content-header h3 {
   font-size: 20px;
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   margin: 0 0 4px;
 }
 .content-header p {
   font-size: 14px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   margin: 0;
 }
 .models-toolbar {
@@ -326,7 +326,7 @@ async function testModel(provider: string, modelId: string) {
   margin-bottom: 12px;
 }
 .form-row label {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 500;
 }
@@ -346,8 +346,8 @@ async function testModel(provider: string, modelId: string) {
   width: 560px;
   max-width: min(560px, 100%);
   max-height: calc(100% - 48px);
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border-default);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 16px;
   display: flex;
   flex-direction: column;
@@ -365,7 +365,7 @@ async function testModel(provider: string, modelId: string) {
 }
 .dialog-header h3 {
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 18px;
   font-weight: 700;
 }
@@ -376,16 +376,16 @@ async function testModel(provider: string, modelId: string) {
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
   flex-shrink: 0;
 }
 .close-btn:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 .close-btn svg {
   width: 16px;
@@ -400,7 +400,7 @@ async function testModel(provider: string, modelId: string) {
   justify-content: flex-end;
   gap: 10px;
   padding: 14px 20px 20px;
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--border-subtle);
 }
 .models-list {
   display: flex;
@@ -439,7 +439,7 @@ async function testModel(provider: string, modelId: string) {
   border-radius: 10px;
   font-size: 14px;
   font-weight: 700;
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 .model-info {
   display: flex;
@@ -447,12 +447,12 @@ async function testModel(provider: string, modelId: string) {
   gap: 2px;
 }
 .model-name {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 14px;
   font-weight: 600;
 }
 .model-meta {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
   font-family: var(--font-mono);
 }
@@ -467,7 +467,7 @@ async function testModel(provider: string, modelId: string) {
 }
 .model-list-hint {
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   margin-bottom: 12px;
 }
 .model-picker {
@@ -475,7 +475,7 @@ async function testModel(provider: string, modelId: string) {
 }
 .model-picker-label {
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   margin-bottom: 6px;
 }
 .model-picker-list {
@@ -492,21 +492,21 @@ async function testModel(provider: string, modelId: string) {
   gap: 6px;
   padding: 5px 10px;
   border-radius: 6px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.03);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 12px;
   cursor: pointer;
   transition: all 0.15s;
 }
 .model-pick-item:hover {
   background: rgba(99, 102, 241, 0.08);
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
 }
 .model-pick-item.active {
   background: rgba(99, 102, 241, 0.15);
   border-color: rgba(99, 102, 241, 0.4);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 .model-pick-id {
   font-family: var(--font-mono);
@@ -514,7 +514,7 @@ async function testModel(provider: string, modelId: string) {
 }
 .model-pick-meta {
   font-size: 10px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 .test-result-text {
   font-size: 12px;
@@ -532,7 +532,7 @@ async function testModel(provider: string, modelId: string) {
   align-items: center;
   text-align: center;
   padding: 60px 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 .empty-icon {
   width: 48px;
@@ -542,7 +542,7 @@ async function testModel(provider: string, modelId: string) {
   justify-content: center;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 14px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   margin-bottom: 14px;
 }
 .empty-icon svg {
@@ -552,7 +552,7 @@ async function testModel(provider: string, modelId: string) {
 .empty-title {
   font-size: 15px;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   margin: 0 0 4px;
 }
 .empty-desc {

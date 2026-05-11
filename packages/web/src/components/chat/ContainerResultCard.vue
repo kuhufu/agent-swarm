@@ -125,7 +125,7 @@ function opLabel(name: string): string {
   gap: 1px;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   font-size: 11px;
 }
 .ct-header, .ct-row {
@@ -137,7 +137,7 @@ function opLabel(name: string): string {
 }
 .ct-header {
   background: rgba(255,255,255,0.04);
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-weight: 600;
 }
 .ct-row {
@@ -148,13 +148,13 @@ function opLabel(name: string): string {
 }
 .ct-id {
   font-family: var(--font-mono);
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 .ct-status.running {
   color: var(--color-success);
 }
 .ct-ports {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 10px;
   overflow: hidden;
@@ -174,7 +174,7 @@ function opLabel(name: string): string {
   flex-wrap: wrap;
 }
 .run-label {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -210,14 +210,14 @@ function opLabel(name: string): string {
 }
 .run-badge.bg {
   background: rgba(99,102,241,0.1);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 .run-block {
   display: grid;
   gap: 4px;
 }
 .run-block-title {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
 }
@@ -225,7 +225,7 @@ function opLabel(name: string): string {
   margin: 0;
   padding: 9px 10px;
   border-radius: 7px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   background: rgba(0,0,0,0.24);
   border: 1px solid rgba(255,255,255,0.06);
   font-family: var(--font-mono);
@@ -246,7 +246,7 @@ function opLabel(name: string): string {
   padding: 10px 12px;
   border-radius: 8px;
   background: rgba(255,255,255,0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   display: grid;
   gap: 8px;
 }
@@ -256,13 +256,13 @@ function opLabel(name: string): string {
   gap: 8px;
 }
 .pull-label {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
   min-width: 36px;
 }
 .pull-value {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 12px;
 }
 .pull-status {
@@ -285,7 +285,7 @@ function opLabel(name: string): string {
   padding: 10px 12px;
   border-radius: 8px;
   background: rgba(255,255,255,0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   display: grid;
   gap: 8px;
 }
@@ -295,18 +295,18 @@ function opLabel(name: string): string {
   gap: 8px;
 }
 .op-label {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
 }
 .op-count {
   font-size: 18px;
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 .op-value {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
@@ -315,11 +315,11 @@ function opLabel(name: string): string {
   padding: 10px 12px;
   border-radius: 8px;
   background: rgba(255,255,255,0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
 }
 .fallback-pre {
   margin: 0;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 11px;
   white-space: pre-wrap;

@@ -441,9 +441,9 @@ onBeforeUnmount(() => {
 /* ── Panel shells ── */
 .templates-list,
 .template-editor {
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 16px;
-  background: var(--glass-bg);
+  background: var(--bg-card);
   backdrop-filter: blur(20px) saturate(1.3);
 }
 
@@ -462,14 +462,14 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   gap: 12px;
   padding: 16px 18px;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.015);
 }
 
 .templates-list-header h4,
 .editor-header h4 {
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.3px;
@@ -478,7 +478,7 @@ onBeforeUnmount(() => {
 .templates-list-header p,
 .editor-header p {
   margin: 4px 0 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -495,11 +495,11 @@ onBeforeUnmount(() => {
 .template-item-row {
   position: relative;
   width: 100%;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-left: 3px solid rgba(99, 102, 241, 0.25);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.02);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   display: grid;
   grid-template-columns: minmax(0, 1fr) 30px;
@@ -521,7 +521,7 @@ onBeforeUnmount(() => {
 }
 
 .template-item-row:hover {
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
   border-left-color: rgba(99, 102, 241, 0.5);
   background: rgba(255, 255, 255, 0.05);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
@@ -531,7 +531,7 @@ onBeforeUnmount(() => {
   background: rgba(99, 102, 241, 0.1);
   border-color: rgba(99, 102, 241, 0.3);
   border-left-color: var(--color-accent);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   box-shadow: 0 2px 12px rgba(99, 102, 241, 0.15);
 }
 
@@ -541,7 +541,7 @@ onBeforeUnmount(() => {
 }
 
 .template-meta {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
 }
 
@@ -559,7 +559,7 @@ onBeforeUnmount(() => {
   border: none;
   border-radius: 7px;
   background: transparent;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -578,7 +578,7 @@ onBeforeUnmount(() => {
 
 .template-action-trigger:hover {
   background: rgba(255, 255, 255, 0.08);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .template-action-trigger svg {
@@ -592,9 +592,9 @@ onBeforeUnmount(() => {
   z-index: 3000;
   min-width: 136px;
   padding: 4px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
-  background: var(--color-surface-2);
+  background: var(--bg-card);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(16px) saturate(1.3);
 }
@@ -613,12 +613,12 @@ onBeforeUnmount(() => {
 }
 
 .template-action-item {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .template-action-item:hover {
   background: rgba(255, 255, 255, 0.07);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .template-action-danger {
@@ -638,7 +638,7 @@ onBeforeUnmount(() => {
 .empty-state {
   padding: 32px 16px;
   text-align: center;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
   line-height: 1.7;
 }
@@ -676,7 +676,7 @@ onBeforeUnmount(() => {
 }
 
 .form-row label {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -685,10 +685,10 @@ onBeforeUnmount(() => {
 
 .form-row :deep(.input-field:disabled),
 .input-field:disabled {
-  border-color: var(--color-border-subtle);
+  border-color: var(--border-subtle);
   border-style: dashed;
   background: rgba(255, 255, 255, 0.02);
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   cursor: not-allowed;
   box-shadow: none;
   opacity: 0.7;
@@ -696,12 +696,12 @@ onBeforeUnmount(() => {
 
 .form-row :deep(.input-field:disabled)::placeholder,
 .input-field:disabled::placeholder {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   opacity: 0.6;
 }
 
 .form-row:has(.input-field:disabled) label {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 /* ── Model chips ── */
@@ -712,11 +712,11 @@ onBeforeUnmount(() => {
 }
 
 .model-chip {
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 6px 12px;
   background: rgba(255, 255, 255, 0.03);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   font-size: 12px;
   font-weight: 500;
@@ -724,15 +724,15 @@ onBeforeUnmount(() => {
 }
 
 .model-chip:hover {
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
   background: rgba(255, 255, 255, 0.06);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .model-chip.active {
   border-color: rgba(99, 102, 241, 0.4);
   background: rgba(99, 102, 241, 0.12);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .compact-btn {

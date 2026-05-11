@@ -19,7 +19,7 @@ defineProps<{
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;

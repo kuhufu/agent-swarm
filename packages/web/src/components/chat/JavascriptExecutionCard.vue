@@ -104,7 +104,7 @@ const statusClass = computed(() => props.isError ? "error" : "success");
   padding: 10px 12px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
 }
 
 .js-result-card.error {
@@ -132,7 +132,7 @@ const statusClass = computed(() => props.isError ? "error" : "success");
 
 .js-metric-label,
 .js-block-title {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -140,7 +140,7 @@ const statusClass = computed(() => props.isError ? "error" : "success");
 }
 
 .js-metric-value {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 600;
 }
@@ -173,7 +173,7 @@ const statusClass = computed(() => props.isError ? "error" : "success");
   margin: 0;
   padding: 9px 10px;
   border-radius: 7px;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   background: rgba(0, 0, 0, 0.24);
   border: 1px solid rgba(255, 255, 255, 0.06);
   font-family: var(--font-mono);
@@ -195,7 +195,7 @@ const statusClass = computed(() => props.isError ? "error" : "success");
   align-items: start;
   padding: 7px 9px;
   border-radius: 7px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   background: rgba(0, 0, 0, 0.18);
   border: 1px solid rgba(255, 255, 255, 0.05);
   font-family: var(--font-mono);
@@ -204,7 +204,7 @@ const statusClass = computed(() => props.isError ? "error" : "success");
 }
 
 .js-log-index {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -218,26 +218,26 @@ const statusClass = computed(() => props.isError ? "error" : "success");
 .js-empty {
   padding: 9px 10px;
   border-radius: 7px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   background: rgba(0, 0, 0, 0.14);
-  border: 1px dashed var(--color-border-subtle);
+  border: 1px dashed var(--border-subtle);
   font-size: 12px;
 }
 
 .js-code-details {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .js-code-details summary {
   width: fit-content;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
   cursor: pointer;
   transition: color 0.16s ease;
 }
 
 .js-code-details summary:hover {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .js-code-pre {

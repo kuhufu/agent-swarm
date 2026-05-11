@@ -210,7 +210,7 @@ function eventOffset(event: ConversationEvent): string {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;
   margin: 0;
@@ -219,7 +219,7 @@ function eventOffset(event: ConversationEvent): string {
 }
 
 .trace-header:hover h3 {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .trace-header svg {
@@ -236,9 +236,9 @@ function eventOffset(event: ConversationEvent): string {
 
 .trace-count {
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 999px;
   padding: 2px 7px;
   font-variant-numeric: tabular-nums;
@@ -247,7 +247,7 @@ function eventOffset(event: ConversationEvent): string {
 .trace-chevron {
   width: 14px;
   height: 14px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   transition: transform 0.18s ease;
 }
 
@@ -285,7 +285,7 @@ function eventOffset(event: ConversationEvent): string {
   top: 17px;
   bottom: -10px;
   width: 1px;
-  background: var(--color-border-subtle);
+  background: var(--border-subtle);
 }
 
 .trace-item:last-child::before {
@@ -297,7 +297,7 @@ function eventOffset(event: ConversationEvent): string {
   height: 8px;
   margin-top: 7px;
   border-radius: 999px;
-  background: var(--color-text-muted);
+  background: var(--text-muted);
 }
 
 .trace-item.accent .trace-dot {
@@ -325,7 +325,7 @@ function eventOffset(event: ConversationEvent): string {
   padding: 8px 9px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
 }
 
 .trace-row {
@@ -336,7 +336,7 @@ function eventOffset(event: ConversationEvent): string {
 
 .trace-label {
   min-width: 0;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 12px;
   font-weight: 600;
 }
@@ -344,7 +344,7 @@ function eventOffset(event: ConversationEvent): string {
 .trace-time {
   margin-left: auto;
   flex-shrink: 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
@@ -352,14 +352,14 @@ function eventOffset(event: ConversationEvent): string {
 .trace-agent,
 .trace-detail {
   margin-top: 3px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
 .trace-detail {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .trace-empty {
@@ -367,9 +367,9 @@ function eventOffset(event: ConversationEvent): string {
   align-items: center;
   justify-content: center;
   min-height: 72px;
-  border: 1px dashed var(--color-border-subtle);
+  border: 1px dashed var(--border-subtle);
   border-radius: 8px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
 }
 </style>

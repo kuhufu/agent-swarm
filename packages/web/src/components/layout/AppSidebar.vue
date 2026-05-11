@@ -433,9 +433,9 @@ onBeforeUnmount(() => {
 <style scoped>
 .sidebar {
   width: 350px;
-  background: var(--sidebar-bg);
+  background: var(--bg-surface);
   backdrop-filter: blur(24px) saturate(1.4);
-  border-right: 1px solid var(--color-border-subtle);
+  border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -458,7 +458,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--color-accent) 0%, #8b5cf6 100%);
+  background: var(--color-accent);
   border-radius: 9px;
   color: white;
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35), inset 0 1px 0 rgba(255,255,255,0.2);
@@ -474,7 +474,7 @@ onBeforeUnmount(() => {
   font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.3px;
-  background: linear-gradient(135deg, var(--color-accent-light) 0%, #c084fc 100%);
+  background: linear-gradient(135deg, var(--color-accent-light) 0%, var(--color-accent-light) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -495,7 +495,7 @@ onBeforeUnmount(() => {
   gap: 6px;
   padding: 8px 12px;
   border-radius: 9px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -506,13 +506,13 @@ onBeforeUnmount(() => {
 }
 
 .tab-btn:hover {
-  background: var(--glass-hover-bg);
-  color: var(--color-text-primary);
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .tab-btn.active {
   background: rgba(99, 102, 241, 0.1);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   box-shadow: inset 0 -2px 0 var(--color-accent);
 }
 
@@ -537,10 +537,10 @@ onBeforeUnmount(() => {
   gap: 6px;
   width: 100%;
   padding: 8px 0;
-  border: 1px dashed var(--color-border-subtle);
+  border: 1px dashed var(--border-subtle);
   border-radius: 9px;
   background: transparent;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -550,14 +550,14 @@ onBeforeUnmount(() => {
 
 .new-conv-btn:hover {
   border-color: rgba(99, 102, 241, 0.35);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   background: rgba(99, 102, 241, 0.06);
 }
 
 /* ── Bottom nav ── */
 .sidebar-bottom-nav {
   padding: 8px 10px;
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--border-subtle);
   display: flex;
   flex-wrap: wrap;
   gap: 2px;
@@ -570,7 +570,7 @@ onBeforeUnmount(() => {
   padding: 5px 8px;
   border: none;
   border-radius: 7px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   background: transparent;
   font-size: 12px;
   font-weight: 500;
@@ -580,8 +580,8 @@ onBeforeUnmount(() => {
 }
 
 .bottom-nav-item:hover {
-  background: var(--glass-hover-bg);
-  color: var(--color-text-secondary);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 /* ── Conversation list ── */
@@ -602,10 +602,10 @@ onBeforeUnmount(() => {
   padding: 3px 6px;
   font-size: 10px;
   font-weight: 700;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  background: var(--sidebar-bg);
+  background: var(--bg-surface);
   backdrop-filter: blur(8px);
   border-radius: 5px;
 }
@@ -626,8 +626,8 @@ onBeforeUnmount(() => {
 }
 
 .conversation-item:hover {
-  background: var(--glass-hover-bg);
-  border-color: var(--color-border-subtle);
+  background: var(--bg-hover);
+  border-color: var(--border-subtle);
 }
 
 .conversation-item.active {
@@ -651,7 +651,7 @@ onBeforeUnmount(() => {
 }
 
 .conversation-title {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 12.5px;
   font-weight: 500;
   white-space: nowrap;
@@ -663,7 +663,7 @@ onBeforeUnmount(() => {
 }
 
 .conversation-item.active .conversation-title {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .mode-tag {
@@ -688,12 +688,12 @@ onBeforeUnmount(() => {
 
 .mode-tag.swarm {
   background: rgba(99, 102, 241, 0.1);
-  color: #818cf8;
+  color: var(--text-secondary);
   border: 1px solid rgba(99, 102, 241, 0.18);
 }
 
 .conversation-time {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 10.5px;
 }
 
@@ -703,7 +703,7 @@ onBeforeUnmount(() => {
   border: none;
   background: transparent;
   border-radius: 5px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -722,8 +722,8 @@ onBeforeUnmount(() => {
 }
 
 .conversation-more:hover {
-  background: var(--glass-hover-bg);
-  color: var(--color-text-secondary);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .conversation-more svg {
@@ -736,11 +736,11 @@ onBeforeUnmount(() => {
 .user-menu-floating {
   position: fixed;
   z-index: 3000;
-  background: var(--dropdown-bg);
-  border: 1px solid var(--color-border-default);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 10px;
   padding: 4px;
-  box-shadow: var(--shadow-dropdown);
+  box-shadow: var(--shadow-md);
   backdrop-filter: blur(20px);
 }
 
@@ -756,7 +756,7 @@ onBeforeUnmount(() => {
   width: 100%;
   border: none;
   background: transparent;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   text-align: left;
   font-size: 12.5px;
   font-weight: 500;
@@ -768,8 +768,8 @@ onBeforeUnmount(() => {
 }
 
 .conversation-menu-item:hover {
-  background: var(--dropdown-hover);
-  color: var(--color-text-primary);
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .conversation-menu-item.danger {
@@ -777,11 +777,11 @@ onBeforeUnmount(() => {
 }
 
 .conversation-menu-item.danger:hover {
-  background: var(--badge-danger-bg);
+  background: rgba(239,68,68,0.1);
 }
 
 .conversation-empty {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
   padding: 12px 8px;
   text-align: center;
@@ -790,7 +790,7 @@ onBeforeUnmount(() => {
 /* ── Footer ── */
 .sidebar-footer {
   padding: 10px 12px;
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -809,18 +809,18 @@ onBeforeUnmount(() => {
   gap: 8px;
   flex: 1;
   min-width: 0;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   background: transparent;
   border-radius: 8px;
   padding: 6px 10px;
   cursor: pointer;
   transition: all 0.15s;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .auth-user-trigger:hover {
-  border-color: var(--color-border-hover);
-  background: var(--glass-hover-bg);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .auth-user-trigger.active {
@@ -832,7 +832,7 @@ onBeforeUnmount(() => {
   width: 24px;
   height: 24px;
   border-radius: 7px;
-  background: linear-gradient(135deg, var(--color-accent) 0%, #8b5cf6 100%);
+  background: var(--color-accent);
   color: white;
   font-size: 11px;
   font-weight: 700;
@@ -874,18 +874,18 @@ onBeforeUnmount(() => {
   justify-content: center;
   width: 34px;
   height: 34px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: transparent;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.15s;
   flex-shrink: 0;
 }
 
 .settings-btn:hover {
-  background: var(--btn-secondary-hover-bg);
-  color: var(--color-accent-light);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
   border-color: rgba(99, 102, 241, 0.3);
 }
 

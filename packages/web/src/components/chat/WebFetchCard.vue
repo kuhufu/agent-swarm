@@ -54,7 +54,7 @@ const showContent = ref(false);
   padding: 10px 12px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
 }
 .fetch-field {
   display: flex;
@@ -63,20 +63,20 @@ const showContent = ref(false);
   flex-wrap: wrap;
 }
 .fetch-label {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px; font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   min-width: 36px;
 }
 .fetch-url, .fetch-value {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 12px; line-height: 1.5;
   overflow-wrap: anywhere;
   min-width: 0; flex: 1;
 }
 .fetch-url {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   text-decoration: none;
   transition: color 0.16s;
 }
@@ -91,13 +91,13 @@ const showContent = ref(false);
   font-size: 11px;
 }
 .fetch-content-size {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
 }
 .fetch-toggle {
   border: none;
   background: none;
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   font-size: 11px; font-weight: 600;
   cursor: pointer;
   padding: 0;
@@ -110,7 +110,7 @@ const showContent = ref(false);
   margin: 0;
   padding: 9px 10px;
   border-radius: 7px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   background: rgba(0, 0, 0, 0.24);
   border: 1px solid rgba(255, 255, 255, 0.06);
   font-family: var(--font-mono);

@@ -36,7 +36,7 @@ const emit = defineEmits<{
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.18);
 }
@@ -48,14 +48,14 @@ const emit = defineEmits<{
 }
 
 .artifact-result strong {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
 
 .artifact-result span {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
 }
 
@@ -68,7 +68,7 @@ const emit = defineEmits<{
   gap: 6px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.04);
   cursor: pointer;
   flex-shrink: 0;
@@ -78,7 +78,7 @@ const emit = defineEmits<{
 }
 
 .artifact-open-btn:hover {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   border-color: rgba(99, 102, 241, 0.32);
   background: rgba(99, 102, 241, 0.12);
   box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.06);

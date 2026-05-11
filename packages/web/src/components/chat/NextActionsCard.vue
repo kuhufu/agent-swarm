@@ -41,7 +41,7 @@ const emit = defineEmits<{
   padding: 8px 10px;
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.025);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   font-size: 12px;
   cursor: pointer;
   transition: all 0.15s;
@@ -57,13 +57,13 @@ const emit = defineEmits<{
   padding: 2px 7px;
   border-radius: 4px;
   background: rgba(99, 102, 241, 0.1);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
 }
 .action-reason {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   line-height: 1.4;
 }
 </style>

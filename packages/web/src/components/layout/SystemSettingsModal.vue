@@ -57,13 +57,13 @@ const emit = defineEmits<{
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
 .sys-header h3 {
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 15px;
   font-weight: 600;
 }
@@ -76,7 +76,7 @@ const emit = defineEmits<{
   height: 28px;
   border: 0;
   border-radius: 7px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   background: transparent;
   cursor: pointer;
   transition: all 0.15s;
@@ -84,7 +84,7 @@ const emit = defineEmits<{
 
 .sys-close:hover {
   background: rgba(255, 255, 255, 0.06);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .sys-scroll {

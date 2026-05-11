@@ -813,7 +813,7 @@ function clearModelSelection() {
 
 .swarms-sidebar {
   width: 280px;
-  border-right: 1px solid var(--color-border-subtle);
+  border-right: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.02);
   backdrop-filter: blur(20px) saturate(1.3);
   display: flex;
@@ -826,7 +826,7 @@ function clearModelSelection() {
 
 .sidebar-header h2 {
   margin: 0 0 4px;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.3px;
@@ -834,7 +834,7 @@ function clearModelSelection() {
 
 .sidebar-header p {
   margin: 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -853,7 +853,7 @@ function clearModelSelection() {
 .swarm-section-title {
   margin-top: 6px;
   padding: 0 4px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -870,12 +870,12 @@ function clearModelSelection() {
 
 .swarm-item {
   width: 100%;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   padding: 10px 12px;
   text-align: left;
   background: rgba(255, 255, 255, 0.02);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
@@ -884,7 +884,7 @@ function clearModelSelection() {
 }
 
 .swarm-item:hover {
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
   background: rgba(255, 255, 255, 0.05);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
@@ -892,7 +892,7 @@ function clearModelSelection() {
 .swarm-item.active {
   background: rgba(99, 102, 241, 0.12);
   border-color: rgba(99, 102, 241, 0.2);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   box-shadow: inset 2px 0 0 var(--color-accent);
 }
 
@@ -922,7 +922,7 @@ function clearModelSelection() {
 
 .swarm-meta {
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .swarm-item.active .swarm-meta {
@@ -931,7 +931,7 @@ function clearModelSelection() {
 
 .nav-empty {
   padding: 10px 12px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -944,7 +944,7 @@ function clearModelSelection() {
 
 .detail-card {
   max-width: 960px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(12px);
@@ -958,7 +958,7 @@ function clearModelSelection() {
   align-items: center;
   justify-content: center;
   text-align: center;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .empty-icon {
@@ -969,7 +969,7 @@ function clearModelSelection() {
   justify-content: center;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 14px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   margin-bottom: 14px;
 }
 
@@ -980,7 +980,7 @@ function clearModelSelection() {
 
 .empty-title {
   margin: 0 0 4px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 15px;
   font-weight: 600;
 }
@@ -1018,7 +1018,7 @@ function clearModelSelection() {
   justify-content: center;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 12px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -1031,7 +1031,7 @@ function clearModelSelection() {
   width: 100%;
   font-size: 20px;
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -1042,7 +1042,7 @@ function clearModelSelection() {
 }
 
 .detail-title-input:hover {
-  border-color: var(--color-border-subtle);
+  border-color: var(--border-subtle);
   background: rgba(255, 255, 255, 0.03);
 }
 
@@ -1072,7 +1072,7 @@ function clearModelSelection() {
   gap: 8px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   margin: 0 0 16px;
 }
 
@@ -1101,7 +1101,7 @@ function clearModelSelection() {
   gap: 10px;
   padding: 12px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s;
@@ -1109,7 +1109,7 @@ function clearModelSelection() {
 
 .mode-option:hover {
   background: rgba(255, 255, 255, 0.06);
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
 }
 
 .mode-option.active {
@@ -1135,12 +1135,12 @@ function clearModelSelection() {
 .mode-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .mode-desc {
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .dialog-overlay {
@@ -1158,8 +1158,8 @@ function clearModelSelection() {
 .agent-dialog {
   width: 480px;
   max-height: 85vh;
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border-default);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 20px;
   display: flex;
   flex-direction: column;
@@ -1178,7 +1178,7 @@ function clearModelSelection() {
 }
 
 .agent-dialog .dialog-header h3 {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   margin: 0;
   font-size: 18px;
   font-weight: 700;
@@ -1194,7 +1194,7 @@ function clearModelSelection() {
   justify-content: flex-end;
   gap: 10px;
   padding: 16px 24px 24px;
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .close-btn {
@@ -1204,9 +1204,9 @@ function clearModelSelection() {
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
   flex-shrink: 0;
@@ -1214,7 +1214,7 @@ function clearModelSelection() {
 
 .close-btn:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .close-btn svg {
@@ -1230,14 +1230,14 @@ function clearModelSelection() {
 }
 
 .form-row label {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
 }
 
 .form-label {
   display: block;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 8px;
@@ -1267,11 +1267,11 @@ textarea.input-field {
 }
 
 .model-chip {
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 6px 10px;
   background: rgba(255, 255, 255, 0.03);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   font-size: 12px;
   transition: all 0.2s;
@@ -1282,13 +1282,13 @@ textarea.input-field {
 
 .model-chip:hover {
   background: rgba(255, 255, 255, 0.06);
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
 }
 
 .model-chip.active {
   border-color: rgba(99, 102, 241, 0.3);
   background: rgba(99, 102, 241, 0.14);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .agent-list {
@@ -1303,7 +1303,7 @@ textarea.input-field {
   align-items: center;
   padding: 12px 16px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   cursor: grab;
   transition: all 0.2s;
@@ -1311,7 +1311,7 @@ textarea.input-field {
 
 .agent-edit-card:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
 }
 
 .agent-edit-card.dragging {
@@ -1337,7 +1337,7 @@ textarea.input-field {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: var(--color-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1349,20 +1349,20 @@ textarea.input-field {
 
 .agent-name {
   display: block;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 14px;
   font-weight: 600;
 }
 
 .agent-desc {
   display: block;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
 }
 
 .agent-model {
   display: block;
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   font-size: 11px;
   font-family: var(--font-mono);
   margin-top: 2px;
@@ -1387,16 +1387,16 @@ textarea.input-field {
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .action-btn:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .action-btn.danger:hover {
@@ -1416,13 +1416,13 @@ textarea.input-field {
 .router-config-hint {
   margin: 4px 0 0;
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .agent-empty {
   text-align: center;
   padding: 24px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 13px;
 }
 
@@ -1440,7 +1440,7 @@ textarea.input-field {
 
 .card {
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
 }
 
@@ -1453,7 +1453,7 @@ textarea.input-field {
     width: 100%;
     max-height: 280px;
     border-right: none;
-    border-bottom: 1px solid var(--color-border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .swarms-content {

@@ -30,7 +30,7 @@ defineProps<{
   padding: 10px 12px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   display: grid;
   gap: 8px;
 }
@@ -41,7 +41,7 @@ defineProps<{
   flex-wrap: wrap;
 }
 .file-path {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 12px;
   overflow-wrap: anywhere;
@@ -50,14 +50,14 @@ defineProps<{
   padding: 1px 6px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.05);
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
 }
 .file-meta-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
 }
 .file-badge {
@@ -65,7 +65,7 @@ defineProps<{
   border-radius: 9999px;
   background: rgba(99, 102, 241, 0.1);
   border: 1px solid rgba(99, 102, 241, 0.16);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   font-size: 10px; font-weight: 600;
 }
 .file-badge-warn {

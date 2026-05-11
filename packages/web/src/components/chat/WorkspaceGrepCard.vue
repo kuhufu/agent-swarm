@@ -55,7 +55,7 @@ const grouped = computed(() => {
   border-radius: 9999px;
   background: rgba(99, 102, 241, 0.09);
   border: 1px solid rgba(99, 102, 241, 0.16);
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
 }
 .grep-files {
@@ -64,13 +64,13 @@ const grouped = computed(() => {
 }
 .grep-file-group {
   border-radius: 8px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   overflow: hidden;
 }
 .grep-file-path {
   padding: 7px 10px;
   background: rgba(255, 255, 255, 0.04);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 12px; font-weight: 600;
 }
@@ -89,7 +89,7 @@ const grouped = computed(() => {
   background: rgba(255, 255, 255, 0.03);
 }
 .grep-line-num {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 11px;
   text-align: right;
@@ -97,7 +97,7 @@ const grouped = computed(() => {
   line-height: 1.6;
 }
 .grep-line-content {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 11px;
   white-space: pre-wrap;
@@ -107,9 +107,9 @@ const grouped = computed(() => {
 .grep-empty {
   padding: 10px 12px;
   border-radius: 8px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   background: rgba(0, 0, 0, 0.18);
-  border: 1px dashed var(--color-border-subtle);
+  border: 1px dashed var(--border-subtle);
   font-size: 12px;
 }
 </style>

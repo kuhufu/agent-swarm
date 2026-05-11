@@ -52,7 +52,7 @@ const status = computed(() => getToolStatus(props.toolCall));
 <style scoped>
 .tool-call-card {
   background: rgba(255, 255, 255, 0.025);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -60,7 +60,7 @@ const status = computed(() => getToolStatus(props.toolCall));
 
 .tool-call-card:hover {
   background: rgba(255, 255, 255, 0.045);
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
@@ -99,7 +99,7 @@ const status = computed(() => getToolStatus(props.toolCall));
 }
 .tool-icon-wrapper.handoff {
   background: rgba(168, 85, 247, 0.12);
-  color: #c084fc;
+  color: var(--text-secondary);
 }
 .tool-icon-wrapper.file {
   background: rgba(34, 197, 94, 0.12);
@@ -107,7 +107,7 @@ const status = computed(() => getToolStatus(props.toolCall));
 }
 .tool-icon-wrapper:not(.search):not(.knowledge):not(.code):not(.handoff):not(.file) {
   background: rgba(99, 102, 241, 0.1);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 .tool-icon-wrapper svg {
   width: 12px;
@@ -115,7 +115,7 @@ const status = computed(() => getToolStatus(props.toolCall));
 }
 
 .tool-name {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 13px;
   font-family: var(--font-mono);
   font-weight: 500;
@@ -128,7 +128,7 @@ const status = computed(() => getToolStatus(props.toolCall));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   font-family: var(--font-mono);
   padding: 1px 6px;
@@ -138,7 +138,7 @@ const status = computed(() => getToolStatus(props.toolCall));
 
 .tool-duration {
   flex-shrink: 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -171,7 +171,7 @@ const status = computed(() => getToolStatus(props.toolCall));
 .expand-icon {
   width: 14px;
   height: 14px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   transition: transform 0.2s;
   flex-shrink: 0;
 }
@@ -182,7 +182,7 @@ const status = computed(() => getToolStatus(props.toolCall));
 
 .tool-details {
   padding: 0 14px 14px;
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--border-subtle);
   margin-top: 0;
   overflow: hidden;
   animation: expandIn 0.2s ease both;

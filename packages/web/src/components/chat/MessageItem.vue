@@ -306,7 +306,7 @@ function handleFork() {
   flex-shrink: 0;
   font-size: 11px;
   font-weight: 600;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   letter-spacing: 0.2px;
 }
 
@@ -330,7 +330,7 @@ function handleFork() {
 
 .msg-assistant .msg-content {
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 14px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
@@ -372,10 +372,10 @@ function handleFork() {
 .msg-system .msg-content,
 .msg-notification .msg-content {
   background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   text-align: center;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 13px;
 }
 
@@ -401,7 +401,7 @@ function handleFork() {
 
 .bot-avatar {
   background: rgba(99, 102, 241, 0.1);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
@@ -409,7 +409,7 @@ function handleFork() {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-dark));
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-light));
   color: white;
 }
 
@@ -439,7 +439,7 @@ function handleFork() {
   align-items: center;
   gap: 6px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 13px;
 }
 
@@ -452,7 +452,7 @@ function handleFork() {
 
 .msg-role {
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
@@ -466,7 +466,7 @@ function handleFork() {
 .markdown-content {
   font-size: 14px;
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .markdown-content :deep(p) {
@@ -488,7 +488,7 @@ function handleFork() {
 }
 
 .markdown-content :deep(a) {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   text-decoration: underline;
 }
 
@@ -521,13 +521,13 @@ function handleFork() {
   margin: 10px 0;
   padding-left: 10px;
   border-left: 3px solid rgba(148, 163, 184, 0.4);
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .markdown-content :deep(hr) {
   margin: 10px 0;
   border: 0;
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .markdown-content :deep(table) {
@@ -552,11 +552,11 @@ function handleFork() {
 .markdown-content :deep(th) {
   background: rgba(255, 255, 255, 0.04);
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .markdown-content :deep(td) {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .markdown-content :deep(tr:last-child td) {
@@ -573,7 +573,7 @@ function handleFork() {
 }
 
 .markdown-content :deep(.katex) {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 1.04em;
 }
 
@@ -600,7 +600,7 @@ function handleFork() {
 
 .timestamp {
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .msg-action-btn {
@@ -609,10 +609,10 @@ function handleFork() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.03);
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.16s ease, color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
@@ -623,8 +623,8 @@ function handleFork() {
 }
 
 .msg-action-btn:hover {
-  color: var(--color-text-primary);
-  border-color: var(--color-border-hover);
+  color: var(--text-primary);
+  border-color: var(--border-default);
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -667,7 +667,7 @@ function handleFork() {
 }
 
 .msg-thinking summary {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -689,7 +689,7 @@ function handleFork() {
 }
 
 .msg-thinking .thinking-content {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.6;
   margin-top: 8px;
@@ -718,7 +718,7 @@ function handleFork() {
   padding: 8px 10px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.025);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   cursor: pointer;
   transition: all 0.15s;
   font-family: inherit;
@@ -727,17 +727,17 @@ function handleFork() {
 }
 .tool-fold-header:hover {
   background: rgba(255, 255, 255, 0.045);
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
 }
 .tool-fold-name {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-weight: 500;
 }
 .tool-fold-count {
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   background: rgba(99, 102, 241, 0.1);
   padding: 1px 7px;
   border-radius: 9999px;

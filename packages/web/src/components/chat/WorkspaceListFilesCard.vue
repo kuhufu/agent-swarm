@@ -75,7 +75,7 @@ function formatTime(ts?: number): string {
   border-radius: 9999px;
   background: rgba(99, 102, 241, 0.09);
   border: 1px solid rgba(99, 102, 241, 0.16);
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
 }
 .file-table {
@@ -83,7 +83,7 @@ function formatTime(ts?: number): string {
   gap: 2px;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
 }
 .file-table-header, .file-table-row {
   display: grid;
@@ -95,7 +95,7 @@ function formatTime(ts?: number): string {
 }
 .file-table-header {
   background: rgba(255, 255, 255, 0.04);
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px; font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -114,13 +114,13 @@ function formatTime(ts?: number): string {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 .file-table-row.is-dir .ft-icon {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 .ft-path {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 11px;
   overflow: hidden;
@@ -128,7 +128,7 @@ function formatTime(ts?: number): string {
   white-space: nowrap;
 }
 .ft-size, .ft-time {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -136,16 +136,16 @@ function formatTime(ts?: number): string {
 .list-empty {
   padding: 10px 12px;
   border-radius: 8px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   background: rgba(0, 0, 0, 0.18);
-  border: 1px dashed var(--color-border-subtle);
+  border: 1px dashed var(--border-subtle);
   font-size: 12px;
 }
 .list-toggle {
   margin-top: 8px;
   border: none;
   background: none;
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   font-size: 12px; font-weight: 600;
   cursor: pointer;
   padding: 0;

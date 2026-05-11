@@ -101,7 +101,7 @@ defineProps<{
 
 .wiki-summary {
   margin-bottom: 10px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -114,7 +114,7 @@ defineProps<{
   padding: 10px 12px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
 }
 
 .wiki-reference-header {
@@ -125,7 +125,7 @@ defineProps<{
 }
 
 .wiki-title {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 700;
   line-height: 1.4;
@@ -134,19 +134,19 @@ defineProps<{
 }
 
 .wiki-title:hover {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .wiki-score {
   flex: 0 0 auto;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 11px;
 }
 
 .wiki-summary-text {
   margin: 6px 0 0;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.6;
   white-space: pre-wrap;
@@ -162,7 +162,7 @@ defineProps<{
 .wiki-tags span {
   padding: 2px 7px;
   border-radius: 999px;
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   background: rgba(99, 102, 241, 0.1);
   border: 1px solid rgba(99, 102, 241, 0.16);
   font-size: 11px;
@@ -173,7 +173,7 @@ defineProps<{
   gap: 5px;
   margin: 8px 0 0;
   padding-left: 18px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -181,9 +181,9 @@ defineProps<{
 .wiki-empty {
   padding: 10px 12px;
   border-radius: 8px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   background: rgba(0, 0, 0, 0.18);
-  border: 1px dashed var(--color-border-subtle);
+  border: 1px dashed var(--border-subtle);
   font-size: 12px;
 }
 </style>

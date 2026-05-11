@@ -117,13 +117,13 @@ const currentThemeLabel = computed(() => {
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
 .ps-header h3 {
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 15px;
   font-weight: 600;
 }
@@ -136,7 +136,7 @@ const currentThemeLabel = computed(() => {
   height: 28px;
   border: 0;
   border-radius: 7px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   background: transparent;
   cursor: pointer;
   transition: all 0.15s;
@@ -144,7 +144,7 @@ const currentThemeLabel = computed(() => {
 
 .ps-close:hover {
   background: rgba(255, 255, 255, 0.06);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .ps-body {
@@ -160,7 +160,7 @@ const currentThemeLabel = computed(() => {
   flex-direction: column;
   gap: 2px;
   padding: 10px;
-  border-right: 1px solid var(--color-border-subtle);
+  border-right: 1px solid var(--border-subtle);
   background: rgba(0, 0, 0, 0.08);
 }
 
@@ -172,7 +172,7 @@ const currentThemeLabel = computed(() => {
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -183,12 +183,12 @@ const currentThemeLabel = computed(() => {
 
 .ps-tab:hover {
   background: rgba(255, 255, 255, 0.04);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .ps-tab.active {
   background: rgba(99, 102, 241, 0.1);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .ps-content {
@@ -203,7 +203,7 @@ const currentThemeLabel = computed(() => {
 
 .theme-panel-title {
   margin: 0 0 20px;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 16px;
   font-weight: 600;
 }
@@ -220,25 +220,25 @@ const currentThemeLabel = computed(() => {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.025);
   cursor: pointer;
   transition: all 0.15s;
   text-align: left;
   font-family: inherit;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .theme-option:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
 }
 
 .theme-option.active {
   border-color: rgba(99, 102, 241, 0.3);
   background: rgba(99, 102, 241, 0.08);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .theme-option svg {
@@ -259,7 +259,7 @@ const currentThemeLabel = computed(() => {
 
 .theme-option-desc {
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   margin-left: auto;
 }
 </style>

@@ -308,14 +308,14 @@ async function generateWikiFromDocument() {
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
   gap: 18px;
   padding: 24px;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   overflow: hidden;
   box-sizing: border-box;
 }
 
 .documents-sidebar,
 .document-detail {
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(12px);
@@ -353,14 +353,14 @@ h2 {
 }
 
 h3 {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
 .sidebar-header p,
 .detail-toolbar p {
   margin-top: 5px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 13px;
 }
 
@@ -384,10 +384,10 @@ h3 {
   min-width: 0;
   height: 36px;
   padding: 0 11px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.22);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font: inherit;
   font-size: 13px;
   outline: none;
@@ -406,7 +406,7 @@ h3 {
   display: grid;
   gap: 4px;
   padding: 11px 12px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.025);
   text-align: left;
@@ -419,13 +419,13 @@ h3 {
 }
 
 .document-title {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 700;
 }
 
 .document-meta {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -461,7 +461,7 @@ h3 {
   margin: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.7;
 }
@@ -469,7 +469,7 @@ h3 {
 .chunk-card,
 .chunk-item,
 .empty-list {
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.16);
   padding: 10px 12px;
@@ -480,13 +480,13 @@ h3 {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 8px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
 .chunk-card button {
   border: 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   background: transparent;
   cursor: pointer;
 }
@@ -500,7 +500,7 @@ h3 {
 .chunk-item strong {
   display: block;
   margin-bottom: 5px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -510,7 +510,7 @@ h3 {
   place-items: center;
   align-content: center;
   gap: 10px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .file-input {
@@ -526,7 +526,7 @@ h3 {
   justify-content: center;
   gap: 7px;
   border-radius: 8px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   cursor: pointer;
   font-size: 13px;
   box-sizing: border-box;
@@ -535,17 +535,17 @@ h3 {
 .icon-btn {
   width: 36px;
   padding: 0;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.04);
 }
 
 .icon-btn.muted {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .secondary-btn {
   padding: 0 12px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.045);
 }
 

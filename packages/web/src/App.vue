@@ -30,8 +30,8 @@ onMounted(() => {
 .app-layout {
   display: flex;
   height: 100vh;
-  background: var(--color-surface-0);
-  color: var(--color-text-primary);
+  background: var(--bg-root);
+  color: var(--text-primary);
 }
 
 .app-main {

@@ -471,13 +471,13 @@ onMounted(() => {
 .dialog {
   width: 560px;
   max-height: 85vh;
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border-default);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 20px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: var(--shadow-dialog), inset 0 1px 0 rgba(255,255,255,0.05);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.05);
   animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -489,14 +489,14 @@ onMounted(() => {
 }
 
 .dialog-header h3 {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   margin: 0;
   font-size: 20px;
   font-weight: 700;
 }
 
 .dialog-subtitle {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 14px;
   margin: 4px 0 0;
 }
@@ -508,9 +508,9 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
   flex-shrink: 0;
@@ -518,7 +518,7 @@ onMounted(() => {
 
 .close-btn:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .close-btn svg {
@@ -538,7 +538,7 @@ onMounted(() => {
 
 .form-label {
   display: block;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 8px;
@@ -558,7 +558,7 @@ onMounted(() => {
   gap: 10px;
   padding: 12px;
   background: rgba(255, 255, 255, 0.025);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s;
@@ -566,7 +566,7 @@ onMounted(() => {
 
 .mode-option:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
@@ -594,12 +594,12 @@ onMounted(() => {
 .mode-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .mode-desc {
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .section-header {
@@ -624,13 +624,13 @@ onMounted(() => {
 .sub-dialog {
   width: 440px;
   max-height: 80vh;
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border-default);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 16px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: var(--shadow-dialog-lg);
+  box-shadow: var(--shadow-lg);
 }
 
 .sub-dialog-header {
@@ -641,7 +641,7 @@ onMounted(() => {
 }
 
 .sub-dialog-header h4 {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   margin: 0;
   font-size: 16px;
   font-weight: 700;
@@ -657,7 +657,7 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 10px;
   padding: 14px 20px 20px;
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .form-row {
@@ -668,14 +668,14 @@ onMounted(() => {
 }
 
 .form-row label {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 500;
 }
 
 .orchestrator-hint {
   margin: 8px 0 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -694,22 +694,22 @@ onMounted(() => {
   border-radius: 8px;
   font-size: 12px;
   font-weight: 500;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.03);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .model-chip:hover {
   background: rgba(255, 255, 255, 0.06);
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
 }
 
 .model-chip.active {
   background: rgba(99, 102, 241, 0.15);
   border-color: rgba(99, 102, 241, 0.3);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .agent-list {
@@ -724,7 +724,7 @@ onMounted(() => {
   align-items: center;
   padding: 10px 12px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   cursor: grab;
   transition: all 0.2s;
@@ -732,7 +732,7 @@ onMounted(() => {
 
 .agent-list-item:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
 }
 
 .agent-list-item.dragging {
@@ -763,25 +763,25 @@ onMounted(() => {
   border-radius: 8px;
   font-size: 13px;
   font-weight: 700;
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .agent-name {
   display: block;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 600;
 }
 
 .agent-desc {
   display: block;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
 }
 
 .agent-model {
   display: block;
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   font-size: 11px;
   font-family: var(--font-mono);
   margin-top: 2px;
@@ -796,7 +796,7 @@ onMounted(() => {
   background: transparent;
   border: none;
   border-radius: 6px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -811,6 +811,6 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 10px;
   padding: 16px 24px 24px;
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--border-subtle);
 }
 </style>

@@ -59,7 +59,7 @@ const formattedContent = computed(() => formatToolContent(props.toolCall));
   gap: 6px;
   border: none;
   background: none;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -69,16 +69,16 @@ const formattedContent = computed(() => formatToolContent(props.toolCall));
 
 .content-toggle-btn:hover,
 .raw-toggle-btn:hover {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .content-pre {
   margin: 6px 0 0;
   padding: 8px 10px;
   border-radius: 6px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   background: rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1.5;
@@ -91,7 +91,7 @@ const formattedContent = computed(() => formatToolContent(props.toolCall));
 .raw-toggle-section {
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .raw-panel {
@@ -109,9 +109,9 @@ const formattedContent = computed(() => formatToolContent(props.toolCall));
   margin: 0;
   padding: 8px 10px;
   border-radius: 6px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   background: rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1.5;

@@ -63,7 +63,7 @@ function handleDelete(e: Event) {
 
     <div class="card-footer">
       <span class="swarm-id">{{ swarm.id }}</span>
-      <SvgIcon name="chevronRight" :size="14" style="color: var(--color-text-muted);" />
+      <SvgIcon name="chevronRight" :size="14" style="color: var(--text-muted);" />
     </div>
   </div>
 </template>
@@ -113,17 +113,17 @@ function handleDelete(e: Event) {
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .action-btn:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: var(--color-text-primary);
-  border-color: var(--color-border-hover);
+  color: var(--text-primary);
+  border-color: var(--border-default);
 }
 
 .action-btn.danger:hover {
@@ -134,7 +134,7 @@ function handleDelete(e: Event) {
 
 .swarm-name {
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.3px;
@@ -149,7 +149,7 @@ function handleDelete(e: Event) {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 13px;
 }
 
@@ -165,7 +165,7 @@ function handleDelete(e: Event) {
   border: 1px solid rgba(99, 102, 241, 0.15);
   border-radius: 8px;
   font-size: 12px;
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
@@ -175,12 +175,12 @@ function handleDelete(e: Event) {
   justify-content: space-between;
   margin-top: 4px;
   padding-top: 12px;
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .swarm-id {
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-family: var(--font-mono);
 }
 </style>

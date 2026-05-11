@@ -111,12 +111,12 @@ function getEffectiveProtocol(id: string): ApiProtocol {
 .content-header h3 {
   font-size: 20px;
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   margin: 0 0 4px;
 }
 .content-header p {
   font-size: 14px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   margin: 0;
 }
 .provider-list {
@@ -148,10 +148,10 @@ function getEffectiveProtocol(id: string): ApiProtocol {
   border-radius: 8px;
   font-size: 14px;
   font-weight: 700;
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 .provider-name {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 15px;
   font-weight: 600;
 }
@@ -166,7 +166,7 @@ function getEffectiveProtocol(id: string): ApiProtocol {
   gap: 14px;
 }
 .field-row label {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   min-width: 70px;
   font-size: 13px;
   font-weight: 500;
@@ -179,12 +179,12 @@ function getEffectiveProtocol(id: string): ApiProtocol {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 12px;
 }
 .checkbox-inline input[type="checkbox"] {
   width: 14px;
   height: 14px;
-  accent-color: #6366f1;
+  accent-color: var(--color-accent);
 }
 </style>

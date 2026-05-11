@@ -128,7 +128,7 @@ function submitEdit() {
 
 .intervention-point {
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
 }
 
@@ -147,7 +147,7 @@ function submitEdit() {
 .intervention-context pre {
   margin: 0;
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   line-height: 1.6;
   white-space: pre-wrap;
@@ -160,7 +160,7 @@ function submitEdit() {
 
 .intervention-edit textarea {
   background: rgba(0, 0, 0, 0.2);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 13px;
 }

@@ -548,7 +548,7 @@ function sourcePreview(source: SourceDocument): string {
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
   gap: 18px;
   padding: 24px;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   overflow: hidden;
   box-sizing: border-box;
 }
@@ -556,7 +556,7 @@ function sourcePreview(source: SourceDocument): string {
 .wiki-sidebar,
 .editor-panel,
 .detail-panel {
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(12px);
@@ -587,7 +587,7 @@ function sourcePreview(source: SourceDocument): string {
   gap: 16px;
   padding-bottom: 12px;
   margin-bottom: -12px;
-  background: var(--color-surface-2);
+  background: var(--bg-card);
   border-radius: 10px 10px 0 0;
 }
 
@@ -610,13 +610,13 @@ h2 {
 
 h3 {
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .sidebar-header p,
 .detail-toolbar p {
   margin-top: 5px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -642,10 +642,10 @@ h3 {
 .content-textarea,
 .source-textarea {
   width: 100%;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.22);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font: inherit;
   font-size: 13px;
   outline: none;
@@ -683,7 +683,7 @@ h3 {
   display: grid;
   gap: 4px;
   padding: 11px 12px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.025);
   text-align: left;
@@ -696,13 +696,13 @@ h3 {
 }
 
 .page-title {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 700;
 }
 
 .page-summary {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
   line-height: 1.45;
   display: -webkit-box;
@@ -741,7 +741,7 @@ h3 {
 .field-label {
   display: block;
   margin: 14px 0 6px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 700;
 }
@@ -767,16 +767,16 @@ h3 {
 }
 
 .tag {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   background: rgba(99, 102, 241, 0.11);
   border: 1px solid rgba(99, 102, 241, 0.18);
 }
 
 .alias,
 .link-list span {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
 }
 
 .wiki-content {
@@ -787,7 +787,7 @@ h3 {
   margin: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-family: inherit;
   font-size: 14px;
   line-height: 1.75;
@@ -814,7 +814,7 @@ h3 {
 .source-content,
 .empty-block,
 .empty-list {
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.16);
   padding: 10px 12px;
@@ -834,7 +834,7 @@ h3 {
 }
 
 .claim-item p {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.55;
 }
@@ -844,7 +844,7 @@ h3 {
 .source-preview,
 .empty-block,
 .empty-list {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -859,11 +859,11 @@ h3 {
 }
 
 .claim-source:hover {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .source-title {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 700;
 }
@@ -884,7 +884,7 @@ h3 {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 8px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -894,7 +894,7 @@ h3 {
   overflow: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.6;
@@ -903,14 +903,14 @@ h3 {
 .source-close {
   padding: 0;
   border: 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   background: transparent;
   cursor: pointer;
   font-size: 12px;
 }
 
 .source-close:hover {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .link-list {
@@ -923,7 +923,7 @@ h3 {
   place-items: center;
   align-content: center;
   gap: 10px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .icon-btn,
@@ -936,7 +936,7 @@ h3 {
   justify-content: center;
   gap: 7px;
   border-radius: 8px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   cursor: pointer;
   font-size: 13px;
 }
@@ -944,12 +944,12 @@ h3 {
 .icon-btn {
   width: 36px;
   padding: 0;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.04);
 }
 
 .icon-btn.muted {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .primary-btn {
@@ -961,7 +961,7 @@ h3 {
 
 .secondary-btn {
   padding: 0 12px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.045);
 }
 

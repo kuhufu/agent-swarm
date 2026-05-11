@@ -595,7 +595,7 @@ onBeforeUnmount(() => {
 
 .agents-sidebar {
   width: 280px;
-  border-right: 1px solid var(--color-border-subtle);
+  border-right: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.02);
   backdrop-filter: blur(20px) saturate(1.3);
   display: flex;
@@ -622,7 +622,7 @@ onBeforeUnmount(() => {
 
 .sidebar-header h2 {
   margin: 0 0 4px;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.3px;
@@ -630,7 +630,7 @@ onBeforeUnmount(() => {
 
 .sidebar-header p {
   margin: 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -647,7 +647,7 @@ onBeforeUnmount(() => {
 .preset-section-title {
   margin-top: 6px;
   padding: 0 4px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -674,7 +674,7 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
 }
 
@@ -690,12 +690,12 @@ onBeforeUnmount(() => {
 
 .preset-item {
   width: 100%;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   padding: 10px 12px;
   text-align: left;
   background: rgba(255, 255, 255, 0.02);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
@@ -704,7 +704,7 @@ onBeforeUnmount(() => {
 }
 
 .preset-item:hover {
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
   background: rgba(255, 255, 255, 0.05);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
@@ -712,17 +712,17 @@ onBeforeUnmount(() => {
 .preset-item.active {
   background: rgba(99, 102, 241, 0.12);
   border-color: rgba(99, 102, 241, 0.2);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   box-shadow: inset 2px 0 0 var(--color-accent);
 }
 
 .preset-item-row {
   position: relative;
   width: 100%;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.02);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   transition: all 0.2s;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 30px;
@@ -739,7 +739,7 @@ onBeforeUnmount(() => {
 }
 
 .preset-item-row:hover {
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
   background: rgba(255, 255, 255, 0.05);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
@@ -747,7 +747,7 @@ onBeforeUnmount(() => {
 .preset-item-row.active {
   background: rgba(99, 102, 241, 0.12);
   border-color: rgba(99, 102, 241, 0.2);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   box-shadow: inset 2px 0 0 var(--color-accent);
 }
 
@@ -764,7 +764,7 @@ onBeforeUnmount(() => {
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -781,8 +781,8 @@ onBeforeUnmount(() => {
 }
 
 .preset-action-trigger:hover {
-  background: var(--btn-secondary-bg);
-  color: var(--color-text-primary);
+  background: var(--bg-card);
+  color: var(--text-primary);
 }
 
 .preset-action-trigger svg {
@@ -795,10 +795,10 @@ onBeforeUnmount(() => {
   z-index: 3000;
   min-width: 128px;
   padding: 4px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  background: var(--color-surface-2);
-  box-shadow: var(--shadow-menu);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-md);
   backdrop-filter: blur(12px);
 }
 
@@ -820,19 +820,19 @@ onBeforeUnmount(() => {
   border-radius: 6px;
   padding: 7px 10px;
   background: transparent;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   text-align: left;
   font-size: 12px;
 }
 
 .preset-action-item:hover {
-  background: var(--dropdown-hover);
-  color: var(--color-text-primary);
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .preset-action-danger:hover {
-  background: var(--btn-danger-bg);
+  background: var(--bg-root);
 }
 
 .preset-action-danger:disabled {
@@ -847,7 +847,7 @@ onBeforeUnmount(() => {
 
 .preset-meta {
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .preset-item.active .preset-meta {
@@ -864,7 +864,7 @@ onBeforeUnmount(() => {
 
 .preset-empty {
   padding: 10px 12px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -881,11 +881,11 @@ onBeforeUnmount(() => {
   max-height: 240px;
   overflow-y: auto;
   z-index: 50;
-  background: var(--dropdown-bg);
-  border: 1px solid var(--color-border-subtle);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   backdrop-filter: blur(16px);
-  box-shadow: var(--shadow-dropdown);
+  box-shadow: var(--shadow-md);
   padding: 4px;
 }
 
@@ -902,11 +902,11 @@ onBeforeUnmount(() => {
   cursor: pointer;
   font-size: 13px;
   text-align: left;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .template-dropdown-item:hover {
-  background: var(--dropdown-hover);
+  background: var(--bg-hover);
 }
 
 .dropdown-t-name {
@@ -915,7 +915,7 @@ onBeforeUnmount(() => {
 
 .dropdown-t-cat {
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
@@ -924,7 +924,7 @@ onBeforeUnmount(() => {
 }
 
 .detail-hint.muted {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .agents-content {
@@ -936,7 +936,7 @@ onBeforeUnmount(() => {
 
 .detail-card {
   max-width: 960px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(12px);
@@ -953,7 +953,7 @@ onBeforeUnmount(() => {
 
 .detail-header h3 {
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 18px;
   font-weight: 700;
 }
@@ -984,17 +984,17 @@ onBeforeUnmount(() => {
 }
 
 .form-row label {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
 }
 
 .form-row :deep(.input-field:disabled),
 .input-field:disabled {
-  border-color: var(--color-border-subtle);
+  border-color: var(--border-subtle);
   border-style: dashed;
-  background: var(--btn-secondary-bg);
-  color: var(--color-text-muted);
+  background: var(--bg-card);
+  color: var(--text-muted);
   cursor: not-allowed;
   box-shadow: none;
   opacity: 0.78;
@@ -1002,12 +1002,12 @@ onBeforeUnmount(() => {
 
 .form-row :deep(.input-field:disabled)::placeholder,
 .input-field:disabled::placeholder {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   opacity: 0.7;
 }
 
 .form-row:has(.input-field:disabled) label {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .model-chips {
@@ -1017,40 +1017,40 @@ onBeforeUnmount(() => {
 }
 
 .model-chip {
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 6px 10px;
   background: rgba(255, 255, 255, 0.03);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   font-size: 12px;
   transition: all 0.2s;
 }
 
 .model-chip:hover {
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
   background: rgba(255, 255, 255, 0.06);
 }
 
 .model-chip.active {
   border-color: rgba(99, 102, 241, 0.3);
   background: rgba(99, 102, 241, 0.14);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .model-chip:disabled {
-  border-color: var(--color-border-subtle);
+  border-color: var(--border-subtle);
   border-style: dashed;
-  background: var(--btn-secondary-bg);
-  color: var(--color-text-muted);
+  background: var(--bg-card);
+  color: var(--text-muted);
   cursor: not-allowed;
   opacity: 0.78;
 }
 
 .model-chip:disabled.active {
   border-color: var(--color-accent);
-  background: var(--badge-bg);
-  color: var(--color-accent-light);
+  background: var(--color-accent-bg);
+  color: var(--text-secondary);
 }
 
 @media (max-width: 1024px) {
@@ -1062,7 +1062,7 @@ onBeforeUnmount(() => {
     width: 100%;
     max-height: 280px;
     border-right: none;
-    border-bottom: 1px solid var(--color-border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .agents-content {

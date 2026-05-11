@@ -153,7 +153,7 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 10px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -176,7 +176,7 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
   padding: 10px 12px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
 }
 
 .reference-header {
@@ -195,7 +195,7 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
   flex: 0 0 auto;
   border-radius: 9999px;
   background: rgba(99, 102, 241, 0.16);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -208,7 +208,7 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
 
 .reference-title {
   display: inline-block;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 600;
   line-height: 1.35;
@@ -221,7 +221,7 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
 }
 
 .reference-link:hover {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .reference-subtitle {
@@ -229,7 +229,7 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 3px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   line-height: 1.4;
 }
@@ -244,20 +244,20 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.035);
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.16s ease;
 }
 
 .reference-copy:hover {
-  color: var(--color-text-primary);
-  border-color: var(--color-border-hover);
+  color: var(--text-primary);
+  border-color: var(--border-default);
   background: rgba(255, 255, 255, 0.07);
 }
 
 .reference-content {
   margin: 0;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.65;
   white-space: pre-wrap;
@@ -267,9 +267,9 @@ async function handleCopyReference(reference: KnowledgeReference, index: number)
 .knowledge-empty {
   padding: 10px 12px;
   border-radius: 8px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   background: rgba(0, 0, 0, 0.18);
-  border: 1px dashed var(--color-border-subtle);
+  border: 1px dashed var(--border-subtle);
   font-size: 12px;
 }
 </style>

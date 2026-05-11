@@ -206,7 +206,7 @@ function agentSystemPrompt(agent: AgentState): string {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;
   margin: 0 0 10px 0;
@@ -220,7 +220,7 @@ function agentSystemPrompt(agent: AgentState): string {
   gap: 8px;
   padding: 10px 12px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
 }
 
@@ -230,14 +230,14 @@ function agentSystemPrompt(agent: AgentState): string {
   padding: 2px 8px;
   border-radius: 6px;
   background: rgba(99, 102, 241, 0.15);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
 .swarm-name {
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -255,14 +255,14 @@ function agentSystemPrompt(agent: AgentState): string {
   gap: 8px;
   padding: 14px;
   background: rgba(255, 255, 255, 0.025);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   transition: all 0.2s;
 }
 
 .agent-card:hover {
   background: rgba(255, 255, 255, 0.045);
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
@@ -280,8 +280,8 @@ function agentSystemPrompt(agent: AgentState): string {
   justify-content: center;
   background: rgba(255, 255, 255, 0.06);
   border-radius: 10px;
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border-subtle);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -293,7 +293,7 @@ function agentSystemPrompt(agent: AgentState): string {
 }
 
 .agent-name {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 600;
 }
@@ -303,7 +303,7 @@ function agentSystemPrompt(agent: AgentState): string {
   align-items: center;
   gap: 5px;
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .status-dot {
@@ -314,13 +314,13 @@ function agentSystemPrompt(agent: AgentState): string {
 }
 
 .status-dot.status-idle {
-  background: var(--color-text-muted);
+  background: var(--text-muted);
 }
 
 .agent-desc {
   font-size: 11px;
   line-height: 1.5;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   padding: 6px 8px;
   background: rgba(255, 255, 255, 0.02);
   border-radius: 6px;
@@ -341,13 +341,13 @@ function agentSystemPrompt(agent: AgentState): string {
 }
 
 .meta-label {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   flex-shrink: 0;
   margin-right: 8px;
 }
 
 .meta-value {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-weight: 500;
   text-align: right;
   overflow: hidden;
@@ -366,9 +366,9 @@ function agentSystemPrompt(agent: AgentState): string {
   align-items: center;
   text-align: center;
   padding: 40px 16px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
 }
 
@@ -376,7 +376,7 @@ function agentSystemPrompt(agent: AgentState): string {
   margin: 0 0 4px;
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .no-agents span {

@@ -514,7 +514,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   width: 280px;
   background: rgba(255, 255, 255, 0.02);
   backdrop-filter: blur(20px) saturate(1.3);
-  border-right: 1px solid var(--color-border-subtle);
+  border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -529,14 +529,14 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 .sidebar-header h2 {
   font-size: 20px;
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   margin: 0 0 4px;
   letter-spacing: -0.3px;
 }
 
 .sidebar-header p {
   font-size: 13px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -553,7 +553,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   transform: translateY(-50%);
   width: 16px;
   height: 16px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   pointer-events: none;
 }
 
@@ -575,7 +575,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   gap: 12px;
   padding: 12px;
   border-radius: 12px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
@@ -587,13 +587,13 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 
 .nav-item:hover {
   background: rgba(255, 255, 255, 0.05);
-  color: var(--color-text-primary);
-  border-color: var(--color-border-hover);
+  color: var(--text-primary);
+  border-color: var(--border-default);
 }
 
 .nav-item.active {
   background: rgba(99, 102, 241, 0.12);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   border-color: rgba(99, 102, 241, 0.2);
   box-shadow: inset 2px 0 0 var(--color-accent);
 }
@@ -615,7 +615,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 
 .nav-desc {
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .nav-item.active .nav-desc {
@@ -626,7 +626,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   padding: 12px 8px 6px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -639,19 +639,19 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   justify-content: center;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 8px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
 .nav-item.active .conv-nav-icon {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   background: rgba(99, 102, 241, 0.12);
 }
 
 .nav-empty {
   padding: 20px 8px;
   font-size: 13px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   text-align: center;
 }
 
@@ -669,7 +669,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   align-items: center;
   text-align: center;
   padding: 80px 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .empty-icon {
@@ -680,7 +680,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   justify-content: center;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 14px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   margin-bottom: 14px;
 }
 
@@ -692,7 +692,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 .empty-title {
   font-size: 15px;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   margin: 0 0 4px;
 }
 
@@ -709,7 +709,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 .detail-header {
   margin-bottom: 24px;
   padding-bottom: 20px;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .detail-title-row {
@@ -727,8 +727,8 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   justify-content: center;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 12px;
-  border: 1px solid var(--color-border-subtle);
-  color: var(--color-accent-light);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
@@ -740,7 +740,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 .detail-title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   margin: 0 0 6px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -765,7 +765,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 
 .meta-text {
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .meta-text.mono {
@@ -785,7 +785,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   border-radius: 8px;
   border: 1px solid rgba(99, 102, 241, 0.3);
   background: rgba(99, 102, 241, 0.15);
-  color: #818cf8;
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -826,14 +826,14 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   gap: 8px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   margin: 0 0 16px;
 }
 
 .msg-count {
   font-size: 12px;
   font-weight: 500;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   background: rgba(255, 255, 255, 0.05);
   padding: 2px 8px;
   border-radius: 9999px;
@@ -841,7 +841,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 
 .final-artifacts-section {
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .final-artifacts {
@@ -867,7 +867,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 .final-artifact-card strong {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -876,7 +876,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 
 .final-artifact-card span,
 .final-artifact-card small {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -887,9 +887,9 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.04);
   cursor: pointer;
   flex: 0 0 auto;
@@ -898,7 +898,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 /* Trace */
 .trace-section {
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .trace-list {
@@ -921,7 +921,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   top: 18px;
   bottom: -12px;
   width: 1px;
-  background: var(--color-border-subtle);
+  background: var(--border-subtle);
 }
 
 .trace-item:last-child::before {
@@ -933,7 +933,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   height: 9px;
   margin-top: 6px;
   border-radius: 999px;
-  background: var(--color-text-muted);
+  background: var(--text-muted);
   box-shadow: 0 0 0 3px rgba(156, 163, 175, 0.12);
 }
 
@@ -967,7 +967,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   padding: 8px 10px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
 }
 
 .trace-row {
@@ -980,7 +980,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 .trace-label {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .trace-agent {
@@ -989,20 +989,20 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .trace-time {
   margin-left: auto;
   flex-shrink: 0;
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
 .trace-detail {
   margin-top: 4px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.5;
   word-break: break-word;
@@ -1012,7 +1012,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 .detail-loading,
 .detail-empty {
   text-align: center;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 13px;
   padding: 40px 0;
 }
@@ -1041,7 +1041,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 
 .msg-body {
   font-size: 14px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   line-height: 1.7;
   white-space: pre-wrap;
   word-break: break-word;
@@ -1052,9 +1052,9 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   width: 100%;
   padding: 8px 12px;
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 13px;
   outline: none;
   transition: all 0.2s;
@@ -1067,12 +1067,12 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
 }
 
 .input-field::placeholder {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .card {
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
 }
 </style>

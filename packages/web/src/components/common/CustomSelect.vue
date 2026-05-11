@@ -89,10 +89,10 @@ function close() {
   gap: 8px;
   width: 100%;
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 14px;
   font-family: inherit;
   cursor: pointer;
@@ -101,7 +101,7 @@ function close() {
 }
 
 .select-trigger:hover {
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
 }
 
 .select-trigger:focus-visible {
@@ -118,14 +118,14 @@ function close() {
 }
 
 .select-value.placeholder {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .select-arrow {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   transition: transform 0.2s;
 }
 
@@ -143,10 +143,10 @@ function close() {
   position: fixed;
   z-index: 1000;
   background: rgba(20, 22, 35, 0.98);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   backdrop-filter: blur(16px);
-  box-shadow: var(--shadow-select);
+  box-shadow: var(--shadow-sm);
   padding: 4px;
   max-height: 260px;
   overflow-y: auto;
@@ -162,7 +162,7 @@ function close() {
   cursor: pointer;
   font-size: 13px;
   text-align: left;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   transition: background 0.1s;
 }
 
@@ -172,13 +172,13 @@ function close() {
 
 .select-option.active {
   background: rgba(99, 102, 241, 0.12);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .select-empty {
   padding: 12px 10px;
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   text-align: center;
 }
 </style>

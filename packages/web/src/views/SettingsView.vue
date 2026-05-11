@@ -485,7 +485,7 @@ async function saveSettings() {
 .access-denied-card {
   width: min(420px, 100%);
   padding: 24px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.03);
   text-align: center;
@@ -493,13 +493,13 @@ async function saveSettings() {
 
 .access-denied-card h2 {
   margin: 0 0 8px;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 18px;
 }
 
 .access-denied-card p {
   margin: 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -511,7 +511,7 @@ async function saveSettings() {
 
 .settings-sidebar {
   width: 280px;
-  border-right: 1px solid var(--color-border-subtle);
+  border-right: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.02);
   backdrop-filter: blur(20px) saturate(1.3);
   display: flex;
@@ -524,7 +524,7 @@ async function saveSettings() {
 
 .sidebar-header h2 {
   margin: 0 0 4px;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.3px;
@@ -532,7 +532,7 @@ async function saveSettings() {
 
 .sidebar-header p {
   margin: 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -547,7 +547,7 @@ async function saveSettings() {
 .settings-section-title {
   margin-top: 6px;
   padding: 0 4px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -564,12 +564,12 @@ async function saveSettings() {
 
 .settings-item {
   width: 100%;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   padding: 10px 12px;
   text-align: left;
   background: rgba(255, 255, 255, 0.02);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
@@ -578,7 +578,7 @@ async function saveSettings() {
 }
 
 .settings-item:hover {
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
   background: rgba(255, 255, 255, 0.05);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
@@ -586,7 +586,7 @@ async function saveSettings() {
 .settings-item.active {
   background: rgba(99, 102, 241, 0.12);
   border-color: rgba(99, 102, 241, 0.2);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   box-shadow: inset 2px 0 0 var(--color-accent);
 }
 
@@ -621,7 +621,7 @@ async function saveSettings() {
 
 .settings-meta {
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .settings-item.active .settings-meta {
@@ -656,7 +656,7 @@ async function saveSettings() {
 
 .detail-card {
   width: min(960px, 100%);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(12px);
@@ -680,14 +680,14 @@ async function saveSettings() {
 
 .detail-header h3 {
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 18px;
   font-weight: 700;
 }
 
 .detail-hint {
   margin: 6px 0 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -735,8 +735,8 @@ async function saveSettings() {
   width: 440px;
   max-width: min(440px, 100%);
   max-height: calc(100% - 48px);
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border-default);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 16px;
   display: flex;
   flex-direction: column;
@@ -756,7 +756,7 @@ async function saveSettings() {
 
 .dialog-header h3 {
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 18px;
   font-weight: 700;
 }
@@ -768,9 +768,9 @@ async function saveSettings() {
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
   flex-shrink: 0;
@@ -778,7 +778,7 @@ async function saveSettings() {
 
 .close-btn:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .close-btn svg {
@@ -798,14 +798,14 @@ async function saveSettings() {
 }
 
 .form-row label {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
 }
 
 .dialog-hint {
   margin: 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -813,14 +813,14 @@ async function saveSettings() {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
 .checkbox-inline input[type="checkbox"] {
   width: 14px;
   height: 14px;
-  accent-color: #6366f1;
+  accent-color: var(--color-accent);
 }
 
 .dialog-footer {
@@ -828,7 +828,7 @@ async function saveSettings() {
   justify-content: flex-end;
   gap: 10px;
   padding: 14px 20px 20px;
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--border-subtle);
 }
 
 @media (max-width: 1024px) {
@@ -840,7 +840,7 @@ async function saveSettings() {
     width: 100%;
     max-height: 280px;
     border-right: none;
-    border-bottom: 1px solid var(--color-border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .settings-content {

@@ -253,7 +253,7 @@ async function handleDelete(workspace: WorkspaceInfo) {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(12px);
@@ -280,7 +280,7 @@ async function handleDelete(workspace: WorkspaceInfo) {
 .view-header h1,
 .detail-title h2 {
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -289,7 +289,7 @@ async function handleDelete(workspace: WorkspaceInfo) {
 .view-header p,
 .detail-title p {
   margin: 6px 0 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 13px;
   line-height: 1.4;
 }
@@ -312,34 +312,34 @@ async function handleDelete(workspace: WorkspaceInfo) {
 
 .icon-btn {
   width: 34px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.04);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .icon-btn:hover:not(:disabled) {
   border-color: rgba(99, 102, 241, 0.35);
   background: rgba(99, 102, 241, 0.1);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .secondary-btn {
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.04);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   padding: 0 12px;
 }
 
 .secondary-btn:hover:not(:disabled) {
   border-color: rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.07);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .primary-btn {
   border: 1px solid rgba(99, 102, 241, 0.35);
   background: rgba(99, 102, 241, 0.18);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   padding: 0 14px;
 }
 
@@ -372,7 +372,7 @@ button:disabled {
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.02);
 }
@@ -386,11 +386,11 @@ button:disabled {
 .edit-form input {
   min-width: 0;
   height: 36px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 0 11px;
   background: rgba(0, 0, 0, 0.22);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   outline: none;
   font: inherit;
   font-size: 13px;
@@ -414,7 +414,7 @@ button:disabled {
   border: 1px solid rgba(99, 102, 241, 0.35);
   border-radius: 8px;
   background: rgba(99, 102, 241, 0.18);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -438,7 +438,7 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 13px;
   cursor: pointer;
   user-select: none;
@@ -464,11 +464,11 @@ button:disabled {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   padding: 12px;
   background: rgba(255, 255, 255, 0.025);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   text-align: left;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -499,7 +499,7 @@ button:disabled {
   justify-content: center;
   border-radius: 8px;
   background: rgba(99, 102, 241, 0.12);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   margin-top: 1px;
 }
 
@@ -516,7 +516,7 @@ button:disabled {
 }
 
 .workspace-card-name {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 14px;
   font-weight: 600;
   overflow: hidden;
@@ -526,7 +526,7 @@ button:disabled {
 
 .workspace-card-desc {
   min-width: 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -534,7 +534,7 @@ button:disabled {
 }
 
 .workspace-card-meta {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
 }
 
@@ -558,7 +558,7 @@ button:disabled {
 .artifacts-wrap {
   min-height: 0;
   flex: 1;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.02);
   overflow: hidden;
@@ -577,7 +577,7 @@ button:disabled {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .empty-state {
@@ -601,19 +601,19 @@ button:disabled {
   justify-content: center;
   border-radius: 16px;
   background: rgba(99, 102, 241, 0.08);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .detail-empty-title {
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 16px;
   font-weight: 600;
 }
 
 .detail-empty-hint {
   margin: 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 13px;
 }
 

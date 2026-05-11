@@ -19,7 +19,7 @@ defineProps<{
   display: inline-block;
   width: 2px;
   height: 1em;
-  background: #6366f1;
+  background: var(--color-accent);
   margin-left: 2px;
   animation: blink 1s step-end infinite;
   vertical-align: text-bottom;

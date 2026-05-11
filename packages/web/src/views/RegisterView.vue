@@ -114,7 +114,7 @@ async function handleRegister() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-gradient);
+  background: var(--bg-root);
   overflow: hidden;
 }
 
@@ -166,11 +166,11 @@ async function handleRegister() {
   position: relative;
   width: 400px;
   border-radius: 24px;
-  background: var(--glass-bg);
+  background: var(--bg-card);
   backdrop-filter: blur(24px) saturate(1.5);
   -webkit-backdrop-filter: blur(24px) saturate(1.5);
-  border: 1px solid var(--color-border-default);
-  box-shadow: var(--shadow-dialog), inset 0 1px 0 rgba(255,255,255,0.07);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.07);
   animation: scaleIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -200,7 +200,7 @@ async function handleRegister() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--color-accent) 0%, #8b5cf6 50%, #a78bfa 100%);
+  background: var(--color-accent);
   border-radius: 18px;
   color: #fff;
   box-shadow: 0 8px 24px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
@@ -231,7 +231,7 @@ async function handleRegister() {
   font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.5px;
-  background: linear-gradient(135deg, var(--color-text-primary) 0%, var(--color-accent-light) 100%);
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--color-accent-light) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -240,7 +240,7 @@ async function handleRegister() {
 
 .auth-subtitle {
   font-size: 13px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   margin: 0;
   letter-spacing: 0.02em;
 }
@@ -260,7 +260,7 @@ async function handleRegister() {
 .form-field label {
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -274,13 +274,13 @@ async function handleRegister() {
   left: 13px; top: 50%;
   transform: translateY(-50%);
   width: 15px; height: 15px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   pointer-events: none;
   transition: color 0.2s;
 }
 
 .input-wrap:focus-within .input-icon {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .input-wrap .input-field {
@@ -291,7 +291,7 @@ async function handleRegister() {
 }
 
 .input-wrap .input-field:focus {
-  background: var(--glass-hover-bg);
+  background: var(--bg-hover);
 }
 
 .auth-btn {
@@ -300,7 +300,7 @@ async function handleRegister() {
   margin-top: 4px;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-dark) 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
   color: white;
   font-size: 15px;
   font-weight: 600;
@@ -347,15 +347,15 @@ async function handleRegister() {
   text-align: center;
   margin-top: 24px;
   font-size: 13px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .auth-link {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   text-decoration: none;
   font-weight: 600;
   transition: color 0.2s;
 }
 
-.auth-link:hover { color: var(--color-accent-2); }
+.auth-link:hover { color: var(--text-secondary); }
 </style>

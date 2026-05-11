@@ -341,7 +341,7 @@ onMounted(async () => {
   justify-content: center;
   height: 100%;
   gap: 16px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .empty-icon {
@@ -352,25 +352,25 @@ onMounted(async () => {
   justify-content: center;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 16px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
 }
 
 .empty-icon svg {
   width: 28px;
   height: 28px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .empty-title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   margin: 0;
 }
 
 .empty-desc {
   font-size: 14px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -389,7 +389,7 @@ onMounted(async () => {
   gap: 12px;
   padding: 12px 14px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s;
@@ -399,7 +399,7 @@ onMounted(async () => {
 
 .swarm-card:hover {
   background: rgba(255, 255, 255, 0.06);
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
 }
 
 .swarm-card.active {
@@ -425,7 +425,7 @@ onMounted(async () => {
 .swarm-card-icon svg {
   width: 18px;
   height: 18px;
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .swarm-card-info {
@@ -438,19 +438,19 @@ onMounted(async () => {
 .swarm-card-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .swarm-card.active .swarm-card-name {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .swarm-card-meta {
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .messages-container {

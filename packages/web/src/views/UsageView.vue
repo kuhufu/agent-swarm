@@ -134,14 +134,14 @@ function formatTokens(n: number): string {
 .title {
   font-size: 22px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   margin: 0 0 6px;
   letter-spacing: -0.3px;
 }
 
 .subtitle {
   font-size: 14px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -155,20 +155,20 @@ function formatTokens(n: number): string {
   flex: 1;
   padding: 20px;
   border-radius: 12px;
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border-subtle);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
   transition: all 0.2s;
 }
 
 .summary-card:hover {
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   transform: translateY(-1px);
 }
 
 .card-label {
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -177,17 +177,17 @@ function formatTokens(n: number): string {
 .card-value {
   font-size: 24px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .card-value.cost {
-  color: var(--color-accent);
+  color: var(--text-secondary);
 }
 
 .days-select {
-  background: var(--color-surface-3);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border-default);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   padding: 6px 12px;
   font-size: 14px;
@@ -196,26 +196,26 @@ function formatTokens(n: number): string {
 }
 
 .days-select:focus {
-  border-color: var(--color-accent);
+  border-color: var(--text-secondary);
 }
 
 .table-card {
   padding: 0;
   border-radius: 12px;
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border-subtle);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
   overflow: hidden;
 }
 
 .table-header {
   padding: 16px 20px;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .table-header h2 {
   font-size: 15px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -228,9 +228,9 @@ function formatTokens(n: number): string {
 .usage-table th {
   text-align: left;
   padding: 10px 16px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-weight: 500;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -238,8 +238,8 @@ function formatTokens(n: number): string {
 
 .usage-table td {
   padding: 10px 16px;
-  color: var(--color-text-secondary);
-  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .usage-table tr:last-child td {
@@ -247,7 +247,7 @@ function formatTokens(n: number): string {
 }
 
 .usage-table td.date {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -264,7 +264,7 @@ function formatTokens(n: number): string {
 }
 
 .usage-table td.cost {
-  color: var(--color-accent);
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
@@ -275,7 +275,7 @@ function formatTokens(n: number): string {
 .empty-state {
   text-align: center;
   padding: 48px 20px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 14px;
 }
 </style>

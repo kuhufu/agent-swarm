@@ -42,7 +42,7 @@ function hostname(url: string): string {
   padding: 10px 12px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
 }
 .search-item-header {
   display: flex;
@@ -56,7 +56,7 @@ function hostname(url: string): string {
   flex: 0 0 auto;
   border-radius: 9999px;
   background: rgba(99, 102, 241, 0.16);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
   font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
 }
 .search-item-meta {
@@ -64,7 +64,7 @@ function hostname(url: string): string {
 }
 .search-title {
   display: block;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-size: 13px; font-weight: 600;
   line-height: 1.35;
   text-decoration: none;
@@ -72,16 +72,16 @@ function hostname(url: string): string {
   transition: color 0.16s;
 }
 .search-title:hover {
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 .search-url {
   display: block;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 11px; margin-top: 2px;
 }
 .search-snippet {
   margin: 0;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 12px; line-height: 1.65;
   white-space: pre-wrap; overflow-wrap: anywhere;
 }

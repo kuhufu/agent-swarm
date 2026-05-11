@@ -126,14 +126,14 @@ function handleSubmit() {
 }
 
 .form-row label {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 500;
 }
 
 .form-label {
   display: block;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 8px;
@@ -156,9 +156,9 @@ function handleSubmit() {
   border-radius: 8px;
   font-size: 12px;
   font-weight: 500;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.03);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
   display: inline-flex;
@@ -168,13 +168,13 @@ function handleSubmit() {
 
 .model-chip:hover {
   background: rgba(255, 255, 255, 0.06);
-  border-color: var(--color-border-hover);
+  border-color: var(--border-default);
 }
 
 .model-chip.active {
   background: rgba(99, 102, 241, 0.15);
   border-color: rgba(99, 102, 241, 0.3);
-  color: var(--color-accent-light);
+  color: var(--text-secondary);
 }
 
 .agent-form-actions {
