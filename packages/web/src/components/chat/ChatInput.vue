@@ -478,154 +478,138 @@ function handleOutsideClick(event: MouseEvent) {
       <!-- Tool toggles (right-aligned) -->
       <div class="tool-toggles-right">
         <button
-          class="tool-btn"
-          :class="{ active: searchToolEnabled }"
-          @mousedown="handleKeepTextareaFocusMouseDown"
-          @click="searchToolEnabled = !searchToolEnabled"
-        >
-          <SvgIcon name="search" />
-          <span>搜索</span>
-        </button>
-        <!-- Thinking level (not an agent tool) -->
-        <div class="think-level-select-inline">
-          <button
-            class="tool-btn"
-            :class="{ active: thinkingLevel !== 'off' }"
-            @mousedown="handleKeepTextareaFocusMouseDown"
-            @click="handleToggleThinkLevel"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
-              <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
-            <span>{{ thinkLevelLabel }}</span>
-            <SvgIcon name="chevronDown" :size="12" />
-          </button>
-          <div v-if="showThinkLevelSelect" class="think-level-dropdown">
-            <button
-              v-for="lvl in THINKING_LEVELS"
-              :key="lvl.value"
-              class="think-level-dropdown-item"
-              :class="{ active: thinkingLevel === lvl.value }"
-              @mousedown="handleKeepTextareaFocusMouseDown"
-              @click="selectThinkingLevel(lvl.value)"
-            >
-              <span class="dropdown-level-label">{{ lvl.label }}</span>
-              <span class="dropdown-level-value">{{ lvl.value }}</span>
-            </button>
-          </div>
-        </div>
-        <div class="tools-dropdown-inline">
-          <button
-            class="tool-btn"
-            :class="{ active: activeToolCount > 0 }"
-            @mousedown="handleKeepTextareaFocusMouseDown"
-            @click="handleToggleToolsDropdown"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
-              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-            <span>工具</span>
-            <span v-if="activeToolCount > 0" class="tool-badge">{{ activeToolCount }}</span>
-            <SvgIcon name="chevronDown" :size="12" />
-          </button>
-          <div v-if="showToolsDropdown" class="tools-dropdown">
-            <button
-              class="tools-dropdown-item"
-              :class="{ active: currentTimeToolEnabled }"
-              @mousedown="handleKeepTextareaFocusMouseDown"
-              @click="toggleToolFromDropdown(toggleCurrentTimeTool)"
-            >
-              <SvgIcon name="clock" :size="14" />
-              <span class="dropdown-tool-label">当前时间</span>
-              <span class="dropdown-tool-state">{{ currentTimeToolEnabled ? '开' : '关' }}</span>
-            </button>
-            <button
-              class="tools-dropdown-item"
-              :class="{ active: jsExecutionToolEnabled }"
-              @mousedown="handleKeepTextareaFocusMouseDown"
-              @click="toggleToolFromDropdown(toggleJsExecutionTool)"
-            >
-              <SvgIcon name="jsExecute" :size="14" />
-              <span class="dropdown-tool-label">JS 执行</span>
-              <span class="dropdown-tool-state">{{ jsExecutionToolEnabled ? '开' : '关' }}</span>
-            </button>
-            <button
-              class="tools-dropdown-item"
-              :class="{ active: workspaceToolEnabled }"
-              @mousedown="handleKeepTextareaFocusMouseDown"
-              @click="toggleToolFromDropdown(toggleWorkspaceTool)"
-            >
-              <SvgIcon name="folder" :size="14" />
-              <span class="dropdown-tool-label">工作区</span>
-              <span class="dropdown-tool-state">{{ workspaceId ? (workspaceToolEnabled ? '开' : '关') : '未选' }}</span>
-            </button>
-            <button
-              class="tools-dropdown-item"
-              :class="{ active: webFetchToolEnabled }"
-              @mousedown="handleKeepTextareaFocusMouseDown"
-              @click="toggleToolFromDropdown(toggleWebFetchTool)"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
-                <path d="M13.5 2C13.5 2 19 5 19 12C19 19 13.5 22 13.5 22" />
-                <path d="M2 12h18M6 8l-4 4 4 4" />
-              </svg>
-              <span class="dropdown-tool-label">抓取网页</span>
-              <span class="dropdown-tool-state">{{ webFetchToolEnabled ? '开' : '关' }}</span>
-            </button>
-            <button
-              class="tools-dropdown-item"
-              :class="{ active: browserAutomationToolEnabled }"
-              @mousedown="handleKeepTextareaFocusMouseDown"
-              @click="toggleToolFromDropdown(toggleBrowserAutomationTool)"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
-                <circle cx="12" cy="12" r="10" />
-                <circle cx="12" cy="12" r="4" />
-                <line x1="2" y1="12" x2="22" y2="12" />
-                <line x1="12" y1="2" x2="12" y2="22" />
-              </svg>
-              <span class="dropdown-tool-label">浏览器</span>
-              <span class="dropdown-tool-state">{{ browserAutomationToolEnabled ? '开' : '关' }}</span>
-            </button>
-            <button
-              class="tools-dropdown-item"
-              :class="{ active: wikiToolEnabled }"
-              @mousedown="handleKeepTextareaFocusMouseDown"
-              @click="toggleToolFromDropdown(toggleWikiTool)"
-            >
-              <SvgIcon name="book" :size="14" />
-              <span class="dropdown-tool-label">Wiki</span>
-              <span class="dropdown-tool-state">{{ wikiToolEnabled ? '开' : '关' }}</span>
-            </button>
-            <button
-              class="tools-dropdown-item"
-              :class="{ active: retrieveKnowledgeToolEnabled }"
-              @mousedown="handleKeepTextareaFocusMouseDown"
-              @click="toggleToolFromDropdown(toggleRetrieveKnowledgeTool)"
-            >
-              <SvgIcon name="book" :size="14" />
-              <span class="dropdown-tool-label">知识库</span>
-              <span class="dropdown-tool-state">{{ retrieveKnowledgeToolEnabled ? '开' : '关' }}</span>
-            </button>
-          </div>
-        </div>
-        <!-- Clear context (not an agent tool) -->
+        class="tool-btn"
+        :class="{ active: searchToolEnabled }"
+        title="搜索"
+        @mousedown="handleKeepTextareaFocusMouseDown"
+        @click="searchToolEnabled = !searchToolEnabled"
+      >
+        <SvgIcon name="search" />
+      </button>
+      <!-- Thinking level (not an agent tool) -->
+      <div class="think-level-select-inline">
         <button
-          class="tool-btn warn"
-          :class="{ disabled: !canClearContext }"
-          :title="clearContextTooltip"
+          class="tool-btn"
+          :class="{ active: thinkingLevel !== 'off' }"
+          :title="'思考深度: ' + thinkLevelLabel"
           @mousedown="handleKeepTextareaFocusMouseDown"
-          @click="handleClearContext"
+          @click="handleToggleThinkLevel"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-            <path d="M10 11v6M14 11v6" />
-            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+            <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
           </svg>
-          <span>清空上下文</span>
         </button>
+        <div v-if="showThinkLevelSelect" class="think-level-dropdown">
+          <button
+            v-for="lvl in THINKING_LEVELS"
+            :key="lvl.value"
+            class="think-level-dropdown-item"
+            :class="{ active: thinkingLevel === lvl.value }"
+            @mousedown="handleKeepTextareaFocusMouseDown"
+            @click="selectThinkingLevel(lvl.value)"
+          >
+            <span class="dropdown-level-label">{{ lvl.label }}</span>
+          </button>
+        </div>
+      </div>
+      <div class="tools-dropdown-inline">
+        <button
+          class="tool-btn"
+          :class="{ active: activeToolCount > 0 }"
+          title="工具"
+          @mousedown="handleKeepTextareaFocusMouseDown"
+          @click="handleToggleToolsDropdown"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          <span v-if="activeToolCount > 0" class="tool-badge">{{ activeToolCount }}</span>
+        </button>
+        <div v-if="showToolsDropdown" class="tools-dropdown">
+          <button
+            class="tools-dropdown-item"
+            :class="{ active: currentTimeToolEnabled }"
+            @mousedown="handleKeepTextareaFocusMouseDown"
+            @click="toggleToolFromDropdown(toggleCurrentTimeTool)"
+          >
+            <SvgIcon name="clock" :size="14" />
+            <span class="dropdown-tool-label">当前时间</span>
+          </button>
+          <button
+            class="tools-dropdown-item"
+            :class="{ active: jsExecutionToolEnabled }"
+            @mousedown="handleKeepTextareaFocusMouseDown"
+            @click="toggleToolFromDropdown(toggleJsExecutionTool)"
+          >
+            <SvgIcon name="jsExecute" :size="14" />
+            <span class="dropdown-tool-label">JS 执行</span>
+          </button>
+          <button
+            class="tools-dropdown-item"
+            :class="{ active: workspaceToolEnabled }"
+            @mousedown="handleKeepTextareaFocusMouseDown"
+            @click="toggleToolFromDropdown(toggleWorkspaceTool)"
+          >
+            <SvgIcon name="folder" :size="14" />
+            <span class="dropdown-tool-label">工作区</span>
+          </button>
+          <button
+            class="tools-dropdown-item"
+            :class="{ active: webFetchToolEnabled }"
+            @mousedown="handleKeepTextareaFocusMouseDown"
+            @click="toggleToolFromDropdown(toggleWebFetchTool)"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
+              <path d="M13.5 2C13.5 2 19 5 19 12C19 19 13.5 22 13.5 22" />
+              <path d="M2 12h18M6 8l-4 4 4 4" />
+            </svg>
+            <span class="dropdown-tool-label">抓取网页</span>
+          </button>
+          <button
+            class="tools-dropdown-item"
+            :class="{ active: browserAutomationToolEnabled }"
+            @mousedown="handleKeepTextareaFocusMouseDown"
+            @click="toggleToolFromDropdown(toggleBrowserAutomationTool)"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="12" r="4" />
+              <line x1="2" y1="12" x2="22" y2="12" />
+              <line x1="12" y1="2" x2="12" y2="22" />
+            </svg>
+            <span class="dropdown-tool-label">浏览器</span>
+          </button>
+          <button
+            class="tools-dropdown-item"
+            :class="{ active: wikiToolEnabled }"
+            @mousedown="handleKeepTextareaFocusMouseDown"
+            @click="toggleToolFromDropdown(toggleWikiTool)"
+          >
+            <SvgIcon name="book" :size="14" />
+            <span class="dropdown-tool-label">Wiki</span>
+          </button>
+          <button
+            class="tools-dropdown-item"
+            :class="{ active: retrieveKnowledgeToolEnabled }"
+            @mousedown="handleKeepTextareaFocusMouseDown"
+            @click="toggleToolFromDropdown(toggleRetrieveKnowledgeTool)"
+          >
+            <SvgIcon name="book" :size="14" />
+            <span class="dropdown-tool-label">知识库</span>
+          </button>
+        </div>
+      </div>
+      <!-- Clear context (not an agent tool) -->
+      <button
+        class="tool-btn"
+        :class="{ disabled: !canClearContext }"
+        :title="clearContextTooltip"
+        @mousedown="handleKeepTextareaFocusMouseDown"
+        @click="handleClearContext"
+      >
+        <SvgIcon name="eraser" :size="14" />
+      </button>
       </div>
     </div>
   </div>
@@ -666,39 +650,25 @@ function handleOutsideClick(event: MouseEvent) {
 .tool-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: transparent;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: none;
   color: var(--text-muted);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
   cursor: pointer;
-  transition: all 0.15s;
-  line-height: 1.4;
+  transition: color 0.15s;
+  line-height: 1;
 }
 
 .tool-btn:hover {
-  background: var(--bg-hover);
   color: var(--text-secondary);
 }
 
 .tool-btn.active {
-  background: var(--bg-hover);
-  border-color: var(--border-default);
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
-
-  .tool-btn.warn {
-    color: var(--color-warning);
-  }
-
-  .tool-btn.warn:hover:not(.disabled) {
-    background: var(--bg-warning);
-    border-color: var(--border-warning);
-    color: var(--color-warning);
-  }
 
 .tool-btn.disabled {
   opacity: 0.45;
@@ -708,6 +678,28 @@ function handleOutsideClick(event: MouseEvent) {
 .tool-btn svg {
   width: 14px;
   height: 14px;
+}
+
+.tools-dropdown-inline {
+  position: relative;
+  display: inline-flex;
+}
+
+.tool-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--text-muted);
+  color: var(--bg-root);
+  font-size: 9px;
+  font-weight: var(--weight-bold);
+  line-height: 14px;
+  text-align: center;
+  pointer-events: none;
 }
 
 /* ── Inline model selector ── */
@@ -789,118 +781,6 @@ function handleOutsideClick(event: MouseEvent) {
   color: var(--text-secondary);
 }
 
-.model-dropdown-item:hover {
-  background: var(--bg-hover);
-}
-
-.model-dropdown-item.active {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-}
-
-.dropdown-model-name {
-  font-weight: var(--weight-medium);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dropdown-model-provider {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.model-dropdown-item.active .dropdown-model-provider {
-  color: var(--text-secondary);
-}
-
-.model-dropdown-empty {
-  padding: 12px 10px;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-  text-align: center;
-}
-
-/* ── Tools dropdown ── */
-.tools-dropdown-inline {
-  position: relative;
-  display: inline-flex;
-}
-
-.tool-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 8px;
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-bold);
-  line-height: 1;
-}
-
-.tools-dropdown {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  right: 0;
-  min-width: 200px;
-  z-index: 50;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  padding: 4px;
-}
-
-.tools-dropdown-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 10px;
-  border: none;
-  background: transparent;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.1s;
-  font-size: var(--text-base);
-  text-align: left;
-  color: var(--text-secondary);
-}
-
-.tools-dropdown-item:hover {
-  background: var(--bg-hover);
-}
-
-.tools-dropdown-item.active {
-  color: var(--text-secondary);
-}
-
-.tools-dropdown-item.active::before {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 9px;
-  bottom: 9px;
-  width: 2px;
-  border-radius: 999px;
-  background: var(--text-secondary);
-}
-
-.tools-dropdown-item.warn {
-  color: var(--color-warning);
-}
-
-.tools-dropdown-item.warn:hover:not(.disabled) {
-  background: var(--bg-warning);
-  color: var(--color-warning);
-}
-
 .tools-dropdown-item.disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -909,24 +789,6 @@ function handleOutsideClick(event: MouseEvent) {
 .dropdown-tool-label {
   flex: 1;
   font-weight: var(--weight-medium);
-}
-
-.dropdown-tool-state {
-  min-width: 28px;
-  height: 20px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-
-.tools-dropdown-item.active .dropdown-tool-state {
-  border-color: var(--border-default);
-  color: var(--text-secondary);
-  background: var(--bg-hover);
 }
 
 .tools-dropdown-separator {
@@ -942,14 +804,7 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
 .think-level-select-inline .tool-btn {
-  width: 80px;
-  gap: 2px;
-}
-
-.think-level-select-inline .tool-btn span:nth-child(2) {
-  display: inline-block;
   width: 28px;
-  text-align: center;
 }
 
 .think-level-dropdown {
@@ -968,7 +823,6 @@ function handleOutsideClick(event: MouseEvent) {
 .think-level-dropdown-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   width: 100%;
   padding: 6px 10px;
