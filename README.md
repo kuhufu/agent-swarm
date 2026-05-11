@@ -25,7 +25,7 @@
 - Workspace 产物：侧边栏提供独立“工作区”页面，可创建、编辑、归档、删除工作区并查看产物；聊天页顶部可手动选择、创建或清除当前会话工作区；右侧产物面板可按目录分组查看并搜索当前工作区文件，支持文本/Markdown/JSON/代码/图片预览、单文件三点菜单操作、批量选择后下载/加入文档/标记最终/删除，以及整个工作区打包下载；产物操作菜单作为浮层显示在列表卡片之上；`workspace_write_file` 工具卡可直接跳转到产物详情
 - 浏览器自动化工具：`browser_automation` 基于 [agent-browser](https://github.com/vercel-labs/agent-browser) 提供浏览器控制能力，支持打开网页、快照获取元素引用 `@e1/@e2`、点击、填表、截图等操作
 - 消息 Markdown 渲染：基于 `marked + marked-highlight + highlight.js + KaTeX + dompurify`，支持代码高亮、数学公式与安全净化
-- 文档与 Wiki：文档 tab 管理来源文件和知识库检索，Wiki tab 基于文档生成可编辑页面、支撑要点和关联页面
+- 文档与 Wiki：文档 tab 管理来源文件、正文编辑和知识库检索，Wiki tab 基于文档生成可编辑页面、支撑要点和关联页面
 - 知识引用回显：`search_wiki` 和 `retrieve_knowledge` 工具结果会在聊天工具卡中展示命中页面、文档片段和相关度，并可跳转到对应来源
 - 前端 JS 执行回显：`javascript_execute` 工具结果会在聊天工具卡中结构化展示返回值、日志和执行代码
 - 介入机制：支持工具调用/错误/handoff 等节点人工决策
@@ -211,8 +211,8 @@ pnpm --filter @agent-swarm/server test
 - `GET /api/documents/:id`
 - `GET /api/documents/:id/chunks`
 - `POST /api/documents/upload`：支持 JSON `{ filename, content }` 和 multipart `file` 上传；当前可解析 `txt/md/json/html/pdf/docx`
-- `PUT /api/documents/:id`
-- `POST /api/documents/search`：`query` 支持空格分隔多关键词，按 OR 召回，例如 `认证 身份验证 Authentication`
+- `PUT /api/documents/:id`：按 `{ filename, content }` 更新文档并重建切片索引
+- `POST /api/documents/search`：`query` 支持空格分隔多关键词，按 OR 召回，例如 `认证 身份验证 Authentication`；检索优先使用 FTS5 正文索引，并用短词/标题/source 的 `LIKE` 匹配兜底
 - `DELETE /api/documents/:id`
 
 ### LLM 配置

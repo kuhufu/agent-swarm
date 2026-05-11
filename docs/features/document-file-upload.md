@@ -5,6 +5,7 @@
 ## 写入方式
 
 - 写入文档：文档 tab 侧边栏的“导入文件”按钮会打开浏览器文件选择器，并以 JSON `{ filename, content }` 或 `multipart/form-data` 调用 `POST /api/documents/upload`，文件字段名为 `file`。
+- 编辑文档：文档详情页提供编辑模式，保存时调用 `PUT /api/documents/:id`，按新的标题和正文重建文档切片。
 - 从文档生成 Wiki：文档详情通过 `POST /api/wiki/ingest-document/:documentId` 读取已有文档并生成 Wiki 页面，不重复保存来源文件。
 - 直接导入 Wiki：`POST /api/wiki/ingest-document` 仍支持 JSON `{ filename, content }` 和 multipart `file`，会先保存来源文档再生成 Wiki 页面。
 - 手动维护页面：通过 `POST /api/wiki/pages` 和 `PUT /api/wiki/pages/:id` 创建或编辑 Wiki 页面。
@@ -14,7 +15,7 @@
 
 ## 入库流程
 
-文档保存到 `SQLiteVectorStore`，继续作为知识库检索和 Wiki 来源资料。`/api/wiki/ingest-document/:documentId` 会读取已有文档内容，随后调用 LLM 把资料整理为 1-5 个 Wiki 页面。`/api/wiki/ingest-document` 适用于直接导入 Wiki，会先创建来源文档再执行同一套生成逻辑。页面包含：
+文档保存到 `SQLiteVectorStore`，继续作为知识库检索和 Wiki 来源资料。文档详情默认展示完整正文，切片列表默认收起，仅在需要排查检索命中时展开查看。`/api/wiki/ingest-document/:documentId` 会读取已有文档内容，随后调用 LLM 把资料整理为 1-5 个 Wiki 页面。`/api/wiki/ingest-document` 适用于直接导入 Wiki，会先创建来源文档再执行同一套生成逻辑。页面包含：
 
 - `title` / `summary` / `content`
 - `aliases` / `tags`
@@ -57,13 +58,14 @@ Wiki 页面详情会按 `sourceDocumentIds` 加载来源资料，展示标题、
 - `GET /api/documents/:id`
 - `GET /api/documents/:id/chunks`
 - `POST /api/documents/upload`
-- `PUT /api/documents/:id`
+- `PUT /api/documents/:id`：按 `{ filename, content }` 更新文档并重建切片索引。
 - `POST /api/documents/search`
 - `DELETE /api/documents/:id`
 
 ## 限制
 
 - 单文件大小上限：10MB。
+- 文档检索优先使用 SQLite FTS5 检索正文切片，并对短关键词、标题和 source 使用 `LIKE` 兜底召回；该能力仍是关键词检索，不是 embedding 语义检索。
 - 空文本会被拒绝。
 - Wiki 页面、来源资料和检索均按当前登录用户隔离。
 - 自动合并只按标题和别名判断，不做深度语义去重；标题不同但语义相同的页面仍可能需要用户手动整理。

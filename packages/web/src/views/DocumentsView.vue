@@ -46,6 +46,11 @@ const searchResults = ref<SearchResultItem[]>([]);
 const loading = ref(false);
 const uploading = ref(false);
 const generatingWiki = ref(false);
+const editing = ref(false);
+const saving = ref(false);
+const editTitle = ref("");
+const editContent = ref("");
+const showChunks = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const visibleDocuments = computed(() => {
@@ -68,6 +73,12 @@ const navItems = computed(() =>
     active: selectedDoc.value?.id === doc.id,
   })),
 );
+
+const editDirty = computed(() => {
+  const doc = selectedDoc.value;
+  if (!doc) return false;
+  return editTitle.value.trim() !== doc.title || editContent.value !== (doc.content ?? "");
+});
 
 onMounted(async () => {
   await loadDocuments();
@@ -107,6 +118,7 @@ async function selectDocument(id: string, syncRoute = true) {
   try {
     const response = await apiClient<{ data: DocumentItem }>(`/documents/${id}`);
     selectedDoc.value = response.data;
+    resetEditDraft(response.data);
     await loadChunks(id);
     const chunkIndex = routeChunkIndex();
     routeChunk.value = typeof chunkIndex === "number"
@@ -118,6 +130,13 @@ async function selectDocument(id: string, syncRoute = true) {
   } catch (error) {
     showError(error instanceof Error ? error.message : "打开文档失败");
   }
+}
+
+function resetEditDraft(doc = selectedDoc.value) {
+  editing.value = false;
+  editTitle.value = doc?.title ?? "";
+  editContent.value = doc?.content ?? "";
+  showChunks.value = false;
 }
 
 async function loadChunks(documentId: string) {
@@ -210,6 +229,50 @@ async function deleteDocument() {
   }
 }
 
+function startEditDocument() {
+  if (!selectedDoc.value) return;
+  resetEditDraft(selectedDoc.value);
+  editing.value = true;
+}
+
+function cancelEditDocument() {
+  resetEditDraft();
+}
+
+function toggleChunks() {
+  showChunks.value = !showChunks.value;
+}
+
+async function saveDocument() {
+  if (!selectedDoc.value || saving.value) return;
+  const title = editTitle.value.trim();
+  if (!title) {
+    showError("文档标题不能为空");
+    return;
+  }
+  if (!editContent.value.trim()) {
+    showError("文档内容不能为空");
+    return;
+  }
+  const documentId = selectedDoc.value.id;
+  saving.value = true;
+  try {
+    await apiClient(`/documents/${documentId}`, {
+      method: "PUT",
+      body: JSON.stringify({ filename: title, content: editContent.value }),
+    });
+    editing.value = false;
+    routeChunk.value = null;
+    await loadDocuments();
+    await selectDocument(documentId);
+    showSuccess("文档已保存");
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "保存文档失败");
+  } finally {
+    saving.value = false;
+  }
+}
+
 async function generateWikiFromDocument() {
   if (!selectedDoc.value || generatingWiki.value) return;
   generatingWiki.value = true;
@@ -264,18 +327,31 @@ async function generateWikiFromDocument() {
 
     <!-- Right Content -->
     <main class="documents-main">
-      <section v-if="selectedDoc" class="detail-panel">
+      <section v-if="selectedDoc" class="detail-panel" :class="{ 'editor-open': editing }">
         <DetailHeader icon="file" :title="selectedDoc.title">
           <template #meta>
             <span class="meta-text">{{ selectedDoc.source }}</span>
             <span class="meta-text">{{ new Date(selectedDoc.createdAt).toLocaleString() }}</span>
           </template>
           <template #actions>
-            <button class="secondary-btn" type="button" :disabled="generatingWiki" @click="generateWikiFromDocument">
+            <template v-if="editing">
+              <button class="secondary-btn" type="button" :disabled="saving" @click="cancelEditDocument">
+                取消
+              </button>
+              <button class="secondary-btn primary-action" type="button" :disabled="saving || !editDirty" @click="saveDocument">
+                <SvgIcon name="check" :size="14" />
+                {{ saving ? "保存中..." : "保存" }}
+              </button>
+            </template>
+            <button v-else class="secondary-btn" type="button" @click="startEditDocument">
+              <SvgIcon name="edit" :size="14" />
+              编辑
+            </button>
+            <button v-if="!editing" class="secondary-btn" type="button" :disabled="generatingWiki" @click="generateWikiFromDocument">
               <SvgIcon name="book" :size="14" />
               {{ generatingWiki ? "生成中..." : "生成 Wiki" }}
             </button>
-            <button class="danger-btn" type="button" @click="deleteDocument">
+            <button v-if="!editing" class="danger-btn" type="button" @click="deleteDocument">
               <SvgIcon name="trash" :size="14" />
               删除
             </button>
@@ -290,13 +366,28 @@ async function generateWikiFromDocument() {
           <p>{{ routeChunk.content }}</p>
         </article>
 
-        <article class="document-content">
+        <form v-if="editing" class="edit-form" @submit.prevent="saveDocument">
+          <label>
+            <span>标题</span>
+            <input v-model="editTitle" class="text-input" type="text" maxlength="160">
+          </label>
+          <label>
+            <span>正文</span>
+            <textarea v-model="editContent" class="content-editor" rows="18" />
+          </label>
+        </form>
+
+        <article v-else class="document-content">
           <pre>{{ selectedDoc.content }}</pre>
         </article>
 
-        <section class="chunks-section">
-          <h4 class="section-title">切片</h4>
-          <div class="chunk-list">
+        <section v-if="!editing" class="chunks-section">
+          <button class="chunks-toggle" type="button" @click="toggleChunks">
+            <span>切片</span>
+            <small>{{ selectedChunks.length }} 条</small>
+            <SvgIcon :name="showChunks ? 'chevronDown' : 'chevronRight'" :size="13" />
+          </button>
+          <div v-if="showChunks" class="chunk-list">
             <article v-for="chunk in selectedChunks" :key="chunk.id" class="chunk-item">
               <strong>#{{ chunk.index + 1 }}</strong>
               <p>{{ chunk.content }}</p>
@@ -334,15 +425,46 @@ async function generateWikiFromDocument() {
   max-width: 720px;
 }
 
-.section-title {
-  font-size: var(--text-base);
-  font-weight: var(--weight-bold);
-  color: var(--text-secondary);
-  margin: 24px 0 12px;
+.detail-panel.editor-open {
+  height: 100%;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .chunks-section {
   margin-top: 24px;
+}
+
+.chunks-toggle {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  cursor: pointer;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.chunks-toggle:hover {
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+}
+
+.chunks-toggle small {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
 }
 
 .chunk-card,
@@ -394,6 +516,62 @@ async function generateWikiFromDocument() {
   line-height: 1.7;
 }
 
+.edit-form {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+.edit-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.edit-form label:last-child {
+  flex: 1;
+  min-height: 0;
+}
+
+.text-input,
+.content-editor {
+  width: 100%;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-base);
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.text-input {
+  height: 36px;
+  padding: 0 12px;
+}
+
+.content-editor {
+  flex: 1;
+  min-height: 0;
+  padding: 12px;
+  resize: vertical;
+  line-height: 1.7;
+}
+
+.text-input:focus,
+.content-editor:focus {
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+}
+
 /* Buttons */
 .upload-btn {
   display: inline-flex;
@@ -437,6 +615,13 @@ async function generateWikiFromDocument() {
 .secondary-btn {
   color: var(--text-secondary);
   background: var(--bg-card);
+}
+
+.secondary-btn.primary-action {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+  font-weight: var(--weight-bold);
 }
 
 .secondary-btn:hover:not(:disabled) {

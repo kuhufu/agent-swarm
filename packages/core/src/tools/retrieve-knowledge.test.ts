@@ -96,6 +96,39 @@ describe("SQLiteVectorStore", () => {
     expect(titles).toContain("Authentication Guide");
   });
 
+  it("falls back to LIKE for short keywords and document titles", async () => {
+    await store.addDocument(
+      {
+        id: "doc-short-keyword",
+        userId: USER,
+        title: "短词检索说明",
+        source: "manual",
+        createdAt: Date.now(),
+      },
+      [
+        { id: "chunk-short-keyword", documentId: "doc-short-keyword", content: "认证流程会签发访问令牌", index: 0 },
+      ],
+    );
+    await store.addDocument(
+      {
+        id: "doc-title-only",
+        userId: USER,
+        title: "OAuth 接入手册",
+        source: "manual",
+        createdAt: Date.now(),
+      },
+      [
+        { id: "chunk-title-only", documentId: "doc-title-only", content: "中间件会校验 bearer token", index: 0 },
+      ],
+    );
+
+    const shortResults = await store.search("认证", 5, USER);
+    expect(shortResults.some((result) => result.document.id === "doc-short-keyword")).toBe(true);
+
+    const titleResults = await store.search("OAuth", 5, USER);
+    expect(titleResults.some((result) => result.document.id === "doc-title-only")).toBe(true);
+  });
+
   it("gets and replaces document content with rebuilt chunks", async () => {
     await store.addDocument(
       {

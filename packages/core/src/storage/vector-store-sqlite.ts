@@ -20,15 +20,21 @@ function splitTextIntoChunks(text: string, chunkSize = 500, overlap = 50): strin
 }
 
 function buildFtsQuery(query: string): string {
-  const terms = query
+  return extractSearchTerms(query)
+    .map((term) => `"${term.replace(/"/g, "\"\"")}"`)
+    .join(" OR ");
+}
+
+function extractSearchTerms(query: string): string[] {
+  return query
     .replace(/[^\w\u4e00-\u9fff]+/g, " ")
     .split(/\s+/)
     .map((term) => term.trim())
     .filter((term) => term.length > 0);
+}
 
-  return terms
-    .map((term) => `"${term.replace(/"/g, "\"\"")}"`)
-    .join(" OR ");
+function escapeLikeTerm(term: string): string {
+  return term.replace(/[\\%_]/g, (char) => `\\${char}`);
 }
 
 export class SQLiteVectorStore implements IVectorStore {
@@ -155,8 +161,9 @@ export class SQLiteVectorStore implements IVectorStore {
     const normalizedUserId = this.requireUserId(userId);
     const limit = topK ?? 5;
     // Space-separated keywords are treated as OR terms, e.g. "认证 身份验证 Authentication".
+    const terms = extractSearchTerms(query);
     const ftsQuery = buildFtsQuery(query);
-    if (!ftsQuery) return [];
+    if (!ftsQuery || terms.length === 0) return [];
 
     const baseSql = `
       SELECT c.id, c.document_id, c.content, c.idx, c.metadata,
@@ -178,7 +185,7 @@ export class SQLiteVectorStore implements IVectorStore {
       rank: number;
     }>;
 
-    return rows.map((r) => ({
+    const results = rows.map((r) => ({
       chunk: {
         id: r.id,
         documentId: r.document_id,
@@ -196,6 +203,55 @@ export class SQLiteVectorStore implements IVectorStore {
       },
       score: -r.rank,  // FTS5 rank is negative (lower is better)
     }));
+
+    if (results.length >= limit) {
+      return results;
+    }
+
+    const seenChunkIds = new Set(results.map((result) => result.chunk.id));
+    const likeClauses = terms.map(() => "(c.content LIKE ? ESCAPE '\\' OR d.title LIKE ? ESCAPE '\\' OR d.source LIKE ? ESCAPE '\\')");
+    const likeParams = terms.flatMap((term) => {
+      const pattern = `%${escapeLikeTerm(term)}%`;
+      return [pattern, pattern, pattern];
+    });
+    const fallbackRows = this.db.prepare(`
+      SELECT c.id, c.document_id, c.content, c.idx, c.metadata,
+      d.id as doc_id, d.user_id, d.title, d.source, d.content as doc_content, d.created_at
+      FROM rag_chunks c
+      JOIN rag_documents d ON c.document_id = d.id
+      WHERE d.user_id = ? AND (${likeClauses.join(" OR ")})
+      ORDER BY d.created_at DESC, c.idx ASC
+      LIMIT ?
+    `).all(normalizedUserId, ...likeParams, limit * 4) as Array<{
+      id: string; document_id: string; content: string; idx: number; metadata: string;
+      doc_id: string; user_id: string | null; title: string; source: string; doc_content: string | null; created_at: number;
+    }>;
+
+    for (const r of fallbackRows) {
+      if (seenChunkIds.has(r.id)) continue;
+      seenChunkIds.add(r.id);
+      results.push({
+        chunk: {
+          id: r.id,
+          documentId: r.document_id,
+          content: r.content,
+          index: r.idx,
+          metadata: JSON.parse(r.metadata ?? "{}"),
+        },
+        document: {
+          id: r.doc_id,
+          userId: this.requireUserId(r.user_id),
+          title: r.title,
+          source: r.source,
+          content: r.doc_content ?? undefined,
+          createdAt: r.created_at,
+        },
+        score: 0,
+      });
+      if (results.length >= limit) break;
+    }
+
+    return results;
   }
 
   async listDocuments(userId: string): Promise<Document[]> {
