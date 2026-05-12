@@ -1767,7 +1767,7 @@ function getFileColor(name: string): string {
   align-items: center;
   justify-content: center;
   padding: 40px;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--bg-overlay);
 }
 
 .version-dialog {

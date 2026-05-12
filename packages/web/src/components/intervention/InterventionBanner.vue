@@ -21,7 +21,7 @@ defineProps<{
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: rgba(245, 158, 11, 0.1);
+  background: var(--bg-warning);
   border-bottom: 1px solid rgba(245, 158, 11, 0.2);
   font-size: var(--text-base);
   color: var(--color-warning);

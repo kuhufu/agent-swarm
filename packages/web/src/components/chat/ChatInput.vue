@@ -1082,7 +1082,7 @@ textarea:disabled {
   justify-content: center;
   border: none;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--bg-overlay);
   color: #fff;
   cursor: pointer;
   opacity: 0;

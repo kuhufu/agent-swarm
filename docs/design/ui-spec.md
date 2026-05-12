@@ -34,6 +34,7 @@
 | `--bg-surface` | `#ffffff` | 面板/侧边栏背景 |
 | `--bg-card` | `#fcfcfc` | 卡片/弹窗背景 |
 | `--bg-hover` | `#f2f2f2` | hover/选中背景 |
+| `--bg-overlay` | `rgba(0,0,0,0.25)`（深色: `rgba(0,0,0,0.6)`） | 弹窗遮罩 |
 | `--border-subtle` | `#e8e8e8` | 最弱分割线 |
 | `--border-default` | `#d4d4d4` | 默认边框 |
 | `--text-primary` | `#1a1a1a` | 主要文字 |
@@ -99,7 +100,7 @@ hover/active 背景统一使用 `--bg-hover`，只有以下场景使用 `--bg-ho
 | Token | 深色模式 | 浅色模式 | 用途 |
 |-------|---------|---------|------|
 | `--shadow-sm` | `0 1px 3px rgba(0,0,0,0.4)` | `0 1px 3px rgba(0,0,0,0.08)` | 按钮 hover、输入框 focus、tooltip |
-| `--shadow-md` | `0 2px 8px rgba(0,0,0,0.5)` | `0 2px 8px rgba(0,0,0,0.08)` | 卡片、面板、下拉菜单 |
+| `--shadow-md` | `0 2px 8px rgba(0,0,0,0.25)` | `0 2px 8px rgba(0,0,0,0.12)` | 卡片、面板、下拉菜单 |
 | `--shadow-lg` | `0 8px 32px rgba(0,0,0,0.6)` | `0 8px 32px rgba(0,0,0,0.1)` | 弹窗、modal、对话框 |
 
 ---
@@ -185,7 +186,7 @@ hover/active 背景统一使用 `--bg-hover`，只有以下场景使用 `--bg-ho
 | 背景 | `--bg-card` |
 | 圆角 | `--radius-xl` |
 | 阴影 | `--shadow-lg` |
-| overlay 背景 | `rgba(0,0,0,0.5)`（深色）/ `rgba(0,0,0,0.15)`（浅色），无 blur |
+| overlay 背景 | `var(--bg-overlay)`，无 blur |
 
 ---
 

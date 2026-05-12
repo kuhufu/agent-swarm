@@ -219,7 +219,7 @@ function agentSystemPrompt(agent: AgentState): string {
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
 }
@@ -254,14 +254,14 @@ function agentSystemPrompt(agent: AgentState): string {
   flex-direction: column;
   gap: 8px;
   padding: 14px;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   transition: all 0.2s;
 }
 
 .agent-card:hover {
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--bg-hover);
   border-color: var(--border-default);
   box-shadow: var(--shadow-md);
 }
@@ -278,7 +278,7 @@ function agentSystemPrompt(agent: AgentState): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-card);
   border-radius: 10px;
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);
@@ -322,7 +322,7 @@ function agentSystemPrompt(agent: AgentState): string {
   line-height: 1.5;
   color: var(--text-muted);
   padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
   border-radius: 6px;
 }
 
@@ -367,7 +367,7 @@ function agentSystemPrompt(agent: AgentState): string {
   text-align: center;
   padding: 40px 16px;
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
 }

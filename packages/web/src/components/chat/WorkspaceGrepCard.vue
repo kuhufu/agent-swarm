@@ -69,7 +69,7 @@ const grouped = computed(() => {
 }
 .grep-file-path {
   padding: 7px 10px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-card);
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: var(--text-sm); font-weight: var(--weight-bold);
@@ -82,11 +82,11 @@ const grouped = computed(() => {
   grid-template-columns: 36px 1fr;
   gap: 8px;
   padding: 5px 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-top: 1px solid var(--border-subtle);
   align-items: start;
 }
 .grep-match-line:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-hover);
 }
 .grep-line-num {
   color: var(--text-muted);

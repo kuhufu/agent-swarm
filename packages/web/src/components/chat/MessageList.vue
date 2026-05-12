@@ -347,7 +347,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-card);
   border-radius: 16px;
   border: 1px solid var(--border-subtle);
 }
@@ -385,7 +385,7 @@ onMounted(async () => {
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
   cursor: pointer;
@@ -395,7 +395,7 @@ onMounted(async () => {
 }
 
 .swarm-card:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
   border-color: var(--border-default);
 }
 

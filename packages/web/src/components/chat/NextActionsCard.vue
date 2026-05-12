@@ -40,7 +40,7 @@ const emit = defineEmits<{
   text-align: left;
   padding: 8px 10px;
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   font-size: var(--text-sm);
   cursor: pointer;

@@ -94,18 +94,18 @@ function formatTime(ts?: number): string {
   font-size: var(--text-sm);
 }
 .file-table-header {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-card);
   color: var(--text-muted);
   font-size: var(--text-sm); font-weight: var(--weight-bold);
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
 .file-table-row {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
   transition: background 0.12s;
 }
 .file-table-row:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-hover);
 }
 .file-table-row.is-dir {
   opacity: 0.7;

@@ -157,7 +157,7 @@ function handleSubmit() {
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   border: 1px solid var(--border-subtle);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
@@ -167,7 +167,7 @@ function handleSubmit() {
 }
 
 .model-chip:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
   border-color: var(--border-default);
 }
 
