@@ -74,6 +74,17 @@ function lightenColor(hex: string, percent: number): string {
   return `#${lr.toString(16).padStart(2, "0")}${lg.toString(16).padStart(2, "0")}${lb.toString(16).padStart(2, "0")}`;
 }
 
+const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="COLOR" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`;
+
+function updateFavicon(color: string) {
+  const svg = FAVICON_SVG.replace("COLOR", color);
+  const href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  const link = document.querySelector("link[rel='icon']");
+  if (link) {
+    link.setAttribute("href", href);
+  }
+}
+
 function restoreThemeMode(): ThemeMode {
   const stored = localStorage.getItem(THEME_MODE_KEY);
   return THEME_MODES.includes(stored as ThemeMode) ? stored as ThemeMode : "auto";
@@ -108,6 +119,7 @@ export const useThemeStore = defineStore("theme", () => {
       root.style.removeProperty("--color-accent-bg");
       root.style.removeProperty("--color-accent-glow");
       root.removeAttribute("data-accent-custom");
+      updateFavicon(getAccentHex());
       return;
     }
 
@@ -127,6 +139,12 @@ export const useThemeStore = defineStore("theme", () => {
       root.style.removeProperty("--color-accent-bg");
       root.style.removeProperty("--color-accent-glow");
     }
+    updateFavicon(hex);
+  }
+
+  function getAccentHex(): string {
+    if (accentColor.value) return accentColor.value;
+    return resolvedTheme.value === "dark" ? "#60a5fa" : "#3b82f6";
   }
 
   function setAccentColor(hex: string) {
@@ -157,6 +175,7 @@ export const useThemeStore = defineStore("theme", () => {
         root.style.setProperty("--color-accent-glow", v.glow);
       }
     }
+    updateFavicon(getAccentHex());
   }, { immediate: true });
 
   // Listen for system theme changes when in auto mode
