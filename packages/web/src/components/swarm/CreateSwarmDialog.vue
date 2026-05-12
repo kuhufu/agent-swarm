@@ -566,7 +566,7 @@ onMounted(() => {
 .mode-option:hover {
   background: var(--bg-hover);
   border-color: var(--border-default);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-md);
 }
 
 .mode-option.active {

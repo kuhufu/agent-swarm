@@ -381,9 +381,7 @@ async function testModel(provider: string, modelId: string) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow:
-    0 24px 64px rgba(0, 0, 0, 0.38),
-    0 8px 20px rgba(0, 0, 0, 0.28);
+  box-shadow: var(--shadow-lg);
 }
 .dialog-header {
   display: flex;

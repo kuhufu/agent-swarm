@@ -579,7 +579,7 @@ async function saveSettings() {
 .settings-item:hover {
   border-color: var(--border-default);
   background: var(--bg-hover);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-md);
 }
 
 .settings-item.active {

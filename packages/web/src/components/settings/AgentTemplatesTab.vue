@@ -521,7 +521,7 @@ onBeforeUnmount(() => {
 .template-item-row:hover {
   border-color: var(--border-default);
   background: var(--bg-hover);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
+  box-shadow: var(--shadow-md);
 }
 
 .template-item-row.active {
@@ -590,7 +590,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   background: var(--bg-card);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-lg);
 }
 
 .template-action-item,

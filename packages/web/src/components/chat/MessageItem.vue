@@ -391,7 +391,7 @@ function handleFork() {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 14px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  box-shadow: var(--shadow-md);
 }
 
 /* ── User (right-aligned) ── */
@@ -413,6 +413,7 @@ function handleFork() {
   background: var(--bg-hover);
   border: 1px solid var(--border-default);
   border-radius: 16px 16px 4px 16px;
+  box-shadow: var(--shadow-md);
 }
 
 /* ── Tool / System ── */
@@ -420,6 +421,7 @@ function handleFork() {
   background: var(--bg-success);
   border: 1px solid var(--border-success);
   border-radius: 12px;
+  box-shadow: var(--shadow-md);
 }
 
 .msg-system,

@@ -475,7 +475,7 @@ button:disabled {
 .workspace-card:hover {
   border-color: var(--border-default);
   background: var(--bg-hover);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
 }
 
 .workspace-card.active {

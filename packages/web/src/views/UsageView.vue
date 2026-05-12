@@ -162,7 +162,7 @@ function formatTokens(n: number): string {
 
 .summary-card:hover {
   border-color: var(--border-default);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
   transform: translateY(-1px);
 }
 

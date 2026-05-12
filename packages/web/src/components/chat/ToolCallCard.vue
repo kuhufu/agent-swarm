@@ -56,12 +56,13 @@ const status = computed(() => getToolStatus(props.toolCall));
   border-radius: 8px;
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow-sm);
 }
 
 .tool-call-card:hover {
   background: var(--bg-hover);
   border-color: var(--border-default);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-md);
 }
 
 .tool-call-card.expanded {

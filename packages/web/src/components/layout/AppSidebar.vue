@@ -508,7 +508,7 @@ onBeforeUnmount(() => {
 .tab-btn.active {
   background: var(--color-accent, #5f7038);
   color: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-sm);
 }
 
 /* ── Conversation section ── */

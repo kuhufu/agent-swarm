@@ -263,7 +263,7 @@ function agentSystemPrompt(agent: AgentState): string {
 .agent-card:hover {
   background: rgba(255, 255, 255, 0.045);
   border-color: var(--border-default);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-md);
 }
 
 .agent-card-header {
