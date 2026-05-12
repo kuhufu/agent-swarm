@@ -551,6 +551,27 @@ function clearModelSelection() {
               <p class="router-config-hint">Router 模式会由该 Agent 先接收请求并决定路由目标。</p>
             </div>
           </div>
+          <div v-if="editForm.mode === 'debate'" class="detail-section">
+            <h4 class="detail-section-title">辩论配置</h4>
+            <div class="debate-config card">
+              <div class="form-row">
+                <label>辩论轮数</label>
+                <input type="number" :value="editForm.debateConfig?.rounds ?? 3" class="input-field" min="1" max="20" style="width:100px" @input="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, rounds: Number(($event.target as HTMLInputElement).value) || 3 }" />
+              </div>
+              <div class="form-row">
+                <label>正方 Agent</label>
+                <CustomSelect :model-value="editForm.debateConfig?.proAgent ?? ''" :options="[{ value: '', label: '选择 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]" @update:model-value="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, proAgent: $event }" />
+              </div>
+              <div class="form-row">
+                <label>反方 Agent</label>
+                <CustomSelect :model-value="editForm.debateConfig?.conAgent ?? ''" :options="[{ value: '', label: '选择 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]" @update:model-value="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, conAgent: $event }" />
+              </div>
+              <div class="form-row">
+                <label>裁判 Agent</label>
+                <CustomSelect :model-value="editForm.debateConfig?.judgeAgent ?? ''" :options="[{ value: '', label: '选择 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]" @update:model-value="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, judgeAgent: $event }" />
+              </div>
+            </div>
+          </div>
           <div v-if="editForm.mode === 'parallel'" class="detail-section">
             <h4 class="detail-section-title">聚合配置</h4>
             <div class="aggregator-config card">
