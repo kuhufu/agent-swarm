@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import type { ChatMessage, AgentState, ConversationInfo, ToolCallInfo, ConversationEvent } from "../types/index.js";
+import type { ChatMessage, AgentState, ConversationInfo, ToolCallInfo } from "../types/index.js";
 import { useSwarmStore } from "./swarm.js";
 import * as conversationsApi from "../api/conversations.js";
 import {
@@ -20,7 +20,6 @@ interface ConversationRuntimeState {
   agentStates: Map<string, AgentState>;
   activeAssistantMessageIds: Map<string, string>;
   toolCallMessageIds: Map<string, string>;
-  events: ConversationEvent[];
   isActive: boolean;
 }
 
@@ -129,7 +128,6 @@ export const useConversationStore = defineStore("conversation", () => {
       agentStates: new Map(),
       activeAssistantMessageIds: new Map(),
       toolCallMessageIds: new Map(),
-      events: [],
       isActive: false,
     };
   }
@@ -193,12 +191,6 @@ export const useConversationStore = defineStore("conversation", () => {
     return state.agentStates;
   }
 
-  function getEvents(conversationId?: string | null): ConversationEvent[] {
-    const state = runtimeStates.value.get(resolveRuntimeStateId(conversationId))
-      ?? runtimeStates.value.get(DRAFT_RUNTIME_ID)!;
-    return state.events;
-  }
-
   function getIsActive(conversationId?: string | null): boolean {
     const state = runtimeStates.value.get(resolveRuntimeStateId(conversationId))
       ?? runtimeStates.value.get(DRAFT_RUNTIME_ID)!;
@@ -247,7 +239,6 @@ export const useConversationStore = defineStore("conversation", () => {
       ),
       activeAssistantMessageIds: new Map(state.activeAssistantMessageIds),
       toolCallMessageIds: new Map(state.toolCallMessageIds),
-      events: state.events.map((event) => ({ ...event })),
       isActive: state.isActive,
     };
   }
@@ -267,7 +258,6 @@ export const useConversationStore = defineStore("conversation", () => {
       state.messages.length > 0
       || state.streamingMessages.size > 0
       || state.agentStates.size > 0
-      || state.events.length > 0
       || state.isActive
     );
   }
@@ -322,7 +312,6 @@ export const useConversationStore = defineStore("conversation", () => {
       agentStates: mergedAgentStates,
       activeAssistantMessageIds: mergedActiveAssistantMessageIds,
       toolCallMessageIds: mergedToolCallMessageIds,
-      events: mergeEvents(draftState.events, existingState.events),
       isActive: existingState.isActive || draftState.isActive,
     };
   }
@@ -352,34 +341,6 @@ export const useConversationStore = defineStore("conversation", () => {
   function addMessage(msg: ChatMessage, conversationId?: string) {
     mutateRuntimeState(conversationId, (state) => {
       state.messages.push(cloneMessage(msg));
-    });
-  }
-
-  function mergeEvents(first: ConversationEvent[], second: ConversationEvent[]): ConversationEvent[] {
-    const byId = new Map<string, ConversationEvent>();
-    for (const event of first) {
-      byId.set(event.id, { ...event });
-    }
-    for (const event of second) {
-      byId.set(event.id, { ...event });
-    }
-    return Array.from(byId.values()).sort((a, b) => {
-      if (a.timestamp !== b.timestamp) {
-        return a.timestamp - b.timestamp;
-      }
-      return a.id.localeCompare(b.id);
-    });
-  }
-
-  function setEvents(conversationId: string | null | undefined, events: ConversationEvent[]) {
-    mutateRuntimeState(conversationId, (state) => {
-      state.events = mergeEvents([], events);
-    });
-  }
-
-  function addEvent(event: ConversationEvent, conversationId?: string | null) {
-    mutateRuntimeState(conversationId, (state) => {
-      state.events = mergeEvents(state.events, [event]);
     });
   }
 
@@ -725,7 +686,6 @@ export const useConversationStore = defineStore("conversation", () => {
       state.streamingMessages = new Map();
       state.activeAssistantMessageIds = new Map();
       state.toolCallMessageIds = new Map();
-      state.events = [];
     });
   }
 
@@ -828,11 +788,6 @@ export const useConversationStore = defineStore("conversation", () => {
     // If runtime already has messages, just switch to it without any API call
     const existingRuntime = runtimeStates.value.get(resolveRuntimeStateId(normalizedConversationId));
     if (existingRuntime && existingRuntime.messages.length > 0 && !existingRuntime.isActive && existingRuntime.streamingMessages.size === 0) {
-      if (existingRuntime.events.length === 0) {
-        conversationsApi.getEvents(normalizedConversationId)
-          .then((eventsRes) => setEvents(normalizedConversationId, Array.isArray(eventsRes.data) ? eventsRes.data : []))
-          .catch(() => {});
-      }
       requestInputFocus();
       return;
     }
@@ -883,9 +838,6 @@ export const useConversationStore = defineStore("conversation", () => {
         state.toolCallMessageIds = new Map();
         state.isActive = false;
       });
-
-      const eventsRes = await conversationsApi.getEvents(normalizedConversationId);
-      setEvents(normalizedConversationId, Array.isArray(eventsRes.data) ? eventsRes.data : []);
 
       // Update IDB cache
       const finalState = runtimeStates.value.get(normalizedConversationId);
@@ -1113,15 +1065,12 @@ export const useConversationStore = defineStore("conversation", () => {
     getMessages,
     getStreamingMessages,
     getAgentStates,
-    getEvents,
     getIsActive,
     loading,
     loadingMessages,
     conversations,
     inputFocusRequestKey,
     addMessage,
-    addEvent,
-    setEvents,
     upsertToolCall,
     startStreamingMessage,
     appendStreamDelta,

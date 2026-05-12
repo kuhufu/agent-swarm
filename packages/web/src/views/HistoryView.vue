@@ -11,7 +11,7 @@ import ModeIcon from "../components/common/ModeIcon.vue";
 import SidebarPanel from "../components/common/SidebarPanel.vue";
 import EmptyState from "../components/common/EmptyState.vue";
 import DetailHeader from "../components/common/DetailHeader.vue";
-import type { ConversationInfo, SwarmConfig, ChatMessage, ConversationEvent } from "../types/index.js";
+import type { ConversationInfo, SwarmConfig, ChatMessage } from "../types/index.js";
 import { confirmDialog, showError } from "../utils/ui-feedback.js";
 import SvgIcon from "../components/common/SvgIcon.vue";
 
@@ -21,10 +21,8 @@ const swarmStore = useSwarmStore();
 const searchQuery = ref("");
 const selectedConvId = ref<string | null>(null);
 const expandedMessages = reactive<Map<string, ChatMessage[]>>(new Map());
-const expandedEvents = reactive<Map<string, ConversationEvent[]>>(new Map());
 const expandedArtifacts = reactive<Map<string, WorkspaceArtifact[]>>(new Map());
 const loadingMessages = ref(false);
-const loadingEvents = ref(false);
 const loadingArtifacts = ref(false);
 
 interface WorkspaceArtifact {
@@ -59,9 +57,6 @@ const selectedConv = computed(() =>
 const selectedMessages = computed(() =>
   selectedConvId.value ? expandedMessages.get(selectedConvId.value) ?? null : null
 );
-const selectedEvents = computed(() =>
-  selectedConvId.value ? expandedEvents.get(selectedConvId.value) ?? null : null
-);
 const selectedFinalArtifacts = computed(() =>
   selectedConvId.value ? expandedArtifacts.get(selectedConvId.value) ?? null : null
 );
@@ -87,17 +82,6 @@ async function selectConv(conv: ConversationInfo) {
       expandedMessages.set(conv.id, []);
     } finally {
       loadingMessages.value = false;
-    }
-  }
-  if (!expandedEvents.has(conv.id)) {
-    loadingEvents.value = true;
-    try {
-      const res = await conversationsApi.getEvents(conv.id);
-      expandedEvents.set(conv.id, res.data);
-    } catch {
-      expandedEvents.set(conv.id, []);
-    } finally {
-      loadingEvents.value = false;
     }
   }
   if (!expandedArtifacts.has(conv.id)) {
@@ -134,7 +118,6 @@ async function deleteConversation(conv: ConversationInfo) {
   try {
     await conversationStore.deleteConversation(conv.id);
     expandedMessages.delete(conv.id);
-    expandedEvents.delete(conv.id);
     expandedArtifacts.delete(conv.id);
     if (selectedConvId.value === conv.id) {
       selectedConvId.value = null;
@@ -215,80 +198,6 @@ function getMessageLabel(message: ChatMessage, conversation: ConversationInfo): 
     return metadataModelLabel ?? message.agentName ?? message.agentId ?? "助手";
   }
   return message.agentName ?? message.agentId ?? metadataModelLabel ?? "助手";
-}
-
-function parseEventData(event: ConversationEvent): Record<string, any> {
-  if (!event.eventData) return {};
-  try {
-    const parsed = JSON.parse(event.eventData) as unknown;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? parsed as Record<string, any>
-      : {};
-  } catch {
-    return {};
-  }
-}
-
-function getEventLabel(event: ConversationEvent): string {
-  const labels: Record<string, string> = {
-    swarm_start: "开始", swarm_end: "结束",
-    agent_start: "Agent 开始", agent_end: "Agent 结束",
-    turn_start: "轮次开始", turn_end: "轮次结束",
-    message_end: "消息完成", tool_execution_end: "工具完成",
-    handoff: "交接", intervention_required: "需要介入", error: "错误",
-  };
-  return labels[event.eventType] ?? event.eventType;
-}
-
-function getEventTone(event: ConversationEvent): string {
-  if (event.eventType === "error") return "danger";
-  if (event.eventType === "intervention_required") return "warning";
-  if (event.eventType === "handoff") return "accent";
-  if (event.eventType.startsWith("tool_")) return "tool";
-  if (event.eventType === "swarm_start" || event.eventType === "swarm_end") return "system";
-  return "default";
-}
-
-function getEventAgent(event: ConversationEvent): string | null {
-  const data = parseEventData(event);
-  const agent = data.agentName ?? data.agentId ?? event.agentId;
-  return typeof agent === "string" && agent.trim() ? agent : null;
-}
-
-function getEventDetail(event: ConversationEvent): string {
-  const data = parseEventData(event);
-  if (event.eventType === "handoff") {
-    const from = typeof data.fromAgentId === "string" ? data.fromAgentId : "unknown";
-    const to = typeof data.toAgentId === "string" ? data.toAgentId : "unknown";
-    const reason = typeof data.reason === "string" && data.reason.trim() ? ` · ${data.reason}` : "";
-    return `${from} -> ${to}${reason}`;
-  }
-  if (event.eventType === "tool_execution_end") {
-    const toolName = typeof data.toolName === "string" ? data.toolName : "unknown tool";
-    return data.isError ? `${toolName} 执行失败` : `${toolName} 执行完成`;
-  }
-  if (event.eventType === "message_end") {
-    const role = typeof data.role === "string" ? data.role : "assistant";
-    return `${role} 消息已写入`;
-  }
-  if (event.eventType === "error") {
-    const error = data.error;
-    if (error && typeof error === "object" && typeof error.message === "string") return error.message;
-    return "运行过程中发生错误";
-  }
-  if (event.eventType === "swarm_end" && typeof data.finalMessage === "string" && data.finalMessage.trim()) {
-    return data.finalMessage;
-  }
-  return "";
-}
-
-function formatEventOffset(event: ConversationEvent, events: ConversationEvent[] | null): string {
-  const first = events?.[0]?.timestamp;
-  if (!first) return formatTimeLong(event.timestamp);
-  const diff = Math.max(0, event.timestamp - first);
-  if (diff < 1000) return "+0.0s";
-  if (diff < 60_000) return `+${(diff / 1000).toFixed(1)}s`;
-  return `+${Math.floor(diff / 60_000)}m ${Math.floor((diff % 60_000) / 1000)}s`;
 }
 
 function formatSize(bytes: number): string {
@@ -393,36 +302,6 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
                 </button>
               </article>
             </div>
-          </div>
-
-          <!-- Trace Events -->
-          <div class="detail-section trace-section">
-            <h4 class="detail-section-title">
-              <SvgIcon name="pulse" :size="16" />
-              执行 Trace
-              <span v-if="selectedEvents" class="msg-count">{{ selectedEvents.length }} 条</span>
-            </h4>
-
-            <div v-if="loadingEvents" class="detail-empty">Trace 加载中...</div>
-            <div v-else-if="selectedEvents && selectedEvents.length" class="trace-list">
-              <div
-                v-for="event in selectedEvents"
-                :key="event.id"
-                class="trace-item"
-                :class="getEventTone(event)"
-              >
-                <div class="trace-dot" />
-                <div class="trace-body">
-                  <div class="trace-row">
-                    <span class="trace-label">{{ getEventLabel(event) }}</span>
-                    <span v-if="getEventAgent(event)" class="trace-agent">{{ getEventAgent(event) }}</span>
-                    <span class="trace-time">{{ formatEventOffset(event, selectedEvents) }}</span>
-                  </div>
-                  <div v-if="getEventDetail(event)" class="trace-detail">{{ getEventDetail(event) }}</div>
-                </div>
-              </div>
-            </div>
-            <div v-else class="detail-empty">暂无 Trace 事件</div>
           </div>
 
           <!-- Messages -->
@@ -552,119 +431,6 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   background: var(--bg-surface);
   cursor: pointer;
   flex: 0 0 auto;
-}
-
-/* Trace */
-.trace-section {
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.trace-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.trace-item {
-  display: grid;
-  grid-template-columns: 12px minmax(0, 1fr);
-  gap: 10px;
-  position: relative;
-}
-
-.trace-item::before {
-  content: "";
-  position: absolute;
-  left: 5px;
-  top: 18px;
-  bottom: -12px;
-  width: 1px;
-  background: var(--border-subtle);
-}
-
-.trace-item:last-child::before {
-  display: none;
-}
-
-.trace-dot {
-  width: 9px;
-  height: 9px;
-  margin-top: 6px;
-  border-radius: 999px;
-  background: var(--text-muted);
-  box-shadow: 0 0 0 3px rgba(156, 163, 175, 0.12);
-}
-
-.trace-item.accent .trace-dot {
-  background: var(--text-muted);
-  box-shadow: 0 0 0 3px rgba(156, 163, 175, 0.12);
-}
-
-.trace-item.tool .trace-dot {
-  background: var(--text-secondary);
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.16);
-}
-
-.trace-item.warning .trace-dot {
-  background: var(--color-warning);
-  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.16);
-}
-
-.trace-item.danger .trace-dot {
-  background: var(--color-danger);
-  box-shadow: 0 0 0 3px var(--bg-danger);
-}
-
-.trace-item.system .trace-dot {
-  background: var(--color-success);
-  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.16);
-}
-
-.trace-body {
-  min-width: 0;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-}
-
-.trace-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.trace-label {
-  font-size: var(--text-base);
-  font-weight: var(--weight-bold);
-  color: var(--text-primary);
-}
-
-.trace-agent {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-
-.trace-time {
-  margin-left: auto;
-  flex-shrink: 0;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.trace-detail {
-  margin-top: 4px;
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  line-height: 1.5;
-  word-break: break-word;
 }
 
 /* Messages */

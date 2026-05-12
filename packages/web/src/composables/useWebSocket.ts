@@ -15,20 +15,6 @@ let lastConversationId: string | null = null;
 
 const toolCallStartTimes = new Map<string, number>();
 
-const TRACE_EVENT_TYPES = new Set([
-  "swarm_start",
-  "swarm_end",
-  "agent_start",
-  "agent_end",
-  "turn_start",
-  "turn_end",
-  "message_end",
-  "tool_execution_end",
-  "handoff",
-  "intervention_required",
-  "error",
-]);
-
 function conversationIdFromPayload(payload: unknown): string | undefined {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return undefined;
@@ -146,24 +132,6 @@ export function useWebSocket() {
     const conversationStore = useConversationStore();
     const interventionStore = useInterventionStore();
     const targetConversationId = resolveTargetConversationId(msg);
-
-    if (targetConversationId && TRACE_EVENT_TYPES.has(msg.type)) {
-      const payload = msg.payload && typeof msg.payload === "object" && !Array.isArray(msg.payload)
-        ? msg.payload as Record<string, unknown>
-        : {};
-      const agentId = typeof payload.agentId === "string"
-        ? payload.agentId
-        : typeof payload.fromAgentId === "string"
-          ? payload.fromAgentId
-          : null;
-      conversationStore.addEvent({
-        id: crypto.randomUUID(),
-        agentId,
-        eventType: msg.type,
-        eventData: JSON.stringify(msg.payload ?? {}),
-        timestamp: Date.now(),
-      }, targetConversationId);
-    }
 
     switch (msg.type) {
       case "connected":

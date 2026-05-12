@@ -9,7 +9,6 @@ import { createWorkspace, listWorkspaces } from "../api/workspaces.js";
 import MessageList from "../components/chat/MessageList.vue";
 import ChatInput from "../components/chat/ChatInput.vue";
 import AgentStatus from "../components/chat/AgentStatus.vue";
-import ConversationTrace from "../components/chat/ConversationTrace.vue";
 import WorkspaceArtifactsPanel from "../components/chat/WorkspaceArtifactsPanel.vue";
 import InterventionPanel from "../components/intervention/InterventionPanel.vue";
 import { showError } from "../utils/ui-feedback.js";
@@ -23,7 +22,7 @@ const route = useRoute();
 const router = useRouter();
 const draftSwarmId = ref<string>("");
 const draftWorkspaceId = ref<string | null>(null);
-const activeSidebarTab = ref<"artifacts" | "agents" | "trace">("artifacts");
+const activeSidebarTab = ref<"artifacts" | "agents">("artifacts");
 const selectedArtifactPath = ref<string | null>(null);
 const workspaces = ref<WorkspaceInfo[]>([]);
 const workspacesLoading = ref(false);
@@ -79,7 +78,6 @@ const currentConversationTitle = computed(() => {
 const active = computed(() => conversationStore.getIsActive(routeConversationId.value));
 const messages = computed(() => conversationStore.getMessages(routeConversationId.value));
 const agentStates = computed(() => Array.from(conversationStore.getAgentStates(routeConversationId.value).values()));
-const traceEvents = computed(() => conversationStore.getEvents(routeConversationId.value));
 const artifactRefreshKey = computed(() => {
   const paths: string[] = [];
   for (const message of messages.value) {
@@ -364,14 +362,6 @@ async function handleForkConversation(messageId?: string) {
         >
           <SvgIcon name="swarm" :size="14" />
         </button>
-        <button
-          type="button"
-          :class="{ active: activeSidebarTab === 'trace' }"
-          title="Trace"
-          @click="activeSidebarTab = 'trace'"
-        >
-          <SvgIcon name="pulse" :size="14" />
-        </button>
       </div>
       <WorkspaceArtifactsPanel
         v-if="activeSidebarTab === 'artifacts'"
@@ -380,7 +370,6 @@ async function handleForkConversation(messageId?: string) {
         :refresh-key="artifactRefreshKey"
       />
       <AgentStatus v-else-if="activeSidebarTab === 'agents'" :agents="agentStates" :swarm-id="swarmId" />
-      <ConversationTrace v-else :events="traceEvents" />
     </aside>
   </div>
 </template>
@@ -647,8 +636,7 @@ async function handleForkConversation(messageId?: string) {
 }
 
 .sidebar-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
   gap: 6px;
   padding: 4px;
   border: 1px solid var(--border-subtle);
@@ -658,6 +646,7 @@ async function handleForkConversation(messageId?: string) {
 }
 
 .sidebar-tabs button {
+  flex: 1;
   height: 30px;
   display: inline-flex;
   align-items: center;

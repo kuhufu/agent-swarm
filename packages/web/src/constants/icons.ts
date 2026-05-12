@@ -177,12 +177,6 @@ export const ICONS: Record<string, IconDef> = {
       { d: "M5 13a1 1 0 100-2 1 1 0 000 2z" },
     ],
   },
-  pulse: {
-    viewBox: "0 0 24 24",
-    paths: [
-      { d: "M22 12h-4l-3 9L9 3l-3 9H2" },
-    ],
-  },
   lock: {
     viewBox: "0 0 24 24",
     paths: [

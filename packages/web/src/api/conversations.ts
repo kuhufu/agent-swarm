@@ -1,5 +1,5 @@
 import { apiClient } from "./client.js";
-import type { ConversationInfo, ChatMessage, ConversationEvent } from "../types/index.js";
+import type { ConversationInfo, ChatMessage } from "../types/index.js";
 
 interface ConversationListResponse {
   data: ConversationInfo[];
@@ -11,10 +11,6 @@ interface ConversationDetailResponse {
 
 interface MessageListResponse {
   data: ChatMessage[];
-}
-
-interface EventListResponse {
-  data: ConversationEvent[];
 }
 
 interface DeleteConversationResponse {
@@ -77,11 +73,6 @@ export function updateConversationWorkspace(conversationId: string, workspaceId:
 
 export function getMessages(conversationId: string, since?: number) {
   return apiClient<MessageListResponse>(`/conversations/${conversationId}/messages`);
-}
-
-export function getEvents(conversationId: string, eventType?: string) {
-  const query = eventType ? `?type=${encodeURIComponent(eventType)}` : "";
-  return apiClient<EventListResponse>(`/conversations/${conversationId}/events${query}`);
 }
 
 export function deleteConversation(conversationId: string) {
