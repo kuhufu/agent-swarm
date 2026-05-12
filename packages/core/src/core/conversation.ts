@@ -1,34 +1,24 @@
-import { Agent } from "@mariozechner/pi-agent-core";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
-import type { BeforeToolCallResult, AfterToolCallResult } from "@mariozechner/pi-agent-core";
-import type { Message, ImageContent } from "@mariozechner/pi-ai";
-import type { SwarmConfig, SwarmEvent, InterventionPoint, LLMBackendConfig, SwarmAgentConfig, EventLogLevel, ThinkingLevel } from "./types.js";
+import type { ImageContent } from "@mariozechner/pi-ai";
+import type { SwarmConfig, SwarmEvent, LLMBackendConfig, EventLogLevel, ThinkingLevel } from "./types.js";
 import type { IStorage } from "../storage/interface.js";
 import type { StoredMessage } from "../storage/interface.js";
 import type { InterventionHandler } from "../intervention/handler.js";
-import { createAgent } from "./agent-factory.js";
+import type { ClientToolExecutionResult } from "../tools/client-bridge.js";
+import type { ToolRuntimeAvailability } from "../tools/runtime.js";
+import { createToolRuntimeOptions } from "../tools/runtime.js";
+import { createWorkspaceManager } from "../tools/workspace/manager.js";
+import { storedToMessage } from "../storage/message-mapper.js";
+import type { ModeExecutor } from "../modes/types.js";
 import { RouterMode } from "../modes/router.js";
 import { SequentialMode } from "../modes/sequential.js";
 import { ParallelMode } from "../modes/parallel.js";
 import { SwarmMode } from "../modes/swarm-mode.js";
 import { DebateMode } from "../modes/debate.js";
-import type { ClientToolExecutionResult } from "../tools/client-bridge.js";
-import type { ToolRuntimeAvailability, ToolRuntimeOptions } from "../tools/runtime.js";
-import { createToolRuntimeOptions, withRuntimeTools } from "../tools/runtime.js";
-import { createWorkspaceManager } from "../tools/workspace/manager.js";
-import { storedToMessage } from "../storage/message-mapper.js";
-import type { ModeExecutor, ModeExecutionContext } from "../modes/types.js";
-import { mapThinkingLevel, resolveModelFromProvider } from "../llm/provider.js";
-
-export type InterventionCallback = (
-  point: InterventionPoint,
-  context: any,
-) => Promise<any>;
-
-interface ActiveAgent {
-  agent: Agent;
-  config: SwarmAgentConfig;
-}
+import { ConversationEventBus } from "./conversation/event-bus.js";
+import { InterventionOrchestrator } from "./conversation/intervention.js";
+import { AgentManager } from "./conversation/agent-manager.js";
+import { buildModeContext } from "./conversation/context-builder.js";
 
 export interface ConversationPromptOptions {
   enabledTools?: string[];
@@ -40,48 +30,26 @@ export interface ConversationPromptOptions {
   images?: ImageContent[];
 }
 
-interface ConversationRuntimeOptions extends ToolRuntimeOptions {
-  thinkingEnabled?: boolean;
-  thinkingLevel?: ThinkingLevel;
-}
+type ToolAvailabilityProvider = (context: {
+  conversationId: string;
+  userId: string;
+  workspaceId?: string;
+}) => ToolRuntimeAvailability | Promise<ToolRuntimeAvailability>;
 
 export class Conversation {
-  private static readonly KEY_EVENT_TYPES = new Set<SwarmEvent["type"]>([
-    "swarm_start",
-    "swarm_end",
-    "agent_start",
-    "agent_end",
-    "turn_start",
-    "turn_end",
-    "message_end",
-    "tool_execution_end",
-    "handoff",
-    "intervention_required",
-    "error",
-  ]);
-
   private id: string;
   private swarmConfig: SwarmConfig;
   private storage: IStorage;
-  private interventionHandler?: InterventionHandler;
-  private interventionCallback?: InterventionCallback;
   private llmConfig: LLMBackendConfig;
-  private readonly eventLogLevel: EventLogLevel;
-  private agents: Map<string, ActiveAgent> = new Map();
-  private restoredMessages: Message[];
-  private runtimeOptions: ConversationRuntimeOptions = {
-    ...createToolRuntimeOptions(),
-    thinkingEnabled: undefined,
-  };
-  private eventListeners: ((event: SwarmEvent) => void)[] = [];
-  private _aborted = false;
   private readonly userId: string;
   private readonly workspaceId?: string;
-  private readonly toolAvailabilityProvider?: (context: {
-    conversationId: string;
-    userId: string;
-    workspaceId?: string;
-  }) => ToolRuntimeAvailability | Promise<ToolRuntimeAvailability>;
+  private readonly toolAvailabilityProvider?: ToolAvailabilityProvider;
+
+  private eventBus: ConversationEventBus;
+  private interventionOrch: InterventionOrchestrator;
+  private agentManager: AgentManager;
+
+  private _aborted = false;
 
   constructor(
     id: string,
@@ -92,11 +60,7 @@ export class Conversation {
     interventionHandler?: InterventionHandler,
     restoredHistory: StoredMessage[] = [],
     eventLogLevel: EventLogLevel = "key",
-    toolAvailabilityProvider?: (context: {
-      conversationId: string;
-      userId: string;
-      workspaceId?: string;
-    }) => ToolRuntimeAvailability | Promise<ToolRuntimeAvailability>,
+    toolAvailabilityProvider?: ToolAvailabilityProvider,
     workspaceId?: string,
   ) {
     this.id = id;
@@ -105,21 +69,31 @@ export class Conversation {
     this.swarmConfig = swarmConfig;
     this.storage = storage;
     this.llmConfig = llmConfig;
-    this.interventionHandler = interventionHandler;
-    this.restoredMessages = restoredHistory.map((msg) => storedToMessage(msg));
-    this.eventLogLevel = eventLogLevel;
     this.toolAvailabilityProvider = toolAvailabilityProvider;
+
+    const runtimeOptions = {
+      ...createToolRuntimeOptions(),
+      thinkingEnabled: undefined as boolean | undefined,
+      thinkingLevel: undefined as ThinkingLevel | undefined,
+    };
+
+    this.eventBus = new ConversationEventBus(id, storage, swarmConfig.agents, eventLogLevel);
+    this.interventionOrch = new InterventionOrchestrator(swarmConfig, this.eventBus);
+    this.interventionOrch.setHandler(interventionHandler);
+    this.agentManager = new AgentManager(
+      swarmConfig,
+      llmConfig,
+      runtimeOptions,
+      restoredHistory.map((msg) => storedToMessage(msg)),
+    );
   }
 
   getId(): string { return this.id; }
 
-  /**
-   * Send a user message and stream SwarmEvents as the collaboration unfolds.
-   */
   async *prompt(message: string, options: ConversationPromptOptions = {}): AsyncGenerator<SwarmEvent> {
     this._aborted = false;
     const toolAvailability = await this.resolveToolAvailability();
-    this.runtimeOptions = {
+    const runtimeOptions = {
       ...createToolRuntimeOptions({
         ...toolAvailability,
         enabledTools: options.enabledTools,
@@ -128,20 +102,9 @@ export class Conversation {
       thinkingEnabled: typeof options.thinkingEnabled === "boolean" ? options.thinkingEnabled : undefined,
       thinkingLevel: options.thinkingLevel,
     };
-    this.syncActiveAgentTools();
+    this.agentManager.updateRuntimeOptions(runtimeOptions);
 
-    // Save user message as ContentPart array
-    const userContentParts: Array<{ type: string; text?: string; data?: string; mimeType?: string }> = [];
-    if (message) userContentParts.push({ type: "text", text: message });
-    if (options.images?.length) {
-      for (const img of options.images) {
-        userContentParts.push({ type: "image", data: img.data, mimeType: img.mimeType });
-      }
-    }
-    const userContentStr = userContentParts.length === 1 && userContentParts[0]?.type === "text"
-      ? userContentParts[0].text ?? ""
-      : JSON.stringify(userContentParts);
-
+    const userContentStr = buildUserContentStr(message, options.images);
     await this.storage.appendMessage(this.id, {
       id: crypto.randomUUID(),
       role: "user",
@@ -149,25 +112,31 @@ export class Conversation {
       timestamp: Date.now(),
     });
 
-    // Use first message as conversation title
-    const history = await this.storage.getMessages(this.id);
-    if (history.length === 1) {
-      const titleText = message || (options.images?.length ? "图片消息" : "消息");
-      const title = titleText.length > 50 ? titleText.slice(0, 50) + "…" : titleText;
-      await this.storage.updateConversationTitle(this.id, title);
-    }
+    await setTitleFromFirstMessage(this.storage, this.id, message, options.images);
 
     const startEvent: SwarmEvent = { type: "swarm_start", swarmId: this.swarmConfig.id, conversationId: this.id };
-    this.emit(startEvent);
+    this.eventBus.emit(startEvent);
     yield startEvent;
 
     try {
       const executor = this.getModeExecutor();
-      const context = this.createModeContext(message, options.images);
+      const context = buildModeContext({
+        swarmConfig: this.swarmConfig,
+        message,
+        images: options.images,
+        conversationId: this.id,
+        storage: this.storage,
+        llmConfig: this.llmConfig,
+        agentManager: this.agentManager,
+        eventBus: this.eventBus,
+        interventionOrch: this.interventionOrch,
+        abortFn: () => this.abort(),
+        isAbortedFn: () => this._aborted,
+      });
       yield* executor.execute(context);
     } catch (err) {
       const errorEvent: SwarmEvent = { type: "error", error: err as Error } as SwarmEvent;
-      this.emit(errorEvent);
+      this.eventBus.emit(errorEvent);
       yield errorEvent;
     }
 
@@ -177,100 +146,28 @@ export class Conversation {
       conversationId: this.id,
       finalMessage: "",
     } as SwarmEvent;
-    this.emit(endEvent);
+    this.eventBus.emit(endEvent);
     yield endEvent;
   }
 
-  /**
-   * Register an event listener for SwarmEvents.
-   */
   onEvent(fn: (event: SwarmEvent) => void): () => void {
-    this.eventListeners.push(fn);
-    return () => {
-      this.eventListeners = this.eventListeners.filter((f) => f !== fn);
-    };
+    return this.eventBus.onEvent(fn);
   }
 
-  /**
-   * Register intervention callback.
-   */
-  onIntervention(callback: InterventionCallback): void {
-    this.interventionCallback = callback;
+  onIntervention(callback: (point: any, context: any) => Promise<any>): void {
+    this.interventionOrch.setCallback(callback);
   }
 
-  /**
-   * Abort the current run.
-   */
   abort(): void {
     this._aborted = true;
     if (this.workspaceId) {
-      void createWorkspaceManager(this.workspaceId).cleanupContainers().catch(() => {
-        // Docker may be unavailable; aborting agents should continue regardless.
-      });
+      void createWorkspaceManager(this.workspaceId).cleanupContainers().catch(() => {});
     }
-    for (const [, active] of this.agents) {
-      active.agent.abort();
-    }
+    this.agentManager.abortAll();
   }
 
-  /**
-   * Get conversation history from storage.
-   */
   async getHistory() {
     return this.storage.getMessages(this.id);
-  }
-
-  // ── Private ──
-
-  private agentNameByAgentId(): Map<string, string> {
-    const map = new Map<string, string>();
-    for (const agent of this.swarmConfig.agents) {
-      map.set(agent.id, agent.name);
-    }
-    return map;
-  }
-
-  private ensureAgentName(event: SwarmEvent): void {
-    if ("agentId" in event && typeof (event as any).agentId === "string" && !(event as any).agentName) {
-      (event as any).agentName = this.agentNameByAgentId().get((event as any).agentId) ?? (event as any).agentId;
-    }
-  }
-
-  private emit(event: SwarmEvent) {
-    this.ensureAgentName(event);
-
-    if (this.shouldPersistEvent(event)) {
-      void this.storage.logEvent(this.id, {
-        id: crypto.randomUUID(),
-        agentId: null,
-        eventType: event.type,
-        eventData: JSON.stringify(this.serializeEvent(event)),
-        timestamp: Date.now(),
-      }).catch(() => { /* ignore log write failures */ });
-    }
-
-    if (event.type === "error") {
-      const strategy = this.getInterventionStrategy("on_error");
-      if (strategy !== "auto") {
-        void this.requestIntervention("on_error", {
-          agentId: event.agentId,
-          error: event.error,
-        }).catch(() => { /* ignore callback failures */ });
-      }
-    }
-
-    if (event.type === "agent_end") {
-      const strategy = this.getInterventionStrategy("after_agent_end");
-      if (strategy !== "auto") {
-        void this.requestIntervention("after_agent_end", {
-          agentId: event.agentId,
-        }).catch(() => { /* ignore callback failures */ });
-      }
-    }
-
-    for (const fn of this.eventListeners) {
-      fn(event);
-    }
   }
 
   private getModeExecutor(): ModeExecutor {
@@ -285,198 +182,40 @@ export class Conversation {
   }
 
   private async resolveToolAvailability(): Promise<ToolRuntimeAvailability> {
-    if (!this.toolAvailabilityProvider) {
-      return {};
-    }
+    if (!this.toolAvailabilityProvider) return {};
     return this.toolAvailabilityProvider({
       conversationId: this.id,
       userId: this.userId,
       workspaceId: this.workspaceId,
     });
   }
+}
 
-  private createModeContext(message: string, images?: ImageContent[]): ModeExecutionContext {
-    return {
-      swarmConfig: this.swarmConfig,
-      message,
-      images,
-      conversationId: this.id,
-      storage: this.storage,
-      interventionHandler: this.interventionHandler,
-      interventionCallback: this.interventionCallback,
-      llmConfig: this.llmConfig,
-      agents: this.agents,
-      createAgentFn: (config: SwarmAgentConfig) => {
-        const enhancedConfig = this.withAutoTools(config);
-        const agent = createAgent({
-          config: enhancedConfig,
-          llmConfig: this.llmConfig,
-          interventionHandler: this.interventionHandler,
-          beforeToolCall: async (toolContext): Promise<BeforeToolCallResult | undefined> => {
-            let point: InterventionPoint = "before_tool_call";
-            let strategy = this.getInterventionStrategy(point, enhancedConfig);
-            if (strategy === "auto") {
-              point = "on_approval_required";
-              strategy = this.getInterventionStrategy(point, enhancedConfig);
-            }
-            if (strategy === "auto") return undefined;
+// ── Standalone helpers ──
 
-            const decision = await this.requestIntervention(point, {
-              agentId: enhancedConfig.id,
-              toolName: toolContext.toolCall.name,
-              arguments: toolContext.args,
-            });
-            if (decision?.action === "abort") {
-              this.abort();
-              return { block: true, reason: decision.reason ?? "Tool call aborted by intervention" };
-            }
-            if (decision?.action === "reject") {
-              return { block: true, reason: decision.reason ?? "Tool call rejected by intervention" };
-            }
-            return undefined;
-          },
-          afterToolCall: async (toolContext): Promise<AfterToolCallResult | undefined> => {
-            const strategy = this.getInterventionStrategy("after_tool_call", enhancedConfig);
-            if (strategy === "auto") return undefined;
-            const decision = await this.requestIntervention("after_tool_call", {
-              agentId: enhancedConfig.id,
-              toolName: toolContext.toolCall.name,
-              arguments: toolContext.args,
-              result: toolContext.result,
-            });
-            if (decision?.action === "abort") {
-              this.abort();
-              return {
-                isError: true,
-                content: [{ type: "text", text: decision.reason ?? "Tool result aborted by intervention" }],
-              };
-            }
-            if (decision?.action === "reject") {
-              return {
-                isError: true,
-                content: [{ type: "text", text: decision.reason ?? "Tool result rejected by intervention" }],
-              };
-            }
-            return undefined;
-          },
-        });
-        if (this.restoredMessages.length > 0 && agent.state.messages.length === 0) {
-          agent.state.messages = [...this.restoredMessages];
-        }
-        this.agents.set(config.id, { agent, config: enhancedConfig });
-      },
-      emit: (event: SwarmEvent) => this.emit(event),
-      abort: () => this.abort(),
-      isAborted: () => this._aborted,
-    };
-  }
-
-  private withAutoTools(config: SwarmAgentConfig): SwarmAgentConfig {
-    const enhancedConfig = withRuntimeTools(config, this.swarmConfig, this.runtimeOptions);
-    return {
-      ...enhancedConfig,
-      thinkingLevel: this.resolveRuntimeThinkingLevel(config),
-    };
-  }
- 
-  private syncActiveAgentTools() {
-    for (const [agentId, active] of this.agents.entries()) {
-      const baseConfig = this.resolveAgentConfig(agentId) ?? active.config;
-      const enhanced = this.withAutoTools(baseConfig);
-      active.config = enhanced;
-      active.agent.state.tools = enhanced.tools ?? [];
-      active.agent.state.thinkingLevel = mapThinkingLevel(enhanced.thinkingLevel);
+function buildUserContentStr(message: string, images?: ImageContent[]): string {
+  const parts: Array<{ type: string; text?: string; data?: string; mimeType?: string }> = [];
+  if (message) parts.push({ type: "text", text: message });
+  if (images?.length) {
+    for (const img of images) {
+      parts.push({ type: "image", data: img.data, mimeType: img.mimeType });
     }
   }
-
-  private resolveAgentConfig(agentId: string): SwarmAgentConfig | undefined {
-    if (this.swarmConfig.orchestrator?.id === agentId) {
-      return this.swarmConfig.orchestrator;
-    }
-    return this.swarmConfig.agents.find((agent) => agent.id === agentId);
+  if (parts.length === 1 && parts[0]?.type === "text") {
+    return parts[0].text ?? "";
   }
+  return JSON.stringify(parts);
+}
 
-  private resolveRuntimeThinkingLevel(config: SwarmAgentConfig): SwarmAgentConfig["thinkingLevel"] {
-    // thinkingEnabled: false always takes highest priority (toggle off)
-    if (this.runtimeOptions.thinkingEnabled === false) {
-      return "off";
-    }
-
-    // Per-message thinkingLevel override
-    if (this.runtimeOptions.thinkingLevel) {
-      return this.runtimeOptions.thinkingLevel;
-    }
-
-    if (this.runtimeOptions.thinkingEnabled === undefined) {
-      return config.thinkingLevel;
-    }
-
-    // Keep explicit per-agent setting when already configured.
-    if (config.thinkingLevel && config.thinkingLevel !== "off") {
-      return config.thinkingLevel;
-    }
-
-    if (!this.modelSupportsThinking(config)) {
-      return "off";
-    }
-
-    if (this.llmConfig.defaultThinkingLevel && this.llmConfig.defaultThinkingLevel !== "off") {
-      return this.llmConfig.defaultThinkingLevel;
-    }
-    return "minimal";
-  }
-
-  private modelSupportsThinking(config: SwarmAgentConfig): boolean {
-    try {
-      const model = resolveModelFromProvider(
-        config.model.provider,
-        config.model.modelId,
-        this.llmConfig,
-        config.model,
-      );
-      return model.reasoning === true;
-    } catch {
-      return false;
-    }
-  }
-
-  private getInterventionStrategy(point: InterventionPoint, config?: SwarmAgentConfig): string {
-    return config?.interventions?.[point]
-      ?? this.swarmConfig.interventions?.[point]
-      ?? "auto";
-  }
-
-  private async requestIntervention(point: InterventionPoint, context: any): Promise<any> {
-    if (this.interventionCallback) {
-      return this.interventionCallback(point, context);
-    }
-    if (this.interventionHandler) {
-      return this.interventionHandler.onIntervention(point, context);
-    }
-    return { action: "approve" };
-  }
-
-  private serializeEvent(event: SwarmEvent): unknown {
-    const serialized = { ...event } as Record<string, unknown>;
-    if ("error" in serialized && serialized.error instanceof Error) {
-      serialized.error = {
-        name: serialized.error.name,
-        message: serialized.error.message,
-      };
-    }
-    if ("respond" in serialized) {
-      delete serialized.respond;
-    }
-    return serialized;
-  }
-
-  private shouldPersistEvent(event: SwarmEvent): boolean {
-    if (this.eventLogLevel === "none") {
-      return false;
-    }
-    if (this.eventLogLevel === "full") {
-      return true;
-    }
-    return Conversation.KEY_EVENT_TYPES.has(event.type);
-  }
+async function setTitleFromFirstMessage(
+  storage: IStorage,
+  conversationId: string,
+  message: string,
+  images?: ImageContent[],
+): Promise<void> {
+  const history = await storage.getMessages(conversationId);
+  if (history.length !== 1) return;
+  const titleText = message || (images?.length ? "图片消息" : "消息");
+  const title = titleText.length > 50 ? titleText.slice(0, 50) + "…" : titleText;
+  await storage.updateConversationTitle(conversationId, title);
 }

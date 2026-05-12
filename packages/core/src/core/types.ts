@@ -113,6 +113,11 @@ export type InterventionPoint =
 
 export type InterventionStrategy = "auto" | "confirm" | "review" | "edit" | "reject";
 
+export type InterventionCallback = (
+  point: InterventionPoint,
+  context: any,
+) => Promise<any>;
+
 // ============================================================================
 // Swarm Config
 // ============================================================================

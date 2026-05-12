@@ -633,9 +633,9 @@ describe("AgentSwarm persistence", () => {
     expect(conversationAfterClear?.contextResetAt).toBe(clearResult.contextResetAt);
 
     const resumedWithoutNewMessages = await swarm.resumeConversation(conversationId, TEST_USER_ID) as unknown as {
-      restoredMessages: Array<{ role: string }>;
+      agentManager: { restoredMessages: Array<{ role: string }> };
     };
-    expect(resumedWithoutNewMessages.restoredMessages).toHaveLength(0);
+    expect(resumedWithoutNewMessages.agentManager.restoredMessages).toHaveLength(0);
 
     const postResetTimestamp = clearResult.contextResetAt + 1;
     await internalStorage.appendMessage(conversationId, {
@@ -647,10 +647,10 @@ describe("AgentSwarm persistence", () => {
     });
 
     const resumedWithNewMessage = await swarm.resumeConversation(conversationId, TEST_USER_ID) as unknown as {
-      restoredMessages: Array<{ role: string }>;
+      agentManager: { restoredMessages: Array<{ role: string }> };
     };
-    expect(resumedWithNewMessage.restoredMessages).toHaveLength(1);
-    expect(resumedWithNewMessage.restoredMessages[0]?.role).toBe("user");
+    expect(resumedWithNewMessage.agentManager.restoredMessages).toHaveLength(1);
+    expect(resumedWithNewMessage.agentManager.restoredMessages[0]?.role).toBe("user");
 
     const historyAfterClear = await swarm.getMessages(conversationId, TEST_USER_ID);
     expect(historyAfterClear).toHaveLength(4);
@@ -669,17 +669,17 @@ describe("AgentSwarm persistence", () => {
     await swarm.init();
 
     const conversation = await swarm.createConversation(TEST_USER_ID, "default_swarm", undefined, undefined);
-    const internalConversation = conversation as unknown as { emit: (event: SwarmEvent) => void };
+    const internalConversation = conversation as unknown as { eventBus: { emit: (event: SwarmEvent) => void } };
     const internalStorage = (swarm as unknown as { storage: {
       getEvents: (conversationId: string, eventType?: string) => Promise<Array<{ eventType: string }>>;
     } }).storage;
 
-    internalConversation.emit({
+    internalConversation.eventBus.emit({
       type: "message_update",
       agentId: "default_swarm_agent_1",
       delta: "streaming",
     });
-    internalConversation.emit({
+    internalConversation.eventBus.emit({
       type: "handoff",
       fromAgentId: "default_swarm_agent_1",
       toAgentId: "default_swarm_agent_2",
@@ -704,12 +704,12 @@ describe("AgentSwarm persistence", () => {
     await swarm.init();
 
     const conversation = await swarm.createConversation(TEST_USER_ID, "default_swarm", undefined, undefined);
-    const internalConversation = conversation as unknown as { emit: (event: SwarmEvent) => void };
+    const internalConversation = conversation as unknown as { eventBus: { emit: (event: SwarmEvent) => void } };
     const internalStorage = (swarm as unknown as { storage: {
       getEvents: (conversationId: string, eventType?: string) => Promise<Array<{ eventType: string }>>;
     } }).storage;
 
-    internalConversation.emit({
+    internalConversation.eventBus.emit({
       type: "error",
       error: new Error("test error"),
     });
