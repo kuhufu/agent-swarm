@@ -2,7 +2,7 @@
 import { ref, computed } from "vue";
 import SwarmsView from "../../views/SwarmsView.vue";
 import AgentsView from "../../views/AgentsView.vue";
-import { useThemeStore } from "../../stores/theme.js";
+import { useThemeStore, accentPresets } from "../../stores/theme.js";
 import SvgIcon from "../common/SvgIcon.vue";
 
 defineProps<{
@@ -20,6 +20,10 @@ const currentThemeLabel = computed(() => {
   const labels: Record<string, string> = { auto: "自动", light: "浅色", dark: "深色" };
   return labels[themeStore.mode] ?? "自动";
 });
+
+const isCurrentPreset = computed(() =>
+  themeStore.accentColor && accentPresets.some((p) => p.accent === themeStore.accentColor),
+);
 </script>
 
 <template>
@@ -80,6 +84,36 @@ const currentThemeLabel = computed(() => {
                 <span class="theme-option-desc">夜间模式</span>
               </button>
             </div>
+
+            <h4 class="accent-section-title">主题色</h4>
+            <div class="accent-swatches">
+              <button
+                v-for="preset in accentPresets"
+                :key="preset.accent"
+                class="accent-swatch"
+                :class="{ active: themeStore.accentColor === preset.accent }"
+                :style="{ background: preset.accent }"
+                :title="preset.name"
+                @click="themeStore.setAccentColor(preset.accent)"
+              />
+              <label
+                class="accent-swatch accent-custom"
+                :class="{ active: themeStore.accentColor && !isCurrentPreset }"
+                :style="themeStore.accentColor && !isCurrentPreset ? { background: themeStore.accentColor } : {}"
+              >
+                <input
+                  type="color"
+                  class="accent-color-input"
+                  :value="themeStore.accentColor ?? '#60a5fa'"
+                  @input="(e) => themeStore.setAccentColor((e.target as HTMLInputElement).value)"
+                />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
+              </label>
+            </div>
+            <button class="accent-reset" type="button" @click="themeStore.resetAccentColor()">
+              <SvgIcon name="refresh" :size="13" />
+              恢复默认
+            </button>
           </div>
         </main>
       </div>
@@ -259,5 +293,84 @@ const currentThemeLabel = computed(() => {
   font-size: var(--text-sm);
   color: var(--text-muted);
   margin-left: auto;
+}
+
+.accent-section-title {
+  margin: 24px 0 12px;
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+}
+
+.accent-swatches {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.accent-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.15s, transform 0.15s;
+  outline: none;
+  flex-shrink: 0;
+}
+
+.accent-swatch:hover {
+  transform: scale(1.15);
+}
+
+.accent-swatch.active {
+  border-color: var(--text-secondary);
+  box-shadow: 0 0 0 2px var(--bg-card);
+}
+
+.accent-custom {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+  overflow: hidden;
+}
+
+.accent-custom svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+
+.accent-color-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.accent-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 6px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.accent-reset:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border-color: var(--border-default);
 }
 </style>

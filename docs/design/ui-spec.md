@@ -49,10 +49,10 @@
 
 | Token | 用途 |
 |-------|------|
-| `--color-accent` | 主按钮背景、brand 图标背景、发送按钮背景、用户头像背景 |
-| `--color-accent-light` | tab active 文字、链接文字、badge/标签文字 |
-| `--color-accent-bg` | 侧边栏对话列表项 hover、tab 按钮 hover、卡片 hover |
-| `--color-accent-glow` | 按钮 hover 阴影、输入框 focus ring |
+| `--color-accent` | `#60a5fa` | `#3b82f6` | 主按钮背景、brand 图标背景、发送按钮背景、用户头像背景 |
+| `--color-accent-light` | `#93c5fd` | `#60a5fa` | tab active 文字、链接文字、badge/标签文字 |
+| `--color-accent-bg` | `rgba(96,165,250,0.08)` | `rgba(59,130,246,0.06)` | 侧边栏对话列表项 hover、tab 按钮 hover、卡片 hover |
+| `--color-accent-glow` | `rgba(96,165,250,0.2)` | `rgba(59,130,246,0.15)` | 按钮 hover 阴影、输入框 focus ring |
 
 ### 语义色（始终使用）
 
@@ -190,20 +190,56 @@ hover/active 背景统一使用 `--bg-hover`，只有以下场景使用 `--bg-ho
 
 ---
 
-## 主题色切换架构（未来实现）
+## 主题色切换架构
 
-采用 **Option A**：CSS 变量动态注入。
+**已实现**。采用 **CSS 变量动态注入**：
 
 ```
-用户选择主题色
+用户选择主题色（预设色块或自定义 hex）
+      ↓
+预设色：JS 设置精确 dark/light 两套派生值（--color-accent-light/bg/glow）
+自定义 hex：CSS color-mix() 自动派生其余变量
       ↓
 写入 localStorage
       ↓
-document.documentElement.style.setProperty('--color-accent', ...)
+所有 var(--color-accent-*) 自动响应
       ↓
-所有 var(--color-accent) 自动响应
-      ↓
-切换时连带更新 --color-accent-light / --color-accent-bg / --color-accent-glow
+主题模式切换时，预设色自动切换对应色值
 ```
 
-如需启用主题色，需先恢复各组件中引用这四个变量的样式（当前默认均使用中性色 token）。主题色设置 UI 放在「个人设置」弹窗的主题 tab 中。
+### 预设色
+
+| 名称 | 主色 | 深色 `-light` | 深色 `-bg` | 深色 `-glow` |
+|------|------|--------------|-----------|------------|
+| 天空蓝 (默认) | `#60a5fa` | `#93c5fd` | `rgba(96,165,250,0.08)` | `rgba(96,165,250,0.2)` |
+| 靛蓝 | `#6366f1` | `#818cf8` | `rgba(99,102,241,0.08)` | `rgba(99,102,241,0.2)` |
+| 翡翠绿 | `#34d399` | `#5eead4` | `rgba(52,211,153,0.08)` | `rgba(52,211,153,0.2)` |
+| 琥珀 | `#f59e0b` | `#fbbf24` | `rgba(245,158,11,0.08)` | `rgba(245,158,11,0.2)` |
+| 玫瑰红 | `#f43f5e` | `#fb7185` | `rgba(244,63,94,0.08)` | `rgba(244,63,94,0.2)` |
+| 紫色 | `#a855f7` | `#c084fc` | `rgba(168,85,247,0.08)` | `rgba(168,85,247,0.2)` |
+
+浅色模式 `-bg` 用 6% opacity，`-glow` 用 15%。
+
+### 自定义色
+
+选择预设色之外的颜色时，`<html>` 添加 `data-accent-custom` 属性，CSS `color-mix()` 自动派生：
+
+```css
+[data-accent-custom] {
+  --color-accent-light: color-mix(in srgb, var(--color-accent), white 25%);
+  --color-accent-bg: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  --color-accent-glow: color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+```
+
+主题色设置 UI 位于「个人设置」弹窗的主题 tab 中。
+
+### 组件引用
+
+当前引用 `--color-accent-*` 的组件：
+- `AppSidebar.vue` — sidebar tab active、brand 图标
+- `StreamingText.vue` — 打字光标
+- `WikiView.vue`、`HistoryView.vue` — 主按钮背景
+- `index.css` — `.badge-accent`、`.remove-btn:hover`、`.text-gradient`、`::selection`
+- `agent-color.ts` — Agent 头像颜色兜底
+- `PersonalSettingsModal.vue` — 主题色选择器 UI

@@ -716,7 +716,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   padding: 0 14px;
   border-radius: 9px;
   border: none;
-  background: var(--color-accent, #5f7038);
+  background: var(--color-accent);
   color: #fff;
   cursor: pointer;
   font-size: var(--text-base);

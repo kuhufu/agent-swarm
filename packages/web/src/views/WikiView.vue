@@ -588,7 +588,7 @@ function sourcePreview(source: SourceDocument): string {
 
 .primary-btn {
   color: var(--text-primary);
-  background: var(--color-accent, #5f7038);
+  background: var(--color-accent);
   border-color: transparent;
   color: #fff;
 }
