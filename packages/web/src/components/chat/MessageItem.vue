@@ -802,7 +802,7 @@ function handleFork() {
 
 /* ── Tool calls ── */
 .msg-tool-calls {
-  margin-top: 8px;
+  margin-bottom: 1px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
