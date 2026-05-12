@@ -54,10 +54,7 @@ interface RenderEntry {
 }
 
 function messageRenderKey(entry: RenderEntry): string {
-  if (entry.streaming && entry.message.role === "assistant") {
-    return `streaming:${entry.message.agentId ?? entry.message.id}`;
-  }
-  return entry.message.id;
+  return entry.message.id.split("+")[0] ?? entry.message.id;
 }
 
 function messageForkId(entry: RenderEntry): string {
