@@ -1389,6 +1389,10 @@ textarea.input-field {
   color: var(--text-muted);
 }
 
+.aggregator-config {
+  padding: 16px;
+}
+
 .agent-empty {
   text-align: center;
   padding: 24px;
