@@ -5,7 +5,6 @@ import { useSwarmStore } from "../stores/swarm.js";
 import { useSettingsStore } from "../stores/settings.js";
 import { useAgentStore } from "../stores/agents.js";
 import { getModeConfig } from "../constants/swarm-modes.js";
-import CreateSwarmDialog from "../components/swarm/CreateSwarmDialog.vue";
 import ModeIcon from "../components/common/ModeIcon.vue";
 import CustomSelect from "../components/common/CustomSelect.vue";
 import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, DebateConfig, PresetAgent, AggregationStrategy } from "../types/index.js";
@@ -14,12 +13,12 @@ import { confirmDialog, showError } from "../utils/ui-feedback.js";
 const swarmStore = useSwarmStore();
 const settingsStore = useSettingsStore();
 const agentStore = useAgentStore();
-const showDialog = ref(false);
+const isCreating = ref(false);
 const selectedSwarmId = ref<string | null>(null);
 const hasUnsavedChanges = ref(false);
 const orchestratorId = ref("");
 
-// Editable form state
+// Shared form state (used for both create and edit)
 const editForm = reactive<{
   name: string;
   mode: CollaborationMode;
@@ -286,16 +285,43 @@ function markDirty() {
 }
 
 function getErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
   return "未知错误";
 }
 
-async function handleCreate(swarm: SwarmConfig) {
+function resetForm() {
+  editForm.name = "";
+  editForm.mode = "router";
+  editForm.agents = [];
+  editForm.debateConfig = undefined;
+  editForm.aggregator = undefined;
+  editForm.maxTotalTurns = undefined;
+  editForm.maxConcurrency = undefined;
+  orchestratorId.value = "";
+}
+
+function buildCreateConfig(): SwarmConfig {
+  const agents = editForm.agents.map((a) => ({
+    ...a,
+    model: a.model.provider && a.model.modelId ? a.model : undefined,
+  }));
+  return {
+    id: crypto.randomUUID(),
+    name: editForm.name,
+    mode: editForm.mode,
+    agents,
+    orchestrator: editForm.mode === "router" ? agents.find((a) => a.id === orchestratorId.value) ?? agents[0] : undefined,
+    debateConfig: editForm.debateConfig,
+    aggregator: editForm.aggregator,
+    maxTotalTurns: editForm.maxTotalTurns || undefined,
+    maxConcurrency: editForm.maxConcurrency || undefined,
+  } as SwarmConfig;
+}
+
+async function handleCreate() {
   try {
-    await swarmStore.createSwarm(swarm);
-    showDialog.value = false;
+    await swarmStore.createSwarm(buildCreateConfig());
+    isCreating.value = false;
+    resetForm();
   } catch (error) {
     alert(`创建失败：${getErrorMessage(error)}`);
   }
@@ -452,9 +478,9 @@ function clearModelSelection() {
           <p>配置多 Agent 协作集群</p>
         </div>
 
-        <button class="btn-primary create-btn" @click="showDialog = true">
+        <button class="btn-primary create-btn" :class="{ active: isCreating }" @click="isCreating = !isCreating; if (!isCreating) resetForm()">
           <SvgIcon name="plus" :size="14" />
-          创建 Swarm
+          {{ isCreating ? '取消创建' : '创建 Swarm' }}
         </button>
 
         <div class="swarm-section">
@@ -483,13 +509,97 @@ function clearModelSelection() {
 
       <!-- Right Content -->
       <main class="swarms-content">
+        <!-- Create Form -->
+        <div v-if="isCreating" class="detail-card detail-panel">
+          <div class="detail-header">
+            <div class="detail-title-row">
+              <span class="detail-mode-icon"><ModeIcon :mode="editForm.mode" :size="22" /></span>
+              <div class="detail-title-input-wrap">
+                <input v-model="editForm.name" class="detail-title-input" placeholder="Swarm 名称" />
+              </div>
+              <span
+                class="badge"
+                :style="{ background: getModeConfig(editForm.mode).color + '20', color: getModeConfig(editForm.mode).color, borderColor: getModeConfig(editForm.mode).color + '30' }"
+              >{{ getModeConfig(editForm.mode).label }}</span>
+            </div>
+            <div class="detail-actions">
+              <button class="btn-secondary" @click="isCreating = false; resetForm()">取消</button>
+              <button class="btn-primary" :disabled="!editForm.name || !editForm.agents.length" @click="handleCreate">
+                <SvgIcon name="plus" :size="14" />创建
+              </button>
+            </div>
+          </div>
+          <div class="detail-section">
+            <h4 class="detail-section-title">协作模式</h4>
+            <div class="mode-grid">
+              <div v-for="m in modes" :key="m.value" class="mode-option" :class="{ active: editForm.mode === m.value }" @click="editForm.mode = m.value">
+                <span class="mode-icon"><ModeIcon :mode="m.value" /></span>
+                <div class="mode-info">
+                  <span class="mode-name">{{ m.label }}</span>
+                  <span class="mode-desc">{{ m.desc }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-if="editForm.mode === 'router'" class="detail-section">
+            <h4 class="detail-section-title">路由配置</h4>
+            <div class="router-config card">
+              <div class="form-row">
+                <label>Orchestrator</label>
+                <CustomSelect :model-value="orchestratorId" :options="routerOrchestratorOptions" placeholder="选择路由 Agent" @update:model-value="orchestratorId = $event" />
+              </div>
+              <p class="router-config-hint">Router 模式会由该 Agent 先接收请求并决定路由目标。</p>
+            </div>
+          </div>
+          <div v-if="editForm.mode === 'parallel'" class="detail-section">
+            <h4 class="detail-section-title">聚合配置</h4>
+            <div class="aggregator-config card">
+              <div class="form-row">
+                <label>聚合策略</label>
+                <CustomSelect :model-value="(editForm.aggregator as any)?.type ?? 'none'" :options="[{ value: 'none', label: '无聚合' },{ value: 'merge', label: '合并结果' },{ value: 'vote', label: '投票' },{ value: 'best', label: '最佳选择' }]" @update:model-value="setAggregatorType($event as AggregationStrategy['type'])" />
+              </div>
+              <div v-if="(editForm.aggregator as any)?.type === 'vote'" class="form-row">
+                <label>法定人数</label>
+                <input type="number" :value="(editForm.aggregator as any)?.quorum ?? 1" class="input-field" min="1" :max="editForm.agents.length" @input="editForm.aggregator = { type: 'vote', quorum: Number(($event.target as HTMLInputElement).value) }" style="width:100px" />
+              </div>
+              <div v-if="(editForm.aggregator as any)?.type === 'best'" class="form-row">
+                <label>裁判 Agent</label>
+                <CustomSelect :model-value="(editForm.aggregator as any)?.judgeAgent ?? ''" :options="[{ value: '', label: '选择裁判 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]" @update:model-value="editForm.aggregator = { type: 'best', judgeAgent: $event }" />
+              </div>
+            </div>
+          </div>
+          <div class="detail-section">
+            <div class="section-header">
+              <h4 class="detail-section-title" style="margin: 0;">Agent 列表 ({{ editForm.agents.length }})</h4>
+              <button class="btn-secondary compact-btn" @click="startAddAgent">
+                <SvgIcon name="plus" :size="14" />添加 Agent
+              </button>
+            </div>
+            <div v-if="editForm.agents.length" class="agent-list">
+              <div v-for="(agent, i) in editForm.agents" :key="agent.id" class="agent-edit-card" :class="{ dragging: draggingAgentIndex === i, 'drag-over': dragOverAgentIndex === i && draggingAgentIndex !== i }" draggable="true" @dragstart="handleAgentDragStart(i, $event)" @dragover="handleAgentDragOver(i, $event)" @drop="handleAgentDrop(i, $event)" @dragend="handleAgentDragEnd">
+                <div class="agent-info">
+                  <div class="agent-avatar">{{ agent.name.charAt(0).toUpperCase() }}</div>
+                  <div>
+                    <span class="agent-name">{{ agent.name }}</span>
+                    <span class="agent-desc">{{ agent.description || agent.id }}</span>
+                    <span v-if="agent.model.provider || agent.model.modelId" class="agent-model">{{ agent.model.provider }} / {{ agent.model.modelId }}</span>
+                  </div>
+                </div>
+                <div class="agent-card-actions">
+                  <button class="action-btn" @click.stop="startEditAgent(i)" title="编辑"><SvgIcon name="edit" :size="13" /></button>
+                  <button class="action-btn danger" @click.stop="removeAgent(i)" title="删除"><SvgIcon name="close" :size="13" /></button>
+                </div>
+              </div>
+            </div>
+            <div v-else class="agent-empty"><p>还没有 Agent，点击上方按钮添加</p></div>
+          </div>
+        </div>
+
         <!-- No selection -->
-        <div v-if="!selectedSwarm" class="detail-card empty-state">
+        <div v-else-if="!selectedSwarm" class="detail-card empty-state">
           <div class="empty-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
+              <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
             </svg>
           </div>
           <p class="empty-title">选择或创建一个 Swarm</p>
@@ -497,33 +607,21 @@ function clearModelSelection() {
         </div>
 
         <!-- Editable Detail -->
-        <div v-else class="detail-card detail-panel">
+        <div v-else-if="selectedSwarm" class="detail-card detail-panel">
           <div class="detail-header">
             <div class="detail-title-row">
               <span class="detail-mode-icon"><ModeIcon :mode="editForm.mode" :size="22" /></span>
               <div class="detail-title-input-wrap">
-                <input
-                  v-model="editForm.name"
-                  class="detail-title-input"
-                  placeholder="Swarm 名称"
-                  @input="markDirty"
-                />
+                <input v-model="editForm.name" class="detail-title-input" placeholder="Swarm 名称" @input="markDirty" />
               </div>
-              <span
-                class="badge"
-                :style="{ background: getModeConfig(editForm.mode).color + '20', color: getModeConfig(editForm.mode).color, borderColor: getModeConfig(editForm.mode).color + '30' }"
-              >
-                {{ getModeConfig(editForm.mode).label }}
-              </span>
+              <span class="badge" :style="{ background: getModeConfig(editForm.mode).color + '20', color: getModeConfig(editForm.mode).color, borderColor: getModeConfig(editForm.mode).color + '30' }">{{ getModeConfig(editForm.mode).label }}</span>
             </div>
             <div class="detail-actions">
               <button class="btn-primary" :disabled="!hasUnsavedChanges || !editForm.name || !editForm.agents.length" @click="handleSave">
-                <SvgIcon name="save" :size="14" />
-                保存
+                <SvgIcon name="save" :size="14" />保存
               </button>
               <button class="btn-danger" @click="handleDelete(selectedSwarm)">
-                <SvgIcon name="trash" :size="14" />
-                删除
+                <SvgIcon name="trash" :size="14" />删除
               </button>
             </div>
           </div>
@@ -531,20 +629,11 @@ function clearModelSelection() {
           <!-- Mode Selection -->
           <div class="detail-section">
             <h4 class="detail-section-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
               协作模式
             </h4>
             <div class="mode-grid">
-              <div
-                v-for="m in modes"
-                :key="m.value"
-                class="mode-option"
-                :class="{ active: editForm.mode === m.value }"
-                @click="editForm.mode = m.value; markDirty()"
-              >
+              <div v-for="m in modes" :key="m.value" class="mode-option" :class="{ active: editForm.mode === m.value }" @click="editForm.mode = m.value; markDirty()">
                 <span class="mode-icon"><ModeIcon :mode="m.value" /></span>
                 <div class="mode-info">
                   <span class="mode-name">{{ m.label }}</span>
@@ -554,250 +643,138 @@ function clearModelSelection() {
             </div>
           </div>
 
-          <!-- Router Config -->
           <div v-if="editForm.mode === 'router'" class="detail-section">
-            <h4 class="detail-section-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M16 8l-8 8" />
-                <path d="M8 8h8v8" />
-              </svg>
-              路由配置
-            </h4>
+            <h4 class="detail-section-title">路由配置</h4>
             <div class="router-config card">
               <div class="form-row">
                 <label>Orchestrator</label>
-                <CustomSelect
-                  :model-value="orchestratorId"
-                  :options="routerOrchestratorOptions"
-                  placeholder="选择路由 Agent"
-                  @update:model-value="orchestratorId = $event; markDirty()"
-                />
+                <CustomSelect :model-value="orchestratorId" :options="routerOrchestratorOptions" placeholder="选择路由 Agent" @update:model-value="orchestratorId = $event; markDirty()" />
               </div>
               <p class="router-config-hint">Router 模式会由该 Agent 先接收请求并决定路由目标。</p>
             </div>
           </div>
 
-          <!-- Debate Config -->
           <div v-if="editForm.mode === 'debate'" class="detail-section">
-            <h4 class="detail-section-title">
-              <SvgIcon name="swarm" :size="16" />
-              辩论配置
-            </h4>
+            <h4 class="detail-section-title">辩论配置</h4>
             <div class="debate-config card">
               <div class="form-row">
                 <label>辩论轮数</label>
-                <input
-                  type="number"
-                  :value="editForm.debateConfig?.rounds ?? 3"
-                  class="input-field"
-                  min="1"
-                  max="20"
-                  style="width: 100px;"
-                  @input="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, rounds: Number(($event.target as HTMLInputElement).value) || 3 }; markDirty()"
-                />
+                <input type="number" :value="editForm.debateConfig?.rounds ?? 3" class="input-field" min="1" max="20" style="width:100px" @input="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, rounds: Number(($event.target as HTMLInputElement).value) || 3 }; markDirty()" />
               </div>
               <div class="form-row">
                 <label>正方 Agent</label>
-                <CustomSelect
-                  :model-value="editForm.debateConfig?.proAgent ?? ''"
-                  :options="[{ value: '', label: '选择 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]"
-                  @update:model-value="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, proAgent: $event }; markDirty()"
-                />
+                <CustomSelect :model-value="editForm.debateConfig?.proAgent ?? ''" :options="[{ value: '', label: '选择 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]" @update:model-value="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, proAgent: $event }; markDirty()" />
               </div>
               <div class="form-row">
                 <label>反方 Agent</label>
-                <CustomSelect
-                  :model-value="editForm.debateConfig?.conAgent ?? ''"
-                  :options="[{ value: '', label: '选择 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]"
-                  @update:model-value="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, conAgent: $event }; markDirty()"
-                />
+                <CustomSelect :model-value="editForm.debateConfig?.conAgent ?? ''" :options="[{ value: '', label: '选择 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]" @update:model-value="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, conAgent: $event }; markDirty()" />
               </div>
               <div class="form-row">
                 <label>裁判 Agent</label>
-                <CustomSelect
-                  :model-value="editForm.debateConfig?.judgeAgent ?? ''"
-                  :options="[{ value: '', label: '选择 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]"
-                  @update:model-value="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, judgeAgent: $event }; markDirty()"
-                />
+                <CustomSelect :model-value="editForm.debateConfig?.judgeAgent ?? ''" :options="[{ value: '', label: '选择 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]" @update:model-value="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, judgeAgent: $event }; markDirty()" />
               </div>
             </div>
           </div>
 
-          <!-- Parallel Aggregator Config -->
           <div v-if="editForm.mode === 'parallel'" class="detail-section">
-            <h4 class="detail-section-title">
-              <SvgIcon name="jsExecute" :size="16" />
-              聚合策略
-            </h4>
+            <h4 class="detail-section-title">聚合策略</h4>
             <div class="aggregator-config card">
               <div class="form-row">
                 <label>策略类型</label>
-                <CustomSelect
-                  :model-value="editForm.aggregator?.type ?? 'none'"
-                  :options="[
-                    { value: 'none', label: '无聚合' },
-                    { value: 'merge', label: '合并结果' },
-                    { value: 'vote', label: '投票' },
-                    { value: 'best', label: '最佳选择' },
-                  ]"
-                  @update:model-value="setAggregatorType($event as AggregationStrategy['type'])"
-                />
+                <CustomSelect :model-value="editForm.aggregator?.type ?? 'none'" :options="[{ value: 'none', label: '无聚合' },{ value: 'merge', label: '合并结果' },{ value: 'vote', label: '投票' },{ value: 'best', label: '最佳选择' }]" @update:model-value="setAggregatorType($event as AggregationStrategy['type'])" />
               </div>
               <div v-if="editForm.aggregator?.type === 'vote'" class="form-row">
                 <label>法定人数</label>
-                <input
-                  type="number"
-                  :value="editForm.aggregator.quorum"
-                  class="input-field"
-                  min="1"
-                  :max="editForm.agents.length"
-                  style="width: 100px;"
-                  @input="editForm.aggregator = { type: 'vote', quorum: Math.min(Math.max(Number(($event.target as HTMLInputElement).value) || 1, 1), editForm.agents.length || 1) }; markDirty()"
-                />
+                <input type="number" :value="editForm.aggregator.quorum" class="input-field" min="1" :max="editForm.agents.length" style="width:100px" @input="editForm.aggregator = { type: 'vote', quorum: Math.min(Math.max(Number(($event.target as HTMLInputElement).value) || 1, 1), editForm.agents.length || 1) }; markDirty()" />
               </div>
               <div v-if="editForm.aggregator?.type === 'best'" class="form-row">
                 <label>裁判 Agent</label>
-                <CustomSelect
-                  :model-value="editForm.aggregator.judgeAgent"
-                  :options="[{ value: '', label: '选择裁判 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]"
-                  @update:model-value="editForm.aggregator = { type: 'best', judgeAgent: $event }; markDirty()"
-                />
+                <CustomSelect :model-value="editForm.aggregator.judgeAgent" :options="[{ value: '', label: '选择裁判 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]" @update:model-value="editForm.aggregator = { type: 'best', judgeAgent: $event }; markDirty()" />
               </div>
             </div>
           </div>
 
-          <!-- Agents Section -->
           <div class="detail-section">
             <div class="section-header">
-              <h4 class="detail-section-title" style="margin-bottom: 0;">
-                <SvgIcon name="user" :size="16" />
-                Agent 列表 ({{ editForm.agents.length }})
-              </h4>
-              <button class="btn-secondary compact-btn" @click="startAddAgent">
-                <SvgIcon name="plus" :size="14" />
-                添加 Agent
-              </button>
+              <h4 class="detail-section-title" style="margin:0"><SvgIcon name="user" :size="16" /> Agent 列表 ({{ editForm.agents.length }})</h4>
+              <button class="btn-secondary compact-btn" @click="startAddAgent"><SvgIcon name="plus" :size="14" />添加 Agent</button>
             </div>
-
-            <!-- Agent Form Dialog -->
-            <Teleport to="body">
-              <div v-if="showAgentForm" class="dialog-overlay" @click.self="resetAgentForm">
-                <div class="agent-dialog">
-                  <div class="dialog-header">
-                    <h3>{{ editingAgentIndex !== null ? '编辑 Agent' : '添加 Agent' }}</h3>
-                    <button class="close-btn" @click="resetAgentForm">
-                      <SvgIcon name="close" />
-                    </button>
-                  </div>
-                  <div class="dialog-body">
-                    <div v-if="agentStore.sortedPresets.length > 0" class="form-row">
-                      <label>预设模板</label>
-                      <CustomSelect
-                        :model-value="selectedPresetId"
-                        :options="presetAgentOptions"
-                        placeholder="选择已有 Agent 模板"
-                        @update:model-value="handlePresetSelection"
-                      />
-                    </div>
-                    <div class="form-row">
-                      <label>ID</label>
-                      <input v-model="agentForm.id" class="input-field" placeholder="agent-1" :disabled="editingAgentIndex !== null" />
-                    </div>
-                    <div class="form-row">
-                      <label>名称</label>
-                      <input v-model="agentForm.name" class="input-field" placeholder="Agent 1" />
-                    </div>
-                    <div class="form-row">
-                      <label>描述</label>
-                      <input v-model="agentForm.description" class="input-field" placeholder="负责..." />
-                    </div>
-                    <div class="form-row">
-                      <label>System Prompt</label>
-                      <textarea v-model="agentForm.systemPrompt" class="input-field" placeholder="你是一个..." rows="3" />
-                    </div>
-                    <div v-if="savedModels.length > 0" class="model-selection">
-                      <label class="form-label" style="margin-bottom: 8px;">选择模型</label>
-                      <div class="model-chips">
-                        <button v-for="sm in savedModels" :key="sm.id" class="model-chip" :class="{ active: agentForm.model.provider === sm.provider && agentForm.model.modelId === sm.modelId }" @click="selectModelForAgent(sm)">{{ sm.name }}</button>
-                        <button class="model-chip" :class="{ active: showCustomModel }" @click="clearModelSelection">
-                          <SvgIcon name="edit" :size="12" />
-                          自定义
-                        </button>
-                      </div>
-                    </div>
-                    <div v-if="showCustomModel || savedModels.length === 0" class="custom-model-fields">
-                      <div class="form-row">
-                        <label>Provider</label>
-                        <input v-model="agentForm.model.provider" class="input-field" placeholder="anthropic" />
-                      </div>
-                      <div class="form-row">
-                        <label>模型</label>
-                        <input v-model="agentForm.model.modelId" class="input-field" placeholder="claude-sonnet-4-20250514" />
-                      </div>
-                    </div>
-                  </div>
-                  <div class="dialog-footer">
-                    <button class="btn-secondary" @click="resetAgentForm">取消</button>
-                    <button class="btn-primary" :disabled="!agentForm.id || !agentForm.name" @click="submitAgent">
-                      {{ editingAgentIndex !== null ? '保存修改' : '确认添加' }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </Teleport>
-
-            <!-- Agent List -->
             <div v-if="editForm.agents.length" class="agent-list">
-              <div
-                v-for="(agent, i) in editForm.agents"
-                :key="agent.id"
-                class="agent-edit-card"
-                :class="{
-                  dragging: draggingAgentIndex === i,
-                  'drag-over': dragOverAgentIndex === i && draggingAgentIndex !== i,
-                }"
-                draggable="true"
-                @click="handleAgentCardClick(i)"
-                @dragstart="handleAgentDragStart(i, $event)"
-                @dragover="handleAgentDragOver(i, $event)"
-                @drop="handleAgentDrop(i, $event)"
-                @dragend="handleAgentDragEnd"
-              >
+              <div v-for="(agent, i) in editForm.agents" :key="agent.id" class="agent-edit-card" :class="{ dragging: draggingAgentIndex === i, 'drag-over': dragOverAgentIndex === i && draggingAgentIndex !== i }" draggable="true" @click="handleAgentCardClick(i)" @dragstart="handleAgentDragStart(i, $event)" @dragover="handleAgentDragOver(i, $event)" @drop="handleAgentDrop(i, $event)" @dragend="handleAgentDragEnd">
                 <div class="agent-info">
                   <div class="agent-avatar">{{ agent.name.charAt(0).toUpperCase() }}</div>
                   <div>
                     <span class="agent-name">{{ agent.name }}</span>
                     <span class="agent-desc">{{ agent.description || agent.id }}</span>
-                    <span v-if="agent.model.provider || agent.model.modelId" class="agent-model">
-                      {{ agent.model.provider }} / {{ agent.model.modelId }}
-                    </span>
+                    <span v-if="agent.model.provider || agent.model.modelId" class="agent-model">{{ agent.model.provider }} / {{ agent.model.modelId }}</span>
                   </div>
                 </div>
                 <div class="agent-card-actions">
-                  <button class="action-btn" @click.stop="startEditAgent(i)" title="编辑">
-                    <SvgIcon name="edit" :size="14" />
-                  </button>
-                  <button class="action-btn danger" @click.stop="removeAgent(i)" title="删除">
-                    <SvgIcon name="close" :size="14" />
-                  </button>
+                  <button class="action-btn" @click.stop="startEditAgent(i)" title="编辑"><SvgIcon name="edit" :size="14" /></button>
+                  <button class="action-btn danger" @click.stop="removeAgent(i)" title="删除"><SvgIcon name="close" :size="14" /></button>
                 </div>
               </div>
             </div>
-
-            <div v-else class="agent-empty">
-              <p>还没有 Agent，点击上方按钮添加</p>
-            </div>
+            <div v-else class="agent-empty"><p>还没有 Agent，点击上方按钮添加</p></div>
           </div>
         </div>
       </main>
-    </div>
 
-    <CreateSwarmDialog
-      v-if="showDialog"
-      @create="handleCreate"
-      @close="showDialog = false"
-    />
+      <!-- Agent Form Dialog (teleported to body) -->
+      <Teleport to="body">
+        <div v-if="showAgentForm" class="dialog-overlay" @click.self="resetAgentForm">
+          <div class="agent-dialog">
+            <div class="dialog-header">
+              <h3>{{ editingAgentIndex !== null ? '编辑 Agent' : '添加 Agent' }}</h3>
+              <button class="close-btn" @click="resetAgentForm"><SvgIcon name="close" /></button>
+            </div>
+            <div class="dialog-body">
+              <div v-if="agentStore.sortedPresets.length > 0" class="form-row">
+                <label>预设模板</label>
+                <CustomSelect :model-value="selectedPresetId" :options="presetAgentOptions" placeholder="选择已有 Agent 模板" @update:model-value="handlePresetSelection" />
+              </div>
+              <div class="form-row">
+                <label>ID</label>
+                <input v-model="agentForm.id" class="input-field" placeholder="agent-1" :disabled="editingAgentIndex !== null" />
+              </div>
+              <div class="form-row">
+                <label>名称</label>
+                <input v-model="agentForm.name" class="input-field" placeholder="Agent 1" />
+              </div>
+              <div class="form-row">
+                <label>描述</label>
+                <input v-model="agentForm.description" class="input-field" placeholder="负责..." />
+              </div>
+              <div class="form-row">
+                <label>System Prompt</label>
+                <textarea v-model="agentForm.systemPrompt" class="input-field" placeholder="你是一个..." rows="3" />
+              </div>
+              <div v-if="savedModels.length > 0" class="model-selection">
+                <label class="form-label" style="margin-bottom:8px">选择模型</label>
+                <div class="model-chips">
+                  <button v-for="sm in savedModels" :key="sm.id" class="model-chip" :class="{ active: agentForm.model.provider === sm.provider && agentForm.model.modelId === sm.modelId }" @click="selectModelForAgent(sm)">{{ sm.name }}</button>
+                  <button class="model-chip" :class="{ active: showCustomModel }" @click="clearModelSelection"><SvgIcon name="edit" :size="12" />自定义</button>
+                </div>
+              </div>
+              <div v-if="showCustomModel || savedModels.length === 0" class="custom-model-fields">
+                <div class="form-row">
+                  <label>Provider</label>
+                  <input v-model="agentForm.model.provider" class="input-field" placeholder="anthropic" />
+                </div>
+                <div class="form-row">
+                  <label>模型</label>
+                  <input v-model="agentForm.model.modelId" class="input-field" placeholder="claude-sonnet-4-20250514" />
+                </div>
+              </div>
+            </div>
+            <div class="dialog-footer">
+              <button class="btn-secondary" @click="resetAgentForm">取消</button>
+              <button class="btn-primary" :disabled="!agentForm.id || !agentForm.name" @click="submitAgent">{{ editingAgentIndex !== null ? '保存修改' : '确认添加' }}</button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+    </div>
   </div>
 </template>
 
@@ -1147,7 +1124,7 @@ function clearModelSelection() {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 9999;
   padding: 24px;
 }
 

@@ -460,18 +460,82 @@ onMounted(() => {
   position: fixed;
   inset: 0;
   background: var(--bg-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
 }
 
-.dialog-scroll-lock {
+.dialog {
+  width: 600px;
+  max-width: calc(100vw - 48px);
+  max-height: 85vh;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px 24px 0;
+  flex-shrink: 0;
+}
+
+.dialog-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+}
+
+.dialog-subtitle {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.close-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.close-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.dialog-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+
+
+.sub-dialog-overlay {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 200;
   background: var(--bg-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10;
-  border-radius: 20px;
 }
 
 .sub-dialog {
@@ -511,6 +575,57 @@ onMounted(() => {
   gap: 10px;
   padding: 14px 20px 20px;
   border-top: 1px solid var(--border-subtle);
+}
+
+.form-section {
+  margin-bottom: 20px;
+}
+
+.form-section:last-child {
+  margin-bottom: 0;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.section-header .form-label {
+  margin-bottom: 0;
+}
+
+.mode-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mode-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  font-family: inherit;
+  color: var(--text-secondary);
+}
+
+.mode-option:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+}
+
+.mode-option.active {
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .form-row {
