@@ -7,7 +7,7 @@ import { useAgentStore } from "../stores/agents.js";
 import { getModeConfig } from "../constants/swarm-modes.js";
 import ModeIcon from "../components/common/ModeIcon.vue";
 import CustomSelect from "../components/common/CustomSelect.vue";
-import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, DebateConfig, PresetAgent, AggregationStrategy } from "../types/index.js";
+import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, DebateConfig, PresetAgent, AggregationStrategy, SwarmContextConfig } from "../types/index.js";
 import { confirmDialog, showError } from "../utils/ui-feedback.js";
 
 const swarmStore = useSwarmStore();
@@ -27,6 +27,7 @@ const editForm = reactive<{
   aggregator: AggregationStrategy | undefined;
   maxTotalTurns: number | undefined;
   maxConcurrency: number | undefined;
+  swarmContext: SwarmContextConfig | undefined;
 }>({
   name: "",
   mode: "router",
@@ -35,6 +36,7 @@ const editForm = reactive<{
   aggregator: undefined,
   maxTotalTurns: undefined,
   maxConcurrency: undefined,
+  swarmContext: undefined,
 });
 
 // Agent form state
@@ -296,6 +298,7 @@ function resetForm() {
   editForm.aggregator = undefined;
   editForm.maxTotalTurns = undefined;
   editForm.maxConcurrency = undefined;
+  editForm.swarmContext = undefined;
   orchestratorId.value = "";
 }
 
@@ -314,6 +317,7 @@ function buildCreateConfig(): SwarmConfig {
     aggregator: editForm.aggregator,
     maxTotalTurns: editForm.maxTotalTurns || undefined,
     maxConcurrency: editForm.maxConcurrency || undefined,
+    swarmContext: editForm.swarmContext,
   } as SwarmConfig;
 }
 
@@ -380,7 +384,7 @@ async function handleSave() {
     aggregator: editForm.mode === "parallel" ? editForm.aggregator : undefined,
     maxTotalTurns: editForm.maxTotalTurns,
     maxConcurrency: editForm.maxConcurrency,
-    swarmContext: selectedSwarm.value?.swarmContext,
+    swarmContext: editForm.mode === "swarm" ? editForm.swarmContext : undefined,
   };
   if (orchestrator) {
     updated.orchestrator = { ...orchestrator, model: { ...orchestrator.model } };
@@ -589,6 +593,41 @@ function clearModelSelection() {
               </div>
             </div>
           </div>
+          <div v-if="editForm.mode === 'swarm'" class="detail-section">
+            <h4 class="detail-section-title">蜂群配置</h4>
+            <div class="swarm-config card">
+              <div class="form-row">
+                <label>最大总轮数</label>
+                <input type="number" v-model.number="editForm.maxTotalTurns" class="input-field" min="1" placeholder="10" style="width:100px" />
+              </div>
+              <div class="form-row">
+                <label>最大并发数</label>
+                <input type="number" v-model.number="editForm.maxConcurrency" class="input-field" min="1" placeholder="5" style="width:100px" />
+              </div>
+              <div class="form-row">
+                <label>上下文传递</label>
+                <div style="display:flex;gap:8px">
+                  <button type="button" class="mode-option" :class="{ active: !editForm.swarmContext || editForm.swarmContext.mode === 'summary' }" @click="editForm.swarmContext = { ...editForm.swarmContext ?? {} as any, mode: 'summary' }" style="flex:1;padding:8px 12px;font-size:var(--text-sm);font-family:inherit">摘要模式</button>
+                  <button type="button" class="mode-option" :class="{ active: editForm.swarmContext?.mode === 'handoff_only' }" @click="editForm.swarmContext = { ...editForm.swarmContext ?? {} as any, mode: 'handoff_only' }" style="flex:1;padding:8px 12px;font-size:var(--text-sm);font-family:inherit">仅交接</button>
+                </div>
+                <p style="margin:4px 0 0;font-size:var(--text-xs);color:var(--text-muted)">摘要模式汇总所有 Agent 输出传递给下一个 Agent；仅交接模式只传递 handoff 信息。</p>
+              </div>
+              <template v-if="!editForm.swarmContext || editForm.swarmContext.mode === 'summary'">
+                <div class="form-row">
+                  <label>最大摘要数</label>
+                  <input type="number" :value="editForm.swarmContext?.maxAgentSummaries ?? 6" class="input-field" min="1" placeholder="6" style="width:100px" @input="editForm.swarmContext = { ...editForm.swarmContext ?? { mode: 'summary' }, maxAgentSummaries: Number(($event.target as HTMLInputElement).value) || 6 }" />
+                </div>
+                <div class="form-row">
+                  <label>单条摘要上限 (字符)</label>
+                  <input type="number" :value="editForm.swarmContext?.maxSummaryChars ?? 1000" class="input-field" min="1" placeholder="1000" style="width:100px" @input="editForm.swarmContext = { ...editForm.swarmContext ?? { mode: 'summary' }, maxSummaryChars: Number(($event.target as HTMLInputElement).value) || 1000 }" />
+                </div>
+                <div class="form-row">
+                  <label>总上下文上限 (字符)</label>
+                  <input type="number" :value="editForm.swarmContext?.maxTotalChars ?? 4000" class="input-field" min="1" placeholder="4000" style="width:100px" @input="editForm.swarmContext = { ...editForm.swarmContext ?? { mode: 'summary' }, maxTotalChars: Number(($event.target as HTMLInputElement).value) || 4000 }" />
+                </div>
+              </template>
+            </div>
+          </div>
           <div class="detail-section">
             <div class="section-header">
               <h4 class="detail-section-title" style="margin: 0;">Agent 列表 ({{ editForm.agents.length }})</h4>
@@ -714,7 +753,41 @@ function clearModelSelection() {
               </div>
             </div>
           </div>
-
+          <div v-if="editForm.mode === 'swarm'" class="detail-section">
+            <h4 class="detail-section-title">蜂群配置</h4>
+            <div class="swarm-config card">
+              <div class="form-row">
+                <label>最大总轮数</label>
+                <input type="number" v-model.number="editForm.maxTotalTurns" class="input-field" min="1" placeholder="10" style="width:100px" @input="markDirty()" />
+              </div>
+              <div class="form-row">
+                <label>最大并发数</label>
+                <input type="number" v-model.number="editForm.maxConcurrency" class="input-field" min="1" placeholder="5" style="width:100px" @input="markDirty()" />
+              </div>
+              <div class="form-row">
+                <label>上下文传递</label>
+                <div style="display:flex;gap:8px">
+                  <button type="button" class="mode-option" :class="{ active: !editForm.swarmContext || editForm.swarmContext.mode === 'summary' }" @click="editForm.swarmContext = { ...editForm.swarmContext ?? {} as any, mode: 'summary' }; markDirty()" style="flex:1;padding:8px 12px;font-size:var(--text-sm);font-family:inherit">摘要模式</button>
+                  <button type="button" class="mode-option" :class="{ active: editForm.swarmContext?.mode === 'handoff_only' }" @click="editForm.swarmContext = { ...editForm.swarmContext ?? {} as any, mode: 'handoff_only' }; markDirty()" style="flex:1;padding:8px 12px;font-size:var(--text-sm);font-family:inherit">仅交接</button>
+                </div>
+                <p style="margin:4px 0 0;font-size:var(--text-xs);color:var(--text-muted)">摘要模式汇总所有 Agent 输出传递给下一个 Agent；仅交接模式只传递 handoff 信息。</p>
+              </div>
+              <template v-if="!editForm.swarmContext || editForm.swarmContext.mode === 'summary'">
+                <div class="form-row">
+                  <label>最大摘要数</label>
+                  <input type="number" :value="editForm.swarmContext?.maxAgentSummaries ?? 6" class="input-field" min="1" placeholder="6" style="width:100px" @input="editForm.swarmContext = { ...editForm.swarmContext ?? { mode: 'summary' }, maxAgentSummaries: Number(($event.target as HTMLInputElement).value) || 6 }; markDirty()" />
+                </div>
+                <div class="form-row">
+                  <label>单条摘要上限 (字符)</label>
+                  <input type="number" :value="editForm.swarmContext?.maxSummaryChars ?? 1000" class="input-field" min="1" placeholder="1000" style="width:100px" @input="editForm.swarmContext = { ...editForm.swarmContext ?? { mode: 'summary' }, maxSummaryChars: Number(($event.target as HTMLInputElement).value) || 1000 }; markDirty()" />
+                </div>
+                <div class="form-row">
+                  <label>总上下文上限 (字符)</label>
+                  <input type="number" :value="editForm.swarmContext?.maxTotalChars ?? 4000" class="input-field" min="1" placeholder="4000" style="width:100px" @input="editForm.swarmContext = { ...editForm.swarmContext ?? { mode: 'summary' }, maxTotalChars: Number(($event.target as HTMLInputElement).value) || 4000 }; markDirty()" />
+                </div>
+              </template>
+            </div>
+          </div>
           <div class="detail-section">
             <div class="section-header">
               <h4 class="detail-section-title" style="margin:0"><SvgIcon name="user" :size="16" /> Agent 列表 ({{ editForm.agents.length }})</h4>
@@ -1410,7 +1483,8 @@ textarea.input-field {
   color: var(--text-muted);
 }
 
-.aggregator-config {
+.aggregator-config,
+.swarm-config {
   padding: 16px;
 }
 
