@@ -162,4 +162,44 @@ describe("TeamMode", () => {
     expect([...agents.keys()]).toEqual(["owner"]);
     expect((agents.get("owner")?.agent as FakeAgent | undefined)?.prompts).toEqual(["你好"]);
   });
+
+  it("keeps a synthesizer as the final team role when task budget is small", async () => {
+    const owner = createAgentConfig("owner");
+    const swarmConfig: SwarmConfig = {
+      id: "team_swarm",
+      name: "Team Swarm",
+      mode: "team",
+      agents: [owner],
+      maxTotalTurns: 2,
+    };
+    const agents = new Map<string, { agent: any; config: SwarmAgentConfig }>();
+    const ctx: ModeExecutionContext = {
+      swarmConfig,
+      message: "帮我头脑风暴一个需求分析 Agent Team 的产品方案",
+      conversationId: "conv-1",
+      storage: {
+        appendMessage: vi.fn(async () => undefined),
+      } as unknown as IStorage,
+      llmConfig: { apiKeys: {} },
+      agents,
+      createAgentFn: (config) => {
+        agents.set(config.id, { agent: new FakeAgent(config.id) as any, config });
+      },
+      emit: () => undefined,
+      abort: () => undefined,
+      isAborted: () => false,
+    };
+
+    const yielded: SwarmEvent[] = [];
+    for await (const event of new TeamMode().execute(ctx)) {
+      yielded.push(event);
+    }
+
+    const startedRoles = yielded
+      .filter((event) => event.type === "team_task_started")
+      .map((event) => event.role);
+
+    expect(startedRoles).toEqual(["ideator", "synthesizer"]);
+    expect([...agents.keys()].some((id) => id.includes("__team_synthesizer"))).toBe(true);
+  });
 });

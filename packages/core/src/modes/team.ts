@@ -80,12 +80,12 @@ export class TeamMode implements ModeExecutor {
       routing,
     });
 
-    const roles = this.normalizeRoles(routing);
-    const results: RoleResult[] = [];
     const maxTasks = Math.max(1, Math.min(ctx.swarmConfig.maxTotalTurns ?? DEFAULT_MAX_TASKS, DEFAULT_MAX_TASKS));
+    const roles = this.selectRolesForRun(this.normalizeRoles(routing), maxTasks);
+    const results: RoleResult[] = [];
 
     for (const [index, role] of roles.entries()) {
-      if (ctx.isAborted() || index >= maxTasks) break;
+      if (ctx.isAborted()) break;
 
       const taskId = crypto.randomUUID();
       const agentConfig = this.createRoleAgentConfig(ownerConfig, role, index);
@@ -267,6 +267,18 @@ export class TeamMode implements ModeExecutor {
       default:
         return ["analyst", "critic", "synthesizer"];
     }
+  }
+
+  private selectRolesForRun(roles: TeamRole[], maxTasks: number): TeamRole[] {
+    if (roles.length <= maxTasks) return roles;
+    const synthesizerIndex = roles.lastIndexOf("synthesizer");
+    if (synthesizerIndex < 0 || maxTasks <= 1) return roles.slice(0, maxTasks);
+
+    const selected = roles
+      .filter((_, index) => index !== synthesizerIndex)
+      .slice(0, maxTasks - 1);
+    selected.push("synthesizer");
+    return selected;
   }
 
   private ensureIsolatedAgent(ctx: ModeExecutionContext, config: SwarmAgentConfig): void {
