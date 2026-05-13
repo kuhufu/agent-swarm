@@ -127,15 +127,19 @@ export class TeamMode implements ModeExecutor {
 
       const output = this.getLastAssistantText(ctx, agentConfig.id);
       results.push({ role, agentId: agentConfig.id, taskId, output });
+      const hasBlockingIssues = role === "critic" && this.hasBlockingCritique(output);
 
       yield* this.emitAndYield(ctx, {
-        type: role === "critic" ? "team_task_verification_passed" : "team_task_completed",
+        type: role === "critic"
+          ? hasBlockingIssues ? "team_task_verification_failed" : "team_task_verification_passed"
+          : "team_task_completed",
         runId,
         taskId,
         agentId: agentConfig.id,
         role,
-        status: "completed",
+        status: hasBlockingIssues ? "failed" : "completed",
         summary: this.truncate(output, 240),
+        issues: hasBlockingIssues ? [this.truncate(output, 240)] : undefined,
         retryCount: 0,
       });
     }
@@ -323,6 +327,10 @@ export class TeamMode implements ModeExecutor {
     if (hasSynthesizer) return "Team 运行已完成，已输出最终汇总；本次未做独立审视。";
     if (hasCritic) return "Team 运行已完成，包含独立审视；本次未做最终汇总。";
     return "Team 运行已完成；本次未做独立审视和最终汇总。";
+  }
+
+  private hasBlockingCritique(output: string): boolean {
+    return /(^|\b)(blocker|blocking|critical issue|not viable|infeasible)(\b|$)|阻塞|严重风险|不可行|无法落地/.test(output.toLowerCase());
   }
 
   private ensureIsolatedAgent(ctx: ModeExecutionContext, config: SwarmAgentConfig): void {

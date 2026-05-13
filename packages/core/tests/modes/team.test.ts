@@ -9,7 +9,10 @@ class FakeAgent {
   public readonly prompts: string[] = [];
   private readonly listeners: Array<(event: any) => void> = [];
 
-  constructor(private readonly agentId: string) {}
+  constructor(
+    private readonly agentId: string,
+    private readonly outputText = `output from ${agentId}`,
+  ) {}
 
   subscribe(listener: (event: any) => void): () => void {
     this.listeners.push(listener);
@@ -21,7 +24,7 @@ class FakeAgent {
 
   async prompt(input: string): Promise<void> {
     this.prompts.push(input);
-    const assistantText = `output from ${this.agentId}`;
+    const assistantText = this.outputText;
     this.state.messages.push({ role: "user", content: input, timestamp: Date.now() });
     this.state.messages.push({
       role: "assistant",
@@ -206,5 +209,46 @@ describe("TeamMode", () => {
     expect(runUpdates.some((event) => event.summary?.includes("批判审视角色"))).toBe(true);
     expect(runEnd?.summary).toContain("本次未做独立审视");
     expect([...agents.keys()].some((id) => id.includes("__team_synthesizer"))).toBe(true);
+  });
+
+  it("marks critic verification as failed when blockers are reported", async () => {
+    const owner = createAgentConfig("owner");
+    const swarmConfig: SwarmConfig = {
+      id: "team_swarm",
+      name: "Team Swarm",
+      mode: "team",
+      agents: [owner],
+    };
+    const agents = new Map<string, { agent: any; config: SwarmAgentConfig }>();
+    const ctx: ModeExecutionContext = {
+      swarmConfig,
+      message: "帮我做一个需求分析方案",
+      conversationId: "conv-1",
+      storage: {
+        appendMessage: vi.fn(async () => undefined),
+      } as unknown as IStorage,
+      llmConfig: { apiKeys: {} },
+      agents,
+      createAgentFn: (config) => {
+        const output = config.id.includes("__team_critic")
+          ? "Blocker: 当前需求缺少目标用户和验收标准。"
+          : `output from ${config.id}`;
+        agents.set(config.id, { agent: new FakeAgent(config.id, output) as any, config });
+      },
+      emit: () => undefined,
+      abort: () => undefined,
+      isAborted: () => false,
+    };
+
+    const yielded: SwarmEvent[] = [];
+    for await (const event of new TeamMode().execute(ctx)) {
+      yielded.push(event);
+    }
+
+    const failedVerification = yielded.find((event) => event.type === "team_task_verification_failed");
+    expect(failedVerification?.role).toBe("critic");
+    expect(failedVerification?.status).toBe("failed");
+    expect(failedVerification?.issues?.[0]).toContain("Blocker");
+    expect(yielded.some((event) => event.type === "team_task_started" && event.role === "synthesizer")).toBe(true);
   });
 });
