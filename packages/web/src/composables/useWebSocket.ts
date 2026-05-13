@@ -3,6 +3,7 @@ import { useConversationStore } from "../stores/conversation.js";
 import { useInterventionStore } from "../stores/intervention.js";
 import type { WSMessage } from "../types/index.js";
 import { executeClientTool } from "../tools/client-tools.js";
+import { teamPayloadSummary, teamRoleLabel, teamRunStatusLabel } from "../utils/team-events.js";
 
 const ws = ref<WebSocket | null>(null);
 const connected = ref(false);
@@ -39,41 +40,6 @@ function resolveTargetConversationId(
   }
 
   return undefined;
-}
-
-function teamRoleLabel(role: unknown): string {
-  switch (role) {
-    case "analyst": return "需求分析";
-    case "ideator": return "方案发散";
-    case "critic": return "风险审视";
-    case "synthesizer": return "结论汇总";
-    case "researcher": return "研究调研";
-    case "developer": return "实现分析";
-    case "tester": return "验证设计";
-    case "reviewer": return "方案评审";
-    case "owner": return "Owner";
-    default: return typeof role === "string" ? role : "协作角色";
-  }
-}
-
-function teamRunStatusLabel(status: unknown): string {
-  switch (status) {
-    case "planning": return "规划中";
-    case "running": return "执行中";
-    case "summarizing": return "汇总中";
-    case "completed": return "已完成";
-    case "waiting_for_user": return "等待用户澄清";
-    case "failed": return "失败";
-    case "aborted": return "已终止";
-    default: return typeof status === "string" ? status : "运行中";
-  }
-}
-
-function teamEventSummary(prefix: string, payload: unknown): string {
-  const data = payload && typeof payload === "object" ? payload as Record<string, unknown> : {};
-  const summary = typeof data.summary === "string" && data.summary.trim().length > 0 ? data.summary.trim() : undefined;
-  const status = teamRunStatusLabel(data.status);
-  return summary ? `${prefix}：${summary}` : `${prefix}：${status}`;
 }
 
 function recordTeamEvent(
@@ -335,7 +301,7 @@ export function useWebSocket() {
         conversationStore.addMessage({
           id: crypto.randomUUID(),
           role: "notification",
-          content: teamEventSummary("Team 开始", msg.payload),
+          content: teamPayloadSummary("Team 开始", msg.payload),
           timestamp: Date.now(),
         }, targetConversationId);
         break;
@@ -345,7 +311,7 @@ export function useWebSocket() {
         conversationStore.addMessage({
           id: crypto.randomUUID(),
           role: "notification",
-          content: teamEventSummary("Team 更新", msg.payload),
+          content: teamPayloadSummary("Team 更新", msg.payload),
           timestamp: Date.now(),
         }, targetConversationId);
         break;
@@ -356,7 +322,7 @@ export function useWebSocket() {
         conversationStore.addMessage({
           id: crypto.randomUUID(),
           role: "notification",
-          content: teamEventSummary("Team 结束", msg.payload),
+          content: teamPayloadSummary("Team 结束", msg.payload),
           timestamp: Date.now(),
         }, targetConversationId);
         break;

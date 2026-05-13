@@ -1,75 +1,12 @@
 <script setup lang="ts">
 import type { ConversationEvent } from "../../types/index.js";
 import { formatTimeLong } from "../../utils/format.js";
+import { teamEventLabel, teamEventRole, teamEventSummary } from "../../utils/team-events.js";
 import SvgIcon from "../common/SvgIcon.vue";
 
 defineProps<{
   events: ConversationEvent[];
 }>();
-
-function parseEventData(event: ConversationEvent): Record<string, unknown> {
-  if (!event.eventData) return {};
-  try {
-    const parsed = JSON.parse(event.eventData) as unknown;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? parsed as Record<string, unknown>
-      : {};
-  } catch {
-    return {};
-  }
-}
-
-function teamRoleLabel(role: unknown): string {
-  const map: Record<string, string> = {
-    analyst: "需求分析",
-    ideator: "方案发散",
-    critic: "风险审视",
-    synthesizer: "结论汇总",
-    researcher: "研究调研",
-    developer: "实现分析",
-    tester: "验证设计",
-    reviewer: "方案评审",
-    owner: "Owner",
-  };
-  return typeof role === "string" ? map[role] ?? role : "Team";
-}
-
-function eventLabel(eventType: string): string {
-  const map: Record<string, string> = {
-    team_run_start: "开始规划",
-    team_run_update: "路由决策",
-    team_run_end: "运行结束",
-    team_task_created: "创建任务",
-    team_task_started: "开始任务",
-    team_task_update: "任务更新",
-    team_task_completed: "任务完成",
-    team_task_verification_started: "开始审视",
-    team_task_verification_passed: "审视通过",
-    team_task_verification_failed: "审视失败",
-    team_task_retry: "任务重试",
-    team_task_human_review_required: "需要人工介入",
-  };
-  return map[eventType] ?? eventType;
-}
-
-function eventSummary(event: ConversationEvent): string {
-  const data = parseEventData(event);
-  const summary = typeof data.summary === "string" ? data.summary.trim() : "";
-  if (summary) return summary;
-
-  const routing = data.routing && typeof data.routing === "object" && !Array.isArray(data.routing)
-    ? data.routing as Record<string, unknown>
-    : null;
-  const reason = typeof routing?.reason === "string" ? routing.reason.trim() : "";
-  if (reason) return reason;
-
-  return typeof data.status === "string" ? data.status : "已记录 Team 事件";
-}
-
-function eventRole(event: ConversationEvent): string | null {
-  const data = parseEventData(event);
-  return "role" in data ? teamRoleLabel(data.role) : null;
-}
 </script>
 
 <template>
@@ -91,10 +28,10 @@ function eventRole(event: ConversationEvent): string | null {
         <div class="team-event-dot" />
         <div class="team-event-body">
           <div class="team-event-header">
-            <span class="team-event-type">{{ eventLabel(event.eventType) }}</span>
-            <span v-if="eventRole(event)" class="team-event-role">{{ eventRole(event) }}</span>
+            <span class="team-event-type">{{ teamEventLabel(event.eventType) }}</span>
+            <span v-if="teamEventRole(event)" class="team-event-role">{{ teamEventRole(event) }}</span>
           </div>
-          <p>{{ eventSummary(event) }}</p>
+          <p>{{ teamEventSummary(event) }}</p>
           <time>{{ formatTimeLong(event.timestamp) }}</time>
         </div>
       </article>
