@@ -65,6 +65,14 @@ export interface ConversationInfo {
   updatedAt: number;
 }
 
+export interface ConversationEvent {
+  id: string;
+  agentId?: string | null;
+  eventType: string;
+  eventData?: string | null;
+  timestamp: number;
+}
+
 export interface WorkspaceInfo {
   id: string;
   userId: string;

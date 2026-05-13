@@ -12,7 +12,8 @@
 - `swarm` 模式采用动态调度协议：Agent 通过结构化 `handoff` 提议交接，执行器负责审批、循环保护、事件记录和目标 Agent 切换
 - `team` 模式由 Owner 私下判断是否需要组队；简单请求降级为单 Agent，复杂请求按 Analyst / Ideator / Critic / Synthesizer / Researcher 等通用角色执行，并通过 Team 事件记录过程
 - 直接对话模式：无需预建 swarm，可按会话选择 `provider + modelId`
-- Agent 预设库：内置模板 + 自定义模板 CRUD，支持创建 Swarm 时复用
+- Agent 预设库：内置模板 + 自定义模板 CRUD，支持创建 Swarm 时复用；内置模板包含 `Team Owner`，适合快速创建通用 `team` 模式 Swarm
+- 创建或编辑 Swarm 时选择 `Team 团队` 模式，如果当前还没有 Agent，前端会自动加入内置 `Team Owner`，并优先使用已保存模型列表中的第一个模型
 - Swarm Agent 顺序管理：创建与编辑 Swarm 时均支持拖动排序 Agent 列表
 - 设置管理体验：添加提供商与添加模型均通过弹窗完成，避免页面内表单拥挤
 - 输入体验优化：重复点击“新对话/直接对话”、切换模型、启停工具、点击 `chat-input` 非交互区后会自动聚焦输入框且保持光标
@@ -30,7 +31,7 @@
 - 知识引用回显：`search_wiki` 和 `retrieve_knowledge` 工具结果会在聊天工具卡中展示命中页面、文档片段和相关度，并可跳转到对应来源
 - 前端 JS 执行回显：`javascript_execute` 工具结果会在聊天工具卡中结构化展示返回值、日志和执行代码
 - 介入机制：支持工具调用/错误/handoff 等节点人工决策
-- 会话执行 Trace：事件按会话落库，聊天页右侧与历史对话详情可查看 Agent 生命周期、工具调用、handoff、介入与错误时间线
+- 会话执行 Trace：事件按会话落库，聊天页右侧与历史对话详情可查看 Agent 生命周期、工具调用、handoff、介入、错误与 Team 过程时间线
 - 事件分级落库：`eventLogLevel = none | key | full`（默认 `key`）
 - 提供商兼容参数：支持 `enable_thinking`（适配部分使用该字段控制思考开关的模型）
 
@@ -197,7 +198,7 @@ pnpm --filter @agent-swarm/server test
 ### 消息查询
 
 - `GET /api/conversations/:id/messages`
-- `GET /api/conversations/:id/events`：读取会话执行 Trace；可用 `?type=handoff` 按事件类型过滤
+- `GET /api/conversations/:id/events`：读取会话执行 Trace；可用 `?type=handoff`、`?type=team_run_start`、`?type=team_task_completed` 等事件类型过滤；`team` 模式会记录 Team Run / Team Task 的规划、执行、验证和结束事件
 
 ### LLM Wiki
 

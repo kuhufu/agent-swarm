@@ -11,7 +11,7 @@ import ModeIcon from "../components/common/ModeIcon.vue";
 import SidebarPanel from "../components/common/SidebarPanel.vue";
 import EmptyState from "../components/common/EmptyState.vue";
 import DetailHeader from "../components/common/DetailHeader.vue";
-import type { ConversationInfo, SwarmConfig, ChatMessage } from "../types/index.js";
+import type { ConversationInfo, SwarmConfig, ChatMessage, ConversationEvent } from "../types/index.js";
 import { confirmDialog, showError } from "../utils/ui-feedback.js";
 import SvgIcon from "../components/common/SvgIcon.vue";
 
@@ -21,8 +21,10 @@ const swarmStore = useSwarmStore();
 const searchQuery = ref("");
 const selectedConvId = ref<string | null>(null);
 const expandedMessages = reactive<Map<string, ChatMessage[]>>(new Map());
+const expandedEvents = reactive<Map<string, ConversationEvent[]>>(new Map());
 const expandedArtifacts = reactive<Map<string, WorkspaceArtifact[]>>(new Map());
 const loadingMessages = ref(false);
+const loadingEvents = ref(false);
 const loadingArtifacts = ref(false);
 
 interface WorkspaceArtifact {
@@ -57,6 +59,11 @@ const selectedConv = computed(() =>
 const selectedMessages = computed(() =>
   selectedConvId.value ? expandedMessages.get(selectedConvId.value) ?? null : null
 );
+const selectedTeamEvents = computed(() =>
+  selectedConvId.value
+    ? (expandedEvents.get(selectedConvId.value) ?? null)?.filter((event) => event.eventType.startsWith("team_")) ?? null
+    : null
+);
 const selectedFinalArtifacts = computed(() =>
   selectedConvId.value ? expandedArtifacts.get(selectedConvId.value) ?? null : null
 );
@@ -82,6 +89,17 @@ async function selectConv(conv: ConversationInfo) {
       expandedMessages.set(conv.id, []);
     } finally {
       loadingMessages.value = false;
+    }
+  }
+  if (!expandedEvents.has(conv.id)) {
+    loadingEvents.value = true;
+    try {
+      const res = await conversationsApi.getEvents(conv.id);
+      expandedEvents.set(conv.id, res.data);
+    } catch {
+      expandedEvents.set(conv.id, []);
+    } finally {
+      loadingEvents.value = false;
     }
   }
   if (!expandedArtifacts.has(conv.id)) {
@@ -118,6 +136,7 @@ async function deleteConversation(conv: ConversationInfo) {
   try {
     await conversationStore.deleteConversation(conv.id);
     expandedMessages.delete(conv.id);
+    expandedEvents.delete(conv.id);
     expandedArtifacts.delete(conv.id);
     if (selectedConvId.value === conv.id) {
       selectedConvId.value = null;
@@ -126,6 +145,69 @@ async function deleteConversation(conv: ConversationInfo) {
     const message = err instanceof Error ? err.message : "删除失败";
     showError(message);
   }
+}
+
+function parseEventData(event: ConversationEvent): Record<string, unknown> {
+  if (!event.eventData) return {};
+  try {
+    const parsed = JSON.parse(event.eventData) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function getTeamRoleLabel(role: unknown): string {
+  const map: Record<string, string> = {
+    analyst: "需求分析",
+    ideator: "方案发散",
+    critic: "风险审视",
+    synthesizer: "结论汇总",
+    researcher: "研究调研",
+    developer: "实现分析",
+    tester: "验证设计",
+    reviewer: "方案评审",
+    owner: "Owner",
+  };
+  return typeof role === "string" ? map[role] ?? role : "Team";
+}
+
+function getTeamEventLabel(eventType: string): string {
+  const map: Record<string, string> = {
+    team_run_start: "开始规划",
+    team_run_update: "路由决策",
+    team_run_end: "运行结束",
+    team_task_created: "创建任务",
+    team_task_started: "开始任务",
+    team_task_update: "任务更新",
+    team_task_completed: "任务完成",
+    team_task_verification_started: "开始审视",
+    team_task_verification_passed: "审视通过",
+    team_task_verification_failed: "审视失败",
+    team_task_retry: "任务重试",
+    team_task_human_review_required: "需要人工介入",
+  };
+  return map[eventType] ?? eventType;
+}
+
+function getTeamEventSummary(event: ConversationEvent): string {
+  const data = parseEventData(event);
+  const summary = typeof data.summary === "string" ? data.summary.trim() : "";
+  if (summary) return summary;
+  const routing = data.routing && typeof data.routing === "object" && !Array.isArray(data.routing)
+    ? data.routing as Record<string, unknown>
+    : null;
+  const reason = typeof routing?.reason === "string" ? routing.reason.trim() : "";
+  if (reason) return reason;
+  const status = typeof data.status === "string" ? data.status : "";
+  return status || "已记录 Team 事件";
+}
+
+function getTeamEventRole(event: ConversationEvent): string | null {
+  const data = parseEventData(event);
+  return "role" in data ? getTeamRoleLabel(data.role) : null;
 }
 
 function getSwarmName(swarmId: string): string {
@@ -304,6 +386,29 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
             </div>
           </div>
 
+          <!-- Team Trace -->
+          <div v-if="loadingEvents || (selectedTeamEvents && selectedTeamEvents.length)" class="detail-section team-trace-section">
+            <h4 class="detail-section-title">
+              <SvgIcon name="history" :size="16" />
+              Team 过程
+              <span v-if="selectedTeamEvents" class="msg-count">{{ selectedTeamEvents.length }} 条</span>
+            </h4>
+            <div v-if="loadingEvents" class="detail-empty">Team 过程加载中...</div>
+            <div v-else-if="selectedTeamEvents && selectedTeamEvents.length" class="team-timeline">
+              <article v-for="event in selectedTeamEvents" :key="event.id" class="team-event">
+                <div class="team-event-dot" />
+                <div class="team-event-body">
+                  <div class="team-event-header">
+                    <span class="team-event-type">{{ getTeamEventLabel(event.eventType) }}</span>
+                    <span v-if="getTeamEventRole(event)" class="team-event-role">{{ getTeamEventRole(event) }}</span>
+                    <span class="team-event-time">{{ formatTimeLong(event.timestamp) }}</span>
+                  </div>
+                  <p>{{ getTeamEventSummary(event) }}</p>
+                </div>
+              </article>
+            </div>
+          </div>
+
           <!-- Messages -->
           <div class="detail-section">
             <h4 class="detail-section-title">
@@ -431,6 +536,89 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   background: var(--bg-surface);
   cursor: pointer;
   flex: 0 0 auto;
+}
+
+.team-trace-section {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.team-timeline {
+  display: grid;
+  gap: 0;
+}
+
+.team-event {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 10px;
+  padding: 0 0 14px;
+}
+
+.team-event:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 14px;
+  bottom: 0;
+  width: 1px;
+  background: var(--border-subtle);
+}
+
+.team-event-dot {
+  width: 11px;
+  height: 11px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--bg-surface);
+  z-index: 1;
+}
+
+.team-event-body {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-surface);
+}
+
+.team-event-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.team-event-type {
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.team-event-role {
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+
+.team-event-time {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.team-event-body p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 /* Messages */

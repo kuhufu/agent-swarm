@@ -125,4 +125,41 @@ describe("TeamMode", () => {
     expect([...agents.keys()].some((id) => id.includes("__team_synthesizer"))).toBe(true);
     expect(emitted.length).toBeGreaterThanOrEqual(yielded.length);
   });
+
+  it("falls back to a single owner agent for simple requests", async () => {
+    const owner = createAgentConfig("owner");
+    const swarmConfig: SwarmConfig = {
+      id: "team_swarm",
+      name: "Team Swarm",
+      mode: "team",
+      agents: [owner],
+    };
+    const agents = new Map<string, { agent: any; config: SwarmAgentConfig }>();
+    const ctx: ModeExecutionContext = {
+      swarmConfig,
+      message: "你好",
+      conversationId: "conv-1",
+      storage: {
+        appendMessage: vi.fn(async () => undefined),
+      } as unknown as IStorage,
+      llmConfig: { apiKeys: {} },
+      agents,
+      createAgentFn: (config) => {
+        agents.set(config.id, { agent: new FakeAgent(config.id) as any, config });
+      },
+      emit: () => undefined,
+      abort: () => undefined,
+      isAborted: () => false,
+    };
+
+    const yielded: SwarmEvent[] = [];
+    for await (const event of new TeamMode().execute(ctx)) {
+      yielded.push(event);
+    }
+
+    expect(yielded.some((event) => event.type === "team_run_end" && event.status === "completed")).toBe(true);
+    expect(yielded.some((event) => event.type.startsWith("team_task_"))).toBe(false);
+    expect([...agents.keys()]).toEqual(["owner"]);
+    expect((agents.get("owner")?.agent as FakeAgent | undefined)?.prompts).toEqual(["你好"]);
+  });
 });

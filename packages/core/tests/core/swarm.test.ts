@@ -405,6 +405,43 @@ describe("AgentSwarm persistence", () => {
     cleanupDb(dbPath);
   });
 
+  it("seeds missing built-in templates without overwriting existing templates", async () => {
+    const dbPath = createTestDbPath("template-backfill");
+    cleanupDb(dbPath);
+
+    const swarm = new AgentSwarm({
+      config: createRootConfig(dbPath, []),
+    });
+    await swarm.init();
+    await swarm.addAgentTemplate({
+      id: "team-owner",
+      name: "Custom Team Owner",
+      description: "customized",
+      systemPrompt: "custom prompt",
+      model: { provider: "openai", modelId: "gpt-4o-mini" },
+      category: "custom",
+      tags: ["custom"],
+      builtIn: true,
+    });
+    await swarm.deleteAgentTemplate("code-reviewer");
+    await swarm.close();
+
+    const restarted = new AgentSwarm({
+      config: createRootConfig(dbPath, []),
+    });
+    await restarted.init();
+    const templates = await restarted.listAgentTemplates();
+    const teamOwner = templates.find((template) => template.id === "team-owner");
+    const codeReviewer = templates.find((template) => template.id === "code-reviewer");
+
+    expect(teamOwner?.name).toBe("Custom Team Owner");
+    expect(teamOwner?.systemPrompt).toBe("custom prompt");
+    expect(codeReviewer?.name).toBe("Code Reviewer");
+
+    await restarted.close();
+    cleanupDb(dbPath);
+  });
+
   it("stores agents by swarm scope when different swarms reuse the same agent id", async () => {
     const dbPath = createTestDbPath("agent-id-isolation");
     cleanupDb(dbPath);
@@ -684,11 +721,25 @@ describe("AgentSwarm persistence", () => {
       fromAgentId: "default_swarm_agent_1",
       toAgentId: "default_swarm_agent_2",
     });
+    internalConversation.eventBus.emit({
+      type: "team_task_update",
+      runId: "run-1",
+      taskId: "task-1",
+      status: "running",
+      summary: "task updated",
+    });
+    internalConversation.eventBus.emit({
+      type: "team_task_retry",
+      runId: "run-1",
+      taskId: "task-1",
+      status: "revision_required",
+      retryCount: 1,
+    });
 
     await flushAsync();
 
     const events = await internalStorage.getEvents(conversation.getId());
-    expect(events.map((event) => event.eventType)).toEqual(["handoff"]);
+    expect(events.map((event) => event.eventType)).toEqual(["handoff", "team_task_update", "team_task_retry"]);
 
     await swarm.close();
     cleanupDb(dbPath);

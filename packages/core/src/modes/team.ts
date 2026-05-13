@@ -30,7 +30,7 @@ export class TeamMode implements ModeExecutor {
       runId,
       conversationId: ctx.conversationId,
       status: "planning",
-      summary: "Owner is routing the request.",
+      summary: "Owner 正在判断是否需要组队协作。",
     });
 
     const routing = await this.route(ctx, ownerConfig);
@@ -52,7 +52,7 @@ export class TeamMode implements ModeExecutor {
         runId,
         conversationId: ctx.conversationId,
         status: "waiting_for_user",
-        summary: "Owner requested clarification before starting a team run.",
+        summary: "Owner 判断需要先澄清问题，再启动团队协作。",
         routing,
       });
       return;
@@ -65,7 +65,7 @@ export class TeamMode implements ModeExecutor {
         runId,
         conversationId: ctx.conversationId,
         status: "completed",
-        summary: "Owner routed the request to a single agent.",
+        summary: "Owner 判断该请求适合单 Agent 直接处理。",
         routing,
       });
       return;
@@ -76,7 +76,7 @@ export class TeamMode implements ModeExecutor {
       runId,
       conversationId: ctx.conversationId,
       status: "running",
-      summary: `Team strategy: ${routing.strategy}.`,
+      summary: `Owner 已选择 ${this.describeStrategy(routing.strategy)}。`,
       routing,
     });
 
@@ -136,7 +136,7 @@ export class TeamMode implements ModeExecutor {
         runId,
         conversationId: ctx.conversationId,
         status: "aborted",
-        summary: "Team run aborted.",
+        summary: "Team 运行已终止。",
         routing,
       });
       return;
@@ -147,7 +147,7 @@ export class TeamMode implements ModeExecutor {
       runId,
       conversationId: ctx.conversationId,
       status: "completed",
-      summary: "Team run completed.",
+      summary: "Team 运行已完成。",
       routing,
     });
   }
@@ -213,7 +213,7 @@ export class TeamMode implements ModeExecutor {
     if (looksBrainstorm) {
       return {
         useTeam: true,
-        reason: "The request benefits from multiple idea-generation perspectives and critique.",
+        reason: "这个请求适合先从多个角度发散方案，再做批判性筛选和汇总。",
         taskType: "brainstorming",
         strategy: "parallel_perspectives",
         roles: ["ideator", "ideator", "critic", "synthesizer"],
@@ -222,7 +222,7 @@ export class TeamMode implements ModeExecutor {
     if (looksRequirements) {
       return {
         useTeam: true,
-        reason: "The request needs structured requirements analysis and risk review.",
+        reason: "这个请求需要结构化需求分析、风险审视和结论汇总。",
         taskType: "requirements_analysis",
         strategy: "critique_and_revise",
         roles: ["analyst", "critic", "synthesizer"],
@@ -231,7 +231,7 @@ export class TeamMode implements ModeExecutor {
     if (looksResearch) {
       return {
         useTeam: true,
-        reason: "The request needs evidence gathering and synthesis.",
+        reason: "这个请求需要先整理证据和背景，再进行批判性审视和综合。",
         taskType: "research",
         strategy: "research_then_synthesize",
         roles: ["researcher", "critic", "synthesizer"],
@@ -240,8 +240,8 @@ export class TeamMode implements ModeExecutor {
     return {
       useTeam: isLong,
       reason: isLong
-        ? "The request is broad enough to benefit from analysis, critique, and synthesis."
-        : "The request is simple enough for a single agent.",
+        ? "这个请求范围较宽，适合通过分析、批判和汇总形成更稳妥的结论。"
+        : "这个请求较简单，适合由单 Agent 直接处理。",
       taskType: isLong ? "mixed" : "simple_chat",
       strategy: isLong ? "critique_and_revise" : "single_agent",
       roles: isLong ? ["analyst", "critic", "synthesizer"] : [],
@@ -386,7 +386,46 @@ export class TeamMode implements ModeExecutor {
   }
 
   private describeRoleTask(role: TeamRole, routing: TeamRoutingDecision): string {
-    return `${role} handles ${routing.taskType} using ${routing.strategy}.`;
+    return `${this.describeRole(role)}负责${this.describeTaskType(routing.taskType)}，协作方式为${this.describeStrategy(routing.strategy)}。`;
+  }
+
+  private describeRole(role: TeamRole): string {
+    switch (role) {
+      case "analyst": return "分析角色";
+      case "ideator": return "创意角色";
+      case "critic": return "批判审视角色";
+      case "synthesizer": return "汇总角色";
+      case "researcher": return "研究角色";
+      case "developer": return "实现分析角色";
+      case "tester": return "验证角色";
+      case "reviewer": return "评审角色";
+      case "owner": return "Owner";
+      default: return role;
+    }
+  }
+
+  private describeTaskType(taskType: TeamTaskType): string {
+    switch (taskType) {
+      case "simple_chat": return "简单问答";
+      case "requirements_analysis": return "需求分析";
+      case "brainstorming": return "头脑风暴";
+      case "research": return "研究调研";
+      case "document": return "文档任务";
+      case "coding": return "实现任务";
+      case "mixed": return "综合任务";
+      default: return taskType;
+    }
+  }
+
+  private describeStrategy(strategy: TeamStrategy): string {
+    switch (strategy) {
+      case "single_agent": return "单 Agent 处理";
+      case "parallel_perspectives": return "多视角并行发散";
+      case "sequential_refinement": return "顺序递进完善";
+      case "research_then_synthesize": return "先研究再汇总";
+      case "critique_and_revise": return "先产出再批判修订";
+      default: return strategy;
+    }
   }
 
   private getLastAssistantText(ctx: ModeExecutionContext, agentId: string): string {

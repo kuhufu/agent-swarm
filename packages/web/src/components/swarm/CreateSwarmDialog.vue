@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useSettingsStore } from "../../stores/settings.js";
 import { useAgentStore } from "../../stores/agents.js";
 import { MODE_OPTIONS } from "../../constants/swarm-modes.js";
@@ -35,6 +35,7 @@ const showCustomModel = ref(false);
 const settingsStore = useSettingsStore();
 const agentStore = useAgentStore();
 const savedModels = computed<SavedModel[]>(() => settingsStore.models);
+const defaultSavedModel = computed(() => savedModels.value[0]);
 const presetAgentOptions = computed(() => [
   { value: "", label: "不使用预设模板" },
   ...agentStore.sortedPresets.map((preset) => ({
@@ -42,8 +43,11 @@ const presetAgentOptions = computed(() => [
     label: `${preset.name}${preset.category ? ` · ${preset.category}` : ""}${preset.builtIn ? " · 内置" : ""}`,
   })),
 ]);
+const teamOwnerPreset = computed(() => agentStore.sortedPresets.find((preset) => preset.id === "team-owner") ?? null);
+
 function setMode(nextMode: CollaborationMode) {
   mode.value = nextMode;
+  addTeamOwnerIfNeeded();
 }
 
 function selectModelForAgent(model: SavedModel) {
@@ -82,6 +86,36 @@ function applyPresetToForm(preset: PresetAgent) {
   showCustomModel.value = savedModels.value.every(
     (model) => !(model.provider === preset.model.provider && model.modelId === preset.model.modelId),
   );
+}
+
+function createAgentFromPreset(preset: PresetAgent): SwarmAgentConfig {
+  const fallbackModel = defaultSavedModel.value;
+  return {
+    id: buildUniqueAgentId(preset.id),
+    name: preset.name,
+    description: preset.description,
+    systemPrompt: preset.systemPrompt,
+    model: preset.model.provider && preset.model.modelId
+      ? { ...preset.model }
+      : { provider: fallbackModel?.provider ?? "", modelId: fallbackModel?.modelId ?? "" },
+  };
+}
+
+function addTeamOwnerIfNeeded() {
+  if (mode.value !== "team" || agents.length > 0 || !teamOwnerPreset.value) {
+    return;
+  }
+  agents.push(createAgentFromPreset(teamOwnerPreset.value));
+}
+
+function fillEmptyAgentModelsFromDefault() {
+  const fallbackModel = defaultSavedModel.value;
+  if (!fallbackModel) return;
+  for (const agent of agents) {
+    if (!agent.model.provider || !agent.model.modelId) {
+      agent.model = { provider: fallbackModel.provider, modelId: fallbackModel.modelId };
+    }
+  }
 }
 
 function handlePresetSelection(presetId: string) {
@@ -180,7 +214,10 @@ function submit() {
     id: swarmId,
     name: name.value,
     mode: mode.value,
-    agents: agents.map((agent) => ({ ...agent, model: { ...agent.model } })),
+    agents: agents.map((agent) => ({
+      ...agent,
+      model: agent.model.provider && agent.model.modelId ? { ...agent.model } : undefined as any,
+    })),
   };
   if (mode.value === "debate") {
     swarm.debateConfig = {
@@ -195,12 +232,15 @@ function submit() {
 
 onMounted(() => {
   if (!settingsStore.config) {
-    void settingsStore.fetchConfig();
+    void settingsStore.fetchConfig().then(() => fillEmptyAgentModelsFromDefault());
   }
   if (!agentStore.loaded) {
-    void agentStore.fetchAgents();
+    void agentStore.fetchAgents().then(() => addTeamOwnerIfNeeded());
   }
 });
+
+watch(teamOwnerPreset, () => addTeamOwnerIfNeeded());
+watch(defaultSavedModel, () => fillEmptyAgentModelsFromDefault());
 </script>
 
 <template>

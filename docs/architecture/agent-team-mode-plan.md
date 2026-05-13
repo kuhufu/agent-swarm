@@ -20,6 +20,8 @@
 - 支持 Critic/Verifier 角色做独立审视。
 - 使用确定性流程控制 Team Run / Team Task 的基本状态。
 - 将所有关键过程写入事件流和持久化存储，便于前端 Trace 和恢复。
+- 内置 `Team Owner` Agent 模板，便于快速创建通用 `team` 模式 Swarm。
+- 前端创建/编辑 Swarm 时选择 `Team` 模式，如果当前 Agent 列表为空，会自动加入 `Team Owner`，并优先填入已保存模型列表中的第一个模型。
 
 当前 MVP 暂未实现独立 Team 数据表、并行执行、自动打回重试和专用 Team 面板；这些仍是后续阶段。
 
@@ -433,7 +435,7 @@ packages/web/src/components/team/
   VerificationResult.vue
 ```
 
-模式选择上，`packages/web/src/constants/swarm-modes.ts` 已开放 `team` 选项；聊天页当前先用通知消息展示 Team Run / Team Task，后续再演进成专用 Team 面板。
+模式选择上，`packages/web/src/constants/swarm-modes.ts` 已开放 `team` 选项；聊天页当前先用中文通知消息展示 Team Run / Team Task，并把 Analyst / Ideator / Critic / Synthesizer / Researcher 等内部角色映射成需求分析、方案发散、风险审视、结论汇总和研究调研。历史对话详情页会读取 `/api/conversations/:id/events` 并展示 `team_` 事件时间线，后续再演进成专用 Team 面板。
 
 ## 人工介入
 

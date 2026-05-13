@@ -726,8 +726,9 @@ export class AgentSwarm {
   private async ensureTemplatesSeeded(): Promise<void> {
     if (this.templatesSeeded) return;
     const templates = await this.storage.listAgentTemplates();
-    if (templates.length === 0) {
-      for (const preset of PRESET_AGENTS) {
+    const existingIds = new Set(templates.map((template) => template.id));
+    for (const preset of PRESET_AGENTS) {
+      if (!existingIds.has(preset.id)) {
         await this.storage.saveAgentTemplate(preset);
       }
     }

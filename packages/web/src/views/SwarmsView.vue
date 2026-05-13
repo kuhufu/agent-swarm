@@ -4,7 +4,7 @@ import SvgIcon from "../components/common/SvgIcon.vue";
 import { useSwarmStore } from "../stores/swarm.js";
 import { useSettingsStore } from "../stores/settings.js";
 import { useAgentStore } from "../stores/agents.js";
-import { getModeConfig } from "../constants/swarm-modes.js";
+import { getModeConfig, MODE_OPTIONS } from "../constants/swarm-modes.js";
 import ModeIcon from "../components/common/ModeIcon.vue";
 import CustomSelect from "../components/common/CustomSelect.vue";
 import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, DebateConfig, PresetAgent, SwarmContextConfig } from "../types/index.js";
@@ -57,6 +57,7 @@ const selectedSwarm = computed(() =>
 );
 
 const savedModels = computed<SavedModel[]>(() => settingsStore.models);
+const defaultSavedModel = computed(() => savedModels.value[0]);
 const presetAgentOptions = computed(() => [
   { value: "", label: "不使用预设模板" },
   ...agentStore.sortedPresets.map((preset) => ({
@@ -64,11 +65,8 @@ const presetAgentOptions = computed(() => [
     label: `${preset.name}${preset.category ? ` · ${preset.category}` : ""}${preset.builtIn ? " · 内置" : ""}`,
   })),
 ]);
-const modes: { value: CollaborationMode; label: string; desc: string; icon: string }[] = [
-  { value: "swarm", label: "Swarm 蜂群", desc: "去中心化协作", icon: "🐝" },
-  { value: "chat", label: "Chat 直接", desc: "单 Agent 直接对话", icon: "💬" },
-  { value: "debate", label: "Debate 辩论", desc: "多 Agent 辩论模式", icon: "⚖️" },
-];
+const teamOwnerPreset = computed(() => agentStore.sortedPresets.find((preset) => preset.id === "team-owner") ?? null);
+const modes: { value: CollaborationMode; label: string; desc: string; icon: string }[] = MODE_OPTIONS;
 
 function ensureSelectedSwarm() {
   if (!swarmStore.swarms.length) {
@@ -91,8 +89,10 @@ function ensureSelectedSwarm() {
 onMounted(async () => {
   await swarmStore.fetchSwarms();
   ensureSelectedSwarm();
-  settingsStore.fetchConfig();
-  agentStore.fetchAgents();
+  await settingsStore.fetchConfig();
+  await agentStore.fetchAgents();
+  fillEmptyAgentModelsFromDefault();
+  addTeamOwnerIfNeeded();
 });
 
 watch(
@@ -102,6 +102,8 @@ watch(
   },
   { immediate: true },
 );
+
+watch(defaultSavedModel, () => fillEmptyAgentModelsFromDefault());
 
 function normalizeAgentId(input: string): string {
   const normalized = input
@@ -137,6 +139,44 @@ function applyPresetToAgentForm(preset: PresetAgent) {
   showCustomModel.value = savedModels.value.every(
     (sm) => !(sm.provider === preset.model.provider && sm.modelId === preset.model.modelId),
   );
+}
+
+function createAgentFromPreset(preset: PresetAgent): SwarmAgentConfig {
+  const fallbackModel = defaultSavedModel.value;
+  return {
+    id: buildUniqueAgentId(preset.id, null),
+    name: preset.name,
+    description: preset.description,
+    systemPrompt: preset.systemPrompt,
+    model: preset.model.provider && preset.model.modelId
+      ? { ...preset.model }
+      : { provider: fallbackModel?.provider ?? "", modelId: fallbackModel?.modelId ?? "" },
+  };
+}
+
+function addTeamOwnerIfNeeded() {
+  if (editForm.mode !== "team" || editForm.agents.length > 0 || !teamOwnerPreset.value) {
+    return;
+  }
+  editForm.agents.push(createAgentFromPreset(teamOwnerPreset.value));
+}
+
+function fillEmptyAgentModelsFromDefault() {
+  const fallbackModel = defaultSavedModel.value;
+  if (!fallbackModel) return;
+  for (const agent of editForm.agents) {
+    if (!agent.model.provider || !agent.model.modelId) {
+      agent.model = { provider: fallbackModel.provider, modelId: fallbackModel.modelId };
+    }
+  }
+}
+
+function setEditMode(nextMode: CollaborationMode, dirty = false) {
+  editForm.mode = nextMode;
+  addTeamOwnerIfNeeded();
+  if (dirty) {
+    markDirty();
+  }
 }
 
 function handlePresetSelection(value: string) {
@@ -277,10 +317,10 @@ function buildCreateConfig(): SwarmConfig {
     name: editForm.name,
     mode: editForm.mode,
     agents,
-    debateConfig: editForm.debateConfig,
+    debateConfig: editForm.mode === "debate" ? editForm.debateConfig : undefined,
     maxTotalTurns: editForm.maxTotalTurns || undefined,
     maxConcurrency: editForm.maxConcurrency || undefined,
-    swarmContext: editForm.swarmContext,
+    swarmContext: editForm.mode === "swarm" ? editForm.swarmContext : undefined,
   } as SwarmConfig;
 }
 
@@ -482,7 +522,7 @@ function clearModelSelection() {
           <div class="detail-section">
             <h4 class="detail-section-title">协作模式</h4>
             <div class="mode-grid">
-              <div v-for="m in modes" :key="m.value" class="mode-option" :class="{ active: editForm.mode === m.value }" @click="editForm.mode = m.value">
+              <div v-for="m in modes" :key="m.value" class="mode-option" :class="{ active: editForm.mode === m.value }" @click="setEditMode(m.value)">
                 <span class="mode-icon"><ModeIcon :mode="m.value" /></span>
                 <div class="mode-info">
                   <span class="mode-name">{{ m.label }}</span>
@@ -612,7 +652,7 @@ function clearModelSelection() {
               协作模式
             </h4>
             <div class="mode-grid">
-              <div v-for="m in modes" :key="m.value" class="mode-option" :class="{ active: editForm.mode === m.value }" @click="editForm.mode = m.value; markDirty()">
+              <div v-for="m in modes" :key="m.value" class="mode-option" :class="{ active: editForm.mode === m.value }" @click="setEditMode(m.value, true)">
                 <span class="mode-icon"><ModeIcon :mode="m.value" /></span>
                 <div class="mode-info">
                   <span class="mode-name">{{ m.label }}</span>
