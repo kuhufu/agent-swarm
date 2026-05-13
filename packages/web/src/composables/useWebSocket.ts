@@ -343,22 +343,28 @@ export function useWebSocket() {
         if (typeof msg.payload?.agentId === "string") {
           conversationStore.setAgentStatus(msg.payload.agentId, "thinking", targetConversationId);
         }
-        conversationStore.addMessage({
-          id: crypto.randomUUID(),
-          role: "notification",
-          content: `Team 任务：${teamRoleLabel(msg.payload?.role)} - ${msg.payload?.summary ?? teamRunStatusLabel(msg.payload?.status)}`,
-          timestamp: Date.now(),
-        }, targetConversationId);
         break;
 
       case "team_task_completed":
       case "team_task_verification_passed":
+        recordTeamEvent(conversationStore, msg, targetConversationId);
+        if (typeof msg.payload?.agentId === "string") {
+          conversationStore.setAgentStatus(msg.payload.agentId, "idle", targetConversationId);
+        }
+        break;
+
       case "team_task_verification_failed":
       case "team_task_human_review_required":
         recordTeamEvent(conversationStore, msg, targetConversationId);
         if (typeof msg.payload?.agentId === "string") {
           conversationStore.setAgentStatus(msg.payload.agentId, "idle", targetConversationId);
         }
+        conversationStore.addMessage({
+          id: crypto.randomUUID(),
+          role: "notification",
+          content: `Team 需要关注：${teamRoleLabel(msg.payload?.role)} - ${msg.payload?.summary ?? teamRunStatusLabel(msg.payload?.status)}`,
+          timestamp: Date.now(),
+        }, targetConversationId);
         break;
 
       // ── Intervention events ──

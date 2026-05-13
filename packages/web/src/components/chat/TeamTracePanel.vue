@@ -1,12 +1,25 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { ConversationEvent } from "../../types/index.js";
 import { formatTimeLong } from "../../utils/format.js";
-import { teamEventLabel, teamEventRole, teamEventSummary } from "../../utils/team-events.js";
+import { parseTeamEventData, teamEventLabel, teamEventRole, teamEventSummary, teamRunStatusLabel } from "../../utils/team-events.js";
 import SvgIcon from "../common/SvgIcon.vue";
 
-defineProps<{
+const props = defineProps<{
   events: ConversationEvent[];
 }>();
+
+const latestRunEvent = computed(() =>
+  [...props.events].reverse().find((event) => event.eventType.startsWith("team_run_")) ?? null,
+);
+const latestTaskEvent = computed(() =>
+  [...props.events].reverse().find((event) => event.eventType.startsWith("team_task_")) ?? null,
+);
+const currentStatus = computed(() => {
+  if (!latestRunEvent.value) return "暂无运行";
+  return teamRunStatusLabel(parseTeamEventData(latestRunEvent.value).status);
+});
+const currentRole = computed(() => latestTaskEvent.value ? teamEventRole(latestTaskEvent.value) : null);
 </script>
 
 <template>
@@ -17,6 +30,17 @@ defineProps<{
         <p>{{ events.length }} 条事件</p>
       </div>
     </header>
+
+    <section class="team-summary">
+      <div>
+        <span>状态</span>
+        <strong>{{ currentStatus }}</strong>
+      </div>
+      <div>
+        <span>最近角色</span>
+        <strong>{{ currentRole ?? "无" }}</strong>
+      </div>
+    </section>
 
     <div v-if="events.length === 0" class="team-empty">
       <SvgIcon name="history" :size="22" />
@@ -64,6 +88,42 @@ defineProps<{
   margin: 4px 0 0;
   color: var(--text-muted);
   font-size: var(--text-sm);
+}
+
+.team-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.team-summary div {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-card);
+}
+
+.team-summary span,
+.team-summary strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-summary span {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.team-summary strong {
+  margin-top: 4px;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
 }
 
 .team-empty {

@@ -358,19 +358,20 @@ async function handleForkConversation(messageId?: string) {
         </button>
         <button
           type="button"
-          :class="{ active: activeSidebarTab === 'agents' }"
-          title="Agent"
-          @click="activeSidebarTab = 'agents'"
-        >
-          <SvgIcon name="swarm" :size="14" />
-        </button>
-        <button
-          type="button"
           :class="{ active: activeSidebarTab === 'team' }"
           title="Team"
           @click="activeSidebarTab = 'team'"
         >
           <SvgIcon name="history" :size="14" />
+          <span v-if="teamEvents.length > 0" class="tab-count">{{ teamEvents.length }}</span>
+        </button>
+        <button
+          type="button"
+          :class="{ active: activeSidebarTab === 'agents' }"
+          title="Agent"
+          @click="activeSidebarTab = 'agents'"
+        >
+          <SvgIcon name="swarm" :size="14" />
         </button>
       </div>
       <WorkspaceArtifactsPanel
@@ -379,8 +380,8 @@ async function handleForkConversation(messageId?: string) {
         :selected-path="selectedArtifactPath"
         :refresh-key="artifactRefreshKey"
       />
-      <AgentStatus v-else-if="activeSidebarTab === 'agents'" :agents="agentStates" :swarm-id="swarmId" />
-      <TeamTracePanel v-else :events="teamEvents" />
+      <TeamTracePanel v-else-if="activeSidebarTab === 'team'" :events="teamEvents" />
+      <AgentStatus v-else :agents="agentStates" :swarm-id="swarmId" />
     </aside>
   </div>
 </template>
@@ -657,6 +658,7 @@ async function handleForkConversation(messageId?: string) {
 }
 
 .sidebar-tabs button {
+  position: relative;
   flex: 1;
   height: 30px;
   display: inline-flex;
@@ -672,6 +674,24 @@ async function handleForkConversation(messageId?: string) {
 .sidebar-tabs button.active {
   color: var(--text-secondary);
   background: var(--bg-hover);
+}
+
+.tab-count {
+  position: absolute;
+  top: 3px;
+  right: 8px;
+  min-width: 15px;
+  height: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 4px;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: var(--text-xs);
+  line-height: 1;
+  font-weight: var(--weight-bold);
 }
 
 .chat-sidebar-right :deep(.agent-status) {
