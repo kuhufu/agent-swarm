@@ -76,6 +76,21 @@ function teamEventSummary(prefix: string, payload: unknown): string {
   return summary ? `${prefix}：${summary}` : `${prefix}：${status}`;
 }
 
+function recordTeamEvent(
+  conversationStore: ReturnType<typeof useConversationStore>,
+  msg: WSMessage,
+  conversationId: string | undefined,
+) {
+  if (!msg.type.startsWith("team_")) return;
+  conversationStore.addTeamEvent({
+    id: crypto.randomUUID(),
+    agentId: typeof msg.payload?.agentId === "string" ? msg.payload.agentId : null,
+    eventType: msg.type,
+    eventData: JSON.stringify(msg.payload ?? {}),
+    timestamp: Date.now(),
+  }, conversationId);
+}
+
 export function useWebSocket() {
   function connect() {
     if (ws.value && (ws.value.readyState === WebSocket.OPEN || ws.value.readyState === WebSocket.CONNECTING)) {
@@ -315,6 +330,7 @@ export function useWebSocket() {
         break;
 
       case "team_run_start":
+        recordTeamEvent(conversationStore, msg, targetConversationId);
         conversationStore.setActive(true, targetConversationId);
         conversationStore.addMessage({
           id: crypto.randomUUID(),
@@ -325,6 +341,7 @@ export function useWebSocket() {
         break;
 
       case "team_run_update":
+        recordTeamEvent(conversationStore, msg, targetConversationId);
         conversationStore.addMessage({
           id: crypto.randomUUID(),
           role: "notification",
@@ -334,6 +351,7 @@ export function useWebSocket() {
         break;
 
       case "team_run_end":
+        recordTeamEvent(conversationStore, msg, targetConversationId);
         conversationStore.setActive(false, targetConversationId);
         conversationStore.addMessage({
           id: crypto.randomUUID(),
@@ -344,6 +362,7 @@ export function useWebSocket() {
         break;
 
       case "team_task_created":
+        recordTeamEvent(conversationStore, msg, targetConversationId);
         if (typeof msg.payload?.agentId === "string") {
           conversationStore.setAgentStatus(msg.payload.agentId, "idle", targetConversationId);
           conversationStore.setAgentName(msg.payload.agentId, teamRoleLabel(msg.payload.role), targetConversationId);
@@ -354,6 +373,7 @@ export function useWebSocket() {
       case "team_task_verification_started":
       case "team_task_update":
       case "team_task_retry":
+        recordTeamEvent(conversationStore, msg, targetConversationId);
         if (typeof msg.payload?.agentId === "string") {
           conversationStore.setAgentStatus(msg.payload.agentId, "thinking", targetConversationId);
         }
@@ -369,6 +389,7 @@ export function useWebSocket() {
       case "team_task_verification_passed":
       case "team_task_verification_failed":
       case "team_task_human_review_required":
+        recordTeamEvent(conversationStore, msg, targetConversationId);
         if (typeof msg.payload?.agentId === "string") {
           conversationStore.setAgentStatus(msg.payload.agentId, "idle", targetConversationId);
         }

@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import type { ChatMessage, AgentState, ConversationInfo, ToolCallInfo } from "../types/index.js";
+import type { ChatMessage, AgentState, ConversationInfo, ToolCallInfo, ConversationEvent } from "../types/index.js";
 import { useSwarmStore } from "./swarm.js";
 import * as conversationsApi from "../api/conversations.js";
 import {
@@ -20,6 +20,8 @@ interface ConversationRuntimeState {
   agentStates: Map<string, AgentState>;
   activeAssistantMessageIds: Map<string, string>;
   toolCallMessageIds: Map<string, string>;
+  teamEvents: ConversationEvent[];
+  teamEventsLoaded: boolean;
   isActive: boolean;
 }
 
@@ -128,6 +130,8 @@ export const useConversationStore = defineStore("conversation", () => {
       agentStates: new Map(),
       activeAssistantMessageIds: new Map(),
       toolCallMessageIds: new Map(),
+      teamEvents: [],
+      teamEventsLoaded: false,
       isActive: false,
     };
   }
@@ -191,6 +195,12 @@ export const useConversationStore = defineStore("conversation", () => {
     return state.agentStates;
   }
 
+  function getTeamEvents(conversationId?: string | null): ConversationEvent[] {
+    const state = runtimeStates.value.get(resolveRuntimeStateId(conversationId))
+      ?? runtimeStates.value.get(DRAFT_RUNTIME_ID)!;
+    return state.teamEvents;
+  }
+
   function getIsActive(conversationId?: string | null): boolean {
     const state = runtimeStates.value.get(resolveRuntimeStateId(conversationId))
       ?? runtimeStates.value.get(DRAFT_RUNTIME_ID)!;
@@ -239,6 +249,8 @@ export const useConversationStore = defineStore("conversation", () => {
       ),
       activeAssistantMessageIds: new Map(state.activeAssistantMessageIds),
       toolCallMessageIds: new Map(state.toolCallMessageIds),
+      teamEvents: state.teamEvents.map((event) => ({ ...event })),
+      teamEventsLoaded: state.teamEventsLoaded,
       isActive: state.isActive,
     };
   }
@@ -258,6 +270,7 @@ export const useConversationStore = defineStore("conversation", () => {
       state.messages.length > 0
       || state.streamingMessages.size > 0
       || state.agentStates.size > 0
+      || state.teamEvents.length > 0
       || state.isActive
     );
   }
@@ -312,6 +325,10 @@ export const useConversationStore = defineStore("conversation", () => {
       agentStates: mergedAgentStates,
       activeAssistantMessageIds: mergedActiveAssistantMessageIds,
       toolCallMessageIds: mergedToolCallMessageIds,
+      teamEvents: [...draftState.teamEvents, ...existingState.teamEvents]
+        .filter((event, index, list) => list.findIndex((item) => item.id === event.id) === index)
+        .sort((a, b) => a.timestamp - b.timestamp),
+      teamEventsLoaded: existingState.teamEventsLoaded || draftState.teamEventsLoaded,
       isActive: existingState.isActive || draftState.isActive,
     };
   }
@@ -341,6 +358,20 @@ export const useConversationStore = defineStore("conversation", () => {
   function addMessage(msg: ChatMessage, conversationId?: string) {
     mutateRuntimeState(conversationId, (state) => {
       state.messages.push(cloneMessage(msg));
+    });
+  }
+
+  function addTeamEvent(event: ConversationEvent, conversationId?: string) {
+    if (!event.eventType.startsWith("team_")) return;
+    mutateRuntimeState(conversationId, (state) => {
+      const existingIndex = state.teamEvents.findIndex((item) => item.id === event.id);
+      if (existingIndex >= 0) {
+        state.teamEvents[existingIndex] = { ...event };
+      } else {
+        state.teamEvents.push({ ...event });
+      }
+      state.teamEvents.sort((a, b) => a.timestamp - b.timestamp);
+      state.teamEventsLoaded = true;
     });
   }
 
@@ -783,7 +814,13 @@ export const useConversationStore = defineStore("conversation", () => {
 
     // If runtime already has messages, just switch to it without any API call
     const existingRuntime = runtimeStates.value.get(resolveRuntimeStateId(normalizedConversationId));
-    if (existingRuntime && existingRuntime.messages.length > 0 && !existingRuntime.isActive && existingRuntime.streamingMessages.size === 0) {
+    if (
+      existingRuntime
+      && existingRuntime.messages.length > 0
+      && existingRuntime.teamEventsLoaded
+      && !existingRuntime.isActive
+      && existingRuntime.streamingMessages.size === 0
+    ) {
       requestInputFocus();
       return;
     }
@@ -826,12 +863,18 @@ export const useConversationStore = defineStore("conversation", () => {
       const messagesRes = await conversationsApi.getMessages(normalizedConversationId, since);
       const apiMessages = Array.isArray(messagesRes.data) ? messagesRes.data : [];
       const mergedMessages = mergeCachedAndIncrementalMessages(cached?.messages ?? [], apiMessages);
+      const eventsRes = await conversationsApi.getEvents(normalizedConversationId);
+      const teamEvents = Array.isArray(eventsRes.data)
+        ? eventsRes.data.filter((event) => event.eventType.startsWith("team_"))
+        : [];
 
       mutateRuntimeState(normalizedConversationId, (state) => {
         state.messages = normalizeHistoryMessages(mergedMessages, resolveAgentName);
         state.streamingMessages = new Map();
         state.activeAssistantMessageIds = new Map();
         state.toolCallMessageIds = new Map();
+        state.teamEvents = teamEvents;
+        state.teamEventsLoaded = true;
         state.isActive = false;
       });
 
@@ -1061,12 +1104,14 @@ export const useConversationStore = defineStore("conversation", () => {
     getMessages,
     getStreamingMessages,
     getAgentStates,
+    getTeamEvents,
     getIsActive,
     loading,
     loadingMessages,
     conversations,
     inputFocusRequestKey,
     addMessage,
+    addTeamEvent,
     upsertToolCall,
     startStreamingMessage,
     appendStreamDelta,
