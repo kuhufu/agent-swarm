@@ -40,9 +40,8 @@ interface NormalizedSwarmContextConfig {
 export class SwarmMode implements ModeExecutor {
   async *execute(ctx: ModeExecutionContext): AsyncGenerator<SwarmEvent> {
     const { swarmConfig, message, agents, createAgentFn, isAborted, emit } = ctx;
-    const orchId = swarmConfig.orchestrator?.id;
     const maxTurns = swarmConfig.maxTotalTurns ?? 10;
-    let currentAgentId = orchId ?? swarmConfig.agents[0]?.id;
+    let currentAgentId = swarmConfig.agents[0]?.id;
     let currentMessage = message;
     let turn = 0;
     const handoffHistory: HandoffProposal[] = [];
@@ -51,8 +50,7 @@ export class SwarmMode implements ModeExecutor {
 
     // Ensure initial agent is created
     if (currentAgentId) {
-      const config = swarmConfig.agents.find((a) => a.id === currentAgentId)
-        ?? (swarmConfig.orchestrator?.id === currentAgentId ? swarmConfig.orchestrator : undefined);
+      const config = swarmConfig.agents.find((a) => a.id === currentAgentId);
       if (config && !agents.has(currentAgentId)) {
         createAgentFn(config);
       }
@@ -128,8 +126,7 @@ export class SwarmMode implements ModeExecutor {
       if (handoffResolution.proposal) {
         const handoff = handoffResolution.proposal;
         // Ensure target agent is created
-        const targetConfig = swarmConfig.agents.find((a) => a.id === handoff.toAgentId)
-          ?? (swarmConfig.orchestrator?.id === handoff.toAgentId ? swarmConfig.orchestrator : undefined);
+        const targetConfig = swarmConfig.agents.find((a) => a.id === handoff.toAgentId);
         if (targetConfig && !agents.has(handoff.toAgentId)) {
           createAgentFn(targetConfig);
         }

@@ -22,20 +22,6 @@ const debatableConfigSchema = z.object({
   judgeAgent: z.string().min(1).optional(),
 });
 
-const pipelineConditionSchema = z.object({
-  type: z.enum(["equals", "notEquals", "contains", "regex", "minLength", "maxLength"]),
-  value: z.string(),
-});
-
-const pipelineStepSchema = z.object({
-  agentId: z.string().min(1),
-  condition: pipelineConditionSchema.optional(),
-  transform: z.object({
-    type: z.enum(["prepend", "append", "template", "trim", "replace"]),
-    value: z.string().optional(),
-  }).optional(),
-});
-
 const interventionPointSchema = z.enum([
   "before_agent_start",
   "after_agent_end",
@@ -48,14 +34,6 @@ const interventionPointSchema = z.enum([
 
 const interventionStrategySchema = z.enum(["auto", "confirm", "review", "edit", "reject"]);
 
-const aggregationStrategySchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("none") }),
-  z.object({ type: z.literal("merge") }),
-  z.object({ type: z.literal("vote"), quorum: z.number().int().min(1) }),
-  z.object({ type: z.literal("best"), judgeAgent: z.string().min(1) }),
-  z.object({ type: z.literal("custom"), handler: z.string().min(1) }),
-]);
-
 const interventionsSchema = z.partialRecord(interventionPointSchema, interventionStrategySchema);
 const swarmContextSchema = z.object({
   mode: z.enum(["handoff_only", "summary"]),
@@ -67,12 +45,9 @@ const swarmContextSchema = z.object({
 export const createSwarmSchema = z.object({
   name: z.string().min(1, "名称不能为空"),
   description: z.string().optional(),
-  mode: z.union([z.string(), z.object({ type: z.string() })]),
+  mode: z.enum(["chat", "swarm", "debate"]),
   agents: z.array(agentConfigSchema).min(1, "至少需要一个 Agent"),
-  orchestrator: agentConfigSchema.optional(),
-  aggregator: aggregationStrategySchema.optional(),
   debateConfig: debatableConfigSchema.optional(),
-  pipeline: z.array(pipelineStepSchema).optional(),
   interventions: interventionsSchema.optional(),
   maxTotalTurns: z.number().int().positive().optional(),
   maxConcurrency: z.number().int().positive().optional(),
@@ -82,12 +57,9 @@ export const createSwarmSchema = z.object({
 export const updateSwarmSchema = z.object({
   name: z.string().min(1, "名称不能为空").optional(),
   description: z.string().optional(),
-  mode: z.union([z.string(), z.object({ type: z.string() })]).optional(),
+  mode: z.enum(["chat", "swarm", "debate"]).optional(),
   agents: z.array(agentConfigSchema).min(1, "至少需要一个 Agent").optional(),
-  orchestrator: agentConfigSchema.optional(),
-  aggregator: aggregationStrategySchema.optional(),
   debateConfig: debatableConfigSchema.optional(),
-  pipeline: z.array(pipelineStepSchema).optional(),
   interventions: interventionsSchema.optional(),
   maxTotalTurns: z.number().int().positive().optional(),
   maxConcurrency: z.number().int().positive().optional(),

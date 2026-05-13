@@ -26,9 +26,7 @@ const shouldAutoScroll = ref(true);
 const BOTTOM_THRESHOLD_PX = 24;
 
 const modeLabels: Record<string, string> = {
-  router: "路由",
-  sequential: "顺序",
-  parallel: "并行",
+  chat: "直接",
   swarm: "协作",
   debate: "辩论",
 };
@@ -77,8 +75,7 @@ function resolveSwarmAgentName(agentId?: string): string | undefined {
   if (!swarm) {
     return undefined;
   }
-  const agent = swarm.agents.find((item) => item.id === agentId)
-    ?? (swarm.orchestrator?.id === agentId ? swarm.orchestrator : undefined);
+  const agent = swarm.agents.find((item) => item.id === agentId);
   return agent?.name;
 }
 

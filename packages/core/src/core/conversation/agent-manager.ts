@@ -89,9 +89,6 @@ export class AgentManager {
   }
 
   private resolveAgentConfig(agentId: string): SwarmAgentConfig | undefined {
-    if (this.swarmConfig.orchestrator?.id === agentId) {
-      return this.swarmConfig.orchestrator;
-    }
     return this.swarmConfig.agents.find((agent) => agent.id === agentId);
   }
 

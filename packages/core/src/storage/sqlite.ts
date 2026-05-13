@@ -591,12 +591,7 @@ export class SqliteStorage implements IStorage {
       set: { userId, name: config.name, config: JSON.stringify(config), updatedAt: now },
     }).run();
 
-    const agents = [...config.agents];
-    if (config.orchestrator && !agents.some((agent) => agent.id === config.orchestrator!.id)) {
-      agents.push(config.orchestrator);
-    }
-
-    for (const agent of agents) {
+    for (const agent of config.agents) {
       const serializableAgent = { ...agent, tools: undefined };
       this.getDb().insert(agentsTable).values({
         id: agent.id,

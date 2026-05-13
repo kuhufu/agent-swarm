@@ -6,35 +6,11 @@ defineProps<{
 </script>
 
 <template>
-  <!-- Router -->
-  <svg v-if="mode === 'router'" :width="size ?? 20" :height="size ?? 20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <polyline points="3 12 9 6 9 18 3 12" />
-    <polyline points="9 6 21 6" />
-    <polyline points="9 18 21 18" />
-  </svg>
-
-  <!-- Sequential -->
-  <svg v-else-if="mode === 'sequential'" :width="size ?? 20" :height="size ?? 20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="5" cy="12" r="3" fill="currentColor" stroke="none" opacity="0.4" />
-    <polyline points="10 9 13 9 13 15 10 15" />
-    <circle cx="17" cy="12" r="3" fill="currentColor" stroke="none" opacity="0.7" />
-    <line x1="8" y1="12" x2="10" y2="12" />
-    <polyline points="9 11 10 12 9 13" />
-    <line x1="13" y1="12" x2="14" y2="12" />
-    <polyline points="13 11 14 12 13 13" />
-  </svg>
-
-  <!-- Parallel -->
-  <svg v-else-if="mode === 'parallel'" :width="size ?? 20" :height="size ?? 20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="5" y1="4" x2="5" y2="20" />
-    <polyline points="3 7 5 4 7 7" />
-    <polyline points="3 17 5 20 7 17" />
-    <line x1="12" y1="4" x2="12" y2="20" />
-    <polyline points="10 7 12 4 14 7" />
-    <polyline points="10 17 12 20 14 17" />
-    <line x1="19" y1="4" x2="19" y2="20" />
-    <polyline points="17 7 19 4 21 7" />
-    <polyline points="17 17 19 20 21 17" />
+  <!-- Chat -->
+  <svg v-if="mode === 'chat'" :width="size ?? 20" :height="size ?? 20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    <line x1="9" y1="9" x2="17" y2="9" />
+    <line x1="9" y1="13" x2="13" y2="13" />
   </svg>
 
   <!-- Swarm -->

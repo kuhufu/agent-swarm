@@ -137,9 +137,9 @@ function getSwarmName(swarmId: string): string {
 
 function getSwarmMode(swarmId: string): string {
   if (swarmId.startsWith("__direct_")) {
-    return "direct";
+    return "chat";
   }
-  return swarmStore.swarms.find((s: SwarmConfig) => s.id === swarmId)?.mode ?? "router";
+  return swarmStore.swarms.find((s: SwarmConfig) => s.id === swarmId)?.mode ?? "swarm";
 }
 
 function getRoleLabel(role: string): string {

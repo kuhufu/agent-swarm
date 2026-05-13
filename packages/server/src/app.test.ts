@@ -38,18 +38,17 @@ function createMockSwarm() {
   }> = [];
   const wikiPages: any[] = [];
 
-  swarms.set("router_swarm", {
-    id: "router_swarm",
-    name: "Router Swarm",
-    mode: "router",
-    agents: [{ id: "router_agent_1", name: "Router Agent 1", description: "Agent for router mode", systemPrompt: "You are router agent 1", model: { provider: "openai", modelId: "gpt-4o-mini" } }],
-    orchestrator: { id: "router_agent_1", name: "Router Agent 1", description: "Agent for router mode", systemPrompt: "You are router agent 1", model: { provider: "openai", modelId: "gpt-4o-mini" } },
+  swarms.set("test_swarm", {
+    id: "test_swarm",
+    name: "Test Swarm",
+    mode: "swarm",
+    agents: [{ id: "agent_1", name: "Agent 1", description: "Test agent", systemPrompt: "You are a helpful assistant.", model: { provider: "openai", modelId: "gpt-4o-mini" } }],
   });
 
   swarms.set("__direct_chat", {
     id: "__direct_chat",
     name: "openai/gpt-4o-mini",
-    mode: "sequential",
+    mode: "chat",
     agents: [{ id: "direct-agent", name: "openai/gpt-4o-mini", description: "Direct chat", systemPrompt: "You are a helpful assistant.", model: { provider: "openai", modelId: "gpt-4o-mini" } }],
   });
 
@@ -112,7 +111,7 @@ function createMockSwarm() {
       if (id === "test_conv" || id === "conv_test") {
         return {
           id,
-          swarmId: "router_swarm",
+          swarmId: "test_swarm",
           title: "test",
           enabledTools: [],
           thinkingLevel: "off",
@@ -435,19 +434,18 @@ describe("API routes", () => {
     }
   });
 
-  it("PUT /api/swarms/:id merges existing config and auto-fills router orchestrator", async () => {
+  it("PUT /api/swarms/:id merges existing config", async () => {
     const server = await startTestServer();
     try {
-      const response = await fetch(`${server.baseUrl}/api/swarms/router_swarm`, {
+      const response = await fetch(`${server.baseUrl}/api/swarms/test_swarm`, {
         method: "PUT",
         headers: withAuthHeaders({ "content-type": "application/json" }),
-        body: JSON.stringify({ name: "Router Swarm Updated", mode: "router", agents: [{ id: "router_agent_1", name: "Router Agent 1", description: "Agent for router mode", systemPrompt: "You are router agent 1", model: { provider: "openai", modelId: "gpt-4o-mini" } }] }),
+        body: JSON.stringify({ name: "Test Swarm Updated", agents: [{ id: "agent_1", name: "Agent 1", description: "Test agent", systemPrompt: "You are a helpful assistant.", model: { provider: "openai", modelId: "gpt-4o-mini" } }] }),
       });
       const data = await response.json() as { data: SwarmConfig };
       expect(response.status).toBe(200);
-      expect(data.data.name).toBe("Router Swarm Updated");
-      expect(data.data.mode).toBe("router");
-      expect(data.data.orchestrator?.id).toBe("router_agent_1");
+      expect(data.data.name).toBe("Test Swarm Updated");
+      expect(data.data.mode).toBe("swarm");
     } finally {
       await server.close();
     }
@@ -456,7 +454,7 @@ describe("API routes", () => {
   it("DELETE /api/swarms/:id removes swarm", async () => {
     const server = await startTestServer();
     try {
-      const response = await fetch(`${server.baseUrl}/api/swarms/router_swarm`, {
+      const response = await fetch(`${server.baseUrl}/api/swarms/test_swarm`, {
         method: "DELETE",
         headers: withAuthHeaders(),
       });
@@ -477,7 +475,7 @@ describe("API routes", () => {
       const data = await response.json() as { data: SwarmConfig[] };
       expect(response.status).toBe(200);
       expect(data.data.every((item) => !item.id.startsWith("__direct_"))).toBe(true);
-      expect(data.data.some((item) => item.id === "router_swarm")).toBe(true);
+      expect(data.data.some((item) => item.id === "test_swarm")).toBe(true);
     } finally {
       await server.close();
     }
@@ -874,7 +872,7 @@ describe("API routes", () => {
       const response = await fetch(`${server.baseUrl}/api/swarms`, {
         method: "POST",
         headers: withAuthHeaders({ "content-type": "application/json" }),
-        body: JSON.stringify({ name: "Test Swarm", mode: "router", agents: [] }),
+        body: JSON.stringify({ name: "Test Swarm", mode: "swarm", agents: [] }),
       });
       expect(response.status).toBe(400);
     } finally {
@@ -890,7 +888,7 @@ describe("API routes", () => {
         headers: withAuthHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           name: "Intervention Swarm",
-          mode: "sequential",
+          mode: "swarm",
           agents: [{ id: "agent_1", name: "Agent 1", description: "", systemPrompt: "", model: { provider: "openai", modelId: "gpt-4o-mini" } }],
           interventions: { before_tool_call: "confirm" },
         }),
@@ -911,7 +909,7 @@ describe("API routes", () => {
         headers: withAuthHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           name: "Bad Intervention Swarm",
-          mode: "sequential",
+          mode: "swarm",
           agents: [{ id: "agent_1", name: "Agent 1", description: "", systemPrompt: "", model: { provider: "openai", modelId: "gpt-4o-mini" } }],
           interventions: [{ point: "before_tool_call", strategy: "confirm" }],
         }),

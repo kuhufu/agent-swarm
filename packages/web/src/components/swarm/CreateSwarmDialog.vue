@@ -3,7 +3,6 @@ import { ref, reactive, computed, onMounted } from "vue";
 import { useSettingsStore } from "../../stores/settings.js";
 import { useAgentStore } from "../../stores/agents.js";
 import { MODE_OPTIONS } from "../../constants/swarm-modes.js";
-import type { AggregationStrategy } from "../../types/index.js";
 import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, PresetAgent } from "../../types/index.js";
 import ModeIcon from "../common/ModeIcon.vue";
 import CustomSelect from "../common/CustomSelect.vue";
@@ -17,12 +16,8 @@ const emit = defineEmits<{
 const modes = MODE_OPTIONS;
 
 const name = ref("");
-const mode = ref<CollaborationMode>("router");
+const mode = ref<CollaborationMode>("swarm");
 const agents = reactive<SwarmAgentConfig[]>([]);
-const orchestratorId = ref("");
-const aggregatorType = ref<AggregationStrategy["type"]>("none");
-const aggregatorQuorum = ref(2);
-const aggregatorJudgeAgent = ref("");
 
 const showAgentForm = ref(false);
 const selectedPresetId = ref("");
@@ -47,30 +42,8 @@ const presetAgentOptions = computed(() => [
     label: `${preset.name}${preset.category ? ` · ${preset.category}` : ""}${preset.builtIn ? " · 内置" : ""}`,
   })),
 ]);
-const orchestratorOptions = computed(() => {
-  if (!agents.length) {
-    return [{ value: "", label: "请先添加 Agent" }];
-  }
-  return agents.map((agent) => ({
-    value: agent.id,
-    label: `${agent.name} (${agent.id})`,
-  }));
-});
-
-function syncOrchestrator(preferredId?: string) {
-  if (preferredId && agents.some((agent) => agent.id === preferredId)) {
-    orchestratorId.value = preferredId;
-    return;
-  }
-  if (agents.some((agent) => agent.id === orchestratorId.value)) {
-    return;
-  }
-  orchestratorId.value = agents[0]?.id ?? "";
-}
-
 function setMode(nextMode: CollaborationMode) {
   mode.value = nextMode;
-  syncOrchestrator();
 }
 
 function selectModelForAgent(model: SavedModel) {
@@ -133,7 +106,6 @@ function addAgent() {
   if (!agentForm.id || !agentForm.name) return;
   if (agents.some((agent) => agent.id === agentForm.id)) return;
   agents.push({ ...agentForm, model: { ...agentForm.model } });
-  syncOrchestrator();
   agentForm.id = "";
   agentForm.name = "";
   agentForm.description = "";
@@ -146,7 +118,6 @@ function addAgent() {
 
 function removeAgent(index: number) {
   agents.splice(index, 1);
-  syncOrchestrator();
 }
 
 function reorderAgents(fromIndex: number, toIndex: number): boolean {
@@ -192,9 +163,7 @@ function handleAgentDrop(index: number, event: DragEvent) {
   if (fromIndex === null) {
     return;
   }
-  if (reorderAgents(fromIndex, index)) {
-    syncOrchestrator(orchestratorId.value);
-  }
+  reorderAgents(fromIndex, index);
   draggingAgentIndex.value = null;
   dragOverAgentIndex.value = null;
 }
@@ -207,18 +176,12 @@ function handleAgentDragEnd() {
 function submit() {
   if (!name.value || !agents.length) return;
   const swarmId = name.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-  const orchestrator = mode.value === "router"
-    ? agents.find((agent) => agent.id === orchestratorId.value) ?? agents[0]
-    : undefined;
   const swarm: SwarmConfig = {
     id: swarmId,
     name: name.value,
     mode: mode.value,
     agents: agents.map((agent) => ({ ...agent, model: { ...agent.model } })),
   };
-  if (orchestrator) {
-    swarm.orchestrator = { ...orchestrator, model: { ...orchestrator.model } };
-  }
   if (mode.value === "debate") {
     swarm.debateConfig = {
       rounds: 3,
@@ -226,18 +189,6 @@ function submit() {
       conAgent: agents[1]?.id ?? agents[0]?.id ?? "",
       judgeAgent: agents[0]?.id ?? "",
     };
-  }
-  if (mode.value === "parallel") {
-    if (aggregatorType.value === "none") {
-      swarm.aggregator = { type: "none" };
-    } else if (aggregatorType.value === "merge") {
-      swarm.aggregator = { type: "merge" };
-    } else if (aggregatorType.value === "vote") {
-      swarm.aggregator = { type: "vote", quorum: aggregatorQuorum.value };
-    } else if (aggregatorType.value === "best") {
-      const judgeAgent = aggregatorJudgeAgent.value || agents[0]?.id || "";
-      swarm.aggregator = { type: "best", judgeAgent };
-    }
   }
   emit("create", swarm);
 }
@@ -288,19 +239,6 @@ onMounted(() => {
               </div>
             </div>
           </div>
-        </div>
-
-        <div v-if="mode === 'router'" class="form-section">
-          <label class="form-label">Orchestrator</label>
-          <div class="form-row" style="margin-bottom: 0;">
-            <CustomSelect
-              :model-value="orchestratorId"
-              :options="orchestratorOptions"
-              placeholder="选择路由 Agent"
-              @update:model-value="orchestratorId = $event"
-            />
-          </div>
-          <p class="orchestrator-hint">Router 模式会由该 Agent 负责路由决策。</p>
         </div>
 
         <div class="form-section">
@@ -408,41 +346,6 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- Parallel Aggregator Config -->
-        <div v-if="mode === 'parallel'" class="form-section">
-          <label class="form-label">聚合策略</label>
-          <div class="form-row" style="margin-bottom: 8px;">
-            <CustomSelect
-              :model-value="aggregatorType"
-              :options="[
-                { value: 'none', label: '无聚合' },
-                { value: 'merge', label: '合并结果' },
-                { value: 'vote', label: '投票' },
-                { value: 'best', label: '最佳选择' },
-              ]"
-              @update:model-value="aggregatorType = $event as AggregationStrategy['type']"
-            />
-          </div>
-          <div v-if="aggregatorType === 'vote'" class="form-row" style="margin-bottom: 0;">
-            <label>法定人数</label>
-            <input
-              type="number"
-              v-model.number="aggregatorQuorum"
-              class="input-field"
-              min="1"
-              :max="agents.length"
-              style="width: 100px;"
-            />
-          </div>
-          <div v-if="aggregatorType === 'best'" class="form-row" style="margin-bottom: 0;">
-            <label>裁判 Agent</label>
-            <CustomSelect
-              :model-value="aggregatorJudgeAgent"
-              :options="[{ value: '', label: '选择裁判 Agent' }, ...agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]"
-              @update:model-value="aggregatorJudgeAgent = $event"
-            />
-          </div>
-        </div>
       </div>
 
       <div class="dialog-footer">
@@ -639,12 +542,6 @@ onMounted(() => {
   color: var(--text-muted);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
-}
-
-.orchestrator-hint {
-  margin: 8px 0 0;
-  color: var(--text-muted);
-  font-size: var(--text-sm);
 }
 
 .model-selection {

@@ -25,7 +25,7 @@ function createSwarmConfig(id: string): SwarmConfig {
   return {
     id,
     name: id,
-    mode: "sequential",
+    mode: "swarm",
     agents: [
       {
         id: `${id}_agent_1`,
@@ -124,20 +124,20 @@ describe("AgentSwarm persistence", () => {
     cleanupDb(dbPath);
   });
 
-  it("cleans invalid persisted swarms during init", async () => {
-    const dbPath = createTestDbPath("router-normalize");
+  it("persists valid swarms during init", async () => {
+    const dbPath = createTestDbPath("swarm-persist");
     cleanupDb(dbPath);
 
-    const routerSwarmWithoutOrchestrator: SwarmConfig = {
-      id: "router_swarm",
-      name: "Router Swarm",
-      mode: "router",
+    const validSwarm: SwarmConfig = {
+      id: "test_swarm",
+      name: "Test Swarm",
+      mode: "swarm",
       agents: [
         {
-          id: "router_agent_1",
-          name: "Router Agent 1",
-          description: "Fallback orchestrator",
-          systemPrompt: "You are a router agent",
+          id: "agent_1",
+          name: "Agent 1",
+          description: "Test agent",
+          systemPrompt: "You are a helpful assistant.",
           model: {
             provider: "openai",
             modelId: "gpt-4o-mini",
@@ -147,11 +147,11 @@ describe("AgentSwarm persistence", () => {
     };
 
     const swarm = new AgentSwarm({
-      config: createRootConfig(dbPath, [routerSwarmWithoutOrchestrator]),
+      config: createRootConfig(dbPath, [validSwarm]),
     });
 
     await swarm.init();
-    expect(await swarm.listSwarms(TEST_USER_ID)).toHaveLength(0);
+    expect(await swarm.listSwarms(TEST_USER_ID)).toHaveLength(1);
     await swarm.close();
     cleanupDb(dbPath);
   });

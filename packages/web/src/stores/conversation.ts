@@ -712,8 +712,7 @@ export const useConversationStore = defineStore("conversation", () => {
       return undefined;
     }
 
-    const agent = swarm.agents.find((a) => a.id === agentId)
-      ?? (swarm.orchestrator?.id === agentId ? swarm.orchestrator : undefined);
+    const agent = swarm.agents.find((a) => a.id === agentId);
     return agent?.name;
   }
 
@@ -757,10 +756,7 @@ export const useConversationStore = defineStore("conversation", () => {
     const existingAgentStates = runtimeStates.value.get(runtimeId)?.agentStates;
 
     const next = new Map<string, AgentState>();
-    const allAgents = [...(matchedSwarm.agents ?? [])];
-    if (matchedSwarm.orchestrator) {
-      allAgents.push(matchedSwarm.orchestrator);
-    }
+    const allAgents = matchedSwarm.agents ?? [];
 
     for (const agent of allAgents) {
       const existing = existingAgentStates?.get(agent.id);

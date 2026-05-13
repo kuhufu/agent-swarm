@@ -4,30 +4,13 @@ import type { AgentTool } from "@mariozechner/pi-agent-core";
 // Collaboration Mode
 // ============================================================================
 
-export type CollaborationMode = "router" | "sequential" | "parallel" | "swarm" | "debate";
-
-export type AggregationStrategy =
-  | { type: "none" }
-  | { type: "merge" }
-  | { type: "vote"; quorum: number }
-  | { type: "best"; judgeAgent: string }
-  | { type: "custom"; handler: string };
+export type CollaborationMode = "chat" | "swarm" | "debate";
 
 export interface DebateConfig {
   rounds: number;
   judgeAgent: string;
   proAgent: string;
   conAgent: string;
-}
-
-export interface PipelineStep {
-  agentId: string;
-  /** Condition expression (JSON-serializable) — evaluated at runtime */
-  condition?: Record<string, any>;
-  /** Transform expression (JSON-serializable) — evaluated at runtime */
-  transform?: Record<string, any>;
-  /** Skip to this agent ID if condition is false */
-  onSkip?: string;
 }
 
 // ============================================================================
@@ -127,10 +110,7 @@ export interface SwarmConfig {
   name: string;
   mode: CollaborationMode;
   agents: SwarmAgentConfig[];
-  orchestrator?: SwarmAgentConfig;
-  aggregator?: AggregationStrategy;
   debateConfig?: DebateConfig;
-  pipeline?: PipelineStep[];
   interventions?: Partial<Record<InterventionPoint, InterventionStrategy>>;
   maxTotalTurns?: number;
   maxConcurrency?: number;

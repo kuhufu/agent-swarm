@@ -10,9 +10,7 @@ import { createToolRuntimeOptions } from "../tools/runtime.js";
 import { createWorkspaceManager } from "../tools/workspace/manager.js";
 import { storedToMessage } from "../storage/message-mapper.js";
 import type { ModeExecutor } from "../modes/types.js";
-import { RouterMode } from "../modes/router.js";
-import { SequentialMode } from "../modes/sequential.js";
-import { ParallelMode } from "../modes/parallel.js";
+import { ChatMode } from "../modes/chat.js";
 import { SwarmMode } from "../modes/swarm-mode.js";
 import { DebateMode } from "../modes/debate.js";
 import { ConversationEventBus } from "./conversation/event-bus.js";
@@ -172,9 +170,7 @@ export class Conversation {
 
   private getModeExecutor(): ModeExecutor {
     switch (this.swarmConfig.mode) {
-      case "router": return new RouterMode();
-      case "sequential": return new SequentialMode();
-      case "parallel": return new ParallelMode();
+      case "chat": return new ChatMode();
       case "swarm": return new SwarmMode();
       case "debate": return new DebateMode();
       default: throw new Error(`Unknown mode: ${this.swarmConfig.mode}`);

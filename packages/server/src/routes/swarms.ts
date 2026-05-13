@@ -1,17 +1,9 @@
 import { Router } from "express";
-import type { AgentSwarm, SwarmConfig, CollaborationMode } from "@agent-swarm/core";
+import type { AgentSwarm, SwarmConfig } from "@agent-swarm/core";
 import { randomUUID } from "node:crypto";
 import { validateBody } from "../middleware/validate.js";
 import { resolveRequestUserId } from "../middleware/auth.js";
 import { createSwarmSchema, updateSwarmSchema } from "../schemas/index.js";
-
-function normalizeMode(mode: unknown): CollaborationMode {
-  if (typeof mode === "string") return mode as CollaborationMode;
-  if (mode && typeof mode === "object" && "type" in mode) {
-    return (mode as Record<string, unknown>).type as CollaborationMode;
-  }
-  return "router";
-}
 
 function buildSwarmConfig(input: Record<string, unknown>, options: { idOverride?: string; autoGenerateId?: boolean } = {}): SwarmConfig {
   const fromInput = typeof input.id === "string" ? input.id.trim() : "";
@@ -20,21 +12,14 @@ function buildSwarmConfig(input: Record<string, unknown>, options: { idOverride?
   const config: SwarmConfig = {
     id: resolvedId,
     name: input.name as string,
-    mode: normalizeMode(input.mode),
+    mode: input.mode as SwarmConfig["mode"],
     agents: input.agents as SwarmConfig["agents"],
-    orchestrator: input.orchestrator as SwarmConfig["orchestrator"],
-    aggregator: input.aggregator as SwarmConfig["aggregator"],
     debateConfig: input.debateConfig as SwarmConfig["debateConfig"],
-    pipeline: input.pipeline as SwarmConfig["pipeline"],
     interventions: input.interventions as SwarmConfig["interventions"],
     maxTotalTurns: input.maxTotalTurns as number | undefined,
     maxConcurrency: input.maxConcurrency as number | undefined,
     swarmContext: input.swarmContext as SwarmConfig["swarmContext"],
   };
-
-  if (config.mode === "router" && !config.orchestrator) {
-    config.orchestrator = config.agents[0];
-  }
 
   if (config.mode === "debate" && !config.debateConfig) {
     config.debateConfig = {
@@ -103,10 +88,7 @@ export function swarmRoutes(swarm: AgentSwarm): Router {
         ...body,
         id,
         agents: body.agents ?? existing.agents,
-        orchestrator: body.orchestrator ?? existing.orchestrator,
-        aggregator: body.aggregator ?? existing.aggregator,
         debateConfig: body.debateConfig ?? existing.debateConfig,
-        pipeline: body.pipeline ?? existing.pipeline,
         interventions: body.interventions ?? existing.interventions,
         maxTotalTurns: body.maxTotalTurns ?? existing.maxTotalTurns,
         maxConcurrency: body.maxConcurrency ?? existing.maxConcurrency,

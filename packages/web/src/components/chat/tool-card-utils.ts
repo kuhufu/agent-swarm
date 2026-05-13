@@ -68,7 +68,6 @@ const TOOL_LABELS: Record<string, string> = {
   javascript_execute: "执行 JavaScript",
   current_time: "获取时间",
   handoff: "交接 Agent",
-  route_to_agent: "路由到 Agent",
   workspace_read_file: "读取文件",
   workspace_write_file: "写入文件",
   workspace_list_files: "文件列表",
@@ -87,7 +86,7 @@ const TOOL_CATEGORY = [
   { prefixes: ["web_search", "web_fetch", "browser_automation"], cls: "search" },
   { prefixes: ["retrieve_knowledge", "search_wiki"], cls: "knowledge" },
   { prefixes: ["javascript_execute", "current_time"], cls: "code" },
-  { prefixes: ["handoff", "route_to_agent"], cls: "handoff" },
+  { prefixes: ["handoff"], cls: "handoff" },
   { prefixes: ["workspace_"], cls: "file" },
 ];
 
@@ -123,7 +122,6 @@ const TOOL_ICONS: Record<string, string> = {
   javascript_execute: "jsExecute",
   current_time: "clock",
   handoff: "arrowRight",
-  route_to_agent: "arrowRight",
   workspace_read_file: "fileCode",
   workspace_write_file: "fileCode",
   workspace_list_files: "folder",

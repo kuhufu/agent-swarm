@@ -14,29 +14,13 @@ export interface ModeConfig {
 }
 
 const MODE_CONFIGS: Record<string, ModeConfig> = {
-  router: {
-    label: "Router 路由",
-    labelZh: "路由",
-    color: "#60a5fa",
-    bg: "rgba(96, 165, 250, 0.1)",
-    desc: "智能路由到最合适的 Agent",
-    icon: "🔀",
-  },
-  sequential: {
-    label: "Sequential 顺序",
-    labelZh: "顺序",
-    color: "#34d399",
-    bg: "rgba(52, 211, 153, 0.1)",
-    desc: "按顺序依次执行",
-    icon: "➡️",
-  },
-  parallel: {
-    label: "Parallel 并行",
-    labelZh: "并行",
-    color: "#60a5fa",
-    bg: "rgba(96, 165, 250, 0.1)",
-    desc: "多个 Agent 同时执行",
-    icon: "⏩",
+  chat: {
+    label: "Chat 直接",
+    labelZh: "直接",
+    color: "#818cf8",
+    bg: "rgba(129, 140, 248, 0.1)",
+    desc: "单 Agent 直接对话",
+    icon: "💬",
   },
   swarm: {
     label: "Swarm 蜂群",
@@ -75,13 +59,11 @@ export const MODE_LABEL_ZH: Record<string, string> = Object.fromEntries(
 );
 
 /** Mode options for selection UIs */
-export type CollaborationMode = "router" | "sequential" | "parallel" | "swarm" | "debate";
+export type CollaborationMode = "chat" | "swarm" | "debate";
 
 /** Mode options for selection UIs */
 export const MODE_OPTIONS: { value: CollaborationMode; label: string; desc: string; icon: string }[] = [
-  { value: "router", label: "Router 路由", desc: "智能路由到最合适的 Agent", icon: "🔀" },
-  { value: "sequential", label: "Sequential 顺序", desc: "按顺序依次执行", icon: "➡️" },
-  { value: "parallel", label: "Parallel 并行", desc: "多个 Agent 同时执行", icon: "⏩" },
   { value: "swarm", label: "Swarm 蜂群", desc: "去中心化协作", icon: "🐝" },
+  { value: "chat", label: "Chat 直接", desc: "单 Agent 直接对话", icon: "💬" },
   { value: "debate", label: "Debate 辩论", desc: "多 Agent 辩论模式", icon: "⚖️" },
 ];

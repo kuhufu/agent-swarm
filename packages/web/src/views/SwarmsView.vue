@@ -7,7 +7,7 @@ import { useAgentStore } from "../stores/agents.js";
 import { getModeConfig } from "../constants/swarm-modes.js";
 import ModeIcon from "../components/common/ModeIcon.vue";
 import CustomSelect from "../components/common/CustomSelect.vue";
-import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, DebateConfig, PresetAgent, AggregationStrategy, SwarmContextConfig } from "../types/index.js";
+import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, DebateConfig, PresetAgent, SwarmContextConfig } from "../types/index.js";
 import { confirmDialog, showError } from "../utils/ui-feedback.js";
 
 const swarmStore = useSwarmStore();
@@ -16,7 +16,6 @@ const agentStore = useAgentStore();
 const isCreating = ref(false);
 const selectedSwarmId = ref<string | null>(null);
 const hasUnsavedChanges = ref(false);
-const orchestratorId = ref("");
 
 // Shared form state (used for both create and edit)
 const editForm = reactive<{
@@ -24,16 +23,14 @@ const editForm = reactive<{
   mode: CollaborationMode;
   agents: SwarmAgentConfig[];
   debateConfig: DebateConfig | undefined;
-  aggregator: AggregationStrategy | undefined;
   maxTotalTurns: number | undefined;
   maxConcurrency: number | undefined;
   swarmContext: SwarmContextConfig | undefined;
 }>({
   name: "",
-  mode: "router",
+  mode: "swarm",
   agents: [],
   debateConfig: undefined,
-  aggregator: undefined,
   maxTotalTurns: undefined,
   maxConcurrency: undefined,
   swarmContext: undefined,
@@ -67,21 +64,9 @@ const presetAgentOptions = computed(() => [
     label: `${preset.name}${preset.category ? ` · ${preset.category}` : ""}${preset.builtIn ? " · 内置" : ""}`,
   })),
 ]);
-const routerOrchestratorOptions = computed(() => {
-  if (!editForm.agents.length) {
-    return [{ value: "", label: "请先添加 Agent" }];
-  }
-  return editForm.agents.map((agent) => ({
-    value: agent.id,
-    label: `${agent.name} (${agent.id})`,
-  }));
-});
-
 const modes: { value: CollaborationMode; label: string; desc: string; icon: string }[] = [
-  { value: "router", label: "Router 路由", desc: "智能路由到最合适的 Agent", icon: "🔀" },
-  { value: "sequential", label: "Sequential 顺序", desc: "按顺序依次执行", icon: "➡️" },
-  { value: "parallel", label: "Parallel 并行", desc: "多个 Agent 同时执行", icon: "⏩" },
   { value: "swarm", label: "Swarm 蜂群", desc: "去中心化协作", icon: "🐝" },
+  { value: "chat", label: "Chat 直接", desc: "单 Agent 直接对话", icon: "💬" },
   { value: "debate", label: "Debate 辩论", desc: "多 Agent 辩论模式", icon: "⚖️" },
 ];
 
@@ -166,17 +151,6 @@ function handlePresetSelection(value: string) {
   applyPresetToAgentForm(preset);
 }
 
-function syncRouterOrchestrator(preferredId?: string) {
-  if (preferredId && editForm.agents.some((agent) => agent.id === preferredId)) {
-    orchestratorId.value = preferredId;
-    return;
-  }
-  if (editForm.agents.some((agent) => agent.id === orchestratorId.value)) {
-    return;
-  }
-  orchestratorId.value = editForm.agents[0]?.id ?? "";
-}
-
 function reorderAgents(fromIndex: number, toIndex: number): boolean {
   if (
     fromIndex === toIndex
@@ -242,7 +216,6 @@ function handleAgentDrop(index: number, event: DragEvent) {
 
   if (reorderAgents(fromIndex, index)) {
     updateEditingIndexAfterReorder(fromIndex, index);
-    syncRouterOrchestrator(orchestratorId.value);
     markDirty();
     suppressAgentClick.value = true;
   }
@@ -270,17 +243,11 @@ watch(selectedSwarm, (swarm) => {
     editForm.mode = swarm.mode;
     editForm.agents = swarm.agents.map((a) => ({ ...a, model: { ...a.model } }));
     editForm.debateConfig = swarm.debateConfig ? { ...swarm.debateConfig } : undefined;
-    editForm.aggregator = swarm.aggregator ? { ...swarm.aggregator } : undefined;
     editForm.maxTotalTurns = swarm.maxTotalTurns;
     editForm.maxConcurrency = swarm.maxConcurrency;
-    syncRouterOrchestrator(swarm.orchestrator?.id);
     hasUnsavedChanges.value = false;
   }
 }, { immediate: true });
-
-watch(() => editForm.mode, () => {
-  syncRouterOrchestrator();
-});
 
 function markDirty() {
   hasUnsavedChanges.value = true;
@@ -292,14 +259,12 @@ function getErrorMessage(error: unknown): string {
 
 function resetForm() {
   editForm.name = "";
-  editForm.mode = "router";
+  editForm.mode = "swarm";
   editForm.agents = [];
   editForm.debateConfig = undefined;
-  editForm.aggregator = undefined;
   editForm.maxTotalTurns = undefined;
   editForm.maxConcurrency = undefined;
   editForm.swarmContext = undefined;
-  orchestratorId.value = "";
 }
 
 function buildCreateConfig(): SwarmConfig {
@@ -312,9 +277,7 @@ function buildCreateConfig(): SwarmConfig {
     name: editForm.name,
     mode: editForm.mode,
     agents,
-    orchestrator: editForm.mode === "router" ? agents.find((a) => a.id === orchestratorId.value) ?? agents[0] : undefined,
     debateConfig: editForm.debateConfig,
-    aggregator: editForm.aggregator,
     maxTotalTurns: editForm.maxTotalTurns || undefined,
     maxConcurrency: editForm.maxConcurrency || undefined,
     swarmContext: editForm.swarmContext,
@@ -329,14 +292,6 @@ async function handleCreate() {
   } catch (error) {
     alert(`创建失败：${getErrorMessage(error)}`);
   }
-}
-
-function setAggregatorType(type: AggregationStrategy["type"]) {
-  if (type === "none") editForm.aggregator = { type: "none" };
-  else if (type === "merge") editForm.aggregator = { type: "merge" };
-  else if (type === "vote") editForm.aggregator = { type: "vote", quorum: Math.min(editForm.agents.length, 2) };
-  else if (type === "best") editForm.aggregator = { type: "best", judgeAgent: editForm.agents[0]?.id ?? "" };
-  markDirty();
 }
 
 function handleSelect(swarm: SwarmConfig) {
@@ -372,23 +327,16 @@ async function handleDelete(swarm: SwarmConfig) {
 
 async function handleSave() {
   if (!selectedSwarmId.value || !editForm.name || !editForm.agents.length) return;
-  const orchestrator = editForm.mode === "router"
-    ? editForm.agents.find((agent) => agent.id === orchestratorId.value) ?? editForm.agents[0]
-    : undefined;
   const updated: SwarmConfig = {
     id: selectedSwarmId.value,
     name: editForm.name,
     mode: editForm.mode,
     agents: editForm.agents.map((a) => ({ ...a, model: { ...a.model } })),
     debateConfig: editForm.mode === "debate" ? editForm.debateConfig : undefined,
-    aggregator: editForm.mode === "parallel" ? editForm.aggregator : undefined,
     maxTotalTurns: editForm.maxTotalTurns,
     maxConcurrency: editForm.maxConcurrency,
     swarmContext: editForm.mode === "swarm" ? editForm.swarmContext : undefined,
   };
-  if (orchestrator) {
-    updated.orchestrator = { ...orchestrator, model: { ...orchestrator.model } };
-  }
   if (editForm.mode === "debate" && !updated.debateConfig) {
     updated.debateConfig = {
       rounds: 3,
@@ -447,14 +395,12 @@ function submitAgent() {
   } else {
     editForm.agents.push(agentData);
   }
-  syncRouterOrchestrator();
   resetAgentForm();
   markDirty();
 }
 
 function removeAgent(index: number) {
   editForm.agents.splice(index, 1);
-  syncRouterOrchestrator();
   if (editingAgentIndex.value === index) resetAgentForm();
   markDirty();
 }
@@ -545,16 +491,6 @@ function clearModelSelection() {
               </div>
             </div>
           </div>
-          <div v-if="editForm.mode === 'router'" class="detail-section">
-            <h4 class="detail-section-title">路由配置</h4>
-            <div class="router-config card">
-              <div class="form-row">
-                <label>Orchestrator</label>
-                <CustomSelect :model-value="orchestratorId" :options="routerOrchestratorOptions" placeholder="选择路由 Agent" @update:model-value="orchestratorId = $event" />
-              </div>
-              <p class="router-config-hint">Router 模式会由该 Agent 先接收请求并决定路由目标。</p>
-            </div>
-          </div>
           <div v-if="editForm.mode === 'debate'" class="detail-section">
             <h4 class="detail-section-title">辩论配置</h4>
             <div class="debate-config card">
@@ -573,23 +509,6 @@ function clearModelSelection() {
               <div class="form-row">
                 <label>裁判 Agent</label>
                 <CustomSelect :model-value="editForm.debateConfig?.judgeAgent ?? ''" :options="[{ value: '', label: '选择 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]" @update:model-value="editForm.debateConfig = { ...editForm.debateConfig ?? { rounds: 3, proAgent: '', conAgent: '', judgeAgent: '' }, judgeAgent: $event }" />
-              </div>
-            </div>
-          </div>
-          <div v-if="editForm.mode === 'parallel'" class="detail-section">
-            <h4 class="detail-section-title">聚合配置</h4>
-            <div class="aggregator-config card">
-              <div class="form-row">
-                <label>聚合策略</label>
-                <CustomSelect :model-value="(editForm.aggregator as any)?.type ?? 'none'" :options="[{ value: 'none', label: '无聚合' },{ value: 'merge', label: '合并结果' },{ value: 'vote', label: '投票' },{ value: 'best', label: '最佳选择' }]" @update:model-value="setAggregatorType($event as AggregationStrategy['type'])" />
-              </div>
-              <div v-if="(editForm.aggregator as any)?.type === 'vote'" class="form-row">
-                <label>法定人数</label>
-                <input type="number" :value="(editForm.aggregator as any)?.quorum ?? 1" class="input-field" min="1" :max="editForm.agents.length" @input="editForm.aggregator = { type: 'vote', quorum: Number(($event.target as HTMLInputElement).value) }" style="width:100px" />
-              </div>
-              <div v-if="(editForm.aggregator as any)?.type === 'best'" class="form-row">
-                <label>裁判 Agent</label>
-                <CustomSelect :model-value="(editForm.aggregator as any)?.judgeAgent ?? ''" :options="[{ value: '', label: '选择裁判 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]" @update:model-value="editForm.aggregator = { type: 'best', judgeAgent: $event }" />
               </div>
             </div>
           </div>
@@ -703,17 +622,6 @@ function clearModelSelection() {
             </div>
           </div>
 
-          <div v-if="editForm.mode === 'router'" class="detail-section">
-            <h4 class="detail-section-title">路由配置</h4>
-            <div class="router-config card">
-              <div class="form-row">
-                <label>Orchestrator</label>
-                <CustomSelect :model-value="orchestratorId" :options="routerOrchestratorOptions" placeholder="选择路由 Agent" @update:model-value="orchestratorId = $event; markDirty()" />
-              </div>
-              <p class="router-config-hint">Router 模式会由该 Agent 先接收请求并决定路由目标。</p>
-            </div>
-          </div>
-
           <div v-if="editForm.mode === 'debate'" class="detail-section">
             <h4 class="detail-section-title">辩论配置</h4>
             <div class="debate-config card">
@@ -736,23 +644,6 @@ function clearModelSelection() {
             </div>
           </div>
 
-          <div v-if="editForm.mode === 'parallel'" class="detail-section">
-            <h4 class="detail-section-title">聚合策略</h4>
-            <div class="aggregator-config card">
-              <div class="form-row">
-                <label>策略类型</label>
-                <CustomSelect :model-value="editForm.aggregator?.type ?? 'none'" :options="[{ value: 'none', label: '无聚合' },{ value: 'merge', label: '合并结果' },{ value: 'vote', label: '投票' },{ value: 'best', label: '最佳选择' }]" @update:model-value="setAggregatorType($event as AggregationStrategy['type'])" />
-              </div>
-              <div v-if="editForm.aggregator?.type === 'vote'" class="form-row">
-                <label>法定人数</label>
-                <input type="number" :value="editForm.aggregator.quorum" class="input-field" min="1" :max="editForm.agents.length" style="width:100px" @input="editForm.aggregator = { type: 'vote', quorum: Math.min(Math.max(Number(($event.target as HTMLInputElement).value) || 1, 1), editForm.agents.length || 1) }; markDirty()" />
-              </div>
-              <div v-if="editForm.aggregator?.type === 'best'" class="form-row">
-                <label>裁判 Agent</label>
-                <CustomSelect :model-value="editForm.aggregator.judgeAgent" :options="[{ value: '', label: '选择裁判 Agent' }, ...editForm.agents.map(a => ({ value: a.id, label: `${a.name} (${a.id})` }))]" @update:model-value="editForm.aggregator = { type: 'best', judgeAgent: $event }; markDirty()" />
-              </div>
-            </div>
-          </div>
           <div v-if="editForm.mode === 'swarm'" class="detail-section">
             <h4 class="detail-section-title">蜂群配置</h4>
             <div class="swarm-config card">

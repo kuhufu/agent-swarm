@@ -7,7 +7,7 @@ import { createWebFetchTool } from "./web-fetch.js";
 import type { ClientToolDefinition, ClientToolExecutionResult } from "./client-bridge.js";
 import { createClientBridgeTool } from "./client-bridge.js";
 import { createHandoffTool } from "./handoff.js";
-import { createRouteToAgentTool } from "./route-to-agent.js";
+
 import { createBrowserAutomationTool } from "./browser-automation.js";
 
 export interface RuntimeTool {
@@ -95,14 +95,6 @@ export function createRuntimeTools(
   const tools: AgentTool<any>[] = [];
   const enabledTools = new Set(runtimeOptions.enabledTools);
   const availableAgents = getAvailableAgents(swarmConfig);
-
-  if (
-    swarmConfig.mode === "router"
-    && swarmConfig.orchestrator
-    && config.id === swarmConfig.orchestrator.id
-  ) {
-    tools.push(createRouteToAgentTool(availableAgents));
-  }
 
   if (swarmConfig.mode === "swarm") {
     tools.push(createHandoffTool(availableAgents.filter((agent) => agent.id !== config.id)));
@@ -214,17 +206,6 @@ function getAvailableAgents(swarmConfig: SwarmConfig): Array<{ id: string; name:
     name: agent.name,
     description: agent.description,
   }));
-
-  if (
-    swarmConfig.orchestrator
-    && !availableAgents.some((agent) => agent.id === swarmConfig.orchestrator!.id)
-  ) {
-    availableAgents.push({
-      id: swarmConfig.orchestrator.id,
-      name: swarmConfig.orchestrator.name,
-      description: swarmConfig.orchestrator.description,
-    });
-  }
 
   return availableAgents;
 }

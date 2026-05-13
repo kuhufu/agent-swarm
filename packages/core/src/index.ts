@@ -1,6 +1,6 @@
 // Core types
 export type { SwarmConfig, SwarmAgentConfig, ModelConfig, ThinkingLevel, ThinkingBudgets, ApiProtocol, ProviderConfig, AgentPreset } from "./core/types.js";
-export type { CollaborationMode, AggregationStrategy, DebateConfig, PipelineStep } from "./core/types.js";
+export type { CollaborationMode, DebateConfig } from "./core/types.js";
 export type { ContextConfig, StorageConfig, EventLogLevel, AgentSwarmRootConfig, LLMBackendConfig } from "./core/types.js";
 export type {
   SwarmEvent,
@@ -75,7 +75,7 @@ export { SQLiteWikiStore } from "./storage/wiki-store-sqlite.js";
 export type { IWikiStore, WikiPage, WikiClaim, WikiLink, WikiPageDetail, WikiSearchResult, WikiPageInput } from "./storage/wiki-store.js";
 
 // Tools
-export { createRouteToAgentTool, routeToAgentTool } from "./tools/route-to-agent.js";
+
 export { createHandoffTool, handoffTool } from "./tools/handoff.js";
 export { createJavascriptExecuteTool, javascriptExecuteTool } from "./tools/javascript-execute.js";
 export { createClientBridgeTool } from "./tools/client-bridge.js";
@@ -97,9 +97,7 @@ export { MCPClient } from "./tools/mcp/client.js";
 export type { MCPServerConfig, MCPTransport, MCPTool, MCPServerStatus } from "./tools/mcp/client.js";
 export { createMCPToolProvider, createAllMCPTools } from "./tools/mcp/tool-provider.js";
 // Modes
-export { RouterMode } from "./modes/router.js";
-export { SequentialMode } from "./modes/sequential.js";
-export { ParallelMode } from "./modes/parallel.js";
+export { ChatMode } from "./modes/chat.js";
 export { SwarmMode } from "./modes/swarm-mode.js";
 export { DebateMode } from "./modes/debate.js";
 export { runAgent, extractText, getStrategy } from "./modes/run-agent.js";

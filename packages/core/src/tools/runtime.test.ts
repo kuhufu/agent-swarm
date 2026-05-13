@@ -35,7 +35,7 @@ describe("tool runtime", () => {
     const swarmConfig: SwarmConfig = {
       id: "swarm",
       name: "swarm",
-      mode: "sequential",
+      mode: "swarm",
       agents: [config],
     };
 
@@ -47,7 +47,7 @@ describe("tool runtime", () => {
       ],
     });
 
-    expect(tools.map((item) => item.name)).toEqual(["workspace_write_file", "workspace_read_file"]);
+    expect(tools.map((item) => item.name)).toEqual(["handoff", "workspace_write_file", "workspace_read_file"]);
   });
 
   it("uses the agent tool name as the runtime tool id for single tools", () => {
@@ -69,7 +69,7 @@ describe("tool runtime", () => {
     const swarmConfig: SwarmConfig = {
       id: "swarm",
       name: "swarm",
-      mode: "sequential",
+      mode: "swarm",
       agents: [config],
     };
 
@@ -82,22 +82,4 @@ describe("tool runtime", () => {
     expect(enhanced.tools?.[0]).toBe(explicitTool);
   });
 
-  it("adds router mode routing tool only to the orchestrator", () => {
-    const worker = agent("worker");
-    const orchestrator = agent("orchestrator");
-    const swarmConfig: SwarmConfig = {
-      id: "swarm",
-      name: "swarm",
-      mode: "router",
-      orchestrator,
-      agents: [worker],
-    };
-    const runtimeOptions = {
-      enabledTools: [],
-      clientToolExecutor: async () => ({ content: "" }),
-    };
-
-    expect(createRuntimeTools(orchestrator, swarmConfig, runtimeOptions).map((item) => item.name)).toEqual(["route_to_agent"]);
-    expect(createRuntimeTools(worker, swarmConfig, runtimeOptions)).toEqual([]);
-  });
 });

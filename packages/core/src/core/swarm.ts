@@ -226,7 +226,7 @@ export class AgentSwarm {
     const directSwarm: SwarmConfig = {
       id: swarmId,
       name: `${provider}/${modelId}`,
-      mode: "sequential",
+      mode: "chat",
       agents: [{
         id: agentId,
         name: `${provider}/${modelId}`,
@@ -755,7 +755,6 @@ export class AgentSwarm {
 
   private validateSwarmConfig(config: SwarmConfig): void {
     if (!config.agents.length) throw new Error(`Invalid swarm "${config.id}": at least one agent is required`);
-    if (config.mode === "router" && !config.orchestrator) throw new Error(`Invalid router swarm "${config.id}": orchestrator is required`);
     if (config.mode === "debate" && !config.debateConfig) {
       const agents = config.agents;
       config.debateConfig = {
