@@ -8,8 +8,9 @@
 
 ## 核心能力
 
-- 三种协作模式：`chat`（直接对话）/ `swarm`（蜂群协作）/ `debate`（辩论）
+- 四种协作模式：`chat`（直接对话）/ `swarm`（蜂群协作）/ `debate`（辩论）/ `team`（Owner 路由的通用团队协作）
 - `swarm` 模式采用动态调度协议：Agent 通过结构化 `handoff` 提议交接，执行器负责审批、循环保护、事件记录和目标 Agent 切换
+- `team` 模式由 Owner 私下判断是否需要组队；简单请求降级为单 Agent，复杂请求按 Analyst / Ideator / Critic / Synthesizer / Researcher 等通用角色执行，并通过 Team 事件记录过程
 - 直接对话模式：无需预建 swarm，可按会话选择 `provider + modelId`
 - Agent 预设库：内置模板 + 自定义模板 CRUD，支持创建 Swarm 时复用
 - Swarm Agent 顺序管理：创建与编辑 Swarm 时均支持拖动排序 Agent 列表

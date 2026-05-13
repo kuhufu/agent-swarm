@@ -13,6 +13,7 @@ import type { ModeExecutor } from "../modes/types.js";
 import { ChatMode } from "../modes/chat.js";
 import { SwarmMode } from "../modes/swarm-mode.js";
 import { DebateMode } from "../modes/debate.js";
+import { TeamMode } from "../modes/team.js";
 import { ConversationEventBus } from "./conversation/event-bus.js";
 import { InterventionOrchestrator } from "./conversation/intervention.js";
 import { AgentManager } from "./conversation/agent-manager.js";
@@ -173,6 +174,7 @@ export class Conversation {
       case "chat": return new ChatMode();
       case "swarm": return new SwarmMode();
       case "debate": return new DebateMode();
+      case "team": return new TeamMode();
       default: throw new Error(`Unknown mode: ${this.swarmConfig.mode}`);
     }
   }

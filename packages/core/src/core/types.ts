@@ -4,7 +4,7 @@ import type { AgentTool } from "@mariozechner/pi-agent-core";
 // Collaboration Mode
 // ============================================================================
 
-export type CollaborationMode = "chat" | "swarm" | "debate";
+export type CollaborationMode = "chat" | "swarm" | "debate" | "team";
 
 export interface DebateConfig {
   rounds: number;
@@ -305,6 +305,92 @@ export interface HandoffEvent {
   returnToAgentId?: string;
 }
 
+export type TeamRunStatus =
+  | "created"
+  | "planning"
+  | "running"
+  | "summarizing"
+  | "completed"
+  | "waiting_for_user"
+  | "failed"
+  | "aborted";
+
+export type TeamTaskStatus =
+  | "pending"
+  | "running"
+  | "verifying"
+  | "revision_required"
+  | "completed"
+  | "waiting_for_user"
+  | "failed"
+  | "skipped";
+
+export type TeamTaskType =
+  | "simple_chat"
+  | "requirements_analysis"
+  | "brainstorming"
+  | "research"
+  | "document"
+  | "coding"
+  | "mixed";
+
+export type TeamStrategy =
+  | "single_agent"
+  | "parallel_perspectives"
+  | "sequential_refinement"
+  | "research_then_synthesize"
+  | "critique_and_revise";
+
+export type TeamRole =
+  | "owner"
+  | "analyst"
+  | "ideator"
+  | "critic"
+  | "synthesizer"
+  | "researcher"
+  | "developer"
+  | "tester"
+  | "reviewer";
+
+export interface TeamRoutingDecision {
+  useTeam: boolean;
+  reason: string;
+  taskType: TeamTaskType;
+  strategy: TeamStrategy;
+  roles: TeamRole[];
+  clarificationQuestion?: string;
+}
+
+export interface TeamRunEvent {
+  type: "team_run_start" | "team_run_update" | "team_run_end";
+  runId: string;
+  conversationId: string;
+  status: TeamRunStatus;
+  summary?: string;
+  routing?: TeamRoutingDecision;
+}
+
+export interface TeamTaskEvent {
+  type:
+    | "team_task_created"
+    | "team_task_started"
+    | "team_task_update"
+    | "team_task_completed"
+    | "team_task_verification_started"
+    | "team_task_verification_passed"
+    | "team_task_verification_failed"
+    | "team_task_retry"
+    | "team_task_human_review_required";
+  runId: string;
+  taskId: string;
+  agentId?: string;
+  role?: TeamRole;
+  status: TeamTaskStatus;
+  summary?: string;
+  issues?: string[];
+  retryCount?: number;
+}
+
 export interface InterventionRequiredEvent {
   type: "intervention_required";
   point: InterventionPoint;
@@ -333,5 +419,7 @@ export type SwarmEvent =
   | ToolExecutionUpdateEvent
   | ToolExecutionEndEvent
   | HandoffEvent
+  | TeamRunEvent
+  | TeamTaskEvent
   | InterventionRequiredEvent
   | ErrorEvent;

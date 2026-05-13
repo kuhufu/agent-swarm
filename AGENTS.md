@@ -40,7 +40,7 @@ agent-swarm/
 │   ├── core/                    # @agent-swarm/core
 │   │   ├── src/
 │   │   │   ├── core/            # AgentSwarm 主类、Conversation、类型、配置、内置预设
-│   │   │   ├── modes/           # 3种协作模式：chat/swarm/debate
+│   │   │   ├── modes/           # 4种协作模式：chat/swarm/debate/team
 │   │   │   ├── intervention/    # 介入处理器和内置策略
 │   │   │   ├── storage/         # IStorage 接口 + SQLite + 向量存储 + Wiki 存储实现
 │   │   │   ├── llm/             # LLM 配置管理 + pi-ai 桥接

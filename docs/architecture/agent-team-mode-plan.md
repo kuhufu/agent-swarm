@@ -2,7 +2,7 @@
 
 本文档描述在 Agent Swarm 中落地 `team` 协作模式的实施方案。`team` 模式目标不是把多段 prompt 串起来，而是为复杂任务提供可追踪、可验证、可恢复的 Owner-Worker-Verifier 协作闭环。
 
-> 当前项目尚未实现 `team` 模式。本文是实施计划，不代表现有运行行为。
+> 当前项目已实现 `team` 模式的最小 MVP：Owner 私下路由、简单请求降级为单 Agent、复杂请求按通用角色执行，并通过现有会话事件流记录 Team Run / Team Task。本文后续章节仍包含未完成的演进计划。
 
 ## 目标
 
@@ -13,13 +13,15 @@
 - 长时间执行期间无法快速响应用户的新消息。
 - 不同任务角色、工具权限、记忆和验收标准混在同一个 Agent 中。
 
-第一阶段目标是实现一个受控 Team Engine：
+当前 MVP 已实现一个受控 Team Engine 的基础闭环：
 
 - 支持 Owner 拆解任务。
 - 支持 Worker 执行子任务。
-- 支持 Verifier 独立验收并打回。
-- 使用确定性状态机控制重试、停止和升级人工介入。
+- 支持 Critic/Verifier 角色做独立审视。
+- 使用确定性流程控制 Team Run / Team Task 的基本状态。
 - 将所有关键过程写入事件流和持久化存储，便于前端 Trace 和恢复。
+
+当前 MVP 暂未实现独立 Team 数据表、并行执行、自动打回重试和专用 Team 面板；这些仍是后续阶段。
 
 ## 非目标
 
@@ -364,24 +366,22 @@ interface TeamRoleToolPolicy {
 
 ## Core 实现落点
 
-建议新增目录：
+当前 MVP 实现为单文件入口，后续复杂度上来后再拆目录：
 
 ```text
-packages/core/src/modes/team/
-  team-mode.ts
-  team-engine.ts
-  state-machine.ts
-  planner.ts
-  task-runner.ts
-  verifier.ts
-  context.ts
-  prompts.ts
-  types.ts
+packages/core/src/modes/team.ts
 ```
 
-职责划分：
+当前职责：
 
-- `team-mode.ts`：对接现有 mode 执行接口，向 Conversation 暴露 AsyncGenerator 事件流。
+- `TeamMode`：对接现有 mode 执行接口，向 Conversation 暴露 AsyncGenerator 事件流。
+- Owner 路由：使用私有 Owner Router 调用生成 `TeamRoutingDecision`，失败时用本地启发式 fallback。
+- 角色执行：基于首个 Agent 的模型和系统提示派生 Analyst / Ideator / Critic / Synthesizer / Researcher 等临时角色。
+- 上下文隔离：临时角色创建后清空恢复历史，只接收当前任务和前序角色摘要。
+- 事件输出：通过现有 `SwarmEvent` 扩展输出 Team Run / Team Task 事件。
+
+后续可拆分：
+
 - `team-engine.ts`：编排 run/task 生命周期、并发限制、重试、人工介入。
 - `state-machine.ts`：集中定义 Team Run 和 Team Task 状态迁移。
 - `planner.ts`：调用 Owner 生成结构化计划。
@@ -433,7 +433,7 @@ packages/web/src/components/team/
   VerificationResult.vue
 ```
 
-模式选择上，`packages/web/src/constants/swarm-modes.ts` 后续可新增 `team`，但必须等 core/server 支持后再开放入口。
+模式选择上，`packages/web/src/constants/swarm-modes.ts` 已开放 `team` 选项；聊天页当前先用通知消息展示 Team Run / Team Task，后续再演进成专用 Team 面板。
 
 ## 人工介入
 

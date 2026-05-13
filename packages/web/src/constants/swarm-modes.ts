@@ -38,6 +38,14 @@ const MODE_CONFIGS: Record<string, ModeConfig> = {
     desc: "多 Agent 辩论模式",
     icon: "⚖️",
   },
+  team: {
+    label: "Team 团队",
+    labelZh: "团队",
+    color: "#9aaa64",
+    bg: "rgba(154, 170, 100, 0.12)",
+    desc: "Owner 路由的通用团队协作",
+    icon: "▦",
+  },
 };
 
 const DEFAULT_MODE_CONFIG: ModeConfig = {
@@ -59,11 +67,12 @@ export const MODE_LABEL_ZH: Record<string, string> = Object.fromEntries(
 );
 
 /** Mode options for selection UIs */
-export type CollaborationMode = "chat" | "swarm" | "debate";
+export type CollaborationMode = "chat" | "swarm" | "debate" | "team";
 
 /** Mode options for selection UIs */
 export const MODE_OPTIONS: { value: CollaborationMode; label: string; desc: string; icon: string }[] = [
   { value: "swarm", label: "Swarm 蜂群", desc: "去中心化协作", icon: "🐝" },
+  { value: "team", label: "Team 团队", desc: "Owner 路由协作", icon: "▦" },
   { value: "chat", label: "Chat 直接", desc: "单 Agent 直接对话", icon: "💬" },
   { value: "debate", label: "Debate 辩论", desc: "多 Agent 辩论模式", icon: "⚖️" },
 ];

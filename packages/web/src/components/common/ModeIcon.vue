@@ -27,6 +27,16 @@ defineProps<{
     <line x1="9" y1="13" x2="14" y2="13" />
   </svg>
 
+  <!-- Team -->
+  <svg v-else-if="mode === 'team'" :width="size ?? 20" :height="size ?? 20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="5" r="2.5" />
+    <circle cx="6" cy="17" r="2.5" />
+    <circle cx="18" cy="17" r="2.5" />
+    <path d="M10.5 7 7.5 14.5" />
+    <path d="M13.5 7 16.5 14.5" />
+    <path d="M8.5 17h7" />
+  </svg>
+
   <!-- Unknown / Fallback -->
   <svg v-else :width="size ?? 20" :height="size ?? 20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="12" cy="12" r="3" />

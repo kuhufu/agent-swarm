@@ -1,0 +1,446 @@
+import type {
+  SwarmAgentConfig,
+  SwarmEvent,
+  TeamRole,
+  TeamRoutingDecision,
+  TeamStrategy,
+  TeamTaskType,
+} from "../core/types.js";
+import { createAgent } from "../core/agent-factory.js";
+import type { ModeExecutor, ModeExecutionContext } from "./types.js";
+import { extractText, runAgent } from "./run-agent.js";
+
+interface RoleResult {
+  role: TeamRole;
+  agentId: string;
+  taskId: string;
+  output: string;
+}
+
+const DEFAULT_MAX_TASKS = 5;
+
+export class TeamMode implements ModeExecutor {
+  async *execute(ctx: ModeExecutionContext): AsyncGenerator<SwarmEvent> {
+    const ownerConfig = ctx.swarmConfig.agents[0];
+    if (!ownerConfig || ctx.isAborted()) return;
+
+    const runId = crypto.randomUUID();
+    yield* this.emitAndYield(ctx, {
+      type: "team_run_start",
+      runId,
+      conversationId: ctx.conversationId,
+      status: "planning",
+      summary: "Owner is routing the request.",
+    });
+
+    const routing = await this.route(ctx, ownerConfig);
+    yield* this.emitAndYield(ctx, {
+      type: "team_run_update",
+      runId,
+      conversationId: ctx.conversationId,
+      status: routing.useTeam ? "planning" : "running",
+      summary: routing.reason,
+      routing,
+    });
+
+    if (ctx.isAborted()) return;
+
+    if (routing.clarificationQuestion && routing.clarificationQuestion.trim().length > 0) {
+      yield* this.runSingleAgent(ctx, ownerConfig, this.buildClarificationPrompt(ctx.message, routing));
+      yield* this.emitAndYield(ctx, {
+        type: "team_run_end",
+        runId,
+        conversationId: ctx.conversationId,
+        status: "waiting_for_user",
+        summary: "Owner requested clarification before starting a team run.",
+        routing,
+      });
+      return;
+    }
+
+    if (!routing.useTeam || routing.strategy === "single_agent") {
+      yield* this.runSingleAgent(ctx, ownerConfig, ctx.message);
+      yield* this.emitAndYield(ctx, {
+        type: "team_run_end",
+        runId,
+        conversationId: ctx.conversationId,
+        status: "completed",
+        summary: "Owner routed the request to a single agent.",
+        routing,
+      });
+      return;
+    }
+
+    yield* this.emitAndYield(ctx, {
+      type: "team_run_update",
+      runId,
+      conversationId: ctx.conversationId,
+      status: "running",
+      summary: `Team strategy: ${routing.strategy}.`,
+      routing,
+    });
+
+    const roles = this.normalizeRoles(routing);
+    const results: RoleResult[] = [];
+    const maxTasks = Math.max(1, Math.min(ctx.swarmConfig.maxTotalTurns ?? DEFAULT_MAX_TASKS, DEFAULT_MAX_TASKS));
+
+    for (const [index, role] of roles.entries()) {
+      if (ctx.isAborted() || index >= maxTasks) break;
+
+      const taskId = crypto.randomUUID();
+      const agentConfig = this.createRoleAgentConfig(ownerConfig, role, index);
+      this.ensureIsolatedAgent(ctx, agentConfig);
+
+      yield* this.emitAndYield(ctx, {
+        type: "team_task_created",
+        runId,
+        taskId,
+        agentId: agentConfig.id,
+        role,
+        status: "pending",
+        summary: this.describeRoleTask(role, routing),
+        retryCount: 0,
+      });
+      yield* this.emitAndYield(ctx, {
+        type: role === "critic" ? "team_task_verification_started" : "team_task_started",
+        runId,
+        taskId,
+        agentId: agentConfig.id,
+        role,
+        status: role === "critic" ? "verifying" : "running",
+        summary: this.describeRoleTask(role, routing),
+        retryCount: 0,
+      });
+
+      const input = this.buildRolePrompt(ctx.message, routing, role, results);
+      yield* runAgent(agentConfig.id, input, ctx);
+
+      const output = this.getLastAssistantText(ctx, agentConfig.id);
+      results.push({ role, agentId: agentConfig.id, taskId, output });
+
+      yield* this.emitAndYield(ctx, {
+        type: role === "critic" ? "team_task_verification_passed" : "team_task_completed",
+        runId,
+        taskId,
+        agentId: agentConfig.id,
+        role,
+        status: "completed",
+        summary: this.truncate(output, 240),
+        retryCount: 0,
+      });
+    }
+
+    if (ctx.isAborted()) {
+      yield* this.emitAndYield(ctx, {
+        type: "team_run_end",
+        runId,
+        conversationId: ctx.conversationId,
+        status: "aborted",
+        summary: "Team run aborted.",
+        routing,
+      });
+      return;
+    }
+
+    yield* this.emitAndYield(ctx, {
+      type: "team_run_end",
+      runId,
+      conversationId: ctx.conversationId,
+      status: "completed",
+      summary: "Team run completed.",
+      routing,
+    });
+  }
+
+  private async route(ctx: ModeExecutionContext, ownerConfig: SwarmAgentConfig): Promise<TeamRoutingDecision> {
+    try {
+      const router = createAgent({
+        config: {
+          ...ownerConfig,
+          id: `${ownerConfig.id}__team_router`,
+          name: "Team Owner Router",
+          tools: [],
+          systemPrompt: [
+            "You are the Owner of a general-purpose agent team.",
+            "Decide whether the user's request needs a team.",
+            "Return only strict JSON with keys: useTeam, reason, taskType, strategy, roles, clarificationQuestion.",
+            "Allowed taskType values: simple_chat, requirements_analysis, brainstorming, research, document, coding, mixed.",
+            "Allowed strategy values: single_agent, parallel_perspectives, sequential_refinement, research_then_synthesize, critique_and_revise.",
+            "Allowed roles: analyst, ideator, critic, synthesizer, researcher, developer, tester, reviewer.",
+            "Prefer a small team. For requirements analysis use analyst, critic, synthesizer. For brainstorming use ideator, ideator, critic, synthesizer.",
+            "If the request is simple, set useTeam=false and strategy=single_agent.",
+          ].join("\n"),
+        },
+        llmConfig: ctx.llmConfig,
+        interventionHandler: ctx.interventionHandler,
+      });
+      await router.prompt(this.buildRoutingPrompt(ctx.message));
+      return this.parseRoutingDecision(this.extractLastAssistantText(router.state.messages));
+    } catch {
+      return this.fallbackRouting(ctx.message);
+    }
+  }
+
+  private parseRoutingDecision(text: string): TeamRoutingDecision {
+    const jsonText = this.extractJsonObject(text);
+    const raw = JSON.parse(jsonText) as Record<string, unknown>;
+    const taskType = this.normalizeTaskType(raw.taskType);
+    const strategy = this.normalizeStrategy(raw.strategy, taskType);
+    const roles = Array.isArray(raw.roles)
+      ? raw.roles.map((role) => this.normalizeRole(role)).filter((role): role is TeamRole => Boolean(role))
+      : [];
+    return {
+      useTeam: raw.useTeam === true,
+      reason: typeof raw.reason === "string" && raw.reason.trim().length > 0
+        ? raw.reason.trim()
+        : "Owner routed the request.",
+      taskType,
+      strategy,
+      roles,
+      clarificationQuestion: typeof raw.clarificationQuestion === "string"
+        ? raw.clarificationQuestion.trim() || undefined
+        : undefined,
+    };
+  }
+
+  private fallbackRouting(message: string): TeamRoutingDecision {
+    const normalized = message.toLowerCase();
+    const looksBrainstorm = /brainstorm|idea|ideas|头脑风暴|点子|创意|方案/.test(normalized);
+    const looksRequirements = /需求|prd|requirement|需求分析|用户故事|验收标准|产品/.test(normalized);
+    const looksResearch = /research|调研|资料|来源|搜索|竞品/.test(normalized);
+    const isLong = message.length > 80;
+
+    if (looksBrainstorm) {
+      return {
+        useTeam: true,
+        reason: "The request benefits from multiple idea-generation perspectives and critique.",
+        taskType: "brainstorming",
+        strategy: "parallel_perspectives",
+        roles: ["ideator", "ideator", "critic", "synthesizer"],
+      };
+    }
+    if (looksRequirements) {
+      return {
+        useTeam: true,
+        reason: "The request needs structured requirements analysis and risk review.",
+        taskType: "requirements_analysis",
+        strategy: "critique_and_revise",
+        roles: ["analyst", "critic", "synthesizer"],
+      };
+    }
+    if (looksResearch) {
+      return {
+        useTeam: true,
+        reason: "The request needs evidence gathering and synthesis.",
+        taskType: "research",
+        strategy: "research_then_synthesize",
+        roles: ["researcher", "critic", "synthesizer"],
+      };
+    }
+    return {
+      useTeam: isLong,
+      reason: isLong
+        ? "The request is broad enough to benefit from analysis, critique, and synthesis."
+        : "The request is simple enough for a single agent.",
+      taskType: isLong ? "mixed" : "simple_chat",
+      strategy: isLong ? "critique_and_revise" : "single_agent",
+      roles: isLong ? ["analyst", "critic", "synthesizer"] : [],
+    };
+  }
+
+  private normalizeRoles(routing: TeamRoutingDecision): TeamRole[] {
+    const roles = routing.roles.filter((role) => role !== "owner");
+    const normalized = roles.length > 0 ? roles : this.defaultRolesForTaskType(routing.taskType);
+    if (!normalized.includes("critic")) normalized.push("critic");
+    if (!normalized.includes("synthesizer")) normalized.push("synthesizer");
+    return normalized.slice(0, DEFAULT_MAX_TASKS);
+  }
+
+  private defaultRolesForTaskType(taskType: TeamTaskType): TeamRole[] {
+    switch (taskType) {
+      case "brainstorming":
+        return ["ideator", "ideator", "critic", "synthesizer"];
+      case "research":
+        return ["researcher", "critic", "synthesizer"];
+      case "requirements_analysis":
+        return ["analyst", "critic", "synthesizer"];
+      default:
+        return ["analyst", "critic", "synthesizer"];
+    }
+  }
+
+  private ensureIsolatedAgent(ctx: ModeExecutionContext, config: SwarmAgentConfig): void {
+    if (!ctx.agents.has(config.id)) {
+      ctx.createAgentFn(config);
+      const active = ctx.agents.get(config.id);
+      if (active) {
+        active.agent.state.messages = [];
+      }
+    }
+  }
+
+  private async *runSingleAgent(
+    ctx: ModeExecutionContext,
+    agentConfig: SwarmAgentConfig,
+    input: string,
+  ): AsyncGenerator<SwarmEvent> {
+    if (!ctx.agents.has(agentConfig.id)) {
+      ctx.createAgentFn(agentConfig);
+    }
+    yield* runAgent(agentConfig.id, input, ctx);
+  }
+
+  private createRoleAgentConfig(base: SwarmAgentConfig, role: TeamRole, index: number): SwarmAgentConfig {
+    return {
+      ...base,
+      id: `${base.id}__team_${role}_${index}`,
+      name: this.roleName(role, index),
+      description: `Team ${role} role`,
+      systemPrompt: `${this.roleSystemPrompt(role)}\n\nBase instructions:\n${base.systemPrompt}`,
+    };
+  }
+
+  private buildRoutingPrompt(message: string): string {
+    return [
+      "Route this user request for a general team mode.",
+      "Use the user's language when writing reason or clarificationQuestion.",
+      "Return strict JSON only.",
+      "",
+      "User request:",
+      message,
+    ].join("\n");
+  }
+
+  private buildClarificationPrompt(message: string, routing: TeamRoutingDecision): string {
+    return [
+      "The user request needs clarification before starting a team run.",
+      "Ask exactly one concise clarification question in the user's language.",
+      "",
+      `Original request: ${message}`,
+      `Clarification question: ${routing.clarificationQuestion ?? ""}`,
+    ].join("\n");
+  }
+
+  private buildRolePrompt(
+    message: string,
+    routing: TeamRoutingDecision,
+    role: TeamRole,
+    previousResults: RoleResult[],
+  ): string {
+    const prior = previousResults.length > 0
+      ? previousResults.map((result) => `## ${result.role}\n${result.output}`).join("\n\n")
+      : "No previous role outputs yet.";
+    return [
+      `You are the ${role} in a general-purpose agent team.`,
+      "Answer in the user's language.",
+      `Task type: ${routing.taskType}`,
+      `Strategy: ${routing.strategy}`,
+      `Owner reason: ${routing.reason}`,
+      "",
+      "User request:",
+      message,
+      "",
+      "Previous role outputs:",
+      prior,
+      "",
+      this.roleOutputInstruction(role),
+    ].join("\n");
+  }
+
+  private roleSystemPrompt(role: TeamRole): string {
+    switch (role) {
+      case "analyst":
+        return "You structure ambiguous requests into goals, users, scenarios, constraints, success criteria, unknowns, and priorities.";
+      case "ideator":
+        return "You generate distinct candidate ideas and explain their tradeoffs. Favor breadth before convergence.";
+      case "critic":
+        return "You critique proposals by finding gaps, conflicts, risks, hidden assumptions, missing evidence, and edge cases.";
+      case "synthesizer":
+        return "You synthesize prior role outputs into a concise final answer with recommended next steps.";
+      case "researcher":
+        return "You gather and organize evidence from available context and tools. Separate evidence from assumptions.";
+      case "developer":
+        return "You reason about implementation options but do not assume code changes are required unless explicitly requested.";
+      case "tester":
+        return "You identify validation strategies, acceptance checks, and failure cases.";
+      case "reviewer":
+        return "You review plans for maintainability, compatibility, risks, and project constraints.";
+      default:
+        return "You contribute to a general-purpose agent team.";
+    }
+  }
+
+  private roleOutputInstruction(role: TeamRole): string {
+    switch (role) {
+      case "synthesizer":
+        return "Produce the final consolidated response. Include the recommendation, rationale, tradeoffs, and concrete next steps.";
+      case "critic":
+        return "Produce a structured critique with blockers, major risks, minor concerns, and suggested improvements.";
+      case "ideator":
+        return "Produce several distinct options. For each option, include value, cost, risk, and when to choose it.";
+      case "analyst":
+        return "Produce structured requirements: goal, target users, use cases, constraints, success criteria, open questions, and priority.";
+      default:
+        return "Produce a concise structured result that can be used by later team roles.";
+    }
+  }
+
+  private describeRoleTask(role: TeamRole, routing: TeamRoutingDecision): string {
+    return `${role} handles ${routing.taskType} using ${routing.strategy}.`;
+  }
+
+  private getLastAssistantText(ctx: ModeExecutionContext, agentId: string): string {
+    const active = ctx.agents.get(agentId);
+    if (!active) return "";
+    return this.extractLastAssistantText(active.agent.state.messages);
+  }
+
+  private extractLastAssistantText(messages: unknown[]): string {
+    const lastAssistant = [...messages].reverse().find((message: any) => message?.role === "assistant") as
+      | { content?: unknown }
+      | undefined;
+    return lastAssistant ? extractText(lastAssistant.content) : "";
+  }
+
+  private extractJsonObject(text: string): string {
+    const trimmed = text.trim();
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) return trimmed;
+    const start = trimmed.indexOf("{");
+    const end = trimmed.lastIndexOf("}");
+    if (start >= 0 && end > start) return trimmed.slice(start, end + 1);
+    throw new Error("No JSON object found in routing response");
+  }
+
+  private normalizeTaskType(value: unknown): TeamTaskType {
+    const allowed: TeamTaskType[] = ["simple_chat", "requirements_analysis", "brainstorming", "research", "document", "coding", "mixed"];
+    return typeof value === "string" && allowed.includes(value as TeamTaskType) ? value as TeamTaskType : "mixed";
+  }
+
+  private normalizeStrategy(value: unknown, taskType: TeamTaskType): TeamStrategy {
+    const allowed: TeamStrategy[] = ["single_agent", "parallel_perspectives", "sequential_refinement", "research_then_synthesize", "critique_and_revise"];
+    if (typeof value === "string" && allowed.includes(value as TeamStrategy)) return value as TeamStrategy;
+    if (taskType === "research") return "research_then_synthesize";
+    if (taskType === "brainstorming") return "parallel_perspectives";
+    if (taskType === "simple_chat") return "single_agent";
+    return "critique_and_revise";
+  }
+
+  private normalizeRole(value: unknown): TeamRole | undefined {
+    const allowed: TeamRole[] = ["owner", "analyst", "ideator", "critic", "synthesizer", "researcher", "developer", "tester", "reviewer"];
+    return typeof value === "string" && allowed.includes(value as TeamRole) ? value as TeamRole : undefined;
+  }
+
+  private roleName(role: TeamRole, index: number): string {
+    const suffix = role === "ideator" ? ` ${index + 1}` : "";
+    return `Team ${role}${suffix}`;
+  }
+
+  private truncate(text: string, maxChars: number): string {
+    return text.length > maxChars ? `${text.slice(0, maxChars)}...` : text;
+  }
+
+  private async *emitAndYield(ctx: ModeExecutionContext, event: SwarmEvent): AsyncGenerator<SwarmEvent> {
+    ctx.emit(event);
+    yield event;
+  }
+}

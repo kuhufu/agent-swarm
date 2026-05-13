@@ -279,6 +279,64 @@ export function useWebSocket() {
         }, targetConversationId);
         break;
 
+      case "team_run_start":
+        conversationStore.setActive(true, targetConversationId);
+        conversationStore.addMessage({
+          id: crypto.randomUUID(),
+          role: "notification",
+          content: `Team 开始：${msg.payload.summary ?? "Owner 正在规划"}`,
+          timestamp: Date.now(),
+        }, targetConversationId);
+        break;
+
+      case "team_run_update":
+        conversationStore.addMessage({
+          id: crypto.randomUUID(),
+          role: "notification",
+          content: `Team 更新：${msg.payload.summary ?? msg.payload.status ?? "运行中"}`,
+          timestamp: Date.now(),
+        }, targetConversationId);
+        break;
+
+      case "team_run_end":
+        conversationStore.setActive(false, targetConversationId);
+        conversationStore.addMessage({
+          id: crypto.randomUUID(),
+          role: "notification",
+          content: `Team 结束：${msg.payload.summary ?? msg.payload.status ?? "已结束"}`,
+          timestamp: Date.now(),
+        }, targetConversationId);
+        break;
+
+      case "team_task_created":
+        if (typeof msg.payload?.agentId === "string") {
+          conversationStore.setAgentStatus(msg.payload.agentId, "idle", targetConversationId);
+          conversationStore.setAgentName(msg.payload.agentId, String(msg.payload.role ?? msg.payload.agentId), targetConversationId);
+        }
+        break;
+
+      case "team_task_started":
+      case "team_task_verification_started":
+        if (typeof msg.payload?.agentId === "string") {
+          conversationStore.setAgentStatus(msg.payload.agentId, "thinking", targetConversationId);
+        }
+        conversationStore.addMessage({
+          id: crypto.randomUUID(),
+          role: "notification",
+          content: `Team 任务：${msg.payload.role ?? "agent"} - ${msg.payload.summary ?? "开始"}`,
+          timestamp: Date.now(),
+        }, targetConversationId);
+        break;
+
+      case "team_task_completed":
+      case "team_task_verification_passed":
+      case "team_task_verification_failed":
+      case "team_task_human_review_required":
+        if (typeof msg.payload?.agentId === "string") {
+          conversationStore.setAgentStatus(msg.payload.agentId, "idle", targetConversationId);
+        }
+        break;
+
       // ── Intervention events ──
       case "intervention_required":
         interventionStore.addIntervention({
