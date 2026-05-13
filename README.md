@@ -35,6 +35,12 @@
 - 事件分级落库：`eventLogLevel = none | key | full`（默认 `key`）
 - 提供商兼容参数：支持 `enable_thinking`（适配部分使用该字段控制思考开关的模型）
 
+## Team 模式使用建议
+
+`team` 模式适合需求分析、头脑风暴、方案设计、落地规划、路线图拆解和需要多视角审视的问题。创建或编辑 Swarm 时选择 `Team 团队`，如果 Agent 列表为空，前端会自动加入 `Team Owner`；日常使用时可以直接提问，例如“帮我做需求分析”“头脑风暴几个方案”“这个方向如何落地”“拆一个路线图”。
+
+运行时 Owner 会先判断是否需要组队。简单请求会降级为单 Agent；复杂请求会选择 Analyst / Ideator / Critic / Synthesizer / Researcher 等少量角色。`maxTotalTurns` 会限制任务数，预算不足时优先保留 `Synthesizer` 做最终汇总。Critic 明确发现 blocker、阻塞、严重风险或不可行时，会记录 `team_task_verification_failed`，聊天页右侧 Team tab 和历史详情会高亮风险事件；当前 MVP 会继续让汇总角色吸收风险，不会自动打回重试。
+
 ## Monorepo 结构
 
 ```text

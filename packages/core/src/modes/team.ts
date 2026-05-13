@@ -84,6 +84,7 @@ export class TeamMode implements ModeExecutor {
     const plannedRoles = this.normalizeRoles(routing);
     const roles = this.selectRolesForRun(plannedRoles, maxTasks);
     const results: RoleResult[] = [];
+    let blockingIssueCount = 0;
 
     yield* this.emitAndYield(ctx, {
       type: "team_run_update",
@@ -128,6 +129,9 @@ export class TeamMode implements ModeExecutor {
       const output = this.getLastAssistantText(ctx, agentConfig.id);
       results.push({ role, agentId: agentConfig.id, taskId, output });
       const hasBlockingIssues = role === "critic" && this.hasBlockingCritique(output);
+      if (hasBlockingIssues) {
+        blockingIssueCount += 1;
+      }
 
       yield* this.emitAndYield(ctx, {
         type: role === "critic"
@@ -161,7 +165,7 @@ export class TeamMode implements ModeExecutor {
       runId,
       conversationId: ctx.conversationId,
       status: "completed",
-      summary: this.buildRunCompletionSummary(roles),
+      summary: this.buildRunCompletionSummary(roles, blockingIssueCount),
       routing,
     });
   }
@@ -220,7 +224,7 @@ export class TeamMode implements ModeExecutor {
   private fallbackRouting(message: string): TeamRoutingDecision {
     const normalized = message.toLowerCase();
     const looksBrainstorm = /brainstorm|idea|ideas|头脑风暴|点子|创意|方案/.test(normalized);
-    const looksRequirements = /需求|prd|requirement|需求分析|用户故事|验收标准|产品/.test(normalized);
+    const looksRequirements = /需求|prd|requirement|需求分析|用户故事|验收标准|产品|落地|路线图|roadmap|规划|方案设计|实施方案/.test(normalized);
     const looksResearch = /research|调研|资料|来源|搜索|竞品/.test(normalized);
     const isLong = message.length > 80;
 
@@ -320,7 +324,11 @@ export class TeamMode implements ModeExecutor {
     return skipped;
   }
 
-  private buildRunCompletionSummary(roles: TeamRole[]): string {
+  private buildRunCompletionSummary(roles: TeamRole[], blockingIssueCount: number): string {
+    if (blockingIssueCount > 0) {
+      return `Team 运行已完成，但独立审视发现 ${blockingIssueCount} 个阻塞风险；请优先查看风险审视和最终汇总。`;
+    }
+
     const hasCritic = roles.includes("critic");
     const hasSynthesizer = roles.includes("synthesizer");
     if (hasCritic && hasSynthesizer) return "Team 运行已完成，包含独立审视和最终汇总。";
@@ -330,7 +338,11 @@ export class TeamMode implements ModeExecutor {
   }
 
   private hasBlockingCritique(output: string): boolean {
-    return /(^|\b)(blocker|blocking|critical issue|not viable|infeasible)(\b|$)|阻塞|严重风险|不可行|无法落地/.test(output.toLowerCase());
+    const normalized = output.toLowerCase();
+    if (/\b(no|none|without)\s+(blocker|blockers|blocking|critical issues?)\b|无阻塞|没有阻塞|暂无阻塞|没有严重风险|暂无严重风险/.test(normalized)) {
+      return false;
+    }
+    return /(^|\b)(blocker|blocking|critical issue|critical issues|not viable|infeasible)(\b|$)|阻塞|严重风险|不可行|无法落地/.test(normalized);
   }
 
   private ensureIsolatedAgent(ctx: ModeExecutionContext, config: SwarmAgentConfig): void {
@@ -437,7 +449,7 @@ export class TeamMode implements ModeExecutor {
   private roleOutputInstruction(role: TeamRole): string {
     switch (role) {
       case "synthesizer":
-        return "Produce the final consolidated response. Include the recommendation, rationale, tradeoffs, and concrete next steps.";
+        return "Produce the final consolidated response. Include the recommendation, rationale, tradeoffs, concrete next steps, and any blockers or severe risks raised by prior roles. Do not hide critic blockers.";
       case "critic":
         return "Produce a structured critique with blockers, major risks, minor concerns, and suggested improvements.";
       case "ideator":

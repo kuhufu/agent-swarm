@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import type { ConversationEvent } from "../../types/index.js";
 import { formatTimeLong } from "../../utils/format.js";
-import { parseTeamEventData, teamEventLabel, teamEventRole, teamEventSummary, teamRunStatusLabel } from "../../utils/team-events.js";
+import { parseTeamEventData, teamEventLabel, teamEventRole, teamEventSeverity, teamEventSummary, teamRunStatusLabel } from "../../utils/team-events.js";
 import SvgIcon from "../common/SvgIcon.vue";
 
 const props = defineProps<{
@@ -20,6 +20,9 @@ const currentStatus = computed(() => {
   return teamRunStatusLabel(parseTeamEventData(latestRunEvent.value).status);
 });
 const currentRole = computed(() => latestTaskEvent.value ? teamEventRole(latestTaskEvent.value) : null);
+const riskCount = computed(() =>
+  props.events.filter((event) => teamEventSeverity(event) === "danger").length,
+);
 </script>
 
 <template>
@@ -40,6 +43,10 @@ const currentRole = computed(() => latestTaskEvent.value ? teamEventRole(latestT
         <span>最近角色</span>
         <strong>{{ currentRole ?? "无" }}</strong>
       </div>
+      <div>
+        <span>风险</span>
+        <strong :class="{ danger: riskCount > 0 }">{{ riskCount }} 条</strong>
+      </div>
     </section>
 
     <div v-if="events.length === 0" class="team-empty">
@@ -48,7 +55,12 @@ const currentRole = computed(() => latestTaskEvent.value ? teamEventRole(latestT
     </div>
 
     <div v-else class="team-timeline">
-      <article v-for="event in events" :key="event.id" class="team-event">
+      <article
+        v-for="event in events"
+        :key="event.id"
+        class="team-event"
+        :class="teamEventSeverity(event)"
+      >
         <div class="team-event-dot" />
         <div class="team-event-body">
           <div class="team-event-header">
@@ -92,7 +104,7 @@ const currentRole = computed(() => latestTaskEvent.value ? teamEventRole(latestT
 
 .team-summary {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   padding: 12px 14px;
   border-bottom: 1px solid var(--border-subtle);
@@ -124,6 +136,10 @@ const currentRole = computed(() => latestTaskEvent.value ? teamEventRole(latestT
   color: var(--text-primary);
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
+}
+
+.team-summary strong.danger {
+  color: var(--color-danger);
 }
 
 .team-empty {
@@ -172,12 +188,30 @@ const currentRole = computed(() => latestTaskEvent.value ? teamEventRole(latestT
   z-index: 1;
 }
 
+.team-event.warning .team-event-dot {
+  background: var(--color-warning);
+}
+
+.team-event.danger .team-event-dot {
+  background: var(--color-danger);
+}
+
 .team-event-body {
   min-width: 0;
   padding: 9px 10px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: var(--bg-card);
+}
+
+.team-event.warning .team-event-body {
+  border-color: var(--border-warning);
+  background: var(--bg-warning);
+}
+
+.team-event.danger .team-event-body {
+  border-color: var(--border-danger);
+  background: var(--bg-danger);
 }
 
 .team-event-header {

@@ -78,6 +78,20 @@ export function teamEventRole(event: ConversationEvent): string | null {
   return "role" in data ? teamRoleLabel(data.role) : null;
 }
 
+export function teamEventSeverity(event: ConversationEvent): "normal" | "warning" | "danger" {
+  if (event.eventType === "team_task_verification_failed" || event.eventType === "team_task_human_review_required") {
+    return "danger";
+  }
+  if (event.eventType === "team_task_retry") {
+    return "warning";
+  }
+
+  const status = parseTeamEventData(event).status;
+  if (status === "failed") return "danger";
+  if (status === "revision_required" || status === "waiting_for_user") return "warning";
+  return "normal";
+}
+
 export function teamPayloadSummary(prefix: string, payload: unknown): string {
   const data = payload && typeof payload === "object" && !Array.isArray(payload)
     ? payload as Record<string, unknown>

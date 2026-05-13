@@ -21,7 +21,7 @@
 - 使用确定性流程控制 Team Run / Team Task 的基本状态。
 - 将所有关键过程写入事件流和持久化存储，便于前端 Trace 和恢复。
 - Team 执行受 `maxTotalTurns` 限制；当任务预算不足以执行全部角色时，会优先保留 `synthesizer` 作为最后一步，避免只有发散或分析而没有最终汇总。运行事件会记录实际执行角色、被预算裁剪的角色，并在结束摘要中说明是否包含独立审视和最终汇总。
-- Critic 输出中明确出现 blocker、阻塞、严重风险、不可行等信号时，当前 MVP 会记录 `team_task_verification_failed`，并继续交给后续汇总角色吸收风险；自动打回重试仍留作后续阶段。
+- Critic 输出中明确出现 blocker、阻塞、严重风险、不可行等信号时，当前 MVP 会记录 `team_task_verification_failed`，Team Run 结束摘要会提示存在阻塞风险，并继续交给后续汇总角色吸收风险；聊天页 Team tab 和历史详情会用风险样式高亮这类事件。自动打回重试仍留作后续阶段。
 - 内置 `Team Owner` Agent 模板，便于快速创建通用 `team` 模式 Swarm。
 - 前端创建/编辑 Swarm 时选择 `Team` 模式，如果当前 Agent 列表为空，会自动加入 `Team Owner`，并优先填入已保存模型列表中的第一个模型。
 
@@ -379,7 +379,7 @@ packages/core/src/modes/team.ts
 当前职责：
 
 - `TeamMode`：对接现有 mode 执行接口，向 Conversation 暴露 AsyncGenerator 事件流。
-- Owner 路由：使用私有 Owner Router 调用生成 `TeamRoutingDecision`，失败时用本地启发式 fallback。
+- Owner 路由：使用私有 Owner Router 调用生成 `TeamRoutingDecision`，失败时用本地启发式 fallback，覆盖需求分析、头脑风暴、研究、落地规划/路线图和简单请求降级。
 - 角色执行：基于首个 Agent 的模型和系统提示派生 Analyst / Ideator / Critic / Synthesizer / Researcher 等临时角色。
 - 上下文隔离：临时角色创建后清空恢复历史，只接收当前任务和前序角色摘要。
 - 事件输出：通过现有 `SwarmEvent` 扩展输出 Team Run / Team Task 事件。

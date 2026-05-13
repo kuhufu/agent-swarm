@@ -166,6 +166,42 @@ describe("TeamMode", () => {
     expect((agents.get("owner")?.agent as FakeAgent | undefined)?.prompts).toEqual(["你好"]);
   });
 
+  it("routes landing-plan requests into requirements analysis roles", async () => {
+    const owner = createAgentConfig("owner");
+    const swarmConfig: SwarmConfig = {
+      id: "team_swarm",
+      name: "Team Swarm",
+      mode: "team",
+      agents: [owner],
+    };
+    const agents = new Map<string, { agent: any; config: SwarmAgentConfig }>();
+    const ctx: ModeExecutionContext = {
+      swarmConfig,
+      message: "这个 Agent Team 应该如何落地，帮我做路线图",
+      conversationId: "conv-1",
+      storage: {
+        appendMessage: vi.fn(async () => undefined),
+      } as unknown as IStorage,
+      llmConfig: { apiKeys: {} },
+      agents,
+      createAgentFn: (config) => {
+        agents.set(config.id, { agent: new FakeAgent(config.id) as any, config });
+      },
+      emit: () => undefined,
+      abort: () => undefined,
+      isAborted: () => false,
+    };
+
+    const yielded: SwarmEvent[] = [];
+    for await (const event of new TeamMode().execute(ctx)) {
+      yielded.push(event);
+    }
+
+    expect(yielded.some((event) => event.type === "team_task_started" && event.role === "analyst")).toBe(true);
+    expect(yielded.some((event) => event.type === "team_task_verification_started" && event.role === "critic")).toBe(true);
+    expect(yielded.some((event) => event.type === "team_task_started" && event.role === "synthesizer")).toBe(true);
+  });
+
   it("keeps a synthesizer as the final team role when task budget is small", async () => {
     const owner = createAgentConfig("owner");
     const swarmConfig: SwarmConfig = {
@@ -246,9 +282,49 @@ describe("TeamMode", () => {
     }
 
     const failedVerification = yielded.find((event) => event.type === "team_task_verification_failed");
+    const runEnd = yielded.find((event) => event.type === "team_run_end");
     expect(failedVerification?.role).toBe("critic");
     expect(failedVerification?.status).toBe("failed");
     expect(failedVerification?.issues?.[0]).toContain("Blocker");
+    expect(runEnd?.summary).toContain("阻塞风险");
     expect(yielded.some((event) => event.type === "team_task_started" && event.role === "synthesizer")).toBe(true);
+  });
+
+  it("does not fail critic verification for explicit no-blocker output", async () => {
+    const owner = createAgentConfig("owner");
+    const swarmConfig: SwarmConfig = {
+      id: "team_swarm",
+      name: "Team Swarm",
+      mode: "team",
+      agents: [owner],
+    };
+    const agents = new Map<string, { agent: any; config: SwarmAgentConfig }>();
+    const ctx: ModeExecutionContext = {
+      swarmConfig,
+      message: "帮我做一个需求分析方案",
+      conversationId: "conv-1",
+      storage: {
+        appendMessage: vi.fn(async () => undefined),
+      } as unknown as IStorage,
+      llmConfig: { apiKeys: {} },
+      agents,
+      createAgentFn: (config) => {
+        const output = config.id.includes("__team_critic")
+          ? "No blockers. 只有轻微风险，可以继续推进。"
+          : `output from ${config.id}`;
+        agents.set(config.id, { agent: new FakeAgent(config.id, output) as any, config });
+      },
+      emit: () => undefined,
+      abort: () => undefined,
+      isAborted: () => false,
+    };
+
+    const yielded: SwarmEvent[] = [];
+    for await (const event of new TeamMode().execute(ctx)) {
+      yielded.push(event);
+    }
+
+    expect(yielded.some((event) => event.type === "team_task_verification_failed")).toBe(false);
+    expect(yielded.some((event) => event.type === "team_task_verification_passed" && event.role === "critic")).toBe(true);
   });
 });

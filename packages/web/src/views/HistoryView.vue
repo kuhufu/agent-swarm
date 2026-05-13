@@ -7,7 +7,7 @@ import * as conversationsApi from "../api/conversations.js";
 import { apiClient } from "../api/client.js";
 import { getModeConfig } from "../constants/swarm-modes.js";
 import { formatTimeLong } from "../utils/format.js";
-import { teamEventLabel, teamEventRole, teamEventSummary } from "../utils/team-events.js";
+import { teamEventLabel, teamEventRole, teamEventSeverity, teamEventSummary } from "../utils/team-events.js";
 import ModeIcon from "../components/common/ModeIcon.vue";
 import SidebarPanel from "../components/common/SidebarPanel.vue";
 import EmptyState from "../components/common/EmptyState.vue";
@@ -333,7 +333,12 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
             </h4>
             <div v-if="loadingEvents" class="detail-empty">Team 过程加载中...</div>
             <div v-else-if="selectedTeamEvents && selectedTeamEvents.length" class="team-timeline">
-              <article v-for="event in selectedTeamEvents" :key="event.id" class="team-event">
+              <article
+                v-for="event in selectedTeamEvents"
+                :key="event.id"
+                class="team-event"
+                :class="teamEventSeverity(event)"
+              >
                 <div class="team-event-dot" />
                 <div class="team-event-body">
                   <div class="team-event-header">
@@ -514,12 +519,30 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   z-index: 1;
 }
 
+.team-event.warning .team-event-dot {
+  background: var(--color-warning);
+}
+
+.team-event.danger .team-event-dot {
+  background: var(--color-danger);
+}
+
 .team-event-body {
   min-width: 0;
   padding: 10px 12px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: var(--bg-surface);
+}
+
+.team-event.warning .team-event-body {
+  border-color: var(--border-warning);
+  background: var(--bg-warning);
+}
+
+.team-event.danger .team-event-body {
+  border-color: var(--border-danger);
+  background: var(--bg-danger);
 }
 
 .team-event-header {
