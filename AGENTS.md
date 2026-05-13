@@ -40,12 +40,13 @@ agent-swarm/
 │   ├── core/                    # @agent-swarm/core
 │   │   ├── src/
 │   │   │   ├── core/            # AgentSwarm 主类、Conversation、类型、配置、内置预设
-│   │   │   ├── modes/           # 5种协作模式：router/sequential/parallel/swarm/debate
+│   │   │   ├── modes/           # 3种协作模式：chat/swarm/debate
 │   │   │   ├── intervention/    # 介入处理器和内置策略
 │   │   │   ├── storage/         # IStorage 接口 + SQLite + 向量存储 + Wiki 存储实现
 │   │   │   ├── llm/             # LLM 配置管理 + pi-ai 桥接
 │   │   │   ├── logger/          # 结构化 JSON 日志
 │   │   │   └── tools/           # 工具定义、MCP、workspace 组合工具、运行时工具注入
+│   │   ├── tests/               # 集中式测试文件（core/ modes/ tools/ llm/）
 │   │   └── package.json
 │   ├── server/                  # @agent-swarm/server
 │   │   ├── src/
@@ -55,6 +56,17 @@ agent-swarm/
 │   │   │   ├── app.ts           # Express 应用
 │   │   │   ├── ws.ts            # WebSocket 服务
 │   │   │   └── index.ts         # 入口
+│   │   ├── tests/               # 集中式测试
+│   │   └── package.json
+│   ├── server/                  # @agent-swarm/server
+│   │   ├── src/
+│   │   │   ├── routes/          # REST API 路由
+│   │   │   ├── middleware/      # 错误处理中间件
+│   │   │   ├── schemas/         # Zod 校验 schema
+│   │   │   ├── app.ts           # Express 应用
+│   │   │   ├── ws.ts            # WebSocket 服务
+│   │   │   └── index.ts         # 入口
+│   │   ├── tests/               # 集中式测试
 │   │   └── package.json
 │   └── web/                     # @agent-swarm/web
 │       ├── src/
@@ -216,7 +228,7 @@ pnpm test                  # 运行 core + server 单元测试
 | `web_search` | 1 | Web 搜索（多 provider） |
 | `search_wiki` | 1 | LLM Wiki 页面检索 |
 | `retrieve_knowledge` | 1 | 文档知识库检索 |
-| 其他内置 | — | route_to_agent / handoff / javascript_execute / current_time |
+| 其他内置 | — | handoff / javascript_execute / current_time / browser_automation |
 
 ---
 

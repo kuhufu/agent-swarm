@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { rmSync } from "node:fs";
-import { SQLiteVectorStore } from "../storage/vector-store-sqlite.js";
-import { createRetrieveKnowledgeTool } from "./retrieve-knowledge.js";
+import { SQLiteVectorStore } from "../../src/storage/vector-store-sqlite.js";
+import { createRetrieveKnowledgeTool } from "../../src/tools/retrieve-knowledge.js";
 
 function testDbPath(): string {
   return join(

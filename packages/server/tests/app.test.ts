@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import type { AddressInfo } from "node:net";
 import { WorkspaceManager, type AgentSwarm, type LLMBackendConfig, type SwarmConfig } from "@agent-swarm/core";
-import { createApp } from "./app.js";
-import { signToken } from "./middleware/auth.js";
+import { createApp } from "../src/app.js";
+import { signToken } from "../src/middleware/auth.js";
 
 const TEST_USER = { id: "test-user", username: "tester", role: "admin" as const };
 const TEST_TOKEN = signToken(TEST_USER);

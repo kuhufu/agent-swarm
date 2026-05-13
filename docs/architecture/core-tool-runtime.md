@@ -16,7 +16,7 @@
 运行时会按以下顺序合并工具，已有同名工具优先保留：
 
 1. Agent 配置中的 `config.tools`。
-2. 模式内置工具：`router` 模式 orchestrator 自动获得 `route_to_agent`；`swarm` 模式 Agent 自动获得 `handoff`。
+2. 模式内置工具：`swarm` 模式 Agent 自动获得 `handoff`。
 3. 前端桥接工具：`enabledTools` 包含 `current_time` 或 `javascript_execute` 时注入。
 4. 服务端内置工具：`enabledTools` 包含 `web_search` 时注入 `createWebSearchTool()`。
 5. MCP 工具：`enabledTools` 包含 `mcp` 时注入所有已发现 MCP 工具。

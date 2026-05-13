@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { createGrepTool } from "./grep.js";
-import { WorkspaceManager, createWorkspaceManager } from "./manager.js";
+import { createGrepTool } from "../../../src/tools/workspace/grep.js";
+import { WorkspaceManager, createWorkspaceManager } from "../../../src/tools/workspace/manager.js";
 
 describe("workspace_grep tool", () => {
   let workspace: WorkspaceManager;

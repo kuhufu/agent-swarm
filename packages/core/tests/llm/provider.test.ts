@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import type { LLMBackendConfig } from "../core/types.js";
-import { resolveModelFromProvider } from "./provider.js";
+import type { LLMBackendConfig } from "../../src/core/types.js";
+import { resolveModelFromProvider } from "../../src/llm/provider.js";
 
 function createConfig(config?: Partial<LLMBackendConfig>): LLMBackendConfig {
   return {

@@ -1,8 +1,8 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
 import { describe, expect, it } from "vitest";
-import type { SwarmAgentConfig, SwarmConfig } from "../core/types.js";
-import { createRuntimeTool, createRuntimeTools, withRuntimeTools } from "./runtime.js";
+import type { SwarmAgentConfig, SwarmConfig } from "../../src/core/types.js";
+import { createRuntimeTool, createRuntimeTools, withRuntimeTools } from "../../src/tools/runtime.js";
 
 const model = { provider: "openai", modelId: "gpt-4o-mini" };
 

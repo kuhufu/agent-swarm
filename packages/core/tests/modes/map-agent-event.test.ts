@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentEvent as PiAgentEvent } from "@mariozechner/pi-agent-core";
-import { mapAgentEvent } from "./map-agent-event.js";
+import { mapAgentEvent } from "../../src/modes/map-agent-event.js";
 
 describe("mapAgentEvent", () => {
   it("maps tool execution start events explicitly", () => {

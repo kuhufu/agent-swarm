@@ -2,9 +2,9 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { rmSync } from "node:fs";
-import { AgentSwarm } from "../core/swarm.js";
-import { SQLiteWikiStore } from "../storage/wiki-store-sqlite.js";
-import { createSearchWikiTool } from "./search-wiki.js";
+import { AgentSwarm } from "../../src/core/swarm.js";
+import { SQLiteWikiStore } from "../../src/storage/wiki-store-sqlite.js";
+import { createSearchWikiTool } from "../../src/tools/search-wiki.js";
 
 function testDbPath(): string {
   return join(tmpdir(), `wiki-test-${Date.now()}-${Math.random().toString(16).slice(2)}.db`);

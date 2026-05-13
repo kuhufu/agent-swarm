@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createHandoffTool } from "./handoff.js";
+import { createHandoffTool } from "../../src/tools/handoff.js";
 
 describe("handoff tool", () => {
   it("throws when handoff target is not in available agent list", async () => {

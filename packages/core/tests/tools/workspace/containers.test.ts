@@ -2,8 +2,8 @@ import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import type { ChildProcess, SpawnOptionsWithoutStdio } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { createRunWorkspaceContainerTool, createRemoveWorkspaceContainersTool, createListWorkspaceContainersTool, createStartWorkspaceContainersTool, createStopWorkspaceContainersTool, createRestartWorkspaceContainersTool, createPullWorkspaceImageTool } from "./containers.js";
-import { WorkspaceManager, createWorkspaceManager } from "./manager.js";
+import { createRunWorkspaceContainerTool, createRemoveWorkspaceContainersTool, createListWorkspaceContainersTool, createStartWorkspaceContainersTool, createStopWorkspaceContainersTool, createRestartWorkspaceContainersTool, createPullWorkspaceImageTool } from "../../../src/tools/workspace/containers.js";
+import { WorkspaceManager, createWorkspaceManager } from "../../../src/tools/workspace/manager.js";
 
 describe("workspace container tools", () => {
   it("lists and cleans only current workspace containers by docker label", async () => {

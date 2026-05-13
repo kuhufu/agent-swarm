@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
-import type { ModeExecutionContext } from "./types.js";
-import { createMessagePersistor } from "./message-persistence.js";
+import type { ModeExecutionContext } from "../../src/modes/types.js";
+import { createMessagePersistor } from "../../src/modes/message-persistence.js";
 
 describe("createMessagePersistor", () => {
   it("persists pending assistant and tool-result messages incrementally without duplicates", async () => {

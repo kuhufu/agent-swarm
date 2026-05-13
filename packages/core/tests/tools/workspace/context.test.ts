@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createListFilesTool } from "./list-files.js";
-import { createReadFileTool } from "./read-file.js";
-import { createWriteFileTool } from "./write-file.js";
-import { createGrepTool } from "./grep.js";
-import { WorkspaceManager, createWorkspaceManager } from "./manager.js";
+import { createListFilesTool } from "../../../src/tools/workspace/list-files.js";
+import { createReadFileTool } from "../../../src/tools/workspace/read-file.js";
+import { createWriteFileTool } from "../../../src/tools/workspace/write-file.js";
+import { createGrepTool } from "../../../src/tools/workspace/grep.js";
+import { WorkspaceManager, createWorkspaceManager } from "../../../src/tools/workspace/manager.js";
 
 describe("workspace tool context", () => {
   let workspace: WorkspaceManager;

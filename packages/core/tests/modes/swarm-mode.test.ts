@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
-import type { SwarmConfig, SwarmAgentConfig, SwarmEvent } from "../core/types.js";
-import type { ModeExecutionContext } from "./types.js";
-import type { IStorage } from "../storage/interface.js";
-import { SwarmMode } from "./swarm-mode.js";
+import type { SwarmConfig, SwarmAgentConfig, SwarmEvent } from "../../src/core/types.js";
+import type { ModeExecutionContext } from "../../src/modes/types.js";
+import type { IStorage } from "../../src/storage/interface.js";
+import { SwarmMode } from "../../src/modes/swarm-mode.js";
 
 interface FakeAgentOptions {
   assistantText: string;

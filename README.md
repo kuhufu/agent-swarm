@@ -8,7 +8,7 @@
 
 ## 核心能力
 
-- 五种协作模式：`router` / `sequential` / `parallel` / `swarm` / `debate`
+- 三种协作模式：`chat`（直接对话）/ `swarm`（蜂群协作）/ `debate`（辩论）
 - `swarm` 模式采用动态调度协议：Agent 通过结构化 `handoff` 提议交接，执行器负责审批、循环保护、事件记录和目标 Agent 切换
 - 直接对话模式：无需预建 swarm，可按会话选择 `provider + modelId`
 - Agent 预设库：内置模板 + 自定义模板 CRUD，支持创建 Swarm 时复用
@@ -39,7 +39,11 @@
 agent-swarm/
 ├── packages/
 │   ├── core/        # @agent-swarm/core
+│   │   ├── src/     # 源码
+│   │   └── tests/   # 集中式测试
 │   ├── server/      # @agent-swarm/server
+│   │   ├── src/     # 源码
+│   │   └── tests/   # 集中式测试
 │   └── web/         # @agent-swarm/web
 ├── docs/
 │   ├── architecture/
@@ -365,25 +369,18 @@ export default defineConfig({
   eventLogLevel: "key", // none | key | full，默认 key
   swarms: [
     {
-      id: "research-team",
-      name: "Research Team",
-      mode: "router",
-      orchestrator: {
-        id: "router",
-        name: "Router",
-        description: "Routes to specialist agents",
-        systemPrompt: "Route tasks to the right specialist.",
-        model: { provider: "deepseek", modelId: "deepseek-chat" },
-      },
-      agents: [
-        {
-          id: "researcher",
-          name: "Researcher",
-          description: "Information gathering",
-          systemPrompt: "You are a research specialist.",
-          model: { provider: "deepseek", modelId: "deepseek-chat" },
-        },
-      ],
+       id: "research-team",
+       name: "Research Team",
+       mode: "swarm",
+       agents: [
+         {
+           id: "researcher",
+           name: "Researcher",
+           description: "Information gathering",
+           systemPrompt: "You are a research specialist.",
+           model: { provider: "deepseek", modelId: "deepseek-chat" },
+         },
+       ],
     },
   ],
 });

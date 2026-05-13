@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { createAgent } from "./agent-factory.js";
-import type { LLMBackendConfig, SwarmAgentConfig } from "./types.js";
+import { createAgent } from "../../src/core/agent-factory.js";
+import type { LLMBackendConfig, SwarmAgentConfig } from "../../src/core/types.js";
 
 describe("createAgent", () => {
   it("does not force model.reasoning to false when thinkingLevel is off", () => {

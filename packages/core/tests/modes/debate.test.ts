@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
-import type { SwarmConfig, SwarmAgentConfig } from "../core/types.js";
-import type { ModeExecutionContext } from "./types.js";
-import type { IStorage } from "../storage/interface.js";
-import { DebateMode } from "./debate.js";
+import type { SwarmConfig, SwarmAgentConfig } from "../../src/core/types.js";
+import type { ModeExecutionContext } from "../../src/modes/types.js";
+import type { IStorage } from "../../src/storage/interface.js";
+import { DebateMode } from "../../src/modes/debate.js";
 
 class FakeAgent {
   public readonly state: { messages: any[] } = { messages: [] };
