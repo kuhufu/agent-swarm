@@ -198,8 +198,13 @@ describe("TeamMode", () => {
     const startedRoles = yielded
       .filter((event) => event.type === "team_task_started")
       .map((event) => event.role);
+    const runUpdates = yielded.filter((event) => event.type === "team_run_update");
+    const runEnd = yielded.find((event) => event.type === "team_run_end");
 
     expect(startedRoles).toEqual(["ideator", "synthesizer"]);
+    expect(runUpdates.some((event) => event.summary?.includes("因任务预算限制"))).toBe(true);
+    expect(runUpdates.some((event) => event.summary?.includes("批判审视角色"))).toBe(true);
+    expect(runEnd?.summary).toContain("本次未做独立审视");
     expect([...agents.keys()].some((id) => id.includes("__team_synthesizer"))).toBe(true);
   });
 });

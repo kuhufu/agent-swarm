@@ -81,8 +81,18 @@ export class TeamMode implements ModeExecutor {
     });
 
     const maxTasks = Math.max(1, Math.min(ctx.swarmConfig.maxTotalTurns ?? DEFAULT_MAX_TASKS, DEFAULT_MAX_TASKS));
-    const roles = this.selectRolesForRun(this.normalizeRoles(routing), maxTasks);
+    const plannedRoles = this.normalizeRoles(routing);
+    const roles = this.selectRolesForRun(plannedRoles, maxTasks);
     const results: RoleResult[] = [];
+
+    yield* this.emitAndYield(ctx, {
+      type: "team_run_update",
+      runId,
+      conversationId: ctx.conversationId,
+      status: "running",
+      summary: this.buildRolePlanSummary(plannedRoles, roles),
+      routing,
+    });
 
     for (const [index, role] of roles.entries()) {
       if (ctx.isAborted()) break;
@@ -147,7 +157,7 @@ export class TeamMode implements ModeExecutor {
       runId,
       conversationId: ctx.conversationId,
       status: "completed",
-      summary: "Team 运行已完成。",
+      summary: this.buildRunCompletionSummary(roles),
       routing,
     });
   }
@@ -279,6 +289,40 @@ export class TeamMode implements ModeExecutor {
       .slice(0, maxTasks - 1);
     selected.push("synthesizer");
     return selected;
+  }
+
+  private buildRolePlanSummary(plannedRoles: TeamRole[], selectedRoles: TeamRole[]): string {
+    const selected = selectedRoles.map((role) => this.describeRole(role)).join("、");
+    if (selectedRoles.length >= plannedRoles.length) {
+      return `Team 将执行：${selected}。`;
+    }
+
+    const skippedRoles = this.subtractSelectedRoles(plannedRoles, selectedRoles);
+    const skipped = skippedRoles.map((role) => this.describeRole(role)).join("、");
+    return `Team 将执行：${selected}；因任务预算限制，跳过：${skipped}。`;
+  }
+
+  private subtractSelectedRoles(plannedRoles: TeamRole[], selectedRoles: TeamRole[]): TeamRole[] {
+    const remainingSelected = [...selectedRoles];
+    const skipped: TeamRole[] = [];
+    for (const role of plannedRoles) {
+      const selectedIndex = remainingSelected.indexOf(role);
+      if (selectedIndex >= 0) {
+        remainingSelected.splice(selectedIndex, 1);
+      } else {
+        skipped.push(role);
+      }
+    }
+    return skipped;
+  }
+
+  private buildRunCompletionSummary(roles: TeamRole[]): string {
+    const hasCritic = roles.includes("critic");
+    const hasSynthesizer = roles.includes("synthesizer");
+    if (hasCritic && hasSynthesizer) return "Team 运行已完成，包含独立审视和最终汇总。";
+    if (hasSynthesizer) return "Team 运行已完成，已输出最终汇总；本次未做独立审视。";
+    if (hasCritic) return "Team 运行已完成，包含独立审视；本次未做最终汇总。";
+    return "Team 运行已完成；本次未做独立审视和最终汇总。";
   }
 
   private ensureIsolatedAgent(ctx: ModeExecutionContext, config: SwarmAgentConfig): void {

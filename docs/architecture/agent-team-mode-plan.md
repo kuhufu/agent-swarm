@@ -20,7 +20,7 @@
 - 支持 Critic/Verifier 角色做独立审视。
 - 使用确定性流程控制 Team Run / Team Task 的基本状态。
 - 将所有关键过程写入事件流和持久化存储，便于前端 Trace 和恢复。
-- Team 执行受 `maxTotalTurns` 限制；当任务预算不足以执行全部角色时，会优先保留 `synthesizer` 作为最后一步，避免只有发散或分析而没有最终汇总。
+- Team 执行受 `maxTotalTurns` 限制；当任务预算不足以执行全部角色时，会优先保留 `synthesizer` 作为最后一步，避免只有发散或分析而没有最终汇总。运行事件会记录实际执行角色、被预算裁剪的角色，并在结束摘要中说明是否包含独立审视和最终汇总。
 - 内置 `Team Owner` Agent 模板，便于快速创建通用 `team` 模式 Swarm。
 - 前端创建/编辑 Swarm 时选择 `Team` 模式，如果当前 Agent 列表为空，会自动加入 `Team Owner`，并优先填入已保存模型列表中的第一个模型。
 
