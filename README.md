@@ -47,6 +47,7 @@ agent-swarm/
 │   └── web/         # @agent-swarm/web
 ├── docs/
 │   ├── architecture/
+│   │   ├── agent-team-mode-plan.md
 │   │   ├── context-recovery.md
 │   │   ├── core-tool-runtime.md
 │   │   └── frontend-conversation-runtime.md
