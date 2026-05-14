@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useAskUserStore } from "../../stores/ask-user.js";
 import SvgIcon from "../common/SvgIcon.vue";
 
 const askUserStore = useAskUserStore();
 const answer = ref("");
+
+const isMultiple = computed(() => askUserStore.nextRequest?.multiple ?? false);
+const choices = computed(() => askUserStore.nextRequest?.choices ?? []);
 
 watch(
   () => askUserStore.nextRequest?.requestId,
@@ -15,7 +18,20 @@ watch(
 );
 
 function chooseAnswer(choice: string) {
-  answer.value = choice;
+  if (isMultiple.value) {
+    const lines = answer.value.split("\n").map((l) => l.trim());
+    if (lines.includes(choice)) {
+      answer.value = lines.filter((l) => l !== choice).join("\n");
+    } else {
+      answer.value = answer.value ? `${answer.value}\n${choice}` : choice;
+    }
+  } else {
+    answer.value = choice;
+  }
+}
+
+function isChoiceSelected(choice: string): boolean {
+  return answer.value.split("\n").map((l) => l.trim()).includes(choice);
 }
 
 function submit() {
@@ -48,22 +64,27 @@ function skip() {
         {{ askUserStore.nextRequest.context }}
       </p>
 
-      <div v-if="askUserStore.nextRequest.choices.length > 0" class="ask-user-choices">
+      <div v-if="choices.length > 0" class="ask-user-choices">
         <button
-          v-for="choice in askUserStore.nextRequest.choices"
+          v-for="choice in choices"
           :key="choice"
           type="button"
-          :class="{ active: answer === choice }"
+          :class="{ active: isChoiceSelected(choice), checkbox: isMultiple }"
           @click="chooseAnswer(choice)"
         >
+          <span v-if="isMultiple" class="choice-checkbox" :class="{ checked: isChoiceSelected(choice) }">
+            <SvgIcon v-if="isChoiceSelected(choice)" name="check" :size="12" />
+          </span>
           {{ choice }}
         </button>
       </div>
 
+      <div v-if="isMultiple && choices.length > 0" class="ask-divider" />
+
       <textarea
         v-model="answer"
         rows="4"
-        placeholder="输入你的回答..."
+        :placeholder="isMultiple ? '补充说明（可选）...' : '输入你的回答...'"
         @keydown.ctrl.enter.prevent="submit"
         @keydown.meta.enter.prevent="submit"
       />
@@ -181,6 +202,36 @@ function skip() {
   background: var(--bg-hover);
   color: var(--text-primary);
   border-color: var(--border-default);
+}
+
+.ask-user-choices button.checkbox {
+  gap: 8px;
+}
+
+.choice-checkbox {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--border-default);
+  border-radius: 3px;
+  background: var(--bg-surface);
+  color: transparent;
+  transition: all 0.15s ease;
+}
+
+.choice-checkbox.checked {
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
+  color: var(--text-primary);
+}
+
+.ask-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 0;
 }
 
 .ask-user-panel textarea {

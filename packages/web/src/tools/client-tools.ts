@@ -81,6 +81,10 @@ function askUserToolDefinition(): ClientToolDefinition {
           type: "string",
           description: "Optional short context explaining why the answer is needed.",
         },
+        multiple: {
+          type: "boolean",
+          description: "When true, the user can select multiple choices instead of just one.",
+        },
         choices: {
           type: "array",
           items: { type: "string" },
@@ -197,12 +201,14 @@ export async function executeClientTool(
     const choices = Array.isArray(params?.choices)
       ? params.choices.filter((choice): choice is string => typeof choice === "string")
       : [];
+    const multiple = params?.multiple === true;
 
     return useAskUserStore().requestAnswer({
       question,
       context,
       choices,
       defaultAnswer,
+      multiple,
     });
   }
 

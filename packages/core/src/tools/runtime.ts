@@ -189,6 +189,10 @@ export function createClientToolDefinitions(): ClientToolDefinition[] {
             type: "string",
             description: "Optional short context explaining why the answer is needed.",
           },
+          multiple: {
+            type: "boolean",
+            description: "When true, the user can select multiple choices instead of just one.",
+          },
           choices: {
             type: "array",
             description: "Optional suggested choices. Keep choices short and mutually exclusive.",
@@ -197,7 +201,7 @@ export function createClientToolDefinitions(): ClientToolDefinition[] {
           },
           defaultAnswer: {
             type: "string",
-            description: "Optional default answer shown in the reply box.",
+            description: "Optional default answer shown in the reply box. Ignored when multiple is true.",
           },
         },
         required: ["question"],

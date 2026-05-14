@@ -22,11 +22,18 @@ function normalizeChoices(value: unknown): string[] {
     .filter((item) => item.length > 0);
 }
 
+function normalizeArrayField(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => normalizeText(item)).filter(Boolean);
+}
+
 export interface AskUserResultView {
   question: string;
   answer: string;
   context: string;
   choices: string[];
+  selectedChoices: string[];
+  freeText: string;
   skipped: boolean;
 }
 
@@ -39,6 +46,8 @@ export function extractAskUserResult(details: unknown, args: unknown): AskUserRe
   const answer = normalizeText(detailsRecord?.answer);
   const context = normalizeText(argsRecord?.context);
   const choices = normalizeChoices(argsRecord?.choices);
+  const selectedChoices = normalizeArrayField(detailsRecord?.selectedChoices);
+  const freeText = normalizeText(detailsRecord?.freeText);
   const skipped = detailsRecord?.skipped === true;
 
   if (!question && !answer && !skipped) return null;
@@ -47,6 +56,8 @@ export function extractAskUserResult(details: unknown, args: unknown): AskUserRe
     answer,
     context,
     choices,
+    selectedChoices,
+    freeText,
     skipped,
   };
 }
@@ -92,8 +103,11 @@ const answerText = computed(() => {
           v-for="choice in result.choices"
           :key="choice"
           class="ask-choice"
-          :class="{ selected: !result.skipped && choice === result.answer }"
+          :class="{ selected: !result.skipped && (result.selectedChoices.length > 0 ? result.selectedChoices.includes(choice) : choice === result.answer) }"
         >
+          <span v-if="result.selectedChoices.length > 0" class="choice-indicator" :class="{ checked: result.selectedChoices.includes(choice) }">
+            <SvgIcon v-if="result.selectedChoices.includes(choice)" name="check" :size="11" />
+          </span>
           {{ choice }}
         </span>
       </div>
@@ -103,7 +117,8 @@ const answerText = computed(() => {
           <SvgIcon :name="result.skipped ? 'close' : 'check'" :size="13" />
           <span>{{ answerLabel }}</span>
         </div>
-        <p>{{ answerText }}</p>
+        <p v-if="result.selectedChoices.length > 0 && result.freeText">{{ result.freeText }}</p>
+        <p v-else>{{ answerText }}</p>
       </section>
     </div>
   </div>
@@ -206,6 +221,7 @@ const answerText = computed(() => {
   min-height: 26px;
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   padding: 0 8px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
@@ -216,6 +232,25 @@ const answerText = computed(() => {
 }
 
 .ask-choice.selected {
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
+  color: var(--text-primary);
+}
+
+.choice-indicator {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--border-default);
+  border-radius: 3px;
+  background: var(--bg-surface);
+  color: transparent;
+}
+
+.choice-indicator.checked {
   border-color: var(--color-accent);
   background: var(--color-accent-bg);
   color: var(--text-primary);

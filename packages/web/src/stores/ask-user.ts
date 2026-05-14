@@ -6,6 +6,7 @@ export interface AskUserParams {
   context?: string;
   choices?: string[];
   defaultAnswer?: string;
+  multiple?: boolean;
 }
 
 export interface AskUserResult {
@@ -14,14 +15,20 @@ export interface AskUserResult {
   details?: {
     question: string;
     answer: string;
+    selectedChoices?: string[];
+    freeText?: string;
     skipped?: boolean;
   };
 }
 
-interface AskUserRequest extends Omit<AskUserParams, "choices"> {
+interface AskUserRequest {
   requestId: string;
   createdAt: number;
+  question: string;
+  context: string | undefined;
   choices: string[];
+  defaultAnswer: string | undefined;
+  multiple: boolean;
   resolve: (result: AskUserResult) => void;
   timeout: ReturnType<typeof setTimeout>;
 }
@@ -55,6 +62,7 @@ export const useAskUserStore = defineStore("askUser", () => {
         context: params.context?.trim() || undefined,
         choices: normalizeChoices(params.choices),
         defaultAnswer: params.defaultAnswer?.trim() || undefined,
+        multiple: params.multiple === true,
         createdAt: Date.now(),
         resolve,
         timeout,
@@ -76,15 +84,56 @@ export const useAskUserStore = defineStore("askUser", () => {
 
     clearTimeout(request.timeout);
     pendingRequests.value = pendingRequests.value.filter((item) => item.requestId !== requestId);
+
+    if (skipped) {
+      request.resolve({
+        isError: false,
+        content: "用户未提供回答。",
+        details: {
+          question: request.question,
+          answer: "",
+          skipped: true,
+        },
+      });
+      return;
+    }
+
+    if (request.multiple && request.choices.length > 0) {
+      const lines = answer.split("\n").map((l) => l.trim()).filter(Boolean);
+      const selectedChoices = request.choices.filter((c) => lines.includes(c));
+      const otherLines = lines.filter((l) => !request.choices.includes(l));
+      const freeText = otherLines.join("\n");
+
+      const parts: string[] = [];
+      if (selectedChoices.length > 0) {
+        parts.push(`用户选择:\n${selectedChoices.map((c) => `- ${c}`).join("\n")}`);
+      }
+      if (freeText) {
+        parts.push(`用户补充: ${freeText}`);
+      }
+      if (parts.length === 0) {
+        parts.push("用户未选择任何选项。");
+      }
+
+      request.resolve({
+        isError: false,
+        content: parts.join("\n\n"),
+        details: {
+          question: request.question,
+          answer,
+          selectedChoices,
+          freeText: freeText || undefined,
+        },
+      });
+      return;
+    }
+
     request.resolve({
       isError: false,
-      content: skipped
-        ? "用户未提供回答。"
-        : `用户回答:\n${answer}`,
+      content: `用户回答:\n${answer}`,
       details: {
         question: request.question,
         answer,
-        ...(skipped ? { skipped: true } : {}),
       },
     });
   }
