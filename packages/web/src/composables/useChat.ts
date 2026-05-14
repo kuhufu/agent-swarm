@@ -16,7 +16,7 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
   const pendingImageIds = ref<string[]>([]);
   const pendingImageUrls = ref<string[]>([]);
   const draftDirectModel = ref<DirectModelSelection | null>(null);
-  const draftEnabledTools = ref<string[]>(["current_time", "javascript_execute", "web_fetch", "browser_automation"]);
+  const draftEnabledTools = ref<string[]>(["current_time", "javascript_execute", "ask_user", "web_fetch", "browser_automation"]);
   const draftThinkingLevel = ref<string>("off");
   const enabledTools = computed<string[]>(() => {
     if (conversationId.value) {
@@ -69,6 +69,10 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
   const jsExecutionToolEnabled = computed({
     get: () => isToolEnabled("javascript_execute"),
     set: (value: boolean) => setClientToolEnabled("javascript_execute", value),
+  });
+  const askUserToolEnabled = computed({
+    get: () => isToolEnabled("ask_user"),
+    set: (value: boolean) => setClientToolEnabled("ask_user", value),
   });
   const searchToolEnabled = computed({
     get: () => isToolEnabled("web_search"),
@@ -270,6 +274,7 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
     directModel,
     currentTimeToolEnabled,
     jsExecutionToolEnabled,
+    askUserToolEnabled,
     searchToolEnabled,
     webFetchToolEnabled,
     retrieveKnowledgeToolEnabled,

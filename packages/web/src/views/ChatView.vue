@@ -12,6 +12,7 @@ import AgentStatus from "../components/chat/AgentStatus.vue";
 import WorkspaceArtifactsPanel from "../components/chat/WorkspaceArtifactsPanel.vue";
 import TeamTracePanel from "../components/chat/TeamTracePanel.vue";
 import InterventionPanel from "../components/intervention/InterventionPanel.vue";
+import AskUserPanel from "../components/intervention/AskUserPanel.vue";
 import { showError } from "../utils/ui-feedback.js";
 import SvgIcon from "../components/common/SvgIcon.vue";
 import type { WorkspaceInfo } from "../types/index.js";
@@ -342,6 +343,7 @@ async function handleForkConversation(messageId?: string) {
         @fork-message="handleForkConversation"
       />
       <InterventionPanel />
+      <AskUserPanel />
       <ChatInput
         :key="routeConversationId ?? `new-${draftMode}`"
         :conversation-id="routeConversationId"

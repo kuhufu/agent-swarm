@@ -9,7 +9,7 @@
 - `AgentSwarm.createToolRuntimeAvailability(context)`：按 `conversationId/userId/workspaceId` 创建可用工具资源，不读取 `enabledTools`；`workspaceId` 为空时不创建 workspace runtime tool。
 - `withRuntimeTools(config, swarmConfig, runtimeOptions)`：基于 Swarm 模式和运行时开关，为单个 Agent 合并工具。
 - `createRuntimeTools(config, swarmConfig, runtimeOptions)`：只生成运行时工具列表，按工具名去重。
-- `createClientToolDefinitions()`：集中定义前端桥接工具声明，目前包含 `current_time` 和 `javascript_execute`。
+- `createClientToolDefinitions()`：集中定义前端桥接工具声明，目前包含 `current_time`、`javascript_execute` 和 `ask_user`。
 
 ## 工具来源
 
@@ -17,7 +17,7 @@
 
 1. Agent 配置中的 `config.tools`。
 2. 模式内置工具：`swarm` 模式 Agent 自动获得 `handoff`。
-3. 前端桥接工具：`enabledTools` 包含 `current_time` 或 `javascript_execute` 时注入。
+3. 前端桥接工具：`enabledTools` 包含 `current_time`、`javascript_execute` 或 `ask_user` 时注入。
 4. 服务端内置工具：`enabledTools` 包含 `web_search` 时注入 `createWebSearchTool()`。
 5. MCP 工具：`enabledTools` 包含 `mcp` 时注入所有已发现 MCP 工具。
 6. 运行时工具：`runtimeTools` 中工具 id 出现在 `enabledTools` 时注入其展开后的所有 `AgentTool`，包括 `search_wiki`、`retrieve_knowledge` 和 `workspace`。
@@ -35,6 +35,8 @@ Workspace 文件类工具会返回统一的协作上下文：`workspace_list_fil
 WebSocket 层只传递用户选择的 `enabledTools` 和前端工具执行器。它不创建具体工具，也不判断工具是否启用。
 
 ## 前端桥接工具结果
+
+`ask_user` 通过浏览器在聊天输入框上方显示回答面板，适合 Agent 在需求、约束、优先级或验收标准不清时主动向用户确认。工具参数包含 `question`、可选 `context`、`choices` 和 `defaultAnswer`；前端会等待用户提交或跳过，并把回答写入工具结果 `content`，同时在 `details` 中保留 `question/answer/skipped`。
 
 `javascript_execute` 在浏览器内执行，工具结果的 `details` 固定保留：
 

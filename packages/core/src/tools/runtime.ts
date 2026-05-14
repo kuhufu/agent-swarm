@@ -174,6 +174,36 @@ export function createClientToolDefinitions(): ClientToolDefinition[] {
         additionalProperties: false,
       },
     },
+    {
+      name: "ask_user",
+      label: "Ask User",
+      description: "Ask the user a concise clarification question and wait for their answer before continuing. Use this when requirements, constraints, priorities, or acceptance criteria are unclear.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          question: {
+            type: "string",
+            description: "A concise question for the user. Ask one thing at a time.",
+          },
+          context: {
+            type: "string",
+            description: "Optional short context explaining why the answer is needed.",
+          },
+          choices: {
+            type: "array",
+            description: "Optional suggested choices. Keep choices short and mutually exclusive.",
+            items: { type: "string" },
+            maxItems: 6,
+          },
+          defaultAnswer: {
+            type: "string",
+            description: "Optional default answer shown in the reply box.",
+          },
+        },
+        required: ["question"],
+        additionalProperties: false,
+      },
+    },
   ];
 }
 

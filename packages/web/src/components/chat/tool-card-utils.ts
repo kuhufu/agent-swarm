@@ -67,6 +67,7 @@ const TOOL_LABELS: Record<string, string> = {
   search_wiki: "Wiki 搜索",
   javascript_execute: "执行 JavaScript",
   current_time: "获取时间",
+  ask_user: "询问用户",
   handoff: "交接 Agent",
   workspace_read_file: "读取文件",
   workspace_write_file: "写入文件",
@@ -85,7 +86,7 @@ const TOOL_LABELS: Record<string, string> = {
 const TOOL_CATEGORY = [
   { prefixes: ["web_search", "web_fetch", "browser_automation"], cls: "search" },
   { prefixes: ["retrieve_knowledge", "search_wiki"], cls: "knowledge" },
-  { prefixes: ["javascript_execute", "current_time"], cls: "code" },
+  { prefixes: ["javascript_execute", "current_time", "ask_user"], cls: "code" },
   { prefixes: ["handoff"], cls: "handoff" },
   { prefixes: ["workspace_"], cls: "file" },
 ];
@@ -121,6 +122,7 @@ const TOOL_ICONS: Record<string, string> = {
   search_wiki: "book",
   javascript_execute: "jsExecute",
   current_time: "clock",
+  ask_user: "user",
   handoff: "arrowRight",
   workspace_read_file: "fileCode",
   workspace_write_file: "fileCode",
@@ -249,5 +251,4 @@ export function extractWorkspaceArtifact(details: unknown, toolName: string): Wo
     kind: typeof raw.kind === "string" ? raw.kind : undefined,
   };
 }
-
 

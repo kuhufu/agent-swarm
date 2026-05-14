@@ -29,6 +29,7 @@ const {
   directModel,
   currentTimeToolEnabled,
   jsExecutionToolEnabled,
+  askUserToolEnabled,
   webFetchToolEnabled,
   retrieveKnowledgeToolEnabled,
   wikiToolEnabled,
@@ -83,6 +84,7 @@ const activeToolCount = computed(() => {
   let count = 0;
   if (currentTimeToolEnabled.value) count++;
   if (jsExecutionToolEnabled.value) count++;
+  if (askUserToolEnabled.value) count++;
   if (workspaceToolEnabled.value && props.workspaceId) count++;
   if (webFetchToolEnabled.value) count++;
   if (wikiToolEnabled.value) count++;
@@ -286,6 +288,7 @@ function toggleToolFromDropdown(toggleFn: () => void) {
 
 function toggleCurrentTimeTool() { currentTimeToolEnabled.value = !currentTimeToolEnabled.value; }
 function toggleJsExecutionTool() { jsExecutionToolEnabled.value = !jsExecutionToolEnabled.value; }
+function toggleAskUserTool() { askUserToolEnabled.value = !askUserToolEnabled.value; }
 function toggleWorkspaceTool() {
   if (!props.workspaceId) {
     showError("请先选择工作区");
@@ -642,6 +645,15 @@ function handleOutsideClick(event: MouseEvent) {
           >
             <SvgIcon name="jsExecute" :size="14" />
             <span class="dropdown-tool-label">JS 执行</span>
+          </button>
+          <button
+            class="tools-dropdown-item"
+            :class="{ active: askUserToolEnabled }"
+            @mousedown="handleKeepTextareaFocusMouseDown"
+            @click="toggleToolFromDropdown(toggleAskUserTool)"
+          >
+            <SvgIcon name="user" :size="14" />
+            <span class="dropdown-tool-label">询问用户</span>
           </button>
           <button
             class="tools-dropdown-item"

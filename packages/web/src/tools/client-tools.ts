@@ -1,4 +1,5 @@
 import { executeJavascriptInFrontend } from "../utils/frontend-js-tool.js";
+import { useAskUserStore } from "../stores/ask-user.js";
 
 export interface ClientToolDefinition {
   name: string;
@@ -64,6 +65,37 @@ function javascriptToolDefinition(): ClientToolDefinition {
   };
 }
 
+function askUserToolDefinition(): ClientToolDefinition {
+  return {
+    name: "ask_user",
+    label: "Ask User",
+    description: "Ask the user a concise clarification question and wait for their answer before continuing.",
+    parametersSchema: {
+      type: "object",
+      properties: {
+        question: {
+          type: "string",
+          description: "A concise question for the user. Ask one thing at a time.",
+        },
+        context: {
+          type: "string",
+          description: "Optional short context explaining why the answer is needed.",
+        },
+        choices: {
+          type: "array",
+          items: { type: "string" },
+          maxItems: 6,
+        },
+        defaultAnswer: {
+          type: "string",
+        },
+      },
+      required: ["question"],
+      additionalProperties: false,
+    },
+  };
+}
+
 export function buildClientToolDefinitions(state: ClientToolState): ClientToolDefinition[] {
   const tools: ClientToolDefinition[] = [];
   if (isToolEnabled(state, "current_time")) {
@@ -71,6 +103,9 @@ export function buildClientToolDefinitions(state: ClientToolState): ClientToolDe
   }
   if (isToolEnabled(state, "javascript_execute")) {
     tools.push(javascriptToolDefinition());
+  }
+  if (isToolEnabled(state, "ask_user")) {
+    tools.push(askUserToolDefinition());
   }
   return tools;
 }
@@ -139,6 +174,36 @@ export async function executeClientTool(
         result: executed.result,
       },
     };
+  }
+
+  if (toolName === "ask_user") {
+    if (!isToolEnabled(state, "ask_user")) {
+      return {
+        isError: true,
+        content: "ask_user 工具已关闭",
+      };
+    }
+
+    const question = typeof params?.question === "string" ? params.question.trim() : "";
+    if (!question) {
+      return {
+        isError: true,
+        content: "参数错误：question 不能为空",
+      };
+    }
+
+    const context = typeof params?.context === "string" ? params.context : undefined;
+    const defaultAnswer = typeof params?.defaultAnswer === "string" ? params.defaultAnswer : undefined;
+    const choices = Array.isArray(params?.choices)
+      ? params.choices.filter((choice): choice is string => typeof choice === "string")
+      : [];
+
+    return useAskUserStore().requestAnswer({
+      question,
+      context,
+      choices,
+      defaultAnswer,
+    });
   }
 
   return {

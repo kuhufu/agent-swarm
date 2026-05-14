@@ -2,7 +2,7 @@ import { Type } from "@sinclair/typebox";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
 import { describe, expect, it } from "vitest";
 import type { SwarmAgentConfig, SwarmConfig } from "../../src/core/types.js";
-import { createRuntimeTool, createRuntimeTools, withRuntimeTools } from "../../src/tools/runtime.js";
+import { createClientToolDefinitions, createRuntimeTool, createRuntimeTools, withRuntimeTools } from "../../src/tools/runtime.js";
 
 const model = { provider: "openai", modelId: "gpt-4o-mini" };
 
@@ -80,6 +80,30 @@ describe("tool runtime", () => {
 
     expect(enhanced.tools?.filter((item) => item.name === "web_search")).toHaveLength(1);
     expect(enhanced.tools?.[0]).toBe(explicitTool);
+  });
+
+  it("exposes ask_user as a client bridge tool when enabled", async () => {
+    const config = agent("agent-a");
+    const swarmConfig: SwarmConfig = {
+      id: "team",
+      name: "team",
+      mode: "team",
+      agents: [config],
+    };
+
+    const tools = createRuntimeTools(config, swarmConfig, {
+      enabledTools: ["ask_user"],
+      clientToolExecutor: async ({ toolName, params }) => ({
+        content: `called ${toolName}`,
+        details: params,
+      }),
+    });
+
+    expect(createClientToolDefinitions().map((item) => item.name)).toContain("ask_user");
+    expect(tools.map((item) => item.name)).toEqual(["ask_user"]);
+    await expect(tools[0]?.execute("tool_1", { question: "确认目标？" })).resolves.toMatchObject({
+      details: { question: "确认目标？" },
+    });
   });
 
 });
