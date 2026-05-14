@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import type { ConversationEvent } from "../../types/index.js";
+import type { ChatMessage, ConversationEvent } from "../../types/index.js";
 import { formatTimeLong } from "../../utils/format.js";
 import {
   parseTeamEventData,
@@ -16,6 +16,7 @@ import {
   teamTaskTypeLabel,
 } from "../../utils/team-events.js";
 import SvgIcon from "../common/SvgIcon.vue";
+import { showError, showSuccess } from "../../utils/ui-feedback.js";
 
 type WorkbenchView = "tasks" | "outputs" | "timeline";
 type TaskFilter = "all" | "risk" | "active" | "completed";
@@ -37,16 +38,19 @@ interface TeamTaskSummary {
 
 interface TeamOutputSummary {
   taskId: string;
+  runId: string;
   role: string;
   status: string;
   summary: string;
   output: string;
+  outputComplete: boolean;
   severity: "normal" | "warning" | "danger";
   updatedAt: number;
 }
 
 const props = defineProps<{
   events: ConversationEvent[];
+  messages?: ChatMessage[];
 }>();
 
 const activeView = ref<WorkbenchView>("tasks");
@@ -54,6 +58,8 @@ const activeTaskFilter = ref<TaskFilter>("all");
 const activeTimelineFilter = ref<TimelineFilter>("all");
 const selectedTaskId = ref<string | null>(null);
 const activeRunId = ref<string | null>(null);
+const copyingCurrentRun = ref(false);
+const copyingAllRuns = ref(false);
 
 const runIds = computed(() => {
   const ids: string[] = [];
@@ -169,27 +175,10 @@ const filteredTasks = computed(() => {
 const outputs = computed<TeamOutputSummary[]>(() =>
   tasks.value
     .filter((task) => task.status === "completed" || task.status === "failed")
-    .map((task) => {
-      const completedEvent = [...task.events].reverse().find((event) =>
-        event.eventType === "team_task_completed"
-        || event.eventType === "team_task_verification_passed"
-        || event.eventType === "team_task_verification_failed"
-      );
-      const data = completedEvent ? parseTeamEventData(completedEvent) : {};
-      const output = typeof data.output === "string" && data.output.trim().length > 0
-        ? data.output.trim()
-        : task.summary;
-      return {
-        taskId: task.taskId,
-        role: task.role,
-        status: task.status,
-        summary: task.summary,
-        output,
-        severity: task.severity,
-        updatedAt: task.updatedAt,
-      };
-    }),
+    .map(taskToOutput),
 );
+const currentRunMarkdown = computed(() => buildOutputsMarkdown(displayEvents.value, "Team 当前 Run 产出"));
+const allRunsMarkdown = computed(() => buildOutputsMarkdown(props.events, "Team 全部 Run 产出"));
 
 const timelineFilterCounts = computed(() => ({
   all: displayEvents.value.length,
@@ -301,6 +290,190 @@ function timelineFilterCount(filter: TimelineFilter): number {
 
 function isActiveTaskStatus(status: string): boolean {
   return status === "pending" || status === "running" || status === "verifying" || status === "revision_required" || status === "waiting_for_user";
+}
+
+function taskToOutput(task: TeamTaskSummary): TeamOutputSummary {
+  const completedEvent = [...task.events].reverse().find(isTerminalTaskEvent);
+  const data = completedEvent ? parseTeamEventData(completedEvent) : {};
+  const fullOutput = typeof data.output === "string" && data.output.trim().length > 0
+    ? data.output.trim()
+    : "";
+  const messageOutput = fullOutput ? "" : findTaskAssistantMessage(task);
+  return {
+    taskId: task.taskId,
+    runId: task.runId,
+    role: task.role,
+    status: task.status,
+    summary: task.summary,
+    output: fullOutput || messageOutput || buildTaskSummaryFallback(task),
+    outputComplete: Boolean(fullOutput || messageOutput),
+    severity: task.severity,
+    updatedAt: task.updatedAt,
+  };
+}
+
+function findTaskAssistantMessage(task: TeamTaskSummary): string {
+  if (!task.agentId || !props.messages || props.messages.length === 0) return "";
+  const candidates = props.messages
+    .filter((message) =>
+      message.role === "assistant"
+      && message.agentId === task.agentId
+      && message.content.trim().length > 0,
+    )
+    .sort((a, b) => a.timestamp - b.timestamp);
+  if (candidates.length === 0) return "";
+
+  const windowStart = task.createdAt - 60_000;
+  const windowEnd = task.updatedAt + 60_000;
+  const inWindow = candidates.filter((message) =>
+    message.timestamp >= windowStart && message.timestamp <= windowEnd,
+  );
+  return (inWindow.at(-1) ?? candidates.at(-1))?.content.trim() ?? "";
+}
+
+function isTerminalTaskEvent(event: ConversationEvent): boolean {
+  return event.eventType === "team_task_completed"
+    || event.eventType === "team_task_verification_passed"
+    || event.eventType === "team_task_verification_failed";
+}
+
+function buildTaskSummaryFallback(task: TeamTaskSummary): string {
+  const summaries = task.events
+    .map((event) => `- ${teamEventLabel(event.eventType)}：${teamEventSummary(event)}`)
+    .filter((line, index, list) => list.indexOf(line) === index);
+  if (summaries.length === 0) return task.summary;
+  return [
+    "此任务事件未包含完整 output，以下为可恢复的事件摘要：",
+    ...summaries,
+  ].join("\n");
+}
+
+function buildTasksFromEvents(events: ConversationEvent[]): TeamTaskSummary[] {
+  const map = new Map<string, TeamTaskSummary>();
+  for (const event of events) {
+    if (!event.eventType.startsWith("team_task_")) continue;
+    const data = parseTeamEventData(event);
+    const taskId = typeof data.taskId === "string" ? data.taskId : event.id;
+    const runId = typeof data.runId === "string" ? data.runId : "";
+    const role = typeof data.role === "string" ? data.role : "team";
+    const status = typeof data.status === "string" ? data.status : "running";
+    const summary = teamEventSummary(event);
+    const existing = map.get(taskId);
+    const severity = strongerSeverity(existing?.severity ?? "normal", teamEventSeverity(event));
+
+    if (!existing) {
+      map.set(taskId, {
+        taskId,
+        runId,
+        agentId: typeof data.agentId === "string" ? data.agentId : event.agentId ?? undefined,
+        role,
+        status,
+        retryCount: typeof data.retryCount === "number" ? data.retryCount : 0,
+        summary,
+        severity,
+        createdAt: event.timestamp,
+        updatedAt: event.timestamp,
+        events: [event],
+      });
+      continue;
+    }
+    existing.agentId = typeof data.agentId === "string" ? data.agentId : existing.agentId;
+    existing.role = role;
+    existing.status = status;
+    existing.retryCount = typeof data.retryCount === "number" ? data.retryCount : existing.retryCount;
+    existing.summary = summary;
+    existing.severity = severity;
+    existing.updatedAt = event.timestamp;
+    existing.events.push(event);
+  }
+  return [...map.values()].sort((a, b) => a.createdAt - b.createdAt);
+}
+
+function buildOutputsMarkdown(events: ConversationEvent[], title: string): string {
+  if (events.length === 0) return "";
+  const lines = [`# ${title}`];
+  const ids = getRunIdsFromEvents(events);
+  const runGroups = ids.length > 0
+    ? ids.map((runId) => ({ runId, events: events.filter((event) => getEventRunId(event) === runId) }))
+    : [{ runId: "", events }];
+
+  for (const [index, group] of runGroups.entries()) {
+    if (runGroups.length > 1 || group.runId) {
+      lines.push("", `## ${runLabel(group.runId || `run-${index + 1}`, index)}`);
+    }
+    appendRoutingMarkdown(lines, group.events);
+    const runEnd = [...group.events].reverse().find((event) => event.eventType === "team_run_end");
+    if (runEnd) {
+      lines.push("", `**Run 结果：** ${teamEventSummary(runEnd)}`);
+    }
+    const runOutputs = buildTasksFromEvents(group.events)
+      .filter((task) => task.status === "completed" || task.status === "failed")
+      .map(taskToOutput);
+    if (runOutputs.length === 0) {
+      lines.push("", "暂无已完成角色产出。");
+      continue;
+    }
+    for (const output of runOutputs) {
+      lines.push(
+        "",
+        `### ${teamRoleLabel(output.role)} · ${taskStatusLabel(output.status)}`,
+      );
+      if (!output.outputComplete) {
+        lines.push("", "> 注：该任务事件未包含完整 output，已复制可恢复的事件摘要。");
+      }
+      lines.push("", output.output);
+    }
+  }
+  return lines.join("\n");
+}
+
+function getRunIdsFromEvents(events: ConversationEvent[]): string[] {
+  const ids: string[] = [];
+  for (const event of events) {
+    const runId = getEventRunId(event);
+    if (runId && !ids.includes(runId)) ids.push(runId);
+  }
+  return ids;
+}
+
+function appendRoutingMarkdown(lines: string[], events: ConversationEvent[]) {
+  const routingEvent = [...events].reverse().find((event) => {
+    const data = parseTeamEventData(event);
+    return data.routing && typeof data.routing === "object" && !Array.isArray(data.routing);
+  });
+  if (!routingEvent) return;
+  const routing = parseTeamEventData(routingEvent).routing as Record<string, unknown>;
+  lines.push(
+    "",
+    `- 任务类型：${teamTaskTypeLabel(routing.taskType)}`,
+    `- 协作策略：${teamStrategyLabel(routing.strategy)}`,
+    `- Owner 理由：${String(routing.reason ?? "未记录")}`,
+  );
+}
+
+async function copyMarkdown(markdown: string, state: typeof copyingCurrentRun | typeof copyingAllRuns) {
+  if (!markdown || state.value) return;
+  if (!navigator.clipboard) {
+    showError("当前浏览器不支持剪贴板写入");
+    return;
+  }
+  state.value = true;
+  try {
+    await navigator.clipboard.writeText(markdown);
+    showSuccess("Team 产出已复制");
+  } catch {
+    showError("复制失败，请检查浏览器剪贴板权限");
+  } finally {
+    state.value = false;
+  }
+}
+
+async function copyCurrentRunOutputs() {
+  await copyMarkdown(currentRunMarkdown.value, copyingCurrentRun);
+}
+
+async function copyAllRunOutputs() {
+  await copyMarkdown(allRunsMarkdown.value, copyingAllRuns);
 }
 </script>
 
@@ -475,6 +648,23 @@ function isActiveTaskStatus(status: string): boolean {
       <div v-else-if="activeView === 'outputs'" class="team-outputs">
         <div v-if="outputs.length === 0" class="output-empty">暂无角色产出</div>
         <template v-else>
+          <div class="output-toolbar">
+            <span>{{ outputs.length }} 份角色产出</span>
+            <div class="output-actions">
+              <button type="button" :disabled="copyingCurrentRun" @click="copyCurrentRunOutputs">
+                <SvgIcon name="copy" :size="13" />
+                {{ copyingCurrentRun ? "复制中" : "复制当前 Run" }}
+              </button>
+              <button
+                type="button"
+                :disabled="copyingAllRuns || runIds.length <= 1"
+                @click="copyAllRunOutputs"
+              >
+                <SvgIcon name="copy" :size="13" />
+                {{ copyingAllRuns ? "复制中" : "复制全部 Run" }}
+              </button>
+            </div>
+          </div>
           <article
             v-for="output in outputs"
             :key="output.taskId"
@@ -489,6 +679,7 @@ function isActiveTaskStatus(status: string): boolean {
               <time>{{ formatTimeLong(output.updatedAt) }}</time>
             </header>
             <p v-if="output.summary && output.summary !== output.output" class="output-summary">{{ output.summary }}</p>
+            <p v-if="!output.outputComplete" class="output-warning">历史事件未包含完整 output，当前仅展示可恢复摘要。</p>
             <pre>{{ output.output }}</pre>
           </article>
         </template>
@@ -1013,6 +1204,57 @@ function isActiveTaskStatus(status: string): boolean {
   font-size: var(--text-sm);
 }
 
+.output-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.output-toolbar span {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.output-toolbar button {
+  flex: 0 0 auto;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.output-toolbar button:hover:not(:disabled) {
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.output-toolbar button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.output-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
 .output-card {
   min-width: 0;
   display: grid;
@@ -1068,6 +1310,18 @@ function isActiveTaskStatus(status: string): boolean {
   color: var(--text-secondary);
   font-size: var(--text-sm);
   line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.output-warning {
+  margin: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--border-warning);
+  border-radius: var(--radius-sm);
+  background: var(--bg-warning);
+  color: var(--color-warning);
+  font-size: var(--text-xs);
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 

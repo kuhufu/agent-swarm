@@ -10,7 +10,7 @@ import TeamTracePanel from "../components/chat/TeamTracePanel.vue";
 import SvgIcon from "../components/common/SvgIcon.vue";
 import { formatTimeLong } from "../utils/format.js";
 import { showError } from "../utils/ui-feedback.js";
-import type { ConversationEvent, ConversationInfo } from "../types/index.js";
+import type { ChatMessage, ConversationEvent, ConversationInfo } from "../types/index.js";
 
 const router = useRouter();
 const route = useRoute();
@@ -23,11 +23,13 @@ const launchConversationId = ref<string | null>(null);
 const selectedTeamSwarmId = ref("");
 const launchTarget = ref<"new" | "current">("new");
 const teamPrompt = ref("");
+const conversationSearch = ref("");
 const pendingNewConversation = ref(false);
 const loading = ref(false);
 const loadingEvents = ref(false);
 const teamEventCounts = ref<Map<string, number>>(new Map());
 const teamEventsByConversation = ref<Map<string, ConversationEvent[]>>(new Map());
+const teamMessagesByConversation = ref<Map<string, ChatMessage[]>>(new Map());
 const {
   inputText,
   sending,
@@ -74,12 +76,27 @@ const selectedEvents = computed(() => {
     .filter((event, index, list) => list.findIndex((item) => item.id === event.id) === index)
     .sort((a, b) => a.timestamp - b.timestamp);
 });
+const selectedMessages = computed(() => {
+  const conversationId = selectedConversationId.value;
+  if (!conversationId) return [];
+  return teamMessagesByConversation.value.get(conversationId) ?? [];
+});
 
 const visibleTeamConversations = computed(() =>
   teamConversations.value.filter((conversation) =>
     getConversationRunCount(conversation.id) > 0 || conversation.id === selectedConversationId.value,
   ),
 );
+
+const filteredTeamConversations = computed(() => {
+  const keyword = conversationSearch.value.trim().toLowerCase();
+  if (!keyword) return visibleTeamConversations.value;
+  return visibleTeamConversations.value.filter((conversation) => {
+    const title = (conversation.title ?? "新对话").toLowerCase();
+    const swarmName = getSwarmName(conversation).toLowerCase();
+    return title.includes(keyword) || swarmName.includes(keyword) || conversation.id.toLowerCase().includes(keyword);
+  });
+});
 
 const totalRuns = computed(() => {
   let total = 0;
@@ -183,15 +200,22 @@ async function selectConversation(conversationId: string, syncRoute = true) {
   if (launchTarget.value === "current") {
     launchConversationId.value = conversationId;
   }
-  if (teamEventsByConversation.value.has(conversationId)) {
+  if (teamEventsByConversation.value.has(conversationId) && teamMessagesByConversation.value.has(conversationId)) {
     return;
   }
   loadingEvents.value = true;
   try {
-    const res = await conversationsApi.getEvents(conversationId);
-    const teamEvents = (Array.isArray(res.data) ? res.data : [])
+    const [eventsRes, messagesRes] = await Promise.all([
+      conversationsApi.getEvents(conversationId),
+      conversationsApi.getMessages(conversationId),
+    ]);
+    const teamEvents = (Array.isArray(eventsRes.data) ? eventsRes.data : [])
       .filter((event) => event.eventType.startsWith("team_"));
     teamEventsByConversation.value = new Map(teamEventsByConversation.value).set(conversationId, teamEvents);
+    teamMessagesByConversation.value = new Map(teamMessagesByConversation.value).set(
+      conversationId,
+      Array.isArray(messagesRes.data) ? messagesRes.data : [],
+    );
     teamEventCounts.value = new Map(teamEventCounts.value).set(
       conversationId,
       teamEvents.filter((event) => event.eventType === "team_run_start").length,
@@ -199,6 +223,7 @@ async function selectConversation(conversationId: string, syncRoute = true) {
   } catch (err) {
     showError(err instanceof Error ? err.message : "加载 Team 事件失败");
     teamEventsByConversation.value = new Map(teamEventsByConversation.value).set(conversationId, []);
+    teamMessagesByConversation.value = new Map(teamMessagesByConversation.value).set(conversationId, []);
   } finally {
     loadingEvents.value = false;
   }
@@ -373,11 +398,17 @@ async function refreshCreatedConversation(conversationId: string) {
         <p v-else-if="!connected" class="team-launch-hint">WebSocket 未连接，刷新后会自动重连。</p>
       </section>
 
+      <label v-if="visibleTeamConversations.length > 0" class="team-search">
+        <SvgIcon name="search" :size="14" />
+        <input v-model="conversationSearch" type="search" placeholder="搜索 Team 会话..." />
+      </label>
+
       <div v-if="loading" class="team-empty">加载中...</div>
       <div v-else-if="visibleTeamConversations.length === 0" class="team-empty">暂无 Team 运行记录</div>
+      <div v-else-if="filteredTeamConversations.length === 0" class="team-empty">没有匹配的 Team 会话</div>
       <div v-else class="team-conversation-list">
         <button
-          v-for="conversation in visibleTeamConversations"
+          v-for="conversation in filteredTeamConversations"
           :key="conversation.id"
           type="button"
           class="team-conversation"
@@ -418,7 +449,7 @@ async function refreshCreatedConversation(conversationId: string) {
         </header>
         <div class="workbench-shell">
           <div v-if="loadingEvents" class="team-placeholder">Team 事件加载中...</div>
-          <TeamTracePanel v-else :events="selectedEvents" />
+          <TeamTracePanel v-else :events="selectedEvents" :messages="selectedMessages" />
         </div>
       </template>
     </main>
@@ -649,6 +680,38 @@ async function refreshCreatedConversation(conversationId: string) {
   color: var(--text-muted);
   font-size: var(--text-xs);
   line-height: 1.5;
+}
+
+.team-search {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 12px 0;
+  padding: 0 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-muted);
+}
+
+.team-search:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-bg);
+}
+
+.team-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+}
+
+.team-search input::placeholder {
+  color: var(--text-muted);
 }
 
 .team-conversation-list {

@@ -39,7 +39,7 @@
 
 `team` 模式适合需求分析、头脑风暴、方案设计、落地规划、路线图拆解和需要多视角审视的问题。创建或编辑 Swarm 时选择 `Team 团队`，如果 Agent 列表为空，前端会自动加入 `Team Owner`；日常使用时可以直接提问，例如“帮我做需求分析”“头脑风暴几个方案”“这个方向如何落地”“拆一个路线图”。
 
-运行时 Owner 会先判断是否需要组队。简单请求会降级为单 Agent；复杂请求会选择 Analyst / Ideator / Critic / Synthesizer / Researcher 等少量角色。`maxTotalTurns` 会限制任务数，预算不足时优先保留 `Synthesizer` 做最终汇总；即使只允许 1 个 Team 任务，也会优先给出最终汇总。Team Run 事件会记录计划角色、实际执行角色和被预算裁剪的角色；侧边栏 `Team` 入口会打开独立 `/team/:conversationId?` 页面，可选择 Team 配置、套用需求分析/头脑风暴/落地规划提示模板、发起新会话或继续当前会话，并以会话列表 + 宽版工作台查看 Team Run、任务、角色产出和时间线。运行中的 Team 会话可在独立工作台终止，聊天页右侧 Team 面板也可跳转到对应独立工作台。历史详情仍保留同一套视图。Critic 明确发现 blocker、阻塞、严重风险或不可行时，会记录 `team_task_verification_failed`，Team 工作台会高亮风险事件；当前 MVP 会继续让汇总角色吸收风险，不会自动打回重试。
+运行时 Owner 会先判断是否需要组队。简单请求会降级为单 Agent；复杂请求会选择 Analyst / Ideator / Critic / Synthesizer / Researcher 等少量角色。`maxTotalTurns` 会限制任务数，预算不足时优先保留 `Synthesizer` 做最终汇总；即使只允许 1 个 Team 任务，也会优先给出最终汇总。Team Run 事件会记录计划角色、实际执行角色和被预算裁剪的角色；侧边栏 `Team` 入口会打开独立 `/team/:conversationId?` 页面，可选择 Team 配置、套用需求分析/头脑风暴/落地规划提示模板、发起新会话或继续当前会话，并以可搜索会话列表 + 宽版工作台查看 Team Run、任务、角色产出和时间线。运行中的 Team 会话可在独立工作台终止，聊天页右侧 Team 面板也可跳转到对应独立工作台。历史详情仍保留同一套视图。Critic 明确发现 blocker、阻塞、严重风险或不可行时，会记录 `team_task_verification_failed`，Team 工作台会高亮风险事件；当前 MVP 会继续让汇总角色吸收风险，不会自动打回重试。
 
 ## Monorepo 结构
 

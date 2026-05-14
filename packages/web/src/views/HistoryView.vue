@@ -333,7 +333,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
             </h4>
             <div v-if="loadingEvents" class="detail-empty">Team 过程加载中...</div>
             <div v-else-if="selectedTeamEvents && selectedTeamEvents.length" class="history-team-workbench">
-              <TeamTracePanel :events="selectedTeamEvents" />
+              <TeamTracePanel :events="selectedTeamEvents" :messages="selectedMessages ?? undefined" />
             </div>
           </div>
 

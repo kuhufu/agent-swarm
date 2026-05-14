@@ -402,7 +402,7 @@ async function handleForkConversation(messageId?: string) {
             独立打开
           </button>
         </div>
-        <TeamTracePanel :events="teamEvents" />
+        <TeamTracePanel :events="teamEvents" :messages="messages" />
       </div>
       <AgentStatus v-else :agents="agentStates" :swarm-id="swarmId" />
     </aside>
