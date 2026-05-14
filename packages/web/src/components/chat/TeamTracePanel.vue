@@ -71,6 +71,7 @@ const selectedTaskId = ref<string | null>(null);
 const activeRunId = ref<string | null>(null);
 const copyingCurrentRun = ref(false);
 const copyingAllRuns = ref(false);
+const copyingRisks = ref(false);
 
 const runIds = computed(() => {
   const ids: string[] = [];
@@ -209,6 +210,7 @@ const riskItems = computed<TeamRiskItem[]>(() =>
     .filter((item): item is TeamRiskItem => Boolean(item))
     .sort((a, b) => b.timestamp - a.timestamp),
 );
+const risksMarkdown = computed(() => buildRisksMarkdown(riskItems.value));
 
 const timelineFilterCounts = computed(() => ({
   all: displayEvents.value.length,
@@ -481,7 +483,41 @@ function appendRoutingMarkdown(lines: string[], events: ConversationEvent[]) {
   );
 }
 
-async function copyMarkdown(markdown: string, state: typeof copyingCurrentRun | typeof copyingAllRuns) {
+function buildRisksMarkdown(items: TeamRiskItem[]): string {
+  const lines = ["# Team 风险清单"];
+  if (routingDecision.value) {
+    lines.push(
+      "",
+      `- 任务类型：${teamTaskTypeLabel(routingDecision.value.taskType)}`,
+      `- 协作策略：${teamStrategyLabel(routingDecision.value.strategy)}`,
+      `- Owner 理由：${String(routingDecision.value.reason ?? "未记录")}`,
+    );
+  }
+  if (items.length === 0) {
+    lines.push("", "当前 Run 暂无风险或警告。");
+    return lines.join("\n");
+  }
+  for (const item of items) {
+    lines.push(
+      "",
+      `## ${item.severity === "danger" ? "阻塞" : "警告"} · ${item.label}`,
+      "",
+      `- 角色：${item.role ?? "Team"}`,
+      `- 时间：${formatTimeLong(item.timestamp)}`,
+      `- 摘要：${item.summary}`,
+    );
+    if (item.note) {
+      lines.push(`- 备注：${item.note}`);
+    }
+  }
+  return lines.join("\n");
+}
+
+async function copyMarkdown(
+  markdown: string,
+  state: typeof copyingCurrentRun | typeof copyingAllRuns | typeof copyingRisks,
+  successMessage = "已复制",
+) {
   if (!markdown || state.value) return;
   if (!navigator.clipboard) {
     showError("当前浏览器不支持剪贴板写入");
@@ -490,7 +526,7 @@ async function copyMarkdown(markdown: string, state: typeof copyingCurrentRun | 
   state.value = true;
   try {
     await navigator.clipboard.writeText(markdown);
-    showSuccess("Team 产出已复制");
+    showSuccess(successMessage);
   } catch {
     showError("复制失败，请检查浏览器剪贴板权限");
   } finally {
@@ -499,11 +535,15 @@ async function copyMarkdown(markdown: string, state: typeof copyingCurrentRun | 
 }
 
 async function copyCurrentRunOutputs() {
-  await copyMarkdown(currentRunMarkdown.value, copyingCurrentRun);
+  await copyMarkdown(currentRunMarkdown.value, copyingCurrentRun, "当前 Run 产出已复制");
 }
 
 async function copyAllRunOutputs() {
-  await copyMarkdown(allRunsMarkdown.value, copyingAllRuns);
+  await copyMarkdown(allRunsMarkdown.value, copyingAllRuns, "全部 Run 产出已复制");
+}
+
+async function copyRiskList() {
+  await copyMarkdown(risksMarkdown.value, copyingRisks, "风险清单已复制");
 }
 </script>
 
@@ -728,6 +768,13 @@ async function copyAllRunOutputs() {
       <div v-else-if="activeView === 'risks'" class="team-risks">
         <div v-if="riskItems.length === 0" class="risk-empty">当前 Run 暂无风险或警告</div>
         <template v-else>
+          <div class="risk-toolbar">
+            <span>{{ riskItems.length }} 条风险与警告</span>
+            <button type="button" :disabled="copyingRisks" @click="copyRiskList">
+              <SvgIcon name="copy" :size="13" />
+              {{ copyingRisks ? "复制中" : "复制风险清单" }}
+            </button>
+          </div>
           <article
             v-for="item in riskItems"
             :key="item.id"
@@ -1413,6 +1460,50 @@ async function copyAllRunOutputs() {
   padding: 12px 0;
   color: var(--text-muted);
   font-size: var(--text-sm);
+}
+
+.risk-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.risk-toolbar span {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.risk-toolbar button {
+  flex: 0 0 auto;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.risk-toolbar button:hover:not(:disabled) {
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.risk-toolbar button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .risk-card {
