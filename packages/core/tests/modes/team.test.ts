@@ -126,6 +126,11 @@ describe("TeamMode", () => {
     expect(yielded.some((event) => event.type === "team_run_end" && event.status === "completed")).toBe(true);
     expect(yielded.filter((event) => event.type === "team_task_started")).toHaveLength(3);
     expect(yielded.filter((event) => event.type === "team_task_verification_started")).toHaveLength(1);
+    expect(yielded.some((event) =>
+      event.type === "team_task_completed"
+      && typeof event.output === "string"
+      && event.output.includes("output from"),
+    )).toBe(true);
     expect([...agents.keys()].some((id) => id.includes("__team_ideator"))).toBe(true);
     expect([...agents.keys()].some((id) => id.includes("__team_synthesizer"))).toBe(true);
     expect(emitted.length).toBeGreaterThanOrEqual(yielded.length);

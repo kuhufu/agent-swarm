@@ -390,6 +390,7 @@ export interface TeamTaskEvent {
   role?: TeamRole;
   status: TeamTaskStatus;
   summary?: string;
+  output?: string;
   issues?: string[];
   retryCount?: number;
 }

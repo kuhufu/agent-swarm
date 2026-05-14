@@ -159,6 +159,7 @@ export class TeamMode implements ModeExecutor {
         role,
         status: hasBlockingIssues ? "failed" : "completed",
         summary: this.truncate(output, 240),
+        output,
         issues: hasBlockingIssues ? [this.truncate(output, 240)] : undefined,
         retryCount: 0,
       });

@@ -41,6 +41,30 @@ export function teamRunStatusLabel(status: unknown): string {
   return typeof status === "string" ? map[status] ?? status : "运行中";
 }
 
+export function teamTaskTypeLabel(taskType: unknown): string {
+  const map: Record<string, string> = {
+    simple_chat: "简单问答",
+    requirements_analysis: "需求分析",
+    brainstorming: "头脑风暴",
+    research: "研究调研",
+    document: "文档任务",
+    coding: "实现任务",
+    mixed: "综合任务",
+  };
+  return typeof taskType === "string" ? map[taskType] ?? taskType : "未记录";
+}
+
+export function teamStrategyLabel(strategy: unknown): string {
+  const map: Record<string, string> = {
+    single_agent: "单 Agent 处理",
+    parallel_perspectives: "多视角发散",
+    sequential_refinement: "顺序完善",
+    research_then_synthesize: "先调研再汇总",
+    critique_and_revise: "产出后审视",
+  };
+  return typeof strategy === "string" ? map[strategy] ?? strategy : "未记录";
+}
+
 export function teamEventLabel(eventType: string): string {
   const map: Record<string, string> = {
     team_run_start: "开始规划",

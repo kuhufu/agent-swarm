@@ -12,10 +12,12 @@ import {
   teamRunStatusLabel,
   teamSelectedRolesLabel,
   teamSkippedRolesLabel,
+  teamStrategyLabel,
+  teamTaskTypeLabel,
 } from "../../utils/team-events.js";
 import SvgIcon from "../common/SvgIcon.vue";
 
-type WorkbenchView = "tasks" | "timeline";
+type WorkbenchView = "tasks" | "outputs" | "timeline";
 type TaskFilter = "all" | "risk" | "active" | "completed";
 type TimelineFilter = "all" | "risk" | "warning" | "run" | "task";
 
@@ -31,6 +33,16 @@ interface TeamTaskSummary {
   createdAt: number;
   updatedAt: number;
   events: ConversationEvent[];
+}
+
+interface TeamOutputSummary {
+  taskId: string;
+  role: string;
+  status: string;
+  summary: string;
+  output: string;
+  severity: "normal" | "warning" | "danger";
+  updatedAt: number;
 }
 
 const props = defineProps<{
@@ -76,6 +88,19 @@ const riskCount = computed(() =>
   displayEvents.value.filter((event) => teamEventSeverity(event) === "danger").length,
 );
 const runSummary = computed(() => latestRunEvent.value ? teamEventSummary(latestRunEvent.value) : "暂无 Team 运行。");
+const latestRoutingEvent = computed(() =>
+  [...displayEvents.value].reverse().find((event) => {
+    const data = parseTeamEventData(event);
+    return data.routing && typeof data.routing === "object" && !Array.isArray(data.routing);
+  }) ?? null,
+);
+const routingDecision = computed(() => {
+  if (!latestRoutingEvent.value) return null;
+  const data = parseTeamEventData(latestRoutingEvent.value);
+  return data.routing && typeof data.routing === "object" && !Array.isArray(data.routing)
+    ? data.routing as Record<string, unknown>
+    : null;
+});
 
 const tasks = computed<TeamTaskSummary[]>(() => {
   const map = new Map<string, TeamTaskSummary>();
@@ -140,6 +165,31 @@ const filteredTasks = computed(() => {
       return tasks.value;
   }
 });
+
+const outputs = computed<TeamOutputSummary[]>(() =>
+  tasks.value
+    .filter((task) => task.status === "completed" || task.status === "failed")
+    .map((task) => {
+      const completedEvent = [...task.events].reverse().find((event) =>
+        event.eventType === "team_task_completed"
+        || event.eventType === "team_task_verification_passed"
+        || event.eventType === "team_task_verification_failed"
+      );
+      const data = completedEvent ? parseTeamEventData(completedEvent) : {};
+      const output = typeof data.output === "string" && data.output.trim().length > 0
+        ? data.output.trim()
+        : task.summary;
+      return {
+        taskId: task.taskId,
+        role: task.role,
+        status: task.status,
+        summary: task.summary,
+        output,
+        severity: task.severity,
+        updatedAt: task.updatedAt,
+      };
+    }),
+);
 
 const timelineFilterCounts = computed(() => ({
   all: displayEvents.value.length,
@@ -283,6 +333,18 @@ function isActiveTaskStatus(status: string): boolean {
       <small v-if="skippedRoles">预算跳过：{{ skippedRoles }}</small>
     </section>
 
+    <section v-if="routingDecision" class="routing-brief">
+      <div>
+        <span>任务类型</span>
+        <strong>{{ teamTaskTypeLabel(routingDecision.taskType) }}</strong>
+      </div>
+      <div>
+        <span>协作策略</span>
+        <strong>{{ teamStrategyLabel(routingDecision.strategy) }}</strong>
+      </div>
+      <p>{{ routingDecision.reason }}</p>
+    </section>
+
     <div v-if="runIds.length > 1" class="run-switcher">
       <button
         v-for="(runId, index) in runIds"
@@ -312,6 +374,16 @@ function isActiveTaskStatus(status: string): boolean {
         >
           任务
           <span>{{ tasks.length }}</span>
+        </button>
+        <button
+          type="button"
+          :class="{ active: activeView === 'outputs' }"
+          role="tab"
+          :aria-selected="activeView === 'outputs'"
+          @click="activeView = 'outputs'"
+        >
+          产出
+          <span>{{ outputs.length }}</span>
         </button>
         <button
           type="button"
@@ -398,6 +470,28 @@ function isActiveTaskStatus(status: string): boolean {
             </article>
           </div>
         </section>
+      </div>
+
+      <div v-else-if="activeView === 'outputs'" class="team-outputs">
+        <div v-if="outputs.length === 0" class="output-empty">暂无角色产出</div>
+        <template v-else>
+          <article
+            v-for="output in outputs"
+            :key="output.taskId"
+            class="output-card"
+            :class="output.severity"
+          >
+            <header>
+              <div>
+                <span>{{ teamRoleLabel(output.role) }}</span>
+                <strong>{{ taskStatusLabel(output.status) }}</strong>
+              </div>
+              <time>{{ formatTimeLong(output.updatedAt) }}</time>
+            </header>
+            <p v-if="output.summary && output.summary !== output.output" class="output-summary">{{ output.summary }}</p>
+            <pre>{{ output.output }}</pre>
+          </article>
+        </template>
       </div>
 
       <div v-else class="team-timeline">
@@ -525,6 +619,51 @@ function isActiveTaskStatus(status: string): boolean {
   overflow-wrap: anywhere;
 }
 
+.routing-brief {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.routing-brief div {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+
+.routing-brief span,
+.routing-brief strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.routing-brief span {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.routing-brief strong {
+  margin-top: 3px;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.routing-brief p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
 .run-switcher {
   display: flex;
   gap: 7px;
@@ -570,7 +709,7 @@ function isActiveTaskStatus(status: string): boolean {
 
 .workbench-tabs {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border-subtle);
@@ -856,6 +995,92 @@ function isActiveTaskStatus(status: string): boolean {
   font-size: var(--text-xs);
   line-height: 1.5;
   overflow-wrap: anywhere;
+}
+
+.team-outputs {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 12px 14px 20px;
+}
+
+.output-empty {
+  padding: 12px 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.output-card {
+  min-width: 0;
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+
+.output-card.warning {
+  border-color: var(--border-warning);
+  background: var(--bg-warning);
+}
+
+.output-card.danger {
+  border-color: var(--border-danger);
+  background: var(--bg-danger);
+}
+
+.output-card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.output-card header div {
+  min-width: 0;
+}
+
+.output-card header span,
+.output-card time {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.output-card header strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.output-card time {
+  flex: 0 0 auto;
+}
+
+.output-summary {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.output-card pre {
+  margin: 0;
+  max-height: 420px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  line-height: 1.65;
 }
 
 .team-timeline {
