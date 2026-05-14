@@ -6,15 +6,24 @@ import SvgIcon from "../common/SvgIcon.vue";
 const askUserStore = useAskUserStore();
 const answer = ref("");
 const selectedChoices = ref<string[]>([]);
+const choiceFilter = ref("");
 
 const isMultiple = computed(() => askUserStore.nextRequest?.multiple ?? false);
 const choices = computed(() => askUserStore.nextRequest?.choices ?? []);
+const selectedCount = computed(() => selectedChoices.value.length);
+const shouldShowChoiceFilter = computed(() => choices.value.length > 12);
+const filteredChoices = computed(() => {
+  const keyword = choiceFilter.value.trim().toLowerCase();
+  if (!keyword) return choices.value;
+  return choices.value.filter((choice) => choice.toLowerCase().includes(keyword));
+});
 
 watch(
   () => askUserStore.nextRequest?.requestId,
   () => {
     const request = askUserStore.nextRequest;
     answer.value = request && !request.multiple ? request.defaultAnswer ?? "" : "";
+    choiceFilter.value = "";
     selectedChoices.value = request?.multiple
       ? choicesFromDefaultAnswer(request.defaultAnswer, request.choices)
       : [];
@@ -38,6 +47,10 @@ function isChoiceSelected(choice: string): boolean {
   return isMultiple.value
     ? selectedChoices.value.includes(choice)
     : answer.value.trim() === choice;
+}
+
+function clearSelection() {
+  selectedChoices.value = [];
 }
 
 function submit() {
@@ -83,11 +96,35 @@ function choicesFromDefaultAnswer(defaultAnswer: string | undefined, availableCh
         {{ askUserStore.nextRequest.context }}
       </p>
 
+      <div v-if="isMultiple && choices.length > 0" class="ask-user-choice-toolbar">
+        <span>{{ selectedCount }} / {{ choices.length }} 已选择</span>
+        <button
+          v-if="selectedCount > 0"
+          type="button"
+          @mousedown.stop
+          @click.prevent.stop="clearSelection"
+        >
+          清空选择
+        </button>
+      </div>
+
+      <label v-if="shouldShowChoiceFilter" class="ask-user-choice-filter">
+        <SvgIcon name="search" :size="14" />
+        <input
+          v-model="choiceFilter"
+          type="search"
+          placeholder="筛选选项..."
+          @mousedown.stop
+          @click.stop
+        />
+      </label>
+
       <div v-if="choices.length > 0" class="ask-user-choices">
         <button
-          v-for="choice in choices"
+          v-for="choice in filteredChoices"
           :key="choice"
           type="button"
+          :aria-pressed="isChoiceSelected(choice)"
           :class="{ active: isChoiceSelected(choice), checkbox: isMultiple }"
           @mousedown.stop
           @click.prevent.stop="chooseAnswer(choice)"
@@ -97,6 +134,9 @@ function choicesFromDefaultAnswer(defaultAnswer: string | undefined, availableCh
           </span>
           {{ choice }}
         </button>
+        <p v-if="filteredChoices.length === 0" class="ask-user-empty-choice">
+          没有匹配的选项
+        </p>
       </div>
 
       <div v-if="isMultiple && choices.length > 0" class="ask-divider" />
@@ -194,6 +234,77 @@ function choicesFromDefaultAnswer(defaultAnswer: string | undefined, availableCh
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  max-height: min(232px, 34dvh);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.ask-user-choice-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+
+.ask-user-choice-toolbar button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.ask-user-choice-toolbar button:hover {
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ask-user-choice-filter {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-muted);
+}
+
+.ask-user-choice-filter:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-bg);
+}
+
+.ask-user-choice-filter input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  outline: none;
+}
+
+.ask-user-choice-filter input::placeholder {
+  color: var(--text-muted);
+}
+
+.ask-user-empty-choice {
+  width: 100%;
+  margin: 0;
+  padding: 10px 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
 }
 
 .ask-user-choices button,

@@ -67,14 +67,17 @@ export function extractAskUserResult(details: unknown, args: unknown): AskUserRe
 </script>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import SectionLabel from "./SectionLabel.vue";
 import SvgIcon from "../common/SvgIcon.vue";
+
+const COLLAPSED_CHOICE_COUNT = 24;
 
 const props = defineProps<{
   result: AskUserResultView;
 }>();
 
+const choicesExpanded = ref(false);
 const answerLabel = computed(() => {
   if (props.result.pending) return "等待回答";
   return props.result.skipped ? "用户跳过" : "用户回答";
@@ -84,6 +87,11 @@ const answerText = computed(() => {
   if (props.result.skipped) return "用户没有提供回答，Agent 将基于当前上下文继续。";
   return props.result.answer || "用户提交了空回答。";
 });
+const visibleChoices = computed(() => {
+  if (choicesExpanded.value) return props.result.choices;
+  return props.result.choices.slice(0, COLLAPSED_CHOICE_COUNT);
+});
+const hiddenChoiceCount = computed(() => Math.max(props.result.choices.length - visibleChoices.value.length, 0));
 </script>
 
 <template>
@@ -107,7 +115,7 @@ const answerText = computed(() => {
 
       <div v-if="result.choices.length > 0" class="ask-choice-list">
         <span
-          v-for="choice in result.choices"
+          v-for="choice in visibleChoices"
           :key="choice"
           class="ask-choice"
           :class="{ selected: !result.skipped && (result.selectedChoices.length > 0 ? result.selectedChoices.includes(choice) : choice === result.answer) }"
@@ -117,6 +125,15 @@ const answerText = computed(() => {
           </span>
           {{ choice }}
         </span>
+        <button
+          v-if="hiddenChoiceCount > 0 || choicesExpanded"
+          type="button"
+          class="choice-toggle"
+          @click="choicesExpanded = !choicesExpanded"
+        >
+          <SvgIcon :name="choicesExpanded ? 'chevronDown' : 'chevronRight'" :size="12" />
+          {{ choicesExpanded ? "收起选项" : `展开 ${hiddenChoiceCount} 项` }}
+        </button>
       </div>
 
       <section class="ask-answer-block" :class="{ pending: result.pending }">
@@ -232,9 +249,13 @@ const answerText = computed(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  max-height: 188px;
+  overflow: auto;
+  padding-right: 2px;
 }
 
-.ask-choice {
+.ask-choice,
+.choice-toggle {
   min-height: 26px;
   display: inline-flex;
   align-items: center;
@@ -248,9 +269,19 @@ const answerText = computed(() => {
   font-weight: var(--weight-medium);
 }
 
+.choice-toggle {
+  cursor: pointer;
+}
+
 .ask-choice.selected {
   border-color: var(--color-accent);
   background: var(--color-accent-bg);
+  color: var(--text-primary);
+}
+
+.choice-toggle:hover {
+  border-color: var(--border-default);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
