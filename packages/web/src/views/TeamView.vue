@@ -12,6 +12,70 @@ import { formatTimeLong } from "../utils/format.js";
 import { showError } from "../utils/ui-feedback.js";
 import type { ChatMessage, ConversationEvent, ConversationInfo } from "../types/index.js";
 
+type TeamPromptTemplateId = "requirements" | "brainstorming" | "planning";
+
+interface TeamPromptTemplate {
+  id: TeamPromptTemplateId;
+  label: string;
+  description: string;
+  prompt: string;
+}
+
+const TEAM_PROMPT_TEMPLATES: TeamPromptTemplate[] = [
+  {
+    id: "requirements",
+    label: "需求分析",
+    description: "澄清目标、用户、边界、优先级和验收标准",
+    prompt: [
+      "请围绕以下主题做一次结构化需求分析。",
+      "",
+      "需要输出：",
+      "1. 目标与背景",
+      "2. 目标用户与核心场景",
+      "3. 功能范围与非目标",
+      "4. 约束、依赖和风险",
+      "5. 优先级和验收标准",
+      "6. 仍需向用户确认的问题",
+      "",
+      "主题：",
+    ].join("\n"),
+  },
+  {
+    id: "brainstorming",
+    label: "头脑风暴",
+    description: "发散多个方案，再做风险审视和推荐排序",
+    prompt: [
+      "请围绕以下方向做一次头脑风暴。",
+      "",
+      "需要输出：",
+      "1. 至少 3 个明显不同的方案",
+      "2. 每个方案的价值、成本、风险和适用场景",
+      "3. 方案之间的取舍比较",
+      "4. 推荐排序和选择理由",
+      "5. 后续验证问题",
+      "",
+      "方向：",
+    ].join("\n"),
+  },
+  {
+    id: "planning",
+    label: "落地规划",
+    description: "拆阶段、任务、依赖、风险和下一步行动",
+    prompt: [
+      "请把以下想法拆成可执行的落地规划。",
+      "",
+      "需要输出：",
+      "1. 阶段划分和每阶段目标",
+      "2. 关键任务、依赖和负责人角色",
+      "3. 风险、阻塞点和缓解动作",
+      "4. 验证方式和里程碑",
+      "5. 最近一周可以开始的下一步",
+      "",
+      "想法：",
+    ].join("\n"),
+  },
+];
+
 const router = useRouter();
 const route = useRoute();
 const conversationStore = useConversationStore();
@@ -23,6 +87,7 @@ const launchConversationId = ref<string | null>(null);
 const selectedTeamSwarmId = ref("");
 const launchTarget = ref<"new" | "current">("new");
 const teamPrompt = ref("");
+const selectedPromptTemplate = ref<TeamPromptTemplateId>("requirements");
 const conversationSearch = ref("");
 const pendingNewConversation = ref(false);
 const loading = ref(false);
@@ -259,8 +324,9 @@ function abortSelectedRun() {
   abort();
 }
 
-function applyPromptTemplate(template: string) {
-  teamPrompt.value = template;
+function applySelectedPromptTemplate(template: TeamPromptTemplate) {
+  selectedPromptTemplate.value = template.id;
+  teamPrompt.value = template.prompt;
 }
 
 function handleStartTeamRun() {
@@ -367,6 +433,18 @@ async function refreshCreatedConversation(conversationId: string) {
             当前会话
           </button>
         </div>
+        <div class="prompt-template-list" aria-label="任务类型">
+          <button
+            v-for="template in TEAM_PROMPT_TEMPLATES"
+            :key="template.id"
+            type="button"
+            :class="{ active: selectedPromptTemplate === template.id }"
+            @click="applySelectedPromptTemplate(template)"
+          >
+            <strong>{{ template.label }}</strong>
+            <span>{{ template.description }}</span>
+          </button>
+        </div>
         <textarea
           v-model="teamPrompt"
           rows="4"
@@ -374,17 +452,6 @@ async function refreshCreatedConversation(conversationId: string) {
           :disabled="sending || teamSwarms.length === 0"
           placeholder="输入要分析、发散或落地的需求..."
         />
-        <div class="prompt-templates">
-          <button type="button" @click="applyPromptTemplate('帮我做一次需求分析：目标用户、核心场景、功能范围、边界、风险和验收标准。')">
-            需求分析
-          </button>
-          <button type="button" @click="applyPromptTemplate('围绕这个方向做头脑风暴：给出多种方案、适用场景、优缺点和推荐排序。')">
-            头脑风暴
-          </button>
-          <button type="button" @click="applyPromptTemplate('把这个想法拆成可落地路线图：阶段、任务、依赖、风险和下一步行动。')">
-            落地规划
-          </button>
-        </div>
         <button
           class="launch-submit"
           type="button"
@@ -621,15 +688,13 @@ async function refreshCreatedConversation(conversationId: string) {
   opacity: 0.55;
 }
 
-.launch-targets,
-.prompt-templates {
+.launch-targets {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
 .launch-targets button,
-.prompt-templates button,
 .launch-submit {
   min-height: 32px;
   display: inline-flex;
@@ -655,16 +720,51 @@ async function refreshCreatedConversation(conversationId: string) {
   color: var(--text-primary);
 }
 
-.prompt-templates button {
-  padding: 0 9px;
-}
-
 .launch-targets button:hover:not(:disabled),
-.prompt-templates button:hover,
 .launch-submit:hover:not(:disabled) {
   background: var(--bg-hover);
   color: var(--text-primary);
   border-color: var(--border-default);
+}
+
+.prompt-template-list {
+  display: grid;
+  gap: 7px;
+}
+
+.prompt-template-list button {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  text-align: left;
+  cursor: pointer;
+}
+
+.prompt-template-list button:hover,
+.prompt-template-list button.active {
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+}
+
+.prompt-template-list button.active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
+}
+
+.prompt-template-list strong {
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.prompt-template-list span {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.45;
 }
 
 .launch-submit {

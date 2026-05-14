@@ -18,7 +18,7 @@ import {
 import SvgIcon from "../common/SvgIcon.vue";
 import { showError, showSuccess } from "../../utils/ui-feedback.js";
 
-type WorkbenchView = "tasks" | "outputs" | "timeline";
+type WorkbenchView = "tasks" | "outputs" | "risks" | "timeline";
 type TaskFilter = "all" | "risk" | "active" | "completed";
 type TimelineFilter = "all" | "risk" | "warning" | "run" | "task";
 
@@ -46,6 +46,17 @@ interface TeamOutputSummary {
   outputComplete: boolean;
   severity: "normal" | "warning" | "danger";
   updatedAt: number;
+}
+
+interface TeamRiskItem {
+  id: string;
+  runId: string | null;
+  role: string | null;
+  label: string;
+  summary: string;
+  note: string;
+  severity: "warning" | "danger";
+  timestamp: number;
 }
 
 const props = defineProps<{
@@ -179,6 +190,25 @@ const outputs = computed<TeamOutputSummary[]>(() =>
 );
 const currentRunMarkdown = computed(() => buildOutputsMarkdown(displayEvents.value, "Team 当前 Run 产出"));
 const allRunsMarkdown = computed(() => buildOutputsMarkdown(props.events, "Team 全部 Run 产出"));
+const riskItems = computed<TeamRiskItem[]>(() =>
+  displayEvents.value
+    .map((event) => {
+      const severity = teamEventSeverity(event);
+      if (severity === "normal") return null;
+      return {
+        id: event.id,
+        runId: getEventRunId(event),
+        role: teamEventRole(event),
+        label: teamEventLabel(event.eventType),
+        summary: teamEventSummary(event),
+        note: teamSkippedRolesLabel(event) ? `预算跳过：${teamSkippedRolesLabel(event)}` : "",
+        severity,
+        timestamp: event.timestamp,
+      };
+    })
+    .filter((item): item is TeamRiskItem => Boolean(item))
+    .sort((a, b) => b.timestamp - a.timestamp),
+);
 
 const timelineFilterCounts = computed(() => ({
   all: displayEvents.value.length,
@@ -560,6 +590,16 @@ async function copyAllRunOutputs() {
         </button>
         <button
           type="button"
+          :class="{ active: activeView === 'risks' }"
+          role="tab"
+          :aria-selected="activeView === 'risks'"
+          @click="activeView = 'risks'"
+        >
+          风险
+          <span>{{ riskItems.length }}</span>
+        </button>
+        <button
+          type="button"
           :class="{ active: activeView === 'timeline' }"
           role="tab"
           :aria-selected="activeView === 'timeline'"
@@ -681,6 +721,28 @@ async function copyAllRunOutputs() {
             <p v-if="output.summary && output.summary !== output.output" class="output-summary">{{ output.summary }}</p>
             <p v-if="!output.outputComplete" class="output-warning">历史事件未包含完整 output，当前仅展示可恢复摘要。</p>
             <pre>{{ output.output }}</pre>
+          </article>
+        </template>
+      </div>
+
+      <div v-else-if="activeView === 'risks'" class="team-risks">
+        <div v-if="riskItems.length === 0" class="risk-empty">当前 Run 暂无风险或警告</div>
+        <template v-else>
+          <article
+            v-for="item in riskItems"
+            :key="item.id"
+            class="risk-card"
+            :class="item.severity"
+          >
+            <header>
+              <div>
+                <span>{{ item.label }}</span>
+                <strong>{{ item.role ?? "Team" }}</strong>
+              </div>
+              <time>{{ formatTimeLong(item.timestamp) }}</time>
+            </header>
+            <p>{{ item.summary }}</p>
+            <small v-if="item.note">{{ item.note }}</small>
           </article>
         </template>
       </div>
@@ -900,7 +962,7 @@ async function copyAllRunOutputs() {
 
 .workbench-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border-subtle);
@@ -1335,6 +1397,82 @@ async function copyAllRunOutputs() {
   font-family: inherit;
   font-size: var(--text-sm);
   line-height: 1.65;
+}
+
+.team-risks {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 12px 14px 20px;
+}
+
+.risk-empty {
+  padding: 12px 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.risk-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--border-warning);
+  border-radius: var(--radius-md);
+  background: var(--bg-warning);
+}
+
+.risk-card.danger {
+  border-color: var(--border-danger);
+  background: var(--bg-danger);
+}
+
+.risk-card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.risk-card header div {
+  min-width: 0;
+}
+
+.risk-card header span,
+.risk-card time,
+.risk-card small {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.risk-card header strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.risk-card time {
+  flex: 0 0 auto;
+}
+
+.risk-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.risk-card small {
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .team-timeline {
