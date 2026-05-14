@@ -7,11 +7,11 @@ import * as conversationsApi from "../api/conversations.js";
 import { apiClient } from "../api/client.js";
 import { getModeConfig } from "../constants/swarm-modes.js";
 import { formatTimeLong } from "../utils/format.js";
-import { teamEventLabel, teamEventRole, teamEventSeverity, teamEventSummary, teamSkippedRolesLabel } from "../utils/team-events.js";
 import ModeIcon from "../components/common/ModeIcon.vue";
 import SidebarPanel from "../components/common/SidebarPanel.vue";
 import EmptyState from "../components/common/EmptyState.vue";
 import DetailHeader from "../components/common/DetailHeader.vue";
+import TeamTracePanel from "../components/chat/TeamTracePanel.vue";
 import type { ConversationInfo, SwarmConfig, ChatMessage, ConversationEvent } from "../types/index.js";
 import { confirmDialog, showError } from "../utils/ui-feedback.js";
 import SvgIcon from "../components/common/SvgIcon.vue";
@@ -328,28 +328,12 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
           <div v-if="loadingEvents || (selectedTeamEvents && selectedTeamEvents.length)" class="detail-section team-trace-section">
             <h4 class="detail-section-title">
               <SvgIcon name="history" :size="16" />
-              Team 过程
+              Team 工作台
               <span v-if="selectedTeamEvents" class="msg-count">{{ selectedTeamEvents.length }} 条</span>
             </h4>
             <div v-if="loadingEvents" class="detail-empty">Team 过程加载中...</div>
-            <div v-else-if="selectedTeamEvents && selectedTeamEvents.length" class="team-timeline">
-              <article
-                v-for="event in selectedTeamEvents"
-                :key="event.id"
-                class="team-event"
-                :class="teamEventSeverity(event)"
-              >
-                <div class="team-event-dot" />
-                <div class="team-event-body">
-                  <div class="team-event-header">
-                    <span class="team-event-type">{{ teamEventLabel(event.eventType) }}</span>
-                    <span v-if="teamEventRole(event)" class="team-event-role">{{ teamEventRole(event) }}</span>
-                    <span class="team-event-time">{{ formatTimeLong(event.timestamp) }}</span>
-                  </div>
-                  <p>{{ teamEventSummary(event) }}</p>
-                  <small v-if="teamSkippedRolesLabel(event)">跳过：{{ teamSkippedRolesLabel(event) }}</small>
-                </div>
-              </article>
+            <div v-else-if="selectedTeamEvents && selectedTeamEvents.length" class="history-team-workbench">
+              <TeamTracePanel :events="selectedTeamEvents" />
             </div>
           </div>
 
@@ -487,109 +471,13 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.team-timeline {
-  display: grid;
-  gap: 0;
-}
-
-.team-event {
-  position: relative;
-  display: grid;
-  grid-template-columns: 18px 1fr;
-  gap: 10px;
-  padding: 0 0 14px;
-}
-
-.team-event:not(:last-child)::before {
-  content: "";
-  position: absolute;
-  left: 5px;
-  top: 14px;
-  bottom: 0;
-  width: 1px;
-  background: var(--border-subtle);
-}
-
-.team-event-dot {
-  width: 11px;
-  height: 11px;
-  margin-top: 5px;
-  border-radius: 50%;
-  background: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--bg-surface);
-  z-index: 1;
-}
-
-.team-event.warning .team-event-dot {
-  background: var(--color-warning);
-}
-
-.team-event.danger .team-event-dot {
-  background: var(--color-danger);
-}
-
-.team-event-body {
-  min-width: 0;
-  padding: 10px 12px;
+.history-team-workbench {
+  height: min(620px, 70vh);
+  min-height: 420px;
+  overflow: hidden;
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   background: var(--bg-surface);
-}
-
-.team-event.warning .team-event-body {
-  border-color: var(--border-warning);
-  background: var(--bg-warning);
-}
-
-.team-event.danger .team-event-body {
-  border-color: var(--border-danger);
-  background: var(--bg-danger);
-}
-
-.team-event-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 6px;
-}
-
-.team-event-type {
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-bold);
-}
-
-.team-event-role {
-  padding: 2px 7px;
-  border-radius: 6px;
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-}
-
-.team-event-time {
-  margin-left: auto;
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-}
-
-.team-event-body p {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  line-height: 1.6;
-  overflow-wrap: anywhere;
-}
-
-.team-event-body small {
-  display: block;
-  margin-top: 6px;
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-  line-height: 1.5;
-  overflow-wrap: anywhere;
 }
 
 /* Messages */

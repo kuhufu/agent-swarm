@@ -21,11 +21,11 @@
 - 使用确定性流程控制 Team Run / Team Task 的基本状态。
 - 将所有关键过程写入事件流和持久化存储，便于前端 Trace 和恢复。
 - Team 执行受 `maxTotalTurns` 限制；当任务预算不足以执行全部角色时，会优先保留 `synthesizer` 作为最后一步，即使只允许 1 个 Team 任务也优先产出最终汇总，避免只有发散或分析而没有交付答案。运行事件会通过 `plannedRoles` / `selectedRoles` / `skippedRoles` 记录原计划、实际执行角色和被预算裁剪的角色，并在结束摘要中说明是否包含独立审视和最终汇总。
-- Critic 输出中明确出现 blocker、阻塞、严重风险、不可行等信号时，当前 MVP 会记录 `team_task_verification_failed`，Team Run 结束摘要会提示存在阻塞风险，并继续交给后续汇总角色吸收风险；聊天页 Team tab 和历史详情会用风险样式高亮这类事件。自动打回重试仍留作后续阶段。
+- Critic 输出中明确出现 blocker、阻塞、严重风险、不可行等信号时，当前 MVP 会记录 `team_task_verification_failed`，Team Run 结束摘要会提示存在阻塞风险，并继续交给后续汇总角色吸收风险；聊天页和历史详情的 Team 工作台会用风险样式高亮这类事件。自动打回重试仍留作后续阶段。
 - 内置 `Team Owner` Agent 模板，便于快速创建通用 `team` 模式 Swarm。
 - 前端创建/编辑 Swarm 时选择 `Team` 模式，如果当前 Agent 列表为空，会自动加入 `Team Owner`，并优先填入已保存模型列表中的第一个模型。
 
-当前 MVP 暂未实现独立 Team 数据表、并行执行、自动打回重试和独立 Team API；这些仍是后续阶段。当前前端已通过聊天页右侧 Team tab 和历史详情展示 Team 事件，后续可再演进成更完整的专用 Team 工作台。
+当前 MVP 暂未实现独立 Team 数据表、并行执行、自动打回重试和独立 Team API；这些仍是后续阶段。当前前端已通过聊天页右侧和历史详情的 Team 工作台展示 Team 事件，后续可再演进成可操作的 Team 控制台。
 
 ## 非目标
 
@@ -437,7 +437,7 @@ packages/web/src/components/team/
   VerificationResult.vue
 ```
 
-模式选择上，`packages/web/src/constants/swarm-modes.ts` 已开放 `team` 选项；聊天页当前用中文通知消息展示 Team Run 级别进展，并用右侧 Team 工作台展示 Team Run / Team Task 明细，把 Analyst / Ideator / Critic / Synthesizer / Researcher 等内部角色映射成需求分析、方案发散、风险审视、结论汇总和研究调研。Team 工作台概览会显示当前状态、实际执行角色和风险数量；任务视图按 `taskId` 聚合角色、状态、摘要、更新时间和任务内事件；时间线视图保留完整事件流。预算裁剪、运行终止或风险审视失败会在工作台中高亮。历史对话详情页会读取 `/api/conversations/:id/events` 并展示 `team_` 事件时间线，后续可继续拆独立 Team Run / Task API 和可操作的人工决策面板。
+模式选择上，`packages/web/src/constants/swarm-modes.ts` 已开放 `team` 选项；聊天页当前用中文通知消息展示 Team Run 级别进展，并用右侧 Team 工作台展示 Team Run / Team Task 明细，把 Analyst / Ideator / Critic / Synthesizer / Researcher 等内部角色映射成需求分析、方案发散、风险审视、结论汇总和研究调研。Team 工作台概览会显示当前状态、实际执行角色和风险数量；任务视图按 `taskId` 聚合角色、状态、摘要、更新时间和任务内事件；时间线视图保留完整事件流。预算裁剪、运行终止或风险审视失败会在工作台中高亮。历史对话详情页会读取 `/api/conversations/:id/events` 并复用同一个 Team 工作台展示已恢复事件，后续可继续拆独立 Team Run / Task API 和可操作的人工决策面板。
 
 ## 人工介入
 
