@@ -437,7 +437,7 @@ packages/web/src/components/team/
   VerificationResult.vue
 ```
 
-模式选择上，`packages/web/src/constants/swarm-modes.ts` 已开放 `team` 选项；聊天页当前用中文通知消息展示 Team Run 级别进展，并用右侧 Team 工作台展示 Team Run / Team Task 明细，把 Analyst / Ideator / Critic / Synthesizer / Researcher 等内部角色映射成需求分析、方案发散、风险审视、结论汇总和研究调研。Team 工作台概览会显示当前状态、实际执行角色和风险数量；同一会话包含多个 Team Run 时可按 `runId` 切换；任务视图按 `taskId` 聚合角色、状态、摘要、更新时间和任务内事件摘要，并支持按全部、风险、进行中、已完成筛选；时间线视图保留当前 Run 的完整事件流，并支持按全部、风险、警告、Run、Task 筛选。预算裁剪、运行终止或风险审视失败会在工作台中高亮。历史对话详情页会读取 `/api/conversations/:id/events` 并复用同一个 Team 工作台展示已恢复事件，后续可继续拆独立 Team Run / Task API 和可操作的人工决策面板。
+模式选择上，`packages/web/src/constants/swarm-modes.ts` 已开放 `team` 选项；前端新增独立 `/team` 页面作为 Team 模式主入口，采用 Team 会话列表 + 宽版工作台布局。聊天页继续用中文通知消息展示 Team Run 级别进展，并在右侧复用 Team 工作台展示 Team Run / Team Task 明细，把 Analyst / Ideator / Critic / Synthesizer / Researcher 等内部角色映射成需求分析、方案发散、风险审视、结论汇总和研究调研。Team 工作台概览会显示当前状态、实际执行角色和风险数量；同一会话包含多个 Team Run 时可按 `runId` 切换；任务视图按 `taskId` 聚合角色、状态、摘要、更新时间和任务内事件摘要，并支持按全部、风险、进行中、已完成筛选；时间线视图保留当前 Run 的完整事件流，并支持按全部、风险、警告、Run、Task 筛选。预算裁剪、运行终止或风险审视失败会在工作台中高亮。历史对话详情页会读取 `/api/conversations/:id/events` 并复用同一个 Team 工作台展示已恢复事件，后续可继续拆独立 Team Run / Task API 和可操作的人工决策面板。
 
 ## 人工介入
 

@@ -31,7 +31,7 @@
 - 知识引用回显：`search_wiki` 和 `retrieve_knowledge` 工具结果会在聊天工具卡中展示命中页面、文档片段和相关度，并可跳转到对应来源
 - 前端 JS 执行回显：`javascript_execute` 工具结果会在聊天工具卡中结构化展示返回值、日志和执行代码
 - 介入机制：支持工具调用/错误/handoff 等节点人工决策
-- 会话执行 Trace：事件按会话落库，聊天页右侧 Team 工作台与历史对话详情可查看 Agent 生命周期、工具调用、handoff、介入、错误与 Team 任务过程
+- 会话执行 Trace：事件按会话落库，独立 Team 页面、聊天页右侧 Team 工作台与历史对话详情可查看 Agent 生命周期、工具调用、handoff、介入、错误与 Team 任务过程
 - 事件分级落库：`eventLogLevel = none | key | full`（默认 `key`）
 - 提供商兼容参数：支持 `enable_thinking`（适配部分使用该字段控制思考开关的模型）
 
@@ -39,7 +39,7 @@
 
 `team` 模式适合需求分析、头脑风暴、方案设计、落地规划、路线图拆解和需要多视角审视的问题。创建或编辑 Swarm 时选择 `Team 团队`，如果 Agent 列表为空，前端会自动加入 `Team Owner`；日常使用时可以直接提问，例如“帮我做需求分析”“头脑风暴几个方案”“这个方向如何落地”“拆一个路线图”。
 
-运行时 Owner 会先判断是否需要组队。简单请求会降级为单 Agent；复杂请求会选择 Analyst / Ideator / Critic / Synthesizer / Researcher 等少量角色。`maxTotalTurns` 会限制任务数，预算不足时优先保留 `Synthesizer` 做最终汇总；即使只允许 1 个 Team 任务，也会优先给出最终汇总。Team Run 事件会记录计划角色、实际执行角色和被预算裁剪的角色，聊天页右侧 Team 工作台和历史详情会显示当前状态、实际执行角色、风险数量，并提供 Run 切换、任务筛选、任务列表、任务详情和完整时间线。Critic 明确发现 blocker、阻塞、严重风险或不可行时，会记录 `team_task_verification_failed`，Team 工作台会高亮风险事件；当前 MVP 会继续让汇总角色吸收风险，不会自动打回重试。
+运行时 Owner 会先判断是否需要组队。简单请求会降级为单 Agent；复杂请求会选择 Analyst / Ideator / Critic / Synthesizer / Researcher 等少量角色。`maxTotalTurns` 会限制任务数，预算不足时优先保留 `Synthesizer` 做最终汇总；即使只允许 1 个 Team 任务，也会优先给出最终汇总。Team Run 事件会记录计划角色、实际执行角色和被预算裁剪的角色；侧边栏 `Team` 入口会打开独立 `/team` 页面，以会话列表 + 宽版工作台查看 Team Run、任务和时间线。聊天页右侧 Team 工作台和历史详情仍保留同一套视图。Critic 明确发现 blocker、阻塞、严重风险或不可行时，会记录 `team_task_verification_failed`，Team 工作台会高亮风险事件；当前 MVP 会继续让汇总角色吸收风险，不会自动打回重试。
 
 ## Monorepo 结构
 

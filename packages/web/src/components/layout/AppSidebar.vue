@@ -366,6 +366,10 @@ onBeforeUnmount(() => {
     </section>
 
     <nav class="sidebar-bottom-nav">
+      <button class="bottom-nav-item" :class="{ active: route.name === 'team' }" @click="router.push('/team')">
+        <SvgIcon name="swarm" :size="14" />
+        <span>Team</span>
+      </button>
       <button class="bottom-nav-item" @click="router.push('/documents')">
         <SvgIcon name="book" :size="14" />
         <span>文档</span>
@@ -577,6 +581,11 @@ onBeforeUnmount(() => {
 .bottom-nav-item:hover {
   background: var(--bg-hover);
   color: var(--text-secondary);
+}
+
+.bottom-nav-item.active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 /* ── Conversation list ── */
