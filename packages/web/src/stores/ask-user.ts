@@ -53,7 +53,7 @@ export const useAskUserStore = defineStore("askUser", () => {
     return new Promise<AskUserResult>((resolve) => {
       const requestId = crypto.randomUUID();
       const timeout = setTimeout(() => {
-        resolveRequest(requestId, "", true);
+        resolveRequest(requestId, { answer: "" }, true);
       }, ASK_USER_TIMEOUT_MS);
 
       pendingRequests.value.push({
@@ -71,14 +71,28 @@ export const useAskUserStore = defineStore("askUser", () => {
   }
 
   function submitAnswer(requestId: string, answer: string) {
-    resolveRequest(requestId, answer.trim(), false);
+    resolveRequest(requestId, { answer: answer.trim() }, false);
+  }
+
+  function submitStructuredAnswer(requestId: string, payload: { selectedChoices?: string[]; freeText?: string }) {
+    const selectedChoices = normalizeChoices(payload.selectedChoices);
+    const freeText = payload.freeText?.trim() ?? "";
+    resolveRequest(requestId, {
+      answer: [...selectedChoices, ...(freeText ? [freeText] : [])].join("\n"),
+      selectedChoices,
+      freeText,
+    }, false);
   }
 
   function skip(requestId: string) {
-    resolveRequest(requestId, "", true);
+    resolveRequest(requestId, { answer: "" }, true);
   }
 
-  function resolveRequest(requestId: string, answer: string, skipped: boolean) {
+  function resolveRequest(
+    requestId: string,
+    payload: { answer: string; selectedChoices?: string[]; freeText?: string },
+    skipped: boolean,
+  ) {
     const request = pendingRequests.value.find((item) => item.requestId === requestId);
     if (!request) return;
 
@@ -99,10 +113,9 @@ export const useAskUserStore = defineStore("askUser", () => {
     }
 
     if (request.multiple && request.choices.length > 0) {
-      const lines = answer.split("\n").map((l) => l.trim()).filter(Boolean);
-      const selectedChoices = request.choices.filter((c) => lines.includes(c));
-      const otherLines = lines.filter((l) => !request.choices.includes(l));
-      const freeText = otherLines.join("\n");
+      const selectedChoices = (payload.selectedChoices ?? [])
+        .filter((choice) => request.choices.includes(choice));
+      const freeText = payload.freeText?.trim() ?? "";
 
       const parts: string[] = [];
       if (selectedChoices.length > 0) {
@@ -120,7 +133,7 @@ export const useAskUserStore = defineStore("askUser", () => {
         content: parts.join("\n\n"),
         details: {
           question: request.question,
-          answer,
+          answer: payload.answer,
           selectedChoices,
           freeText: freeText || undefined,
         },
@@ -130,10 +143,10 @@ export const useAskUserStore = defineStore("askUser", () => {
 
     request.resolve({
       isError: false,
-      content: `用户回答:\n${answer}`,
+      content: `用户回答:\n${payload.answer}`,
       details: {
         question: request.question,
-        answer,
+        answer: payload.answer,
       },
     });
   }
@@ -154,6 +167,7 @@ export const useAskUserStore = defineStore("askUser", () => {
     nextRequest,
     requestAnswer,
     submitAnswer,
+    submitStructuredAnswer,
     skip,
   };
 });

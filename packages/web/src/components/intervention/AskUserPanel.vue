@@ -5,6 +5,7 @@ import SvgIcon from "../common/SvgIcon.vue";
 
 const askUserStore = useAskUserStore();
 const answer = ref("");
+const selectedChoices = ref<string[]>([]);
 
 const isMultiple = computed(() => askUserStore.nextRequest?.multiple ?? false);
 const choices = computed(() => askUserStore.nextRequest?.choices ?? []);
@@ -12,18 +13,21 @@ const choices = computed(() => askUserStore.nextRequest?.choices ?? []);
 watch(
   () => askUserStore.nextRequest?.requestId,
   () => {
-    answer.value = askUserStore.nextRequest?.defaultAnswer ?? "";
+    const request = askUserStore.nextRequest;
+    answer.value = request && !request.multiple ? request.defaultAnswer ?? "" : "";
+    selectedChoices.value = request?.multiple
+      ? choicesFromDefaultAnswer(request.defaultAnswer, request.choices)
+      : [];
   },
   { immediate: true },
 );
 
 function chooseAnswer(choice: string) {
   if (isMultiple.value) {
-    const lines = answer.value.split("\n").map((l) => l.trim());
-    if (lines.includes(choice)) {
-      answer.value = lines.filter((l) => l !== choice).join("\n");
+    if (selectedChoices.value.includes(choice)) {
+      selectedChoices.value = selectedChoices.value.filter((item) => item !== choice);
     } else {
-      answer.value = answer.value ? `${answer.value}\n${choice}` : choice;
+      selectedChoices.value = [...selectedChoices.value, choice];
     }
   } else {
     answer.value = choice;
@@ -31,12 +35,21 @@ function chooseAnswer(choice: string) {
 }
 
 function isChoiceSelected(choice: string): boolean {
-  return answer.value.split("\n").map((l) => l.trim()).includes(choice);
+  return isMultiple.value
+    ? selectedChoices.value.includes(choice)
+    : answer.value.trim() === choice;
 }
 
 function submit() {
   const request = askUserStore.nextRequest;
   if (!request) return;
+  if (isMultiple.value) {
+    askUserStore.submitStructuredAnswer(request.requestId, {
+      selectedChoices: selectedChoices.value,
+      freeText: answer.value,
+    });
+    return;
+  }
   askUserStore.submitAnswer(request.requestId, answer.value);
 }
 
@@ -44,6 +57,12 @@ function skip() {
   const request = askUserStore.nextRequest;
   if (!request) return;
   askUserStore.skip(request.requestId);
+}
+
+function choicesFromDefaultAnswer(defaultAnswer: string | undefined, availableChoices: string[]): string[] {
+  if (!defaultAnswer) return [];
+  const lines = defaultAnswer.split("\n").map((item) => item.trim()).filter(Boolean);
+  return availableChoices.filter((choice) => lines.includes(choice));
 }
 </script>
 
@@ -84,7 +103,7 @@ function skip() {
       <textarea
         v-model="answer"
         rows="4"
-        :placeholder="isMultiple ? '补充说明（可选）...' : '输入你的回答...'"
+        :placeholder="isMultiple ? '补充说明（可选，不会影响已勾选选项）...' : '输入你的回答...'"
         @keydown.ctrl.enter.prevent="submit"
         @keydown.meta.enter.prevent="submit"
       />
