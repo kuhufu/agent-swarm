@@ -78,6 +78,15 @@ export function teamEventRole(event: ConversationEvent): string | null {
   return "role" in data ? teamRoleLabel(data.role) : null;
 }
 
+export function teamSelectedRolesLabel(event: ConversationEvent): string | null {
+  const data = parseTeamEventData(event);
+  const selectedRoles = Array.isArray(data.selectedRoles) ? data.selectedRoles : [];
+  const labels = selectedRoles
+    .map((role) => teamRoleLabel(role))
+    .filter((role) => role && role !== "Team");
+  return labels.length > 0 ? labels.join("、") : null;
+}
+
 export function teamSkippedRolesLabel(event: ConversationEvent): string | null {
   const data = parseTeamEventData(event);
   const skippedRoles = Array.isArray(data.skippedRoles) ? data.skippedRoles : [];
@@ -98,7 +107,7 @@ export function teamEventSeverity(event: ConversationEvent): "normal" | "warning
 
   const status = parseTeamEventData(event).status;
   if (status === "failed") return "danger";
-  if (status === "revision_required" || status === "waiting_for_user") return "warning";
+  if (status === "revision_required" || status === "waiting_for_user" || status === "aborted") return "warning";
   return "normal";
 }
 

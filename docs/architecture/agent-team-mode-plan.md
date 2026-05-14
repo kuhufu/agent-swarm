@@ -437,7 +437,7 @@ packages/web/src/components/team/
   VerificationResult.vue
 ```
 
-模式选择上，`packages/web/src/constants/swarm-modes.ts` 已开放 `team` 选项；聊天页当前用中文通知消息展示 Team Run 级别进展，并用右侧 Team tab 展示 Team Run / Team Task 明细，把 Analyst / Ideator / Critic / Synthesizer / Researcher 等内部角色映射成需求分析、方案发散、风险审视、结论汇总和研究调研。历史对话详情页会读取 `/api/conversations/:id/events` 并展示 `team_` 事件时间线，后续再演进成更完整的专用 Team 面板。
+模式选择上，`packages/web/src/constants/swarm-modes.ts` 已开放 `team` 选项；聊天页当前用中文通知消息展示 Team Run 级别进展，并用右侧 Team tab 展示 Team Run / Team Task 明细，把 Analyst / Ideator / Critic / Synthesizer / Researcher 等内部角色映射成需求分析、方案发散、风险审视、结论汇总和研究调研。Team tab 概览会显示当前状态、实际执行角色和风险数量；预算裁剪或风险审视失败会在时间线中高亮。历史对话详情页会读取 `/api/conversations/:id/events` 并展示 `team_` 事件时间线，后续再演进成更完整的 Team 工作台。
 
 ## 人工介入
 

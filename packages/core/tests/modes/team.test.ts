@@ -12,6 +12,7 @@ class FakeAgent {
   constructor(
     private readonly agentId: string,
     private readonly outputText = `output from ${agentId}`,
+    private readonly onPrompt?: () => void,
   ) {}
 
   subscribe(listener: (event: any) => void): () => void {
@@ -59,6 +60,7 @@ class FakeAgent {
       },
     });
     this.emit({ type: "agent_end" });
+    this.onPrompt?.();
   }
 
   abort(): void {}
@@ -200,6 +202,45 @@ describe("TeamMode", () => {
     expect(yielded.some((event) => event.type === "team_task_started" && event.role === "analyst")).toBe(true);
     expect(yielded.some((event) => event.type === "team_task_verification_started" && event.role === "critic")).toBe(true);
     expect(yielded.some((event) => event.type === "team_task_started" && event.role === "synthesizer")).toBe(true);
+  });
+
+  it("routes implementation-plan requests into analysis roles instead of brainstorming roles", async () => {
+    const owner = createAgentConfig("owner");
+    const swarmConfig: SwarmConfig = {
+      id: "team_swarm",
+      name: "Team Swarm",
+      mode: "team",
+      agents: [owner],
+    };
+    const agents = new Map<string, { agent: any; config: SwarmAgentConfig }>();
+    const ctx: ModeExecutionContext = {
+      swarmConfig,
+      message: "帮我写一个通用 Team 的实施方案",
+      conversationId: "conv-1",
+      storage: {
+        appendMessage: vi.fn(async () => undefined),
+      } as unknown as IStorage,
+      llmConfig: { apiKeys: {} },
+      agents,
+      createAgentFn: (config) => {
+        agents.set(config.id, { agent: new FakeAgent(config.id) as any, config });
+      },
+      emit: () => undefined,
+      abort: () => undefined,
+      isAborted: () => false,
+    };
+
+    const yielded: SwarmEvent[] = [];
+    for await (const event of new TeamMode().execute(ctx)) {
+      yielded.push(event);
+    }
+
+    const startedRoles = yielded
+      .filter((event) => event.type === "team_task_started")
+      .map((event) => event.role);
+
+    expect(startedRoles).toEqual(["analyst", "synthesizer"]);
+    expect(yielded.some((event) => event.type === "team_task_verification_started" && event.role === "critic")).toBe(true);
   });
 
   it("keeps a synthesizer as the final team role when task budget is small", async () => {
@@ -373,5 +414,47 @@ describe("TeamMode", () => {
 
     expect(yielded.some((event) => event.type === "team_task_verification_failed")).toBe(false);
     expect(yielded.some((event) => event.type === "team_task_verification_passed" && event.role === "critic")).toBe(true);
+  });
+
+  it("emits an aborted run end when the run is aborted during a team task", async () => {
+    const owner = createAgentConfig("owner");
+    const swarmConfig: SwarmConfig = {
+      id: "team_swarm",
+      name: "Team Swarm",
+      mode: "team",
+      agents: [owner],
+    };
+    const agents = new Map<string, { agent: any; config: SwarmAgentConfig }>();
+    let aborted = false;
+    const ctx: ModeExecutionContext = {
+      swarmConfig,
+      message: "帮我做一个需求分析方案",
+      conversationId: "conv-1",
+      storage: {
+        appendMessage: vi.fn(async () => undefined),
+      } as unknown as IStorage,
+      llmConfig: { apiKeys: {} },
+      agents,
+      createAgentFn: (config) => {
+        const onPrompt = config.id.includes("__team_analyst") ? () => {
+          aborted = true;
+        } : undefined;
+        agents.set(config.id, { agent: new FakeAgent(config.id, `output from ${config.id}`, onPrompt) as any, config });
+      },
+      emit: () => undefined,
+      abort: () => {
+        aborted = true;
+      },
+      isAborted: () => aborted,
+    };
+
+    const yielded: SwarmEvent[] = [];
+    for await (const event of new TeamMode().execute(ctx)) {
+      yielded.push(event);
+    }
+
+    expect(yielded.some((event) => event.type === "team_task_started" && event.role === "analyst")).toBe(true);
+    expect(yielded.some((event) => event.type === "team_task_completed" && event.role === "analyst")).toBe(false);
+    expect(yielded.some((event) => event.type === "team_run_end" && event.status === "aborted")).toBe(true);
   });
 });

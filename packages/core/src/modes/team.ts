@@ -43,10 +43,17 @@ export class TeamMode implements ModeExecutor {
       routing,
     });
 
-    if (ctx.isAborted()) return;
+    if (ctx.isAborted()) {
+      yield* this.emitRunAborted(ctx, runId, routing);
+      return;
+    }
 
     if (routing.clarificationQuestion && routing.clarificationQuestion.trim().length > 0) {
       yield* this.runSingleAgent(ctx, ownerConfig, this.buildClarificationPrompt(ctx.message, routing));
+      if (ctx.isAborted()) {
+        yield* this.emitRunAborted(ctx, runId, routing);
+        return;
+      }
       yield* this.emitAndYield(ctx, {
         type: "team_run_end",
         runId,
@@ -60,6 +67,10 @@ export class TeamMode implements ModeExecutor {
 
     if (!routing.useTeam || routing.strategy === "single_agent") {
       yield* this.runSingleAgent(ctx, ownerConfig, ctx.message);
+      if (ctx.isAborted()) {
+        yield* this.emitRunAborted(ctx, runId, routing);
+        return;
+      }
       yield* this.emitAndYield(ctx, {
         type: "team_run_end",
         runId,
@@ -129,6 +140,7 @@ export class TeamMode implements ModeExecutor {
 
       const input = this.buildRolePrompt(ctx.message, routing, role, results);
       yield* runAgent(agentConfig.id, input, ctx);
+      if (ctx.isAborted()) break;
 
       const output = this.getLastAssistantText(ctx, agentConfig.id);
       results.push({ role, agentId: agentConfig.id, taskId, output });
@@ -227,7 +239,7 @@ export class TeamMode implements ModeExecutor {
 
   private fallbackRouting(message: string): TeamRoutingDecision {
     const normalized = message.toLowerCase();
-    const looksBrainstorm = /brainstorm|idea|ideas|头脑风暴|点子|创意|方案/.test(normalized);
+    const looksBrainstorm = /brainstorm|idea|ideas|头脑风暴|点子|创意|多个方案|几个方案|备选方案/.test(normalized);
     const looksRequirements = /需求|prd|requirement|需求分析|用户故事|验收标准|产品|落地|路线图|roadmap|规划|方案设计|实施方案/.test(normalized);
     const looksResearch = /research|调研|资料|来源|搜索|竞品/.test(normalized);
     const isLong = message.length > 80;
@@ -560,6 +572,21 @@ export class TeamMode implements ModeExecutor {
 
   private truncate(text: string, maxChars: number): string {
     return text.length > maxChars ? `${text.slice(0, maxChars)}...` : text;
+  }
+
+  private async *emitRunAborted(
+    ctx: ModeExecutionContext,
+    runId: string,
+    routing?: TeamRoutingDecision,
+  ): AsyncGenerator<SwarmEvent> {
+    yield* this.emitAndYield(ctx, {
+      type: "team_run_end",
+      runId,
+      conversationId: ctx.conversationId,
+      status: "aborted",
+      summary: "Team 运行已终止。",
+      routing,
+    });
   }
 
   private async *emitAndYield(ctx: ModeExecutionContext, event: SwarmEvent): AsyncGenerator<SwarmEvent> {

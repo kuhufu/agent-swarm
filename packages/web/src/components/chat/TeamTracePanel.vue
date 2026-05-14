@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import type { ConversationEvent } from "../../types/index.js";
 import { formatTimeLong } from "../../utils/format.js";
-import { parseTeamEventData, teamEventLabel, teamEventRole, teamEventSeverity, teamEventSummary, teamRunStatusLabel, teamSkippedRolesLabel } from "../../utils/team-events.js";
+import { parseTeamEventData, teamEventLabel, teamEventRole, teamEventSeverity, teamEventSummary, teamRunStatusLabel, teamSelectedRolesLabel, teamSkippedRolesLabel } from "../../utils/team-events.js";
 import SvgIcon from "../common/SvgIcon.vue";
 
 const props = defineProps<{
@@ -15,11 +15,15 @@ const latestRunEvent = computed(() =>
 const latestTaskEvent = computed(() =>
   [...props.events].reverse().find((event) => event.eventType.startsWith("team_task_")) ?? null,
 );
+const latestRolePlanEvent = computed(() =>
+  [...props.events].reverse().find((event) => teamSelectedRolesLabel(event)) ?? null,
+);
 const currentStatus = computed(() => {
   if (!latestRunEvent.value) return "暂无运行";
   return teamRunStatusLabel(parseTeamEventData(latestRunEvent.value).status);
 });
 const currentRole = computed(() => latestTaskEvent.value ? teamEventRole(latestTaskEvent.value) : null);
+const selectedRoles = computed(() => latestRolePlanEvent.value ? teamSelectedRolesLabel(latestRolePlanEvent.value) : null);
 const riskCount = computed(() =>
   props.events.filter((event) => teamEventSeverity(event) === "danger").length,
 );
@@ -40,8 +44,8 @@ const riskCount = computed(() =>
         <strong>{{ currentStatus }}</strong>
       </div>
       <div>
-        <span>最近角色</span>
-        <strong>{{ currentRole ?? "无" }}</strong>
+        <span>执行角色</span>
+        <strong :title="selectedRoles ?? currentRole ?? '无'">{{ selectedRoles ?? currentRole ?? "无" }}</strong>
       </div>
       <div>
         <span>风险</span>
