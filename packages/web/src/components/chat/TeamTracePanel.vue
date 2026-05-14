@@ -349,8 +349,12 @@ function isActiveTaskStatus(status: string): boolean {
               class="mini-event"
               :class="teamEventSeverity(event)"
             >
-              <span>{{ teamEventLabel(event.eventType) }}</span>
-              <small>{{ formatTimeLong(event.timestamp) }}</small>
+              <div class="mini-event-header">
+                <span>{{ teamEventLabel(event.eventType) }}</span>
+                <small>{{ formatTimeLong(event.timestamp) }}</small>
+              </div>
+              <p>{{ teamEventSummary(event) }}</p>
+              <small v-if="teamSkippedRolesLabel(event)" class="mini-event-note">跳过：{{ teamSkippedRolesLabel(event) }}</small>
             </article>
           </div>
         </section>
@@ -743,10 +747,8 @@ function isActiveTaskStatus(status: string): boolean {
 }
 
 .mini-event {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  display: grid;
+  gap: 6px;
   min-width: 0;
   padding: 8px 9px;
   border: 1px solid var(--border-subtle);
@@ -764,19 +766,43 @@ function isActiveTaskStatus(status: string): boolean {
   background: var(--bg-danger);
 }
 
-.mini-event span {
+.mini-event-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mini-event-header span {
   min-width: 0;
   color: var(--text-secondary);
   font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.mini-event small {
+.mini-event-header small {
   flex: 0 0 auto;
   color: var(--text-muted);
   font-size: var(--text-xs);
+}
+
+.mini-event p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.mini-event-note {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .team-timeline {
