@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, markRaw, type Component } from "vue";
 import type { ToolCallInfo } from "../../types/index.js";
+import AskUserResultCard, { extractAskUserResult } from "./AskUserResultCard.vue";
 import JavascriptExecutionCard, { extractJavascriptExecution } from "./JavascriptExecutionCard.vue";
 import KnowledgeReferencesCard, { extractKnowledgeReferences, extractQueryText } from "./KnowledgeReferencesCard.vue";
 import WikiReferencesCard, { extractWikiReferences } from "./WikiReferencesCard.vue";
@@ -64,6 +65,12 @@ function defineToolResult(
 }
 
 const TOOL_RESULT_DEFINITIONS: ToolResultDefinition[] = [
+  defineToolResult("ask-user", AskUserResultCard, (toolCall) => {
+    if (toolCall.name !== "ask_user") return null;
+    const result = extractAskUserResult(toolCall.details, toolCall.arguments);
+    if (!result) return null;
+    return { result };
+  }),
   defineToolResult("knowledge", KnowledgeReferencesCard, (toolCall) => {
     if (toolCall.name !== "retrieve_knowledge" || toolCall.details === undefined) return null;
     return {
