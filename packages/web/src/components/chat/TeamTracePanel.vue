@@ -37,15 +37,29 @@ const props = defineProps<{
 
 const activeView = ref<WorkbenchView>("tasks");
 const selectedTaskId = ref<string | null>(null);
+const activeRunId = ref<string | null>(null);
 
+const runIds = computed(() => {
+  const ids: string[] = [];
+  for (const event of props.events) {
+    const runId = getEventRunId(event);
+    if (runId && !ids.includes(runId)) ids.push(runId);
+  }
+  return ids;
+});
+const displayEvents = computed(() =>
+  activeRunId.value
+    ? props.events.filter((event) => getEventRunId(event) === activeRunId.value)
+    : props.events,
+);
 const latestRunEvent = computed(() =>
-  [...props.events].reverse().find((event) => event.eventType.startsWith("team_run_")) ?? null,
+  [...displayEvents.value].reverse().find((event) => event.eventType.startsWith("team_run_")) ?? null,
 );
 const latestTaskEvent = computed(() =>
-  [...props.events].reverse().find((event) => event.eventType.startsWith("team_task_")) ?? null,
+  [...displayEvents.value].reverse().find((event) => event.eventType.startsWith("team_task_")) ?? null,
 );
 const latestRolePlanEvent = computed(() =>
-  [...props.events].reverse().find((event) => teamSelectedRolesLabel(event)) ?? null,
+  [...displayEvents.value].reverse().find((event) => teamSelectedRolesLabel(event)) ?? null,
 );
 const currentStatus = computed(() => {
   if (!latestRunEvent.value) return "暂无运行";
@@ -55,14 +69,14 @@ const currentRole = computed(() => latestTaskEvent.value ? teamEventRole(latestT
 const selectedRoles = computed(() => latestRolePlanEvent.value ? teamSelectedRolesLabel(latestRolePlanEvent.value) : null);
 const skippedRoles = computed(() => latestRolePlanEvent.value ? teamSkippedRolesLabel(latestRolePlanEvent.value) : null);
 const riskCount = computed(() =>
-  props.events.filter((event) => teamEventSeverity(event) === "danger").length,
+  displayEvents.value.filter((event) => teamEventSeverity(event) === "danger").length,
 );
 const runSummary = computed(() => latestRunEvent.value ? teamEventSummary(latestRunEvent.value) : "暂无 Team 运行。");
 
 const tasks = computed<TeamTaskSummary[]>(() => {
   const map = new Map<string, TeamTaskSummary>();
 
-  for (const event of props.events) {
+  for (const event of displayEvents.value) {
     if (!event.eventType.startsWith("team_task_")) continue;
     const data = parseTeamEventData(event);
     const taskId = typeof data.taskId === "string" ? data.taskId : event.id;
@@ -117,6 +131,26 @@ watch(tasks, (items) => {
   }
 }, { immediate: true });
 
+watch(runIds, (ids) => {
+  if (ids.length === 0) {
+    activeRunId.value = null;
+    return;
+  }
+  if (!activeRunId.value || !ids.includes(activeRunId.value)) {
+    activeRunId.value = ids[ids.length - 1] ?? null;
+  }
+}, { immediate: true });
+
+function getEventRunId(event: ConversationEvent): string | null {
+  const data = parseTeamEventData(event);
+  return typeof data.runId === "string" && data.runId.length > 0 ? data.runId : null;
+}
+
+function runLabel(runId: string, index: number): string {
+  const shortId = runId.slice(0, 8);
+  return `Run ${index + 1} · ${shortId}`;
+}
+
 function strongerSeverity(
   left: "normal" | "warning" | "danger",
   right: "normal" | "warning" | "danger",
@@ -145,7 +179,7 @@ function taskStatusLabel(status: string): string {
     <header class="team-panel-header">
       <div>
         <h3>Team 工作台</h3>
-        <p>{{ events.length }} 条事件</p>
+        <p>{{ displayEvents.length }} / {{ events.length }} 条事件</p>
       </div>
     </header>
 
@@ -168,6 +202,19 @@ function taskStatusLabel(status: string): string {
       <p>{{ runSummary }}</p>
       <small v-if="skippedRoles">预算跳过：{{ skippedRoles }}</small>
     </section>
+
+    <div v-if="runIds.length > 1" class="run-switcher">
+      <button
+        v-for="(runId, index) in runIds"
+        :key="runId"
+        type="button"
+        :class="{ active: activeRunId === runId }"
+        :title="runId"
+        @click="activeRunId = runId"
+      >
+        {{ runLabel(runId, index) }}
+      </button>
+    </div>
 
     <div v-if="events.length === 0" class="team-empty">
       <SvgIcon name="history" :size="22" />
@@ -194,7 +241,7 @@ function taskStatusLabel(status: string): string {
           @click="activeView = 'timeline'"
         >
           时间线
-          <span>{{ events.length }}</span>
+          <span>{{ displayEvents.length }}</span>
         </button>
       </div>
 
@@ -255,7 +302,7 @@ function taskStatusLabel(status: string): string {
 
       <div v-else class="team-timeline">
         <article
-          v-for="event in events"
+          v-for="event in displayEvents"
           :key="event.id"
           class="team-event"
           :class="teamEventSeverity(event)"
@@ -363,6 +410,38 @@ function taskStatusLabel(status: string): string {
   font-size: var(--text-xs);
   line-height: 1.5;
   overflow-wrap: anywhere;
+}
+
+.run-switcher {
+  display: flex;
+  gap: 7px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  overflow-x: auto;
+}
+
+.run-switcher button {
+  flex: 0 0 auto;
+  max-width: 150px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.run-switcher button:hover,
+.run-switcher button.active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-default);
 }
 
 .team-empty {
