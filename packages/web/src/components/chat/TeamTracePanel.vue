@@ -17,6 +17,7 @@ import SvgIcon from "../common/SvgIcon.vue";
 
 type WorkbenchView = "tasks" | "timeline";
 type TaskFilter = "all" | "risk" | "active" | "completed";
+type TimelineFilter = "all" | "risk" | "warning" | "run" | "task";
 
 interface TeamTaskSummary {
   taskId: string;
@@ -38,6 +39,7 @@ const props = defineProps<{
 
 const activeView = ref<WorkbenchView>("tasks");
 const activeTaskFilter = ref<TaskFilter>("all");
+const activeTimelineFilter = ref<TimelineFilter>("all");
 const selectedTaskId = ref<string | null>(null);
 const activeRunId = ref<string | null>(null);
 
@@ -139,6 +141,29 @@ const filteredTasks = computed(() => {
   }
 });
 
+const timelineFilterCounts = computed(() => ({
+  all: displayEvents.value.length,
+  risk: displayEvents.value.filter((event) => teamEventSeverity(event) === "danger").length,
+  warning: displayEvents.value.filter((event) => teamEventSeverity(event) === "warning").length,
+  run: displayEvents.value.filter((event) => event.eventType.startsWith("team_run_")).length,
+  task: displayEvents.value.filter((event) => event.eventType.startsWith("team_task_")).length,
+}));
+
+const filteredTimelineEvents = computed(() => {
+  switch (activeTimelineFilter.value) {
+    case "risk":
+      return displayEvents.value.filter((event) => teamEventSeverity(event) === "danger");
+    case "warning":
+      return displayEvents.value.filter((event) => teamEventSeverity(event) === "warning");
+    case "run":
+      return displayEvents.value.filter((event) => event.eventType.startsWith("team_run_"));
+    case "task":
+      return displayEvents.value.filter((event) => event.eventType.startsWith("team_task_"));
+    default:
+      return displayEvents.value;
+  }
+});
+
 const selectedTask = computed(() =>
   filteredTasks.value.find((task) => task.taskId === selectedTaskId.value) ?? filteredTasks.value.at(-1) ?? null,
 );
@@ -207,6 +232,21 @@ function taskFilterLabel(filter: TaskFilter): string {
 
 function taskFilterCount(filter: TaskFilter): number {
   return taskFilterCounts.value[filter];
+}
+
+function timelineFilterLabel(filter: TimelineFilter): string {
+  const map: Record<TimelineFilter, string> = {
+    all: "全部",
+    risk: "风险",
+    warning: "警告",
+    run: "Run",
+    task: "Task",
+  };
+  return map[filter];
+}
+
+function timelineFilterCount(filter: TimelineFilter): number {
+  return timelineFilterCounts.value[filter];
 }
 
 function isActiveTaskStatus(status: string): boolean {
@@ -361,8 +401,21 @@ function isActiveTaskStatus(status: string): boolean {
       </div>
 
       <div v-else class="team-timeline">
+        <div class="timeline-filters" aria-label="时间线筛选">
+          <button
+            v-for="filter in (['all', 'risk', 'warning', 'run', 'task'] as TimelineFilter[])"
+            :key="filter"
+            type="button"
+            :class="{ active: activeTimelineFilter === filter }"
+            @click="activeTimelineFilter = filter"
+          >
+            {{ timelineFilterLabel(filter) }}
+            <span>{{ timelineFilterCount(filter) }}</span>
+          </button>
+        </div>
+        <div v-if="filteredTimelineEvents.length === 0" class="timeline-empty">当前筛选暂无事件</div>
         <article
-          v-for="event in displayEvents"
+          v-for="event in filteredTimelineEvents"
           :key="event.id"
           class="team-event"
           :class="teamEventSeverity(event)"
@@ -809,7 +862,48 @@ function isActiveTaskStatus(status: string): boolean {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 14px 14px 20px;
+  padding: 12px 14px 20px;
+}
+
+.timeline-filters {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+}
+
+.timeline-filters button {
+  flex: 0 0 auto;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.timeline-filters button:hover,
+.timeline-filters button.active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+.timeline-filters span {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.timeline-empty {
+  padding: 12px 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
 }
 
 .team-event {
