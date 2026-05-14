@@ -2,7 +2,7 @@
 
 本文档描述在 Agent Swarm 中落地 `team` 协作模式的实施方案。`team` 模式目标不是把多段 prompt 串起来，而是为复杂任务提供可追踪、可验证、可恢复的 Owner-Worker-Verifier 协作闭环。
 
-> 当前项目已实现 `team` 模式的最小 MVP：Owner 私下路由、简单请求降级为单 Agent、复杂请求按通用角色执行，并通过现有会话事件流记录 Team Run / Team Task。本文后续章节仍包含未完成的演进计划。
+> 当前项目已实现 `team` 模式的最小 MVP：Owner 私下路由、简单请求降级为单 Agent、复杂请求按通用角色执行，并通过现有会话事件流记录 Team Run / Team Task。聊天页和历史详情已能展示 Team 过程；本文后续章节仍包含未完成的演进计划。
 
 ## 目标
 
@@ -20,12 +20,12 @@
 - 支持 Critic/Verifier 角色做独立审视。
 - 使用确定性流程控制 Team Run / Team Task 的基本状态。
 - 将所有关键过程写入事件流和持久化存储，便于前端 Trace 和恢复。
-- Team 执行受 `maxTotalTurns` 限制；当任务预算不足以执行全部角色时，会优先保留 `synthesizer` 作为最后一步，避免只有发散或分析而没有最终汇总。运行事件会记录实际执行角色、被预算裁剪的角色，并在结束摘要中说明是否包含独立审视和最终汇总。
+- Team 执行受 `maxTotalTurns` 限制；当任务预算不足以执行全部角色时，会优先保留 `synthesizer` 作为最后一步，即使只允许 1 个 Team 任务也优先产出最终汇总，避免只有发散或分析而没有交付答案。运行事件会通过 `plannedRoles` / `selectedRoles` / `skippedRoles` 记录原计划、实际执行角色和被预算裁剪的角色，并在结束摘要中说明是否包含独立审视和最终汇总。
 - Critic 输出中明确出现 blocker、阻塞、严重风险、不可行等信号时，当前 MVP 会记录 `team_task_verification_failed`，Team Run 结束摘要会提示存在阻塞风险，并继续交给后续汇总角色吸收风险；聊天页 Team tab 和历史详情会用风险样式高亮这类事件。自动打回重试仍留作后续阶段。
 - 内置 `Team Owner` Agent 模板，便于快速创建通用 `team` 模式 Swarm。
 - 前端创建/编辑 Swarm 时选择 `Team` 模式，如果当前 Agent 列表为空，会自动加入 `Team Owner`，并优先填入已保存模型列表中的第一个模型。
 
-当前 MVP 暂未实现独立 Team 数据表、并行执行、自动打回重试和专用 Team 面板；这些仍是后续阶段。
+当前 MVP 暂未实现独立 Team 数据表、并行执行、自动打回重试和独立 Team API；这些仍是后续阶段。当前前端已通过聊天页右侧 Team tab 和历史详情展示 Team 事件，后续可再演进成更完整的专用 Team 工作台。
 
 ## 非目标
 
@@ -467,11 +467,17 @@ Team 需要复用现有 intervention 机制，并新增触发场景：
 - Owner 能为需求分析或头脑风暴生成不超过 `maxTasks` 的结构化任务计划。
 - Worker 能按 Analyst / Ideator / Critic / Synthesizer 等通用角色输出结构化结果。
 - Verifier/Critic 能基于目标、约束和候选方案给出遗漏、冲突、风险和改进建议。
-- 打回后 Worker 能按 Verifier 意见重试。
-- 重试耗尽时进入人工介入。
+- Critic 明确发现阻塞风险时能记录失败审视事件，并继续让后续汇总角色吸收风险。
 - Team 事件能实时推送到 WebSocket，并能从历史事件恢复展示。
 - 未挂载 workspace 时不会注入 workspace 工具；纯需求分析和头脑风暴仍可运行。
 - 用户 abort 时能停止当前 Team Run，并清理相关运行中任务。
+
+后续增强验收：
+
+- 打回后 Worker 能按 Verifier 意见重试。
+- 重试耗尽时进入人工介入。
+- 增加独立 Team Run / Task 查询 API。
+- Team 工作台支持按 run 聚合、任务详情和人工决策。
 
 ## 测试计划
 

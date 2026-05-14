@@ -7,7 +7,7 @@ import * as conversationsApi from "../api/conversations.js";
 import { apiClient } from "../api/client.js";
 import { getModeConfig } from "../constants/swarm-modes.js";
 import { formatTimeLong } from "../utils/format.js";
-import { teamEventLabel, teamEventRole, teamEventSeverity, teamEventSummary } from "../utils/team-events.js";
+import { teamEventLabel, teamEventRole, teamEventSeverity, teamEventSummary, teamSkippedRolesLabel } from "../utils/team-events.js";
 import ModeIcon from "../components/common/ModeIcon.vue";
 import SidebarPanel from "../components/common/SidebarPanel.vue";
 import EmptyState from "../components/common/EmptyState.vue";
@@ -347,6 +347,7 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
                     <span class="team-event-time">{{ formatTimeLong(event.timestamp) }}</span>
                   </div>
                   <p>{{ teamEventSummary(event) }}</p>
+                  <small v-if="teamSkippedRolesLabel(event)">跳过：{{ teamSkippedRolesLabel(event) }}</small>
                 </div>
               </article>
             </div>
@@ -579,6 +580,15 @@ async function downloadArtifact(workspaceId: string | undefined, artifact: Works
   color: var(--text-secondary);
   font-size: var(--text-sm);
   line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.team-event-body small {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 

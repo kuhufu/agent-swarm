@@ -237,14 +237,61 @@ describe("TeamMode", () => {
     const startedRoles = yielded
       .filter((event) => event.type === "team_task_started")
       .map((event) => event.role);
-    const runUpdates = yielded.filter((event) => event.type === "team_run_update");
+    const rolePlanUpdate = yielded.find((event) =>
+      event.type === "team_run_update" && event.summary?.includes("因任务预算限制")
+    );
     const runEnd = yielded.find((event) => event.type === "team_run_end");
 
     expect(startedRoles).toEqual(["ideator", "synthesizer"]);
-    expect(runUpdates.some((event) => event.summary?.includes("因任务预算限制"))).toBe(true);
-    expect(runUpdates.some((event) => event.summary?.includes("批判审视角色"))).toBe(true);
+    expect(rolePlanUpdate?.skippedRoles).toEqual(["ideator", "critic"]);
+    expect(rolePlanUpdate?.summary).toContain("批判审视角色");
     expect(runEnd?.summary).toContain("本次未做独立审视");
     expect([...agents.keys()].some((id) => id.includes("__team_synthesizer"))).toBe(true);
+  });
+
+  it("uses the synthesizer when only one team task is allowed", async () => {
+    const owner = createAgentConfig("owner");
+    const swarmConfig: SwarmConfig = {
+      id: "team_swarm",
+      name: "Team Swarm",
+      mode: "team",
+      agents: [owner],
+      maxTotalTurns: 1,
+    };
+    const agents = new Map<string, { agent: any; config: SwarmAgentConfig }>();
+    const ctx: ModeExecutionContext = {
+      swarmConfig,
+      message: "帮我头脑风暴一个需求分析 Agent Team 的产品方案",
+      conversationId: "conv-1",
+      storage: {
+        appendMessage: vi.fn(async () => undefined),
+      } as unknown as IStorage,
+      llmConfig: { apiKeys: {} },
+      agents,
+      createAgentFn: (config) => {
+        agents.set(config.id, { agent: new FakeAgent(config.id) as any, config });
+      },
+      emit: () => undefined,
+      abort: () => undefined,
+      isAborted: () => false,
+    };
+
+    const yielded: SwarmEvent[] = [];
+    for await (const event of new TeamMode().execute(ctx)) {
+      yielded.push(event);
+    }
+
+    const startedRoles = yielded
+      .filter((event) => event.type === "team_task_started")
+      .map((event) => event.role);
+    const rolePlanUpdate = yielded.find((event) =>
+      event.type === "team_run_update" && event.summary?.includes("因任务预算限制")
+    );
+
+    expect(startedRoles).toEqual(["synthesizer"]);
+    expect(rolePlanUpdate?.selectedRoles).toEqual(["synthesizer"]);
+    expect(rolePlanUpdate?.skippedRoles).toEqual(["ideator", "ideator", "critic"]);
+    expect([...agents.keys()]).toContain("owner__team_synthesizer_0");
   });
 
   it("marks critic verification as failed when blockers are reported", async () => {

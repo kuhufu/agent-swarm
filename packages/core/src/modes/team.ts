@@ -83,6 +83,7 @@ export class TeamMode implements ModeExecutor {
     const maxTasks = Math.max(1, Math.min(ctx.swarmConfig.maxTotalTurns ?? DEFAULT_MAX_TASKS, DEFAULT_MAX_TASKS));
     const plannedRoles = this.normalizeRoles(routing);
     const roles = this.selectRolesForRun(plannedRoles, maxTasks);
+    const skippedRoles = this.subtractSelectedRoles(plannedRoles, roles);
     const results: RoleResult[] = [];
     let blockingIssueCount = 0;
 
@@ -91,8 +92,11 @@ export class TeamMode implements ModeExecutor {
       runId,
       conversationId: ctx.conversationId,
       status: "running",
-      summary: this.buildRolePlanSummary(plannedRoles, roles),
+      summary: this.buildRolePlanSummary(plannedRoles, roles, skippedRoles),
       routing,
+      plannedRoles,
+      selectedRoles: roles,
+      skippedRoles,
     });
 
     for (const [index, role] of roles.entries()) {
@@ -290,7 +294,8 @@ export class TeamMode implements ModeExecutor {
   private selectRolesForRun(roles: TeamRole[], maxTasks: number): TeamRole[] {
     if (roles.length <= maxTasks) return roles;
     const synthesizerIndex = roles.lastIndexOf("synthesizer");
-    if (synthesizerIndex < 0 || maxTasks <= 1) return roles.slice(0, maxTasks);
+    if (synthesizerIndex >= 0 && maxTasks <= 1) return ["synthesizer"];
+    if (synthesizerIndex < 0) return roles.slice(0, maxTasks);
 
     const selected = roles
       .filter((_, index) => index !== synthesizerIndex)
@@ -299,13 +304,16 @@ export class TeamMode implements ModeExecutor {
     return selected;
   }
 
-  private buildRolePlanSummary(plannedRoles: TeamRole[], selectedRoles: TeamRole[]): string {
+  private buildRolePlanSummary(
+    plannedRoles: TeamRole[],
+    selectedRoles: TeamRole[],
+    skippedRoles: TeamRole[] = this.subtractSelectedRoles(plannedRoles, selectedRoles),
+  ): string {
     const selected = selectedRoles.map((role) => this.describeRole(role)).join("、");
     if (selectedRoles.length >= plannedRoles.length) {
       return `Team 将执行：${selected}。`;
     }
 
-    const skippedRoles = this.subtractSelectedRoles(plannedRoles, selectedRoles);
     const skipped = skippedRoles.map((role) => this.describeRole(role)).join("、");
     return `Team 将执行：${selected}；因任务预算限制，跳过：${skipped}。`;
   }
@@ -449,7 +457,7 @@ export class TeamMode implements ModeExecutor {
   private roleOutputInstruction(role: TeamRole): string {
     switch (role) {
       case "synthesizer":
-        return "Produce the final consolidated response. Include the recommendation, rationale, tradeoffs, concrete next steps, and any blockers or severe risks raised by prior roles. Do not hide critic blockers.";
+        return "Produce the final consolidated response. Include the recommendation, rationale, tradeoffs, concrete next steps, and any blockers or severe risks raised by prior roles. Do not hide critic blockers. If there are no prior role outputs, answer directly from the user request as a compact final plan.";
       case "critic":
         return "Produce a structured critique with blockers, major risks, minor concerns, and suggested improvements.";
       case "ideator":

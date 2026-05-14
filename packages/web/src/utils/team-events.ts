@@ -78,7 +78,17 @@ export function teamEventRole(event: ConversationEvent): string | null {
   return "role" in data ? teamRoleLabel(data.role) : null;
 }
 
+export function teamSkippedRolesLabel(event: ConversationEvent): string | null {
+  const data = parseTeamEventData(event);
+  const skippedRoles = Array.isArray(data.skippedRoles) ? data.skippedRoles : [];
+  const labels = skippedRoles
+    .map((role) => teamRoleLabel(role))
+    .filter((role) => role && role !== "Team");
+  return labels.length > 0 ? labels.join("、") : null;
+}
+
 export function teamEventSeverity(event: ConversationEvent): "normal" | "warning" | "danger" {
+  if (teamSkippedRolesLabel(event)) return "warning";
   if (event.eventType === "team_task_verification_failed" || event.eventType === "team_task_human_review_required") {
     return "danger";
   }

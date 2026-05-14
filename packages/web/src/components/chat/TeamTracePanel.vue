@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import type { ConversationEvent } from "../../types/index.js";
 import { formatTimeLong } from "../../utils/format.js";
-import { parseTeamEventData, teamEventLabel, teamEventRole, teamEventSeverity, teamEventSummary, teamRunStatusLabel } from "../../utils/team-events.js";
+import { parseTeamEventData, teamEventLabel, teamEventRole, teamEventSeverity, teamEventSummary, teamRunStatusLabel, teamSkippedRolesLabel } from "../../utils/team-events.js";
 import SvgIcon from "../common/SvgIcon.vue";
 
 const props = defineProps<{
@@ -68,6 +68,7 @@ const riskCount = computed(() =>
             <span v-if="teamEventRole(event)" class="team-event-role">{{ teamEventRole(event) }}</span>
           </div>
           <p>{{ teamEventSummary(event) }}</p>
+          <small v-if="teamSkippedRolesLabel(event)">跳过：{{ teamSkippedRolesLabel(event) }}</small>
           <time>{{ formatTimeLong(event.timestamp) }}</time>
         </div>
       </article>
@@ -241,6 +242,15 @@ const riskCount = computed(() =>
   color: var(--text-secondary);
   font-size: var(--text-sm);
   line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.team-event-body small {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 

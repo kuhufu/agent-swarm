@@ -368,6 +368,9 @@ export interface TeamRunEvent {
   status: TeamRunStatus;
   summary?: string;
   routing?: TeamRoutingDecision;
+  plannedRoles?: TeamRole[];
+  selectedRoles?: TeamRole[];
+  skippedRoles?: TeamRole[];
 }
 
 export interface TeamTaskEvent {
