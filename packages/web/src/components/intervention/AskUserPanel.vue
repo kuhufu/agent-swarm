@@ -89,7 +89,8 @@ function choicesFromDefaultAnswer(defaultAnswer: string | undefined, availableCh
           :key="choice"
           type="button"
           :class="{ active: isChoiceSelected(choice), checkbox: isMultiple }"
-          @click="chooseAnswer(choice)"
+          @mousedown.stop
+          @click.prevent.stop="chooseAnswer(choice)"
         >
           <span v-if="isMultiple" class="choice-checkbox" :class="{ checked: isChoiceSelected(choice) }">
             <SvgIcon v-if="isChoiceSelected(choice)" name="check" :size="12" />
@@ -109,11 +110,11 @@ function choicesFromDefaultAnswer(defaultAnswer: string | undefined, availableCh
       />
 
       <footer class="ask-user-actions">
-        <button class="secondary" type="button" @click="skip">
+        <button class="secondary" type="button" @mousedown.stop @click.prevent.stop="skip">
           <SvgIcon name="close" :size="14" />
           跳过
         </button>
-        <button class="primary" type="button" @click="submit">
+        <button class="primary" type="button" @mousedown.stop @click.prevent.stop="submit">
           <SvgIcon name="send" :size="14" />
           提交回答
         </button>

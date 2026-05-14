@@ -197,7 +197,6 @@ export function createClientToolDefinitions(): ClientToolDefinition[] {
             type: "array",
             description: "Optional suggested choices. Keep choices short and mutually exclusive.",
             items: { type: "string" },
-            maxItems: 6,
           },
           defaultAnswer: {
             type: "string",

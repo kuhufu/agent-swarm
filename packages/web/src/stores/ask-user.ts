@@ -71,7 +71,18 @@ export const useAskUserStore = defineStore("askUser", () => {
   }
 
   function submitAnswer(requestId: string, answer: string) {
-    resolveRequest(requestId, { answer: answer.trim() }, false);
+    const request = pendingRequests.value.find((item) => item.requestId === requestId);
+    const normalizedAnswer = answer.trim();
+    if (request?.multiple && request.choices.length > 0) {
+      const lines = normalizedAnswer.split("\n").map((line) => line.trim()).filter(Boolean);
+      resolveRequest(requestId, {
+        answer: normalizedAnswer,
+        selectedChoices: request.choices.filter((choice) => lines.includes(choice)),
+        freeText: lines.filter((line) => !request.choices.includes(line)).join("\n"),
+      }, false);
+      return;
+    }
+    resolveRequest(requestId, { answer: normalizedAnswer }, false);
   }
 
   function submitStructuredAnswer(requestId: string, payload: { selectedChoices?: string[]; freeText?: string }) {
@@ -158,7 +169,7 @@ export const useAskUserStore = defineStore("askUser", () => {
         .filter((item): item is string => typeof item === "string")
         .map((item) => item.trim())
         .filter((item) => item.length > 0),
-    )).slice(0, 6);
+    ));
   }
 
   return {

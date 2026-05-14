@@ -36,7 +36,7 @@ WebSocket 层只传递用户选择的 `enabledTools` 和前端工具执行器。
 
 ## 前端桥接工具结果
 
-`ask_user` 通过浏览器在聊天输入框上方显示回答面板，适合 Agent 在需求、约束、优先级或验收标准不清时主动向用户确认。工具参数包含 `question`、可选 `context`、`choices` 和 `defaultAnswer`；前端会等待用户提交或跳过，并把回答写入工具结果 `content`，同时在 `details` 中保留 `question/answer/skipped`。
+`ask_user` 通过浏览器在聊天输入框上方显示回答面板，适合 Agent 在需求、约束、优先级或验收标准不清时主动向用户确认。工具参数包含 `question`、可选 `context`、`choices`、`multiple` 和 `defaultAnswer`；`choices` 不限制数量，前端会去重并保留非空选项。前端会等待用户提交或跳过，并把回答写入工具结果 `content`，同时在 `details` 中保留 `question/answer/selectedChoices/freeText/skipped`。工具等待用户回答时，聊天工具卡会显示“等待中”状态；回答后切换为结构化问答卡。
 
 `javascript_execute` 在浏览器内执行，工具结果的 `details` 固定保留：
 

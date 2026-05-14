@@ -88,7 +88,6 @@ function askUserToolDefinition(): ClientToolDefinition {
         choices: {
           type: "array",
           items: { type: "string" },
-          maxItems: 6,
         },
         defaultAnswer: {
           type: "string",

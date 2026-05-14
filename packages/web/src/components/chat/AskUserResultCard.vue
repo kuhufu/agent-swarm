@@ -35,6 +35,7 @@ export interface AskUserResultView {
   selectedChoices: string[];
   freeText: string;
   skipped: boolean;
+  pending: boolean;
 }
 
 export function extractAskUserResult(details: unknown, args: unknown): AskUserResultView | null {
@@ -49,6 +50,7 @@ export function extractAskUserResult(details: unknown, args: unknown): AskUserRe
   const selectedChoices = normalizeArrayField(detailsRecord?.selectedChoices);
   const freeText = normalizeText(detailsRecord?.freeText);
   const skipped = detailsRecord?.skipped === true;
+  const pending = Boolean(question) && !detailsRecord;
 
   if (!question && !answer && !skipped) return null;
   return {
@@ -59,6 +61,7 @@ export function extractAskUserResult(details: unknown, args: unknown): AskUserRe
     selectedChoices,
     freeText,
     skipped,
+    pending,
   };
 }
 </script>
@@ -72,8 +75,12 @@ const props = defineProps<{
   result: AskUserResultView;
 }>();
 
-const answerLabel = computed(() => props.result.skipped ? "用户跳过" : "用户回答");
+const answerLabel = computed(() => {
+  if (props.result.pending) return "等待回答";
+  return props.result.skipped ? "用户跳过" : "用户回答";
+});
 const answerText = computed(() => {
+  if (props.result.pending) return "Agent 正在等待用户在输入框上方的回答面板中提交回复。";
   if (props.result.skipped) return "用户没有提供回答，Agent 将基于当前上下文继续。";
   return props.result.answer || "用户提交了空回答。";
 });
@@ -82,7 +89,7 @@ const answerText = computed(() => {
 <template>
   <div class="tool-section">
     <SectionLabel icon="user" label="用户确认" />
-    <div class="ask-result-card" :class="{ skipped: result.skipped }">
+    <div class="ask-result-card" :class="{ skipped: result.skipped, pending: result.pending }">
       <div class="ask-result-header">
         <div class="ask-result-icon">
           <SvgIcon name="user" :size="15" />
@@ -91,8 +98,8 @@ const answerText = computed(() => {
           <span class="ask-result-kicker">Agent 提问</span>
           <strong>{{ result.question }}</strong>
         </div>
-        <span class="ask-status" :class="{ skipped: result.skipped }">
-          {{ result.skipped ? "已跳过" : "已回答" }}
+        <span class="ask-status" :class="{ skipped: result.skipped, pending: result.pending }">
+          {{ result.pending ? "等待中" : (result.skipped ? "已跳过" : "已回答") }}
         </span>
       </div>
 
@@ -112,9 +119,9 @@ const answerText = computed(() => {
         </span>
       </div>
 
-      <section class="ask-answer-block">
+      <section class="ask-answer-block" :class="{ pending: result.pending }">
         <div class="ask-answer-title">
-          <SvgIcon :name="result.skipped ? 'close' : 'check'" :size="13" />
+          <SvgIcon :name="result.pending ? 'clock' : (result.skipped ? 'close' : 'check')" :size="13" />
           <span>{{ answerLabel }}</span>
         </div>
         <p v-if="result.selectedChoices.length > 0 && result.freeText">{{ result.freeText }}</p>
@@ -137,6 +144,11 @@ const answerText = computed(() => {
 .ask-result-card.skipped {
   border-color: var(--border-warning);
   background: var(--bg-warning);
+}
+
+.ask-result-card.pending {
+  border-color: var(--border-default);
+  background: var(--bg-card);
 }
 
 .ask-result-header {
@@ -197,6 +209,11 @@ const answerText = computed(() => {
 .ask-status.skipped {
   color: var(--color-warning);
   background: var(--bg-warning);
+}
+
+.ask-status.pending {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
 }
 
 .ask-context {
@@ -263,6 +280,10 @@ const answerText = computed(() => {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
+}
+
+.ask-answer-block.pending {
+  border-style: dashed;
 }
 
 .ask-answer-title {
