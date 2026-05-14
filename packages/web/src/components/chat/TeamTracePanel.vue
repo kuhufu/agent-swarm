@@ -68,6 +68,7 @@ const activeView = ref<WorkbenchView>("tasks");
 const activeTaskFilter = ref<TaskFilter>("all");
 const activeTimelineFilter = ref<TimelineFilter>("all");
 const selectedTaskId = ref<string | null>(null);
+const selectedOutputTaskId = ref<string | null>(null);
 const activeRunId = ref<string | null>(null);
 const copyingCurrentRun = ref(false);
 const copyingAllRuns = ref(false);
@@ -189,6 +190,9 @@ const outputs = computed<TeamOutputSummary[]>(() =>
     .filter((task) => task.status === "completed" || task.status === "failed")
     .map(taskToOutput),
 );
+const selectedOutput = computed(() =>
+  outputs.value.find((output) => output.taskId === selectedOutputTaskId.value) ?? outputs.value.at(-1) ?? null,
+);
 const currentRunMarkdown = computed(() => buildOutputsMarkdown(displayEvents.value, "Team 当前 Run 产出"));
 const allRunsMarkdown = computed(() => buildOutputsMarkdown(props.events, "Team 全部 Run 产出"));
 const riskItems = computed<TeamRiskItem[]>(() =>
@@ -249,6 +253,16 @@ watch(filteredTasks, (items) => {
   }
 }, { immediate: true });
 
+watch(outputs, (items) => {
+  if (items.length === 0) {
+    selectedOutputTaskId.value = null;
+    return;
+  }
+  if (!selectedOutputTaskId.value || !items.some((output) => output.taskId === selectedOutputTaskId.value)) {
+    selectedOutputTaskId.value = items[items.length - 1]?.taskId ?? null;
+  }
+}, { immediate: true });
+
 watch(runIds, (ids) => {
   if (ids.length === 0) {
     activeRunId.value = null;
@@ -303,6 +317,26 @@ function taskFilterLabel(filter: TaskFilter): string {
 
 function taskFilterCount(filter: TaskFilter): number {
   return taskFilterCounts.value[filter];
+}
+
+function workbenchViewLabel(view: WorkbenchView): string {
+  const map: Record<WorkbenchView, string> = {
+    tasks: "任务",
+    outputs: "产出",
+    risks: "风险",
+    timeline: "时间线",
+  };
+  return map[view];
+}
+
+function workbenchViewCount(view: WorkbenchView): number {
+  const map: Record<WorkbenchView, number> = {
+    tasks: tasks.value.length,
+    outputs: outputs.value.length,
+    risks: riskItems.value.length,
+    timeline: displayEvents.value.length,
+  };
+  return map[view];
 }
 
 function timelineFilterLabel(filter: TimelineFilter): string {
@@ -607,48 +641,33 @@ async function copyRiskList() {
     </div>
 
     <template v-else>
-      <div class="workbench-tabs" role="tablist" aria-label="Team 工作台视图">
-        <button
-          type="button"
-          :class="{ active: activeView === 'tasks' }"
-          role="tab"
-          :aria-selected="activeView === 'tasks'"
-          @click="activeView = 'tasks'"
-        >
-          任务
-          <span>{{ tasks.length }}</span>
-        </button>
-        <button
-          type="button"
-          :class="{ active: activeView === 'outputs' }"
-          role="tab"
-          :aria-selected="activeView === 'outputs'"
-          @click="activeView = 'outputs'"
-        >
-          产出
-          <span>{{ outputs.length }}</span>
-        </button>
-        <button
-          type="button"
-          :class="{ active: activeView === 'risks' }"
-          role="tab"
-          :aria-selected="activeView === 'risks'"
-          @click="activeView = 'risks'"
-        >
-          风险
-          <span>{{ riskItems.length }}</span>
-        </button>
-        <button
-          type="button"
-          :class="{ active: activeView === 'timeline' }"
-          role="tab"
-          :aria-selected="activeView === 'timeline'"
-          @click="activeView = 'timeline'"
-        >
-          时间线
-          <span>{{ displayEvents.length }}</span>
-        </button>
-      </div>
+      <div class="team-stage-shell">
+        <nav class="stage-rail" role="tablist" aria-label="Team 工作台视图">
+          <button
+            v-for="view in (['tasks', 'outputs', 'risks', 'timeline'] as WorkbenchView[])"
+            :key="view"
+            type="button"
+            :class="{ active: activeView === view }"
+            role="tab"
+            :aria-selected="activeView === view"
+            @click="activeView = view"
+          >
+            <span>{{ workbenchViewLabel(view) }}</span>
+            <strong>{{ workbenchViewCount(view) }}</strong>
+          </button>
+        </nav>
+
+        <section class="stage-content">
+          <header class="stage-header">
+            <div>
+              <span>当前阶段</span>
+              <strong>{{ workbenchViewLabel(activeView) }}</strong>
+            </div>
+            <p v-if="activeView === 'tasks'">按角色查看任务状态和任务内事件。</p>
+            <p v-else-if="activeView === 'outputs'">逐个角色查看完整产出，避免多份长文混在一起。</p>
+            <p v-else-if="activeView === 'risks'">集中查看阻塞、警告和预算裁剪。</p>
+            <p v-else>查看当前 Run 的原始事件流。</p>
+          </header>
 
       <div v-if="activeView === 'tasks'" class="task-workbench">
         <div v-if="tasks.length === 0" class="task-empty">暂无 Team 任务</div>
@@ -745,23 +764,46 @@ async function copyRiskList() {
               </button>
             </div>
           </div>
-          <article
-            v-for="output in outputs"
-            :key="output.taskId"
-            class="output-card"
-            :class="output.severity"
-          >
-            <header>
-              <div>
-                <span>{{ teamRoleLabel(output.role) }}</span>
-                <strong>{{ taskStatusLabel(output.status) }}</strong>
-              </div>
-              <time>{{ formatTimeLong(output.updatedAt) }}</time>
-            </header>
-            <p v-if="output.summary && output.summary !== output.output" class="output-summary">{{ output.summary }}</p>
-            <p v-if="!output.outputComplete" class="output-warning">历史事件未包含完整 output，当前仅展示可恢复摘要。</p>
-            <pre>{{ output.output }}</pre>
-          </article>
+          <div class="output-stage">
+            <div class="output-list" aria-label="角色产出">
+              <button
+                v-for="output in outputs"
+                :key="output.taskId"
+                type="button"
+                class="output-row"
+                :class="[output.severity, { active: selectedOutput?.taskId === output.taskId }]"
+                @click="selectedOutputTaskId = output.taskId"
+              >
+                <span>
+                  <strong>{{ teamRoleLabel(output.role) }}</strong>
+                  <small>{{ taskStatusLabel(output.status) }} · {{ formatTimeLong(output.updatedAt) }}</small>
+                </span>
+                <SvgIcon name="chevronRight" :size="14" />
+              </button>
+            </div>
+
+            <article
+              v-if="selectedOutput"
+              class="output-card"
+              :class="selectedOutput.severity"
+            >
+              <header>
+                <div>
+                  <span>{{ teamRoleLabel(selectedOutput.role) }}</span>
+                  <strong>{{ taskStatusLabel(selectedOutput.status) }}</strong>
+                </div>
+                <time>{{ formatTimeLong(selectedOutput.updatedAt) }}</time>
+              </header>
+              <p
+                v-if="selectedOutput.summary && selectedOutput.summary !== selectedOutput.output"
+                class="output-summary"
+              >
+                {{ selectedOutput.summary }}
+              </p>
+              <p v-if="!selectedOutput.outputComplete" class="output-warning">历史事件未包含完整 output，当前仅展示可恢复摘要。</p>
+              <pre>{{ selectedOutput.output }}</pre>
+            </article>
+          </div>
         </template>
       </div>
 
@@ -826,6 +868,8 @@ async function copyRiskList() {
           </div>
         </article>
       </div>
+        </section>
+      </div>
     </template>
   </div>
 </template>
@@ -840,7 +884,7 @@ async function copyRiskList() {
 }
 
 .team-panel-header {
-  padding: 14px 16px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -861,7 +905,7 @@ async function copyRiskList() {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  padding: 12px 14px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -898,7 +942,7 @@ async function copyRiskList() {
 }
 
 .run-brief {
-  padding: 12px 14px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -923,7 +967,7 @@ async function copyRiskList() {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  padding: 12px 14px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -967,7 +1011,7 @@ async function copyRiskList() {
 .run-switcher {
   display: flex;
   gap: 7px;
-  padding: 10px 14px;
+  padding: 9px 14px;
   border-bottom: 1px solid var(--border-subtle);
   overflow-x: auto;
 }
@@ -1007,47 +1051,107 @@ async function copyRiskList() {
   font-size: var(--text-sm);
 }
 
-.workbench-tabs {
+.team-stage-shell {
+  flex: 1;
+  min-height: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border-subtle);
+  grid-template-columns: 150px minmax(0, 1fr);
 }
 
-.workbench-tabs button {
-  min-width: 0;
-  height: 34px;
-  display: inline-flex;
+.stage-rail {
+  min-height: 0;
+  padding: 12px;
+  border-right: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+.stage-rail button {
+  width: 100%;
+  min-height: 50px;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 1px solid var(--border-subtle);
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
-  background: var(--bg-card);
+  background: transparent;
   color: var(--text-secondary);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   cursor: pointer;
 }
 
-.workbench-tabs button:hover,
-.workbench-tabs button.active {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  border-color: var(--border-default);
+.stage-rail button + button {
+  margin-top: 6px;
 }
 
-.workbench-tabs span {
+.stage-rail button:hover,
+.stage-rail button.active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+}
+
+.stage-rail strong {
+  min-width: 24px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--bg-card);
   color: var(--text-muted);
   font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+}
+
+.stage-content {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+}
+
+.stage-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.stage-header span {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.stage-header strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+}
+
+.stage-header p {
+  max-width: 420px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  text-align: right;
 }
 
 .task-workbench {
   flex: 1;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(260px, 34%) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .task-empty {
@@ -1062,9 +1166,11 @@ async function copyRiskList() {
 }
 
 .task-filters {
+  grid-column: 1;
+  grid-row: 1;
   display: flex;
   gap: 7px;
-  padding: 10px 14px;
+  padding: 12px 14px 8px;
   border-bottom: 1px solid var(--border-subtle);
   overflow-x: auto;
 }
@@ -1098,11 +1204,13 @@ async function copyRiskList() {
 }
 
 .task-list {
+  grid-column: 1;
+  grid-row: 2;
   min-height: 0;
-  max-height: 42%;
+  max-height: none;
   overflow-y: auto;
   padding: 12px 14px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
 }
 
 .task-row {
@@ -1171,10 +1279,11 @@ async function copyRiskList() {
 }
 
 .task-detail {
-  flex: 1;
+  grid-column: 2;
+  grid-row: 1 / 3;
   min-height: 0;
   overflow-y: auto;
-  padding: 14px;
+  padding: 16px;
 }
 
 .task-detail header {
@@ -1300,11 +1409,10 @@ async function copyRiskList() {
 .team-outputs {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  display: grid;
-  align-content: start;
-  gap: 10px;
-  padding: 12px 14px 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px 14px 14px;
 }
 
 .output-empty {
@@ -1314,11 +1422,13 @@ async function copyRiskList() {
 }
 
 .output-toolbar {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   min-width: 0;
+  margin-bottom: 12px;
 }
 
 .output-toolbar span {
@@ -1364,14 +1474,88 @@ async function copyRiskList() {
   gap: 7px;
 }
 
-.output-card {
+.output-stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(220px, 30%) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.output-list {
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.output-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.output-row:hover,
+.output-row.active {
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+.output-row.warning {
+  border-color: var(--border-warning);
+}
+
+.output-row.danger {
+  border-color: var(--border-danger);
+}
+
+.output-row span {
   min-width: 0;
   display: grid;
+  gap: 4px;
+}
+
+.output-row strong {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.output-row small {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.output-card {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: 9px;
   padding: 12px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--bg-card);
+  overflow: hidden;
 }
 
 .output-card.warning {
@@ -1436,7 +1620,7 @@ async function copyRiskList() {
 
 .output-card pre {
   margin: 0;
-  max-height: 420px;
+  min-height: 0;
   overflow: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -1712,5 +1896,90 @@ async function copyRiskList() {
   margin-top: 7px;
   color: var(--text-muted);
   font-size: var(--text-xs);
+}
+
+@media (max-width: 960px) {
+  .team-stage-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .stage-rail {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .stage-rail button {
+    min-height: 40px;
+    margin-top: 0;
+  }
+
+  .stage-rail button + button {
+    margin-top: 0;
+  }
+
+  .task-workbench,
+  .output-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .task-filters,
+  .task-list,
+  .task-detail {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .task-list {
+    max-height: 240px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .output-stage {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .output-list {
+    max-height: 180px;
+  }
+
+  .stage-header {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .stage-header p {
+    max-width: none;
+    text-align: left;
+  }
+}
+
+@media (max-width: 680px) {
+  .team-summary,
+  .routing-brief,
+  .stage-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .output-toolbar,
+  .risk-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .output-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .output-toolbar button,
+  .risk-toolbar button {
+    width: 100%;
+    justify-content: center;
+  }
 }
 </style>

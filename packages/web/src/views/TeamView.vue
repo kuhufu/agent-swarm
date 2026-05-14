@@ -89,6 +89,7 @@ const launchTarget = ref<"new" | "current">("new");
 const teamPrompt = ref("");
 const selectedPromptTemplate = ref<TeamPromptTemplateId>("requirements");
 const conversationSearch = ref("");
+const launchPanelOpen = ref(false);
 const pendingNewConversation = ref(false);
 const loading = ref(false);
 const loadingEvents = ref(false);
@@ -352,6 +353,7 @@ function handleStartTeamRun() {
   inputText.value = prompt;
   sendMessage(selectedTeamSwarmId.value);
   teamPrompt.value = "";
+  launchPanelOpen.value = false;
 }
 
 function handleConversationCreated(event: Event) {
@@ -385,7 +387,7 @@ async function refreshCreatedConversation(conversationId: string) {
       <header class="team-page-header">
         <div>
           <h1>Team 工作台</h1>
-          <p>需求分析、头脑风暴和落地规划的 Team Run 视图</p>
+          <p>按会话索引 Team Run，右侧查看阶段输出</p>
         </div>
         <button type="button" title="刷新" :disabled="loading" @click="loadTeamPage">
           <SvgIcon name="refresh" :size="14" />
@@ -401,68 +403,6 @@ async function refreshCreatedConversation(conversationId: string) {
           <span>已加载 Run</span>
           <strong>{{ totalRuns }}</strong>
         </div>
-      </section>
-
-      <section class="team-launch-card">
-        <div class="team-launch-title">
-          <SvgIcon name="send" :size="14" />
-          <span>发起 Team Run</span>
-        </div>
-        <label>
-          <span>Team</span>
-          <select v-model="selectedTeamSwarmId" :disabled="teamSwarms.length === 0 || sending">
-            <option v-for="swarm in teamSwarms" :key="swarm.id" :value="swarm.id">
-              {{ swarm.name }}
-            </option>
-          </select>
-        </label>
-        <div class="launch-targets">
-          <button
-            type="button"
-            :class="{ active: launchTarget === 'new' }"
-            @click="launchTarget = 'new'"
-          >
-            新会话
-          </button>
-          <button
-            type="button"
-            :class="{ active: launchTarget === 'current' }"
-            :disabled="!selectedConversation"
-            @click="launchTarget = 'current'"
-          >
-            当前会话
-          </button>
-        </div>
-        <div class="prompt-template-list" aria-label="任务类型">
-          <button
-            v-for="template in TEAM_PROMPT_TEMPLATES"
-            :key="template.id"
-            type="button"
-            :class="{ active: selectedPromptTemplate === template.id }"
-            @click="applySelectedPromptTemplate(template)"
-          >
-            <strong>{{ template.label }}</strong>
-            <span>{{ template.description }}</span>
-          </button>
-        </div>
-        <textarea
-          v-model="teamPrompt"
-          rows="4"
-          maxlength="4000"
-          :disabled="sending || teamSwarms.length === 0"
-          placeholder="输入要分析、发散或落地的需求..."
-        />
-        <button
-          class="launch-submit"
-          type="button"
-          :disabled="!canSendPrompt"
-          @click="handleStartTeamRun"
-        >
-          <SvgIcon :name="sending ? 'stop' : 'send'" :size="14" />
-          {{ sending ? "运行中" : "启动 Team" }}
-        </button>
-        <p v-if="teamSwarms.length === 0" class="team-launch-hint">暂无 Team 配置，请先在 Swarms 中创建 Team 团队。</p>
-        <p v-else-if="!connected" class="team-launch-hint">WebSocket 未连接，刷新后会自动重连。</p>
       </section>
 
       <label v-if="visibleTeamConversations.length > 0" class="team-search">
@@ -504,6 +444,14 @@ async function refreshCreatedConversation(conversationId: string) {
           </div>
           <div class="workbench-actions">
             <span v-if="selectedConversationActive" class="running-badge">运行中</span>
+            <button
+              type="button"
+              :class="{ active: launchPanelOpen }"
+              @click="launchPanelOpen = !launchPanelOpen"
+            >
+              <SvgIcon name="send" :size="14" />
+              发起
+            </button>
             <button v-if="selectedConversationActive" type="button" @click="abortSelectedRun">
               <SvgIcon name="stop" :size="14" />
               终止
@@ -514,6 +462,69 @@ async function refreshCreatedConversation(conversationId: string) {
             </button>
           </div>
         </header>
+        <section v-if="launchPanelOpen" class="team-launch-panel">
+          <div class="launch-grid">
+            <label>
+              <span>Team</span>
+              <select v-model="selectedTeamSwarmId" :disabled="teamSwarms.length === 0 || sending">
+                <option v-for="swarm in teamSwarms" :key="swarm.id" :value="swarm.id">
+                  {{ swarm.name }}
+                </option>
+              </select>
+            </label>
+            <div class="launch-targets" aria-label="发起位置">
+              <button
+                type="button"
+                :class="{ active: launchTarget === 'new' }"
+                @click="launchTarget = 'new'"
+              >
+                新会话
+              </button>
+              <button
+                type="button"
+                :class="{ active: launchTarget === 'current' }"
+                :disabled="!selectedConversation"
+                @click="launchTarget = 'current'"
+              >
+                当前会话
+              </button>
+            </div>
+          </div>
+
+          <div class="prompt-template-list" aria-label="任务类型">
+            <button
+              v-for="template in TEAM_PROMPT_TEMPLATES"
+              :key="template.id"
+              type="button"
+              :class="{ active: selectedPromptTemplate === template.id }"
+              @click="applySelectedPromptTemplate(template)"
+            >
+              <strong>{{ template.label }}</strong>
+              <span>{{ template.description }}</span>
+            </button>
+          </div>
+
+          <div class="launch-compose">
+            <textarea
+              v-model="teamPrompt"
+              rows="4"
+              maxlength="4000"
+              :disabled="sending || teamSwarms.length === 0"
+              placeholder="输入要分析、发散或落地的需求..."
+            />
+            <button
+              class="launch-submit"
+              type="button"
+              :disabled="!canSendPrompt"
+              @click="handleStartTeamRun"
+            >
+              <SvgIcon :name="sending ? 'stop' : 'send'" :size="14" />
+              {{ sending ? "运行中" : "启动 Team" }}
+            </button>
+          </div>
+          <p v-if="teamSwarms.length === 0" class="team-launch-hint">暂无 Team 配置，请先在 Swarms 中创建 Team 团队。</p>
+          <p v-else-if="!connected" class="team-launch-hint">WebSocket 未连接，刷新后会自动重连。</p>
+        </section>
         <div class="workbench-shell">
           <div v-if="loadingEvents" class="team-placeholder">Team 事件加载中...</div>
           <TeamTracePanel v-else :events="selectedEvents" :messages="selectedMessages" />
@@ -528,7 +539,7 @@ async function refreshCreatedConversation(conversationId: string) {
   height: 100%;
   min-height: 0;
   display: grid;
-  grid-template-columns: 360px minmax(0, 1fr);
+  grid-template-columns: 320px minmax(0, 1fr);
   background: var(--bg-root);
 }
 
@@ -590,6 +601,12 @@ async function refreshCreatedConversation(conversationId: string) {
   border-color: var(--border-default);
 }
 
+.workbench-header button.active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
 .team-metrics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -623,34 +640,33 @@ async function refreshCreatedConversation(conversationId: string) {
   font-weight: var(--weight-bold);
 }
 
-.team-launch-card {
+.team-launch-panel {
   display: grid;
-  gap: 10px;
-  padding: 12px 14px 14px;
+  gap: 12px;
+  padding: 14px 18px;
   border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
 }
 
-.team-launch-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-bold);
+.launch-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) minmax(180px, 240px);
+  gap: 12px;
+  align-items: end;
 }
 
-.team-launch-card label {
+.team-launch-panel label {
   display: grid;
   gap: 5px;
 }
 
-.team-launch-card label span {
+.team-launch-panel label span {
   color: var(--text-muted);
   font-size: var(--text-xs);
 }
 
-.team-launch-card select,
-.team-launch-card textarea {
+.team-launch-panel select,
+.team-launch-panel textarea {
   width: 100%;
   min-width: 0;
   border: 1px solid var(--border-subtle);
@@ -661,27 +677,27 @@ async function refreshCreatedConversation(conversationId: string) {
   outline: none;
 }
 
-.team-launch-card select {
-  height: 34px;
+.team-launch-panel select {
+  height: 36px;
   padding: 0 9px;
 }
 
-.team-launch-card textarea {
-  min-height: 92px;
-  max-height: 180px;
+.team-launch-panel textarea {
+  min-height: 110px;
+  max-height: 240px;
   resize: vertical;
-  padding: 9px 10px;
+  padding: 10px 12px;
   line-height: 1.55;
 }
 
-.team-launch-card select:focus,
-.team-launch-card textarea:focus {
+.team-launch-panel select:focus,
+.team-launch-panel textarea:focus {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 2px var(--color-accent-bg);
 }
 
-.team-launch-card select:disabled,
-.team-launch-card textarea:disabled,
+.team-launch-panel select:disabled,
+.team-launch-panel textarea:disabled,
 .launch-targets button:disabled,
 .launch-submit:disabled {
   cursor: not-allowed;
@@ -729,7 +745,8 @@ async function refreshCreatedConversation(conversationId: string) {
 
 .prompt-template-list {
   display: grid;
-  gap: 7px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .prompt-template-list button {
@@ -768,11 +785,19 @@ async function refreshCreatedConversation(conversationId: string) {
 }
 
 .launch-submit {
-  width: 100%;
+  width: 160px;
+  min-height: 44px;
   gap: 6px;
   color: var(--text-primary);
   background: var(--color-accent-bg);
   border-color: var(--color-accent);
+}
+
+.launch-compose {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
 }
 
 .team-launch-hint {
@@ -915,7 +940,7 @@ async function refreshCreatedConversation(conversationId: string) {
 .workbench-shell {
   flex: 1;
   min-height: 0;
-  padding: 16px;
+  padding: 14px;
 }
 
 .workbench-shell :deep(.team-panel) {
@@ -938,6 +963,16 @@ async function refreshCreatedConversation(conversationId: string) {
 @media (max-width: 1024px) {
   .team-page {
     grid-template-columns: minmax(280px, 38%) minmax(0, 1fr);
+  }
+
+  .prompt-template-list,
+  .launch-grid,
+  .launch-compose {
+    grid-template-columns: 1fr;
+  }
+
+  .launch-submit {
+    width: 100%;
   }
 }
 
