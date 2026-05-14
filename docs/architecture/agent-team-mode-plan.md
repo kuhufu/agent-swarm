@@ -427,7 +427,7 @@ REST API 可按需新增：
 - 单个 Task 可展开查看输入、输出、工具调用、产物、验证意见。
 - Trace 面板复用 Team 事件，支持历史恢复。
 
-前端新增组件建议：
+后续前端可继续拆分组件：
 
 ```text
 packages/web/src/components/team/
@@ -437,7 +437,7 @@ packages/web/src/components/team/
   VerificationResult.vue
 ```
 
-模式选择上，`packages/web/src/constants/swarm-modes.ts` 已开放 `team` 选项；聊天页当前用中文通知消息展示 Team Run 级别进展，并用右侧 Team tab 展示 Team Run / Team Task 明细，把 Analyst / Ideator / Critic / Synthesizer / Researcher 等内部角色映射成需求分析、方案发散、风险审视、结论汇总和研究调研。Team tab 概览会显示当前状态、实际执行角色和风险数量；预算裁剪或风险审视失败会在时间线中高亮。历史对话详情页会读取 `/api/conversations/:id/events` 并展示 `team_` 事件时间线，后续再演进成更完整的 Team 工作台。
+模式选择上，`packages/web/src/constants/swarm-modes.ts` 已开放 `team` 选项；聊天页当前用中文通知消息展示 Team Run 级别进展，并用右侧 Team 工作台展示 Team Run / Team Task 明细，把 Analyst / Ideator / Critic / Synthesizer / Researcher 等内部角色映射成需求分析、方案发散、风险审视、结论汇总和研究调研。Team 工作台概览会显示当前状态、实际执行角色和风险数量；任务视图按 `taskId` 聚合角色、状态、摘要、更新时间和任务内事件；时间线视图保留完整事件流。预算裁剪、运行终止或风险审视失败会在工作台中高亮。历史对话详情页会读取 `/api/conversations/:id/events` 并展示 `team_` 事件时间线，后续可继续拆独立 Team Run / Task API 和可操作的人工决策面板。
 
 ## 人工介入
 

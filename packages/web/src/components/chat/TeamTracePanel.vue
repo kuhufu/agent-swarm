@@ -1,13 +1,42 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import type { ConversationEvent } from "../../types/index.js";
 import { formatTimeLong } from "../../utils/format.js";
-import { parseTeamEventData, teamEventLabel, teamEventRole, teamEventSeverity, teamEventSummary, teamRunStatusLabel, teamSelectedRolesLabel, teamSkippedRolesLabel } from "../../utils/team-events.js";
+import {
+  parseTeamEventData,
+  teamEventLabel,
+  teamEventRole,
+  teamEventSeverity,
+  teamEventSummary,
+  teamRoleLabel,
+  teamRunStatusLabel,
+  teamSelectedRolesLabel,
+  teamSkippedRolesLabel,
+} from "../../utils/team-events.js";
 import SvgIcon from "../common/SvgIcon.vue";
+
+type WorkbenchView = "tasks" | "timeline";
+
+interface TeamTaskSummary {
+  taskId: string;
+  runId: string;
+  agentId?: string;
+  role: string;
+  status: string;
+  retryCount: number;
+  summary: string;
+  severity: "normal" | "warning" | "danger";
+  createdAt: number;
+  updatedAt: number;
+  events: ConversationEvent[];
+}
 
 const props = defineProps<{
   events: ConversationEvent[];
 }>();
+
+const activeView = ref<WorkbenchView>("tasks");
+const selectedTaskId = ref<string | null>(null);
 
 const latestRunEvent = computed(() =>
   [...props.events].reverse().find((event) => event.eventType.startsWith("team_run_")) ?? null,
@@ -24,16 +53,98 @@ const currentStatus = computed(() => {
 });
 const currentRole = computed(() => latestTaskEvent.value ? teamEventRole(latestTaskEvent.value) : null);
 const selectedRoles = computed(() => latestRolePlanEvent.value ? teamSelectedRolesLabel(latestRolePlanEvent.value) : null);
+const skippedRoles = computed(() => latestRolePlanEvent.value ? teamSkippedRolesLabel(latestRolePlanEvent.value) : null);
 const riskCount = computed(() =>
   props.events.filter((event) => teamEventSeverity(event) === "danger").length,
 );
+const runSummary = computed(() => latestRunEvent.value ? teamEventSummary(latestRunEvent.value) : "暂无 Team 运行。");
+
+const tasks = computed<TeamTaskSummary[]>(() => {
+  const map = new Map<string, TeamTaskSummary>();
+
+  for (const event of props.events) {
+    if (!event.eventType.startsWith("team_task_")) continue;
+    const data = parseTeamEventData(event);
+    const taskId = typeof data.taskId === "string" ? data.taskId : event.id;
+    const runId = typeof data.runId === "string" ? data.runId : "";
+    const role = typeof data.role === "string" ? data.role : "team";
+    const status = typeof data.status === "string" ? data.status : "running";
+    const summary = teamEventSummary(event);
+    const existing = map.get(taskId);
+    const severity = strongerSeverity(existing?.severity ?? "normal", teamEventSeverity(event));
+
+    if (!existing) {
+      map.set(taskId, {
+        taskId,
+        runId,
+        agentId: typeof data.agentId === "string" ? data.agentId : event.agentId ?? undefined,
+        role,
+        status,
+        retryCount: typeof data.retryCount === "number" ? data.retryCount : 0,
+        summary,
+        severity,
+        createdAt: event.timestamp,
+        updatedAt: event.timestamp,
+        events: [event],
+      });
+      continue;
+    }
+
+    existing.agentId = typeof data.agentId === "string" ? data.agentId : existing.agentId;
+    existing.role = role;
+    existing.status = status;
+    existing.retryCount = typeof data.retryCount === "number" ? data.retryCount : existing.retryCount;
+    existing.summary = summary;
+    existing.severity = severity;
+    existing.updatedAt = event.timestamp;
+    existing.events.push(event);
+  }
+
+  return [...map.values()].sort((a, b) => a.createdAt - b.createdAt);
+});
+
+const selectedTask = computed(() =>
+  tasks.value.find((task) => task.taskId === selectedTaskId.value) ?? tasks.value.at(-1) ?? null,
+);
+
+watch(tasks, (items) => {
+  if (items.length === 0) {
+    selectedTaskId.value = null;
+    return;
+  }
+  if (!selectedTaskId.value || !items.some((task) => task.taskId === selectedTaskId.value)) {
+    selectedTaskId.value = items[items.length - 1]?.taskId ?? null;
+  }
+}, { immediate: true });
+
+function strongerSeverity(
+  left: "normal" | "warning" | "danger",
+  right: "normal" | "warning" | "danger",
+): "normal" | "warning" | "danger" {
+  const rank = { normal: 0, warning: 1, danger: 2 };
+  return rank[right] > rank[left] ? right : left;
+}
+
+function taskStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    pending: "待执行",
+    running: "执行中",
+    verifying: "审视中",
+    completed: "已完成",
+    failed: "失败",
+    revision_required: "需修订",
+    waiting_for_user: "等待用户",
+    skipped: "已跳过",
+  };
+  return map[status] ?? status;
+}
 </script>
 
 <template>
   <div class="team-panel">
     <header class="team-panel-header">
       <div>
-        <h3>Team 过程</h3>
+        <h3>Team 工作台</h3>
         <p>{{ events.length }} 条事件</p>
       </div>
     </header>
@@ -53,30 +164,115 @@ const riskCount = computed(() =>
       </div>
     </section>
 
+    <section v-if="events.length > 0" class="run-brief">
+      <p>{{ runSummary }}</p>
+      <small v-if="skippedRoles">预算跳过：{{ skippedRoles }}</small>
+    </section>
+
     <div v-if="events.length === 0" class="team-empty">
       <SvgIcon name="history" :size="22" />
       <span>暂无 Team 事件</span>
     </div>
 
-    <div v-else class="team-timeline">
-      <article
-        v-for="event in events"
-        :key="event.id"
-        class="team-event"
-        :class="teamEventSeverity(event)"
-      >
-        <div class="team-event-dot" />
-        <div class="team-event-body">
-          <div class="team-event-header">
-            <span class="team-event-type">{{ teamEventLabel(event.eventType) }}</span>
-            <span v-if="teamEventRole(event)" class="team-event-role">{{ teamEventRole(event) }}</span>
-          </div>
-          <p>{{ teamEventSummary(event) }}</p>
-          <small v-if="teamSkippedRolesLabel(event)">跳过：{{ teamSkippedRolesLabel(event) }}</small>
-          <time>{{ formatTimeLong(event.timestamp) }}</time>
+    <template v-else>
+      <div class="workbench-tabs" role="tablist" aria-label="Team 工作台视图">
+        <button
+          type="button"
+          :class="{ active: activeView === 'tasks' }"
+          role="tab"
+          :aria-selected="activeView === 'tasks'"
+          @click="activeView = 'tasks'"
+        >
+          任务
+          <span>{{ tasks.length }}</span>
+        </button>
+        <button
+          type="button"
+          :class="{ active: activeView === 'timeline' }"
+          role="tab"
+          :aria-selected="activeView === 'timeline'"
+          @click="activeView = 'timeline'"
+        >
+          时间线
+          <span>{{ events.length }}</span>
+        </button>
+      </div>
+
+      <div v-if="activeView === 'tasks'" class="task-workbench">
+        <div v-if="tasks.length === 0" class="task-empty">暂无 Team 任务</div>
+        <div v-else class="task-list">
+          <button
+            v-for="task in tasks"
+            :key="task.taskId"
+            type="button"
+            class="task-row"
+            :class="[task.severity, { active: selectedTask?.taskId === task.taskId }]"
+            @click="selectedTaskId = task.taskId"
+          >
+            <span class="task-row-main">
+              <span class="task-role">{{ teamRoleLabel(task.role) }}</span>
+              <span class="task-summary">{{ task.summary }}</span>
+            </span>
+            <span class="task-row-meta">
+              <span>{{ taskStatusLabel(task.status) }}</span>
+              <span>{{ formatTimeLong(task.updatedAt) }}</span>
+            </span>
+          </button>
         </div>
-      </article>
-    </div>
+
+        <section v-if="selectedTask" class="task-detail">
+          <header>
+            <div>
+              <span>{{ teamRoleLabel(selectedTask.role) }}</span>
+              <strong>{{ taskStatusLabel(selectedTask.status) }}</strong>
+            </div>
+            <small v-if="selectedTask.retryCount > 0">重试 {{ selectedTask.retryCount }} 次</small>
+          </header>
+          <p>{{ selectedTask.summary }}</p>
+          <dl>
+            <div>
+              <dt>Agent</dt>
+              <dd>{{ selectedTask.agentId ?? "未记录" }}</dd>
+            </div>
+            <div>
+              <dt>更新</dt>
+              <dd>{{ formatTimeLong(selectedTask.updatedAt) }}</dd>
+            </div>
+          </dl>
+          <div class="task-event-list">
+            <article
+              v-for="event in selectedTask.events"
+              :key="event.id"
+              class="mini-event"
+              :class="teamEventSeverity(event)"
+            >
+              <span>{{ teamEventLabel(event.eventType) }}</span>
+              <small>{{ formatTimeLong(event.timestamp) }}</small>
+            </article>
+          </div>
+        </section>
+      </div>
+
+      <div v-else class="team-timeline">
+        <article
+          v-for="event in events"
+          :key="event.id"
+          class="team-event"
+          :class="teamEventSeverity(event)"
+        >
+          <div class="team-event-dot" />
+          <div class="team-event-body">
+            <div class="team-event-header">
+              <span class="team-event-type">{{ teamEventLabel(event.eventType) }}</span>
+              <span v-if="teamEventRole(event)" class="team-event-role">{{ teamEventRole(event) }}</span>
+            </div>
+            <p>{{ teamEventSummary(event) }}</p>
+            <small v-if="teamSkippedRolesLabel(event)">跳过：{{ teamSkippedRolesLabel(event) }}</small>
+            <time>{{ formatTimeLong(event.timestamp) }}</time>
+          </div>
+        </article>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -119,7 +315,7 @@ const riskCount = computed(() =>
   min-width: 0;
   padding: 9px 10px;
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--bg-card);
 }
 
@@ -147,6 +343,28 @@ const riskCount = computed(() =>
   color: var(--color-danger);
 }
 
+.run-brief {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.run-brief p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.run-brief small {
+  display: block;
+  margin-top: 6px;
+  color: var(--color-warning);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 .team-empty {
   flex: 1;
   display: flex;
@@ -156,6 +374,233 @@ const riskCount = computed(() =>
   gap: 8px;
   color: var(--text-muted);
   font-size: var(--text-sm);
+}
+
+.workbench-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.workbench-tabs button {
+  min-width: 0;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.workbench-tabs button:hover,
+.workbench-tabs button.active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+.workbench-tabs span {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.task-workbench {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-empty {
+  padding: 18px 14px;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.task-list {
+  min-height: 0;
+  max-height: 42%;
+  overflow-y: auto;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.task-row {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  text-align: left;
+  cursor: pointer;
+}
+
+.task-row + .task-row {
+  margin-top: 8px;
+}
+
+.task-row:hover,
+.task-row.active {
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+}
+
+.task-row.warning {
+  border-color: var(--border-warning);
+}
+
+.task-row.danger {
+  border-color: var(--border-danger);
+}
+
+.task-row-main,
+.task-row-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.task-role {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.task-summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.task-row-meta {
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.task-detail {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px;
+}
+
+.task-detail header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.task-detail header div,
+.task-detail dl div {
+  min-width: 0;
+}
+
+.task-detail header span,
+.task-detail header small,
+.task-detail dt {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.task-detail header strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+}
+
+.task-detail p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.task-detail dl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.task-detail dt,
+.task-detail dd {
+  margin: 0;
+}
+
+.task-detail dd {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.task-event-list {
+  display: grid;
+  gap: 7px;
+}
+
+.mini-event {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+
+.mini-event.warning {
+  border-color: var(--border-warning);
+  background: var(--bg-warning);
+}
+
+.mini-event.danger {
+  border-color: var(--border-danger);
+  background: var(--bg-danger);
+}
+
+.mini-event span {
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-event small {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
 }
 
 .team-timeline {
@@ -188,7 +633,7 @@ const riskCount = computed(() =>
   height: 10px;
   margin-top: 6px;
   border-radius: 50%;
-  background: var(--color-accent);
+  background: var(--text-muted);
   box-shadow: 0 0 0 3px var(--bg-surface);
   z-index: 1;
 }
@@ -205,7 +650,7 @@ const riskCount = computed(() =>
   min-width: 0;
   padding: 9px 10px;
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--bg-card);
 }
 
@@ -235,7 +680,7 @@ const riskCount = computed(() =>
 
 .team-event-role {
   padding: 2px 6px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--bg-hover);
   color: var(--text-secondary);
   font-size: var(--text-xs);
