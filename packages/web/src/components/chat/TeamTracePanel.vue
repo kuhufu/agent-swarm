@@ -16,6 +16,7 @@ import {
 import SvgIcon from "../common/SvgIcon.vue";
 
 type WorkbenchView = "tasks" | "timeline";
+type TaskFilter = "all" | "risk" | "active" | "completed";
 
 interface TeamTaskSummary {
   taskId: string;
@@ -36,6 +37,7 @@ const props = defineProps<{
 }>();
 
 const activeView = ref<WorkbenchView>("tasks");
+const activeTaskFilter = ref<TaskFilter>("all");
 const selectedTaskId = ref<string | null>(null);
 const activeRunId = ref<string | null>(null);
 
@@ -117,11 +119,31 @@ const tasks = computed<TeamTaskSummary[]>(() => {
   return [...map.values()].sort((a, b) => a.createdAt - b.createdAt);
 });
 
+const taskFilterCounts = computed(() => ({
+  all: tasks.value.length,
+  risk: tasks.value.filter((task) => task.severity === "danger").length,
+  active: tasks.value.filter((task) => isActiveTaskStatus(task.status)).length,
+  completed: tasks.value.filter((task) => task.status === "completed").length,
+}));
+
+const filteredTasks = computed(() => {
+  switch (activeTaskFilter.value) {
+    case "risk":
+      return tasks.value.filter((task) => task.severity === "danger");
+    case "active":
+      return tasks.value.filter((task) => isActiveTaskStatus(task.status));
+    case "completed":
+      return tasks.value.filter((task) => task.status === "completed");
+    default:
+      return tasks.value;
+  }
+});
+
 const selectedTask = computed(() =>
-  tasks.value.find((task) => task.taskId === selectedTaskId.value) ?? tasks.value.at(-1) ?? null,
+  filteredTasks.value.find((task) => task.taskId === selectedTaskId.value) ?? filteredTasks.value.at(-1) ?? null,
 );
 
-watch(tasks, (items) => {
+watch(filteredTasks, (items) => {
   if (items.length === 0) {
     selectedTaskId.value = null;
     return;
@@ -171,6 +193,24 @@ function taskStatusLabel(status: string): string {
     skipped: "已跳过",
   };
   return map[status] ?? status;
+}
+
+function taskFilterLabel(filter: TaskFilter): string {
+  const map: Record<TaskFilter, string> = {
+    all: "全部",
+    risk: "风险",
+    active: "进行中",
+    completed: "已完成",
+  };
+  return map[filter];
+}
+
+function taskFilterCount(filter: TaskFilter): number {
+  return taskFilterCounts.value[filter];
+}
+
+function isActiveTaskStatus(status: string): boolean {
+  return status === "pending" || status === "running" || status === "verifying" || status === "revision_required" || status === "waiting_for_user";
 }
 </script>
 
@@ -247,25 +287,41 @@ function taskStatusLabel(status: string): string {
 
       <div v-if="activeView === 'tasks'" class="task-workbench">
         <div v-if="tasks.length === 0" class="task-empty">暂无 Team 任务</div>
-        <div v-else class="task-list">
-          <button
-            v-for="task in tasks"
-            :key="task.taskId"
-            type="button"
-            class="task-row"
-            :class="[task.severity, { active: selectedTask?.taskId === task.taskId }]"
-            @click="selectedTaskId = task.taskId"
-          >
-            <span class="task-row-main">
-              <span class="task-role">{{ teamRoleLabel(task.role) }}</span>
-              <span class="task-summary">{{ task.summary }}</span>
-            </span>
-            <span class="task-row-meta">
-              <span>{{ taskStatusLabel(task.status) }}</span>
-              <span>{{ formatTimeLong(task.updatedAt) }}</span>
-            </span>
-          </button>
-        </div>
+        <template v-else>
+          <div class="task-filters" aria-label="任务筛选">
+            <button
+              v-for="filter in (['all', 'risk', 'active', 'completed'] as TaskFilter[])"
+              :key="filter"
+              type="button"
+              :class="{ active: activeTaskFilter === filter }"
+              @click="activeTaskFilter = filter"
+            >
+              {{ taskFilterLabel(filter) }}
+              <span>{{ taskFilterCount(filter) }}</span>
+            </button>
+          </div>
+
+          <div v-if="filteredTasks.length === 0" class="task-empty compact">当前筛选暂无任务</div>
+          <div v-else class="task-list">
+            <button
+              v-for="task in filteredTasks"
+              :key="task.taskId"
+              type="button"
+              class="task-row"
+              :class="[task.severity, { active: selectedTask?.taskId === task.taskId }]"
+              @click="selectedTaskId = task.taskId"
+            >
+              <span class="task-row-main">
+                <span class="task-role">{{ teamRoleLabel(task.role) }}</span>
+                <span class="task-summary">{{ task.summary }}</span>
+              </span>
+              <span class="task-row-meta">
+                <span>{{ taskStatusLabel(task.status) }}</span>
+                <span>{{ formatTimeLong(task.updatedAt) }}</span>
+              </span>
+            </button>
+          </div>
+        </template>
 
         <section v-if="selectedTask" class="task-detail">
           <header>
@@ -502,6 +558,47 @@ function taskStatusLabel(status: string): string {
   padding: 18px 14px;
   color: var(--text-muted);
   font-size: var(--text-sm);
+}
+
+.task-empty.compact {
+  padding: 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.task-filters {
+  display: flex;
+  gap: 7px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  overflow-x: auto;
+}
+
+.task-filters button {
+  flex: 0 0 auto;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.task-filters button:hover,
+.task-filters button.active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+.task-filters span {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
 }
 
 .task-list {
