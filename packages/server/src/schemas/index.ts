@@ -45,7 +45,7 @@ const swarmContextSchema = z.object({
 export const createSwarmSchema = z.object({
   name: z.string().min(1, "名称不能为空"),
   description: z.string().optional(),
-  mode: z.enum(["chat", "swarm", "debate", "team"]),
+  mode: z.enum(["chat", "swarm", "debate", "team", "refine"]),
   agents: z.array(agentConfigSchema).min(1, "至少需要一个 Agent"),
   debateConfig: debatableConfigSchema.optional(),
   interventions: interventionsSchema.optional(),
@@ -57,7 +57,7 @@ export const createSwarmSchema = z.object({
 export const updateSwarmSchema = z.object({
   name: z.string().min(1, "名称不能为空").optional(),
   description: z.string().optional(),
-  mode: z.enum(["chat", "swarm", "debate", "team"]).optional(),
+  mode: z.enum(["chat", "swarm", "debate", "team", "refine"]).optional(),
   agents: z.array(agentConfigSchema).min(1, "至少需要一个 Agent").optional(),
   debateConfig: debatableConfigSchema.optional(),
   interventions: interventionsSchema.optional(),

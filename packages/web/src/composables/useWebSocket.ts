@@ -47,7 +47,7 @@ function recordTeamEvent(
   msg: WSMessage,
   conversationId: string | undefined,
 ) {
-  if (!msg.type.startsWith("team_")) return;
+  if (!msg.type.startsWith("team_") && !msg.type.startsWith("refine_")) return;
   conversationStore.addTeamEvent({
     id: crypto.randomUUID(),
     agentId: typeof msg.payload?.agentId === "string" ? msg.payload.agentId : null,
@@ -55,6 +55,16 @@ function recordTeamEvent(
     eventData: JSON.stringify(msg.payload ?? {}),
     timestamp: Date.now(),
   }, conversationId);
+}
+
+function refinePayloadSummary(prefix: string, payload: any): string {
+  const summary = typeof payload?.summary === "string" && payload.summary.trim().length > 0
+    ? payload.summary.trim()
+    : "";
+  const iteration = typeof payload?.iteration === "number" && payload.iteration > 0
+    ? `第 ${payload.iteration} 轮`
+    : "";
+  return [prefix, iteration, summary].filter(Boolean).join("：");
 }
 
 export function useWebSocket() {
@@ -365,6 +375,62 @@ export function useWebSocket() {
           content: `Team 需要关注：${teamRoleLabel(msg.payload?.role)} - ${msg.payload?.summary ?? teamRunStatusLabel(msg.payload?.status)}`,
           timestamp: Date.now(),
         }, targetConversationId);
+        break;
+
+      case "refine_run_start":
+        recordTeamEvent(conversationStore, msg, targetConversationId);
+        conversationStore.setActive(true, targetConversationId);
+        conversationStore.addMessage({
+          id: crypto.randomUUID(),
+          role: "notification",
+          content: refinePayloadSummary("打磨开始", msg.payload),
+          timestamp: Date.now(),
+        }, targetConversationId);
+        break;
+
+      case "refine_run_update":
+        recordTeamEvent(conversationStore, msg, targetConversationId);
+        conversationStore.addMessage({
+          id: crypto.randomUUID(),
+          role: "notification",
+          content: refinePayloadSummary("打磨更新", msg.payload),
+          timestamp: Date.now(),
+        }, targetConversationId);
+        break;
+
+      case "refine_run_end":
+        recordTeamEvent(conversationStore, msg, targetConversationId);
+        conversationStore.setActive(false, targetConversationId);
+        conversationStore.addMessage({
+          id: crypto.randomUUID(),
+          role: "notification",
+          content: refinePayloadSummary("打磨结束", msg.payload),
+          timestamp: Date.now(),
+        }, targetConversationId);
+        break;
+
+      case "refine_step_started":
+      case "refine_review_started":
+      case "refine_final_report_started":
+        recordTeamEvent(conversationStore, msg, targetConversationId);
+        if (typeof msg.payload?.agentId === "string") {
+          conversationStore.setAgentStatus(msg.payload.agentId, "thinking", targetConversationId);
+          conversationStore.setAgentName(
+            msg.payload.agentId,
+            msg.payload?.role === "critic" ? "打磨审视者" : "打磨拓展者",
+            targetConversationId,
+          );
+        }
+        break;
+
+      case "refine_step_completed":
+      case "refine_review_completed":
+      case "refine_revision_requested":
+      case "refine_final_report_completed":
+        recordTeamEvent(conversationStore, msg, targetConversationId);
+        if (typeof msg.payload?.agentId === "string") {
+          conversationStore.setAgentStatus(msg.payload.agentId, "idle", targetConversationId);
+        }
         break;
 
       // ── Intervention events ──

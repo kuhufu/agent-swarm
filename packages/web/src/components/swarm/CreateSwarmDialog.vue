@@ -44,10 +44,13 @@ const presetAgentOptions = computed(() => [
   })),
 ]);
 const teamOwnerPreset = computed(() => agentStore.sortedPresets.find((preset) => preset.id === "team-owner") ?? null);
+const refineExpanderPreset = computed(() => agentStore.sortedPresets.find((preset) => preset.id === "refine-expander") ?? null);
+const refineCriticPreset = computed(() => agentStore.sortedPresets.find((preset) => preset.id === "refine-critic") ?? null);
 
 function setMode(nextMode: CollaborationMode) {
   mode.value = nextMode;
   addTeamOwnerIfNeeded();
+  addRefineAgentsIfNeeded();
 }
 
 function selectModelForAgent(model: SavedModel) {
@@ -106,6 +109,14 @@ function addTeamOwnerIfNeeded() {
     return;
   }
   agents.push(createAgentFromPreset(teamOwnerPreset.value));
+}
+
+function addRefineAgentsIfNeeded() {
+  if (mode.value !== "refine" || agents.length > 0 || !refineExpanderPreset.value || !refineCriticPreset.value) {
+    return;
+  }
+  agents.push(createAgentFromPreset(refineExpanderPreset.value));
+  agents.push(createAgentFromPreset(refineCriticPreset.value));
 }
 
 function fillEmptyAgentModelsFromDefault() {
@@ -235,11 +246,16 @@ onMounted(() => {
     void settingsStore.fetchConfig().then(() => fillEmptyAgentModelsFromDefault());
   }
   if (!agentStore.loaded) {
-    void agentStore.fetchAgents().then(() => addTeamOwnerIfNeeded());
+    void agentStore.fetchAgents().then(() => {
+      addTeamOwnerIfNeeded();
+      addRefineAgentsIfNeeded();
+    });
   }
 });
 
 watch(teamOwnerPreset, () => addTeamOwnerIfNeeded());
+watch(refineExpanderPreset, () => addRefineAgentsIfNeeded());
+watch(refineCriticPreset, () => addRefineAgentsIfNeeded());
 watch(defaultSavedModel, () => fillEmptyAgentModelsFromDefault());
 </script>
 

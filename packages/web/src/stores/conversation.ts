@@ -362,7 +362,7 @@ export const useConversationStore = defineStore("conversation", () => {
   }
 
   function addTeamEvent(event: ConversationEvent, conversationId?: string) {
-    if (!event.eventType.startsWith("team_")) return;
+    if (!event.eventType.startsWith("team_") && !event.eventType.startsWith("refine_")) return;
     mutateRuntimeState(conversationId, (state) => {
       const existingIndex = state.teamEvents.findIndex((item) => item.id === event.id);
       if (existingIndex >= 0) {

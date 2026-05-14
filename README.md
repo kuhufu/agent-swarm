@@ -8,12 +8,14 @@
 
 ## 核心能力
 
-- 四种协作模式：`chat`（直接对话）/ `swarm`（蜂群协作）/ `debate`（辩论）/ `team`（Owner 路由的通用团队协作）
+- 五种协作模式：`chat`（直接对话）/ `swarm`（蜂群协作）/ `debate`（辩论）/ `team`（Owner 路由的通用团队协作）/ `refine`（生成-审视-修订打磨）
 - `swarm` 模式采用动态调度协议：Agent 通过结构化 `handoff` 提议交接，执行器负责审批、循环保护、事件记录和目标 Agent 切换
 - `team` 模式由 Owner 私下判断是否需要组队；简单请求降级为单 Agent，复杂请求按 Analyst / Ideator / Critic / Synthesizer / Researcher 等通用角色执行，并通过 Team 事件记录过程
+- `refine` 模式采用 Human-in-the-loop Critique-and-Revise 协议，由拓展者和审视者循环完善输入，适合打磨想法、需求、方案、文档和报告
 - 直接对话模式：无需预建 swarm，可按会话选择 `provider + modelId`
-- Agent 预设库：内置模板 + 自定义模板 CRUD，支持创建 Swarm 时复用；内置模板包含 `Team Owner`，适合快速创建通用 `team` 模式 Swarm
+- Agent 预设库：内置模板 + 自定义模板 CRUD，支持创建 Swarm 时复用；内置模板包含 `Team Owner`、`Refine Expander` 和 `Refine Critic`，适合快速创建通用 `team` 或 `refine` 模式 Swarm
 - 创建或编辑 Swarm 时选择 `Team 团队` 模式，如果当前还没有 Agent，前端会自动加入内置 `Team Owner`，并优先使用已保存模型列表中的第一个模型
+- 创建或编辑 Swarm 时选择 `Refine 打磨` 模式，如果当前还没有 Agent，前端会自动加入内置拓展者和审视者，并优先使用已保存模型列表中的第一个模型
 - Swarm Agent 顺序管理：创建与编辑 Swarm 时均支持拖动排序 Agent 列表
 - 设置管理体验：添加提供商与添加模型均通过弹窗完成，避免页面内表单拥挤
 - 输入体验优化：重复点击“新对话/直接对话”、切换模型、启停工具、点击 `chat-input` 非交互区后会自动聚焦输入框且保持光标
@@ -41,6 +43,10 @@
 
 运行时 Owner 会先判断是否需要组队。简单请求会降级为单 Agent；复杂请求会选择 Analyst / Ideator / Critic / Synthesizer / Researcher 等少量角色。`maxTotalTurns` 会限制任务数，预算不足时优先保留 `Synthesizer` 做最终汇总；即使只允许 1 个 Team 任务，也会优先给出最终汇总。Team Run 事件会记录计划角色、实际执行角色和被预算裁剪的角色；侧边栏 `Team` 入口会打开独立 `/team/:conversationId?` 页面，左侧只保留可搜索会话索引，右侧顶部可展开启动面板来选择 Team、套用需求分析/头脑风暴/落地规划模板、发起新会话或继续当前会话。工作台内部采用阶段导航 + 单阶段详情布局查看 Team Run、任务、角色产出、风险和时间线；产出阶段会先选择角色，再查看该角色完整输出，避免多阶段长文挤在一起。运行中的 Team 会话可在独立工作台终止，聊天页右侧 Team 面板也可跳转到对应独立工作台。历史详情仍保留同一套视图。Critic 明确发现 blocker、阻塞、严重风险或不可行时，会记录 `team_task_verification_failed`，Team 工作台会高亮风险事件；当前 MVP 会继续让汇总角色吸收风险，不会自动打回重试。
 
+## Refine 模式使用建议
+
+`refine` 模式适合把一个不够成熟的想法、需求、方案、文档或报告打磨到可行动状态。创建或编辑 Swarm 时选择 `Refine 打磨`，如果 Agent 列表为空，前端会自动加入 `Refine Expander` 和 `Refine Critic`。运行时拓展者会先扩展和结构化用户输入，审视者随后从价值、可行性、风险、隐藏假设和下一步清晰度进行评审；两者会按“拓展 -> 审视 -> 修订”循环推进。`maxTotalTurns` 在该模式下表示最大打磨轮数，默认最多 3 轮。审视者输出 `APPROVED: true` 时会提前收敛；未通过且达到轮次上限时，也会基于当前最佳版本生成最终报告。该模式会记录独立的 `refine_run_*` 和 `refine_*` 事件，并复用 `ask_user` 让拓展者或审视者在上下文不足时向用户追问。
+
 ## Monorepo 结构
 
 ```text
@@ -58,7 +64,8 @@ agent-swarm/
 │   │   ├── agent-team-mode-plan.md
 │   │   ├── context-recovery.md
 │   │   ├── core-tool-runtime.md
-│   │   └── frontend-conversation-runtime.md
+│   │   ├── frontend-conversation-runtime.md
+│   │   └── refine-mode.md
 │   ├── features/
 │   │   ├── agent-presets.md
 │   │   ├── auth-multi-tenant-isolation.md
@@ -204,7 +211,7 @@ pnpm --filter @agent-swarm/server test
 ### 消息查询
 
 - `GET /api/conversations/:id/messages`
-- `GET /api/conversations/:id/events`：读取会话执行 Trace；可用 `?type=handoff`、`?type=team_run_start`、`?type=team_task_completed` 等事件类型过滤；`team` 模式会记录 Team Run / Team Task 的规划、执行、验证和结束事件
+- `GET /api/conversations/:id/events`：读取会话执行 Trace；可用 `?type=handoff`、`?type=team_run_start`、`?type=team_task_completed`、`?type=refine_run_start` 等事件类型过滤；`team` 模式会记录 Team Run / Team Task 的规划、执行、验证和结束事件，`refine` 模式会记录打磨运行、拓展、审视、修订请求和最终报告事件
 
 ### LLM Wiki
 

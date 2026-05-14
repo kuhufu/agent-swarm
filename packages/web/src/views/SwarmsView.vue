@@ -66,6 +66,8 @@ const presetAgentOptions = computed(() => [
   })),
 ]);
 const teamOwnerPreset = computed(() => agentStore.sortedPresets.find((preset) => preset.id === "team-owner") ?? null);
+const refineExpanderPreset = computed(() => agentStore.sortedPresets.find((preset) => preset.id === "refine-expander") ?? null);
+const refineCriticPreset = computed(() => agentStore.sortedPresets.find((preset) => preset.id === "refine-critic") ?? null);
 const modes: { value: CollaborationMode; label: string; desc: string; icon: string }[] = MODE_OPTIONS;
 
 function ensureSelectedSwarm() {
@@ -93,6 +95,7 @@ onMounted(async () => {
   await agentStore.fetchAgents();
   fillEmptyAgentModelsFromDefault();
   addTeamOwnerIfNeeded();
+  addRefineAgentsIfNeeded();
 });
 
 watch(
@@ -161,6 +164,14 @@ function addTeamOwnerIfNeeded() {
   editForm.agents.push(createAgentFromPreset(teamOwnerPreset.value));
 }
 
+function addRefineAgentsIfNeeded() {
+  if (editForm.mode !== "refine" || editForm.agents.length > 0 || !refineExpanderPreset.value || !refineCriticPreset.value) {
+    return;
+  }
+  editForm.agents.push(createAgentFromPreset(refineExpanderPreset.value));
+  editForm.agents.push(createAgentFromPreset(refineCriticPreset.value));
+}
+
 function fillEmptyAgentModelsFromDefault() {
   const fallbackModel = defaultSavedModel.value;
   if (!fallbackModel) return;
@@ -174,6 +185,7 @@ function fillEmptyAgentModelsFromDefault() {
 function setEditMode(nextMode: CollaborationMode, dirty = false) {
   editForm.mode = nextMode;
   addTeamOwnerIfNeeded();
+  addRefineAgentsIfNeeded();
   if (dirty) {
     markDirty();
   }

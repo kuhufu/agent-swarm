@@ -40,7 +40,7 @@ agent-swarm/
 │   ├── core/                    # @agent-swarm/core
 │   │   ├── src/
 │   │   │   ├── core/            # AgentSwarm 主类、Conversation、类型、配置、内置预设
-│   │   │   ├── modes/           # 4种协作模式：chat/swarm/debate/team
+│   │   │   ├── modes/           # 5种协作模式：chat/swarm/debate/team/refine
 │   │   │   ├── intervention/    # 介入处理器和内置策略
 │   │   │   ├── storage/         # IStorage 接口 + SQLite + 向量存储 + Wiki 存储实现
 │   │   │   ├── llm/             # LLM 配置管理 + pi-ai 桥接
@@ -152,13 +152,15 @@ pnpm test                  # 运行 core + server 单元测试
 
 ### SwarmEvent（core/src/core/types.ts）
 
-所有协作事件的基础类型，包含 15 种子类型：
+所有协作事件的基础类型，包含 Agent 生命周期、工具执行、handoff、Team 与 Refine 过程等子类型：
 - `swarm_start` / `swarm_end` — 生命周期
 - `agent_start` / `agent_end` — Agent 级
 - `turn_start` / `turn_end` — 轮次级
 - `message_start` / `message_update` / `message_end` — 消息流
 - `tool_execution_start` / `tool_execution_update` / `tool_execution_end` — 工具执行
 - `handoff` — Agent 交接
+- `team_run_*` / `team_task_*` — Team 运行与任务事件
+- `refine_run_*` / `refine_*` — Refine 打磨运行、拓展、审视、修订请求和最终报告事件
 - `intervention_required` — 需要用户介入
 - `error` — 错误
 

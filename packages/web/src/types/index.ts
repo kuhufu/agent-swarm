@@ -27,7 +27,7 @@ export interface DebateConfig {
   judgeAgent: string;
 }
 
-export type CollaborationMode = "chat" | "swarm" | "debate" | "team";
+export type CollaborationMode = "chat" | "swarm" | "debate" | "team" | "refine";
 
 export interface SwarmAgentConfig {
   id: string;

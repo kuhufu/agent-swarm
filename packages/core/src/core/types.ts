@@ -4,7 +4,7 @@ import type { AgentTool } from "@mariozechner/pi-agent-core";
 // Collaboration Mode
 // ============================================================================
 
-export type CollaborationMode = "chat" | "swarm" | "debate" | "team";
+export type CollaborationMode = "chat" | "swarm" | "debate" | "team" | "refine";
 
 export interface DebateConfig {
   rounds: number;
@@ -395,6 +395,55 @@ export interface TeamTaskEvent {
   retryCount?: number;
 }
 
+export type RefineRunStatus =
+  | "created"
+  | "running"
+  | "reviewing"
+  | "revising"
+  | "summarizing"
+  | "completed"
+  | "aborted";
+
+export type RefineStepStatus =
+  | "running"
+  | "completed"
+  | "revision_required"
+  | "approved"
+  | "failed";
+
+export type RefineRole = "expander" | "critic";
+
+export interface RefineRunEvent {
+  type: "refine_run_start" | "refine_run_update" | "refine_run_end";
+  runId: string;
+  conversationId: string;
+  status: RefineRunStatus;
+  summary?: string;
+  iteration?: number;
+  maxIterations?: number;
+}
+
+export interface RefineStepEvent {
+  type:
+    | "refine_step_started"
+    | "refine_step_completed"
+    | "refine_review_started"
+    | "refine_review_completed"
+    | "refine_revision_requested"
+    | "refine_final_report_started"
+    | "refine_final_report_completed";
+  runId: string;
+  stepId: string;
+  iteration: number;
+  agentId?: string;
+  role: RefineRole;
+  status: RefineStepStatus;
+  summary?: string;
+  output?: string;
+  feedback?: string;
+  approved?: boolean;
+}
+
 export interface InterventionRequiredEvent {
   type: "intervention_required";
   point: InterventionPoint;
@@ -425,5 +474,7 @@ export type SwarmEvent =
   | HandoffEvent
   | TeamRunEvent
   | TeamTaskEvent
+  | RefineRunEvent
+  | RefineStepEvent
   | InterventionRequiredEvent
   | ErrorEvent;
