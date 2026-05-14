@@ -10,7 +10,7 @@ import MessageList from "../components/chat/MessageList.vue";
 import ChatInput from "../components/chat/ChatInput.vue";
 import AgentStatus from "../components/chat/AgentStatus.vue";
 import WorkspaceArtifactsPanel from "../components/chat/WorkspaceArtifactsPanel.vue";
-import TeamTracePanel from "../components/chat/TeamTracePanel.vue";
+
 import InterventionPanel from "../components/intervention/InterventionPanel.vue";
 import AskUserPanel from "../components/intervention/AskUserPanel.vue";
 import { showError } from "../utils/ui-feedback.js";
@@ -24,7 +24,7 @@ const route = useRoute();
 const router = useRouter();
 const draftSwarmId = ref<string>("");
 const draftWorkspaceId = ref<string | null>(null);
-const activeSidebarTab = ref<"artifacts" | "team" | "agents">("artifacts");
+const activeSidebarTab = ref<"artifacts" | "agents">("artifacts");
 const selectedArtifactPath = ref<string | null>(null);
 const workspaces = ref<WorkspaceInfo[]>([]);
 const workspacesLoading = ref(false);
@@ -80,22 +80,7 @@ const currentConversationTitle = computed(() => {
 const active = computed(() => conversationStore.getIsActive(routeConversationId.value));
 const messages = computed(() => conversationStore.getMessages(routeConversationId.value));
 const agentStates = computed(() => Array.from(conversationStore.getAgentStates(routeConversationId.value).values()));
-const teamEvents = computed(() => conversationStore.getTeamEvents(routeConversationId.value));
-const artifactRefreshKey = computed(() => {
-  const paths: string[] = [];
-  for (const message of messages.value) {
-    for (const toolCall of message.toolCalls ?? []) {
-      if (toolCall.name !== "workspace_write_file" || !toolCall.details || typeof toolCall.details !== "object" || Array.isArray(toolCall.details)) {
-        continue;
-      }
-      const path = (toolCall.details as Record<string, unknown>).path;
-      if (typeof path === "string" && path) {
-        paths.push(`${toolCall.id}:${path}`);
-      }
-    }
-  }
-  return paths.join("|");
-});
+
 
 onMounted(() => {
   swarmStore.fetchSwarms();
@@ -219,10 +204,6 @@ function handleNewConversation() {
   void router.push({ name: "chat", params: {}, query: { mode: "swarm" } });
 }
 
-function openTeamWorkbench() {
-  if (!routeConversationId.value) return;
-  void router.push({ name: "team", params: { conversationId: routeConversationId.value } });
-}
 
 function handleSelectDraftSwarm(swarmId: string) {
   draftSwarmId.value = swarmId;
@@ -365,15 +346,6 @@ async function handleForkConversation(messageId?: string) {
         </button>
         <button
           type="button"
-          :class="{ active: activeSidebarTab === 'team' }"
-          title="Team"
-          @click="activeSidebarTab = 'team'"
-        >
-          <SvgIcon name="history" :size="14" />
-          <span v-if="teamEvents.length > 0" class="tab-count">{{ teamEvents.length }}</span>
-        </button>
-        <button
-          type="button"
           :class="{ active: activeSidebarTab === 'agents' }"
           title="Agent"
           @click="activeSidebarTab = 'agents'"
@@ -387,23 +359,6 @@ async function handleForkConversation(messageId?: string) {
         :selected-path="selectedArtifactPath"
         :refresh-key="artifactRefreshKey"
       />
-      <div v-else-if="activeSidebarTab === 'team'" class="team-sidebar-panel">
-        <div class="team-sidebar-header">
-          <div>
-            <strong>Team 工作台</strong>
-            <span>{{ teamEvents.length }} 条事件</span>
-          </div>
-          <button
-            type="button"
-            :disabled="!routeConversationId"
-            @click="openTeamWorkbench"
-          >
-            <SvgIcon name="arrowRight" :size="13" />
-            独立打开
-          </button>
-        </div>
-        <TeamTracePanel :events="teamEvents" :messages="messages" />
-      </div>
       <AgentStatus v-else :agents="agentStates" :swarm-id="swarmId" />
     </aside>
   </div>
@@ -699,101 +654,7 @@ async function handleForkConversation(messageId?: string) {
   background: var(--bg-hover);
 }
 
-.tab-count {
-  position: absolute;
-  top: 3px;
-  right: 8px;
-  min-width: 15px;
-  height: 15px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  padding: 0 4px;
-  background: var(--color-accent);
-  color: #fff;
-  font-size: var(--text-xs);
-  line-height: 1;
-  font-weight: var(--weight-bold);
-}
 
-.team-sidebar-panel {
-  min-height: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.team-sidebar-header {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--bg-card);
-}
-
-.team-sidebar-header div {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.team-sidebar-header strong,
-.team-sidebar-header span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.team-sidebar-header strong {
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-bold);
-}
-
-.team-sidebar-header span {
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-}
-
-.team-sidebar-header button {
-  flex: 0 0 auto;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 0 8px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-  cursor: pointer;
-}
-
-.team-sidebar-header button:hover:not(:disabled) {
-  background: var(--bg-hover);
-  border-color: var(--border-default);
-  color: var(--text-primary);
-}
-
-.team-sidebar-header button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.team-sidebar-panel :deep(.team-panel) {
-  border: 0;
-  border-radius: 0;
-}
 
 .chat-sidebar-right :deep(.agent-status) {
   height: auto;
