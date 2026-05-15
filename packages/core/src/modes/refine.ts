@@ -16,6 +16,7 @@ interface CriticDecision {
 
 const DEFAULT_MAX_ITERATIONS = 3;
 const REFINE_RESULTS_METADATA_KEY = "refineResults";
+const REFINE_CONTEXT_PREVIOUS_ITERATION_LIMIT = 2;
 
 interface RefineHistoryContext {
   previousResults: RefineIterationResult[];
@@ -38,10 +39,10 @@ export class RefineMode implements ModeExecutor {
     const results: RefineIterationResult[] = [];
     let finalReport = "";
 
-    const previousResults = this.parsePreviousResults(ctx.getMetadata(REFINE_RESULTS_METADATA_KEY));
+    const storedPreviousResults = this.parsePreviousResults(ctx.getMetadata(REFINE_RESULTS_METADATA_KEY));
     const latestFinalReport = await this.loadLatestFinalReport(ctx);
     const historyContext: RefineHistoryContext = {
-      previousResults,
+      previousResults: latestFinalReport ? [] : this.takeRecentResults(storedPreviousResults),
       latestFinalReport,
     };
 
@@ -53,8 +54,8 @@ export class RefineMode implements ModeExecutor {
       summary: latestFinalReport
         ? "打磨模式已启动。检测到上一轮最终报告，本次将在其基础上继续讨论。"
         : (
-          previousResults.length > 0
-            ? `打磨模式已启动。检测到之前 ${previousResults.length} 轮的打磨记录，本次将在历史基础上继续讨论。`
+          storedPreviousResults.length > 0
+            ? `打磨模式已启动。检测到之前 ${storedPreviousResults.length} 轮的打磨记录，本次会加载最近 ${historyContext.previousResults.length} 轮作为上下文。`
             : "打磨模式已启动：拓展者会先完善输入，审视者随后评审并决定是否继续修订。"
         ),
       iteration: 0,
@@ -182,7 +183,7 @@ export class RefineMode implements ModeExecutor {
       return;
     }
 
-    const allResults = [...previousResults, ...results];
+    const allResults = [...storedPreviousResults, ...results];
     await ctx.setMetadata(REFINE_RESULTS_METADATA_KEY, allResults);
 
     yield* this.emitAndYield(ctx, {
@@ -260,6 +261,11 @@ export class RefineMode implements ModeExecutor {
       .filter((message) => message.role === "final_report" && typeof message.content === "string" && message.content.trim().length > 0)
       .sort((a, b) => (b.createdAt ?? b.timestamp) - (a.createdAt ?? a.timestamp))[0];
     return latest?.content?.trim();
+  }
+
+  private takeRecentResults(results: RefineIterationResult[]): RefineIterationResult[] {
+    if (results.length <= REFINE_CONTEXT_PREVIOUS_ITERATION_LIMIT) return results;
+    return results.slice(-REFINE_CONTEXT_PREVIOUS_ITERATION_LIMIT);
   }
 
   private createRoleAgentConfig(base: SwarmAgentConfig, role: "expander" | "critic"): SwarmAgentConfig {

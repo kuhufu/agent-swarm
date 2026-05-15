@@ -78,6 +78,7 @@ function createAgentConfig(id: string): SwarmAgentConfig {
 function createContext(
   outputForAgent: (agentId: string, input: string, promptIndex: number) => string,
   storedMessages: Awaited<ReturnType<IStorage["getMessages"]>> = [],
+  initialMetadata: Record<string, unknown> = {},
 ): ModeExecutionContext {
   const expander = createAgentConfig("expander");
   const critic = createAgentConfig("critic");
@@ -89,6 +90,9 @@ function createContext(
   };
   const agents = new Map<string, { agent: any; config: SwarmAgentConfig }>();
   const metadata = new Map<string, unknown>();
+  for (const [key, value] of Object.entries(initialMetadata)) {
+    metadata.set(key, value);
+  }
   const appendMessage = vi.fn(async () => undefined);
   const updateLatestAssistantMessageRole = vi.fn(async () => undefined);
   const getMessages = vi.fn(async () => storedMessages);
@@ -193,6 +197,40 @@ describe("RefineMode", () => {
     expect(firstPrompt).toContain("上一轮最终报告，应该进入上下文。");
     expect(firstPrompt).not.toContain("旧最终报告，不应该进入上下文。");
     expect(firstPrompt).not.toContain("Historical final reports");
+  });
+
+  it("limits fallback refineResults context to recent iterations when no final report exists", async () => {
+    const ctx = createContext(
+      (agentId, input, promptIndex) => {
+        if (agentId.includes("critic")) return "反馈：可以收敛。\nAPPROVED: true";
+        if (input.includes("Generate the final report")) return "最终报告：基于最近轮次。";
+        return `拓展版本 ${promptIndex}`;
+      },
+      [],
+      {
+        refineResults: [
+          { iteration: 1, expanded: "旧拓展 1", critique: "旧反馈 1", approved: false },
+          { iteration: 2, expanded: "旧拓展 2", critique: "旧反馈 2", approved: false },
+          { iteration: 3, expanded: "旧拓展 3", critique: "旧反馈 3", approved: false },
+        ],
+      },
+    );
+
+    for await (const _event of new RefineMode().execute(ctx)) {
+      // consume generator
+    }
+
+    const expander = ctx.agents.get("expander__refine_expander")?.agent as FakeAgent | undefined;
+    const firstPrompt = expander?.prompts[0] ?? "";
+    expect(firstPrompt).not.toContain("旧拓展 1");
+    expect(firstPrompt).toContain("旧拓展 2");
+    expect(firstPrompt).toContain("旧拓展 3");
+    expect(ctx.setMetadata).toHaveBeenCalledWith("refineResults", [
+      expect.objectContaining({ iteration: 1 }),
+      expect.objectContaining({ iteration: 2 }),
+      expect.objectContaining({ iteration: 3 }),
+      expect.objectContaining({ iteration: 1, expanded: "拓展版本 1" }),
+    ]);
   });
 
   it("continues revision until the default iteration limit", async () => {
