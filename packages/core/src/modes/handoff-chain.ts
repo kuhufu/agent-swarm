@@ -20,13 +20,23 @@ interface HandoffResolution {
   errorEvent?: SwarmEvent;
 }
 
+interface ReturnFrame {
+  fromAgentId: string;
+  delegateAgentId: string;
+  returnToAgentId: string;
+  task?: string;
+  context?: string;
+  expectedOutput?: string;
+  reason?: string;
+}
+
 interface AgentSummary {
   agentId: string;
   agentName: string;
   summary: string;
 }
 
-interface NormalizedSwarmContextConfig {
+interface NormalizedHandoffContextConfig {
   mode: "handoff_only" | "summary";
   maxAgentSummaries: number;
   maxSummaryChars: number;
@@ -34,10 +44,10 @@ interface NormalizedSwarmContextConfig {
 }
 
 /**
- * Swarm mode: agents can hand off to each other dynamically.
- * Uses `handoff` tool to transfer control between agents.
+ * Handoff chain mode: agents run one at a time and may delegate to another
+ * agent through the `handoff` tool.
  */
-export class SwarmMode implements ModeExecutor {
+export class HandoffChainMode implements ModeExecutor {
   async *execute(ctx: ModeExecutionContext): AsyncGenerator<SwarmEvent> {
     const { swarmConfig, message, agents, createAgentFn, isAborted, emit } = ctx;
     const maxTurns = swarmConfig.maxTotalTurns ?? 10;
@@ -45,8 +55,9 @@ export class SwarmMode implements ModeExecutor {
     let currentMessage = message;
     let turn = 0;
     const handoffHistory: HandoffProposal[] = [];
+    const returnStack: ReturnFrame[] = [];
     const agentSummaries: AgentSummary[] = [];
-    const contextConfig = this.normalizeSwarmContextConfig(swarmConfig.swarmContext);
+    const contextConfig = this.normalizeHandoffContextConfig(swarmConfig.handoffContext);
 
     // Ensure initial agent is created
     if (currentAgentId) {
@@ -125,6 +136,17 @@ export class SwarmMode implements ModeExecutor {
       // Check for handoff
       if (handoffResolution.proposal) {
         const handoff = handoffResolution.proposal;
+        if (turn + 1 >= maxTurns) {
+          const turnLimitError: SwarmEvent = {
+            type: "error",
+            agentId: currentAgentId,
+            error: new Error(`Handoff chain turn limit reached before running target agent: ${handoff.toAgentId}`),
+          };
+          emit(turnLimitError);
+          yield turnLimitError;
+          break;
+        }
+
         // Ensure target agent is created
         const targetConfig = swarmConfig.agents.find((a) => a.id === handoff.toAgentId);
         if (targetConfig && !agents.has(handoff.toAgentId)) {
@@ -164,6 +186,20 @@ export class SwarmMode implements ModeExecutor {
           }
 
           handoffHistory.push(handoff);
+          if (handoff.returnToAgentId && handoff.returnToAgentId !== handoff.toAgentId) {
+            const returnConfig = swarmConfig.agents.find((agent) => agent.id === handoff.returnToAgentId);
+            if (returnConfig) {
+              returnStack.push({
+                fromAgentId: handoff.fromAgentId,
+                delegateAgentId: handoff.toAgentId,
+                returnToAgentId: handoff.returnToAgentId,
+                task: handoff.task,
+                context: handoff.context,
+                expectedOutput: handoff.expectedOutput,
+                reason: handoff.reason,
+              });
+            }
+          }
           currentAgentId = handoff.toAgentId;
         } else {
           const missingTargetError: SwarmEvent = {
@@ -180,6 +216,74 @@ export class SwarmMode implements ModeExecutor {
           yield handoffResolution.errorEvent;
         }
         break;
+      } else if (returnStack.length > 0) {
+        const returnFrame = returnStack.pop()!;
+        if (turn + 1 >= maxTurns) {
+          const turnLimitError: SwarmEvent = {
+            type: "error",
+            agentId: currentAgentId,
+            error: new Error(`Handoff chain turn limit reached before returning to agent: ${returnFrame.returnToAgentId}`),
+          };
+          emit(turnLimitError);
+          yield turnLimitError;
+          break;
+        }
+
+        const returnConfig = swarmConfig.agents.find((agent) => agent.id === returnFrame.returnToAgentId);
+        if (returnConfig && !agents.has(returnFrame.returnToAgentId)) {
+          createAgentFn(returnConfig);
+        }
+
+        if (!agents.has(returnFrame.returnToAgentId)) {
+          const missingReturnError: SwarmEvent = {
+            type: "error",
+            agentId: currentAgentId,
+            error: new Error(`Return target agent not found: ${returnFrame.returnToAgentId}`),
+          };
+          emit(missingReturnError);
+          yield missingReturnError;
+          break;
+        }
+
+        const returnHandoff: HandoffProposal = {
+          fromAgentId: currentAgentId,
+          toAgentId: returnFrame.returnToAgentId,
+          message: "Returning delegated result to the requesting agent.",
+          reason: "Delegated handoff completed",
+          task: returnFrame.task,
+          context: returnFrame.context,
+          expectedOutput: returnFrame.expectedOutput,
+        };
+        const loopError = this.validateHandoffLoop(returnHandoff, handoffHistory);
+        if (loopError) {
+          const errorEvent: SwarmEvent = {
+            type: "error",
+            agentId: currentAgentId,
+            error: new Error(loopError),
+          };
+          emit(errorEvent);
+          yield errorEvent;
+          break;
+        }
+
+        emit({
+          type: "handoff",
+          fromAgentId: returnHandoff.fromAgentId,
+          toAgentId: returnHandoff.toAgentId,
+          reason: returnHandoff.reason,
+          task: returnHandoff.task,
+          context: returnHandoff.context,
+          expectedOutput: returnHandoff.expectedOutput,
+        });
+        handoffHistory.push(returnHandoff);
+        currentMessage = this.buildReturnPrompt(
+          returnFrame,
+          this.getLastAssistantText(currentAgentId, ctx),
+          agentSummaries,
+          contextConfig,
+          message,
+        );
+        currentAgentId = returnFrame.returnToAgentId;
       } else {
         // No handoff — agent is done responding
         break;
@@ -276,13 +380,34 @@ export class SwarmMode implements ModeExecutor {
 
   private validateHandoffLoop(proposal: HandoffProposal, history: HandoffProposal[]): string | null {
     const previous = history.length > 0 ? history[history.length - 1] : undefined;
+    const proposalTaskKey = this.handoffTaskKey(proposal);
     if (
       previous
       && previous.fromAgentId === proposal.toAgentId
       && previous.toAgentId === proposal.fromAgentId
-      && this.handoffTaskKey(previous) === this.handoffTaskKey(proposal)
+      && this.handoffTaskKey(previous) === proposalTaskKey
     ) {
       return `Rejected handoff loop: ${proposal.fromAgentId} -> ${proposal.toAgentId} repeats the previous task`;
+    }
+    if (history.some((item) =>
+      item.fromAgentId === proposal.fromAgentId
+      && item.toAgentId === proposal.toAgentId
+      && this.handoffTaskKey(item) === proposalTaskKey
+    )) {
+      return `Rejected repeated handoff: ${proposal.fromAgentId} -> ${proposal.toAgentId} already handled this task`;
+    }
+    const sameTaskVisits = history.filter((item) =>
+      item.toAgentId === proposal.toAgentId
+      && this.handoffTaskKey(item) === proposalTaskKey
+    ).length;
+    if (sameTaskVisits >= 2) {
+      return `Rejected handoff loop: ${proposal.toAgentId} has already received this task multiple times`;
+    }
+    if (history.some((item) =>
+      item.fromAgentId === proposal.toAgentId
+      && this.handoffTaskKey(item) === proposalTaskKey
+    )) {
+      return `Rejected handoff loop: ${proposal.toAgentId} already delegated this task earlier in the chain`;
     }
     return null;
   }
@@ -293,12 +418,16 @@ export class SwarmMode implements ModeExecutor {
       proposal.message ?? "",
       proposal.context ?? "",
       proposal.expectedOutput ?? "",
-    ].join("\u001f");
+    ]
+      .join("\u001f")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
   }
 
-  private normalizeSwarmContextConfig(
-    input: ModeExecutionContext["swarmConfig"]["swarmContext"],
-  ): NormalizedSwarmContextConfig {
+  private normalizeHandoffContextConfig(
+    input: ModeExecutionContext["swarmConfig"]["handoffContext"],
+  ): NormalizedHandoffContextConfig {
     return {
       mode: input?.mode ?? "summary",
       maxAgentSummaries: input?.maxAgentSummaries ?? 6,
@@ -311,7 +440,7 @@ export class SwarmMode implements ModeExecutor {
     agentId: string,
     ctx: ModeExecutionContext,
     summaries: AgentSummary[],
-    config: NormalizedSwarmContextConfig,
+    config: NormalizedHandoffContextConfig,
   ) {
     if (config.mode !== "summary") {
       return;
@@ -347,7 +476,7 @@ export class SwarmMode implements ModeExecutor {
 
   private buildSharedContextPrompt(
     summaries: AgentSummary[],
-    config: NormalizedSwarmContextConfig,
+    config: NormalizedHandoffContextConfig,
     originalMessage: string,
   ): string {
     if (config.mode !== "summary" || summaries.length === 0) {
@@ -366,7 +495,7 @@ export class SwarmMode implements ModeExecutor {
   private buildHandoffPrompt(
     proposal: HandoffProposal,
     summaries: AgentSummary[],
-    contextConfig: NormalizedSwarmContextConfig,
+    contextConfig: NormalizedHandoffContextConfig,
     originalMessage: string,
   ): string {
     const sharedContext = this.buildSharedContextPrompt(summaries, contextConfig, originalMessage);
@@ -381,6 +510,39 @@ export class SwarmMode implements ModeExecutor {
       proposal.message ? `Message: ${proposal.message}` : "",
     ].filter((section) => section.length > 0);
     return sections.join("\n\n");
+  }
+
+  private buildReturnPrompt(
+    frame: ReturnFrame,
+    delegateOutput: string,
+    summaries: AgentSummary[],
+    contextConfig: NormalizedHandoffContextConfig,
+    originalMessage: string,
+  ): string {
+    const sharedContext = this.buildSharedContextPrompt(summaries, contextConfig, originalMessage);
+    const sections = [
+      sharedContext,
+      sharedContext ? "Current handoff return:" : "",
+      `Delegated agent: ${frame.delegateAgentId}`,
+      frame.task ? `Original delegated task: ${frame.task}` : "",
+      frame.context ? `Original context: ${frame.context}` : "",
+      frame.expectedOutput ? `Expected output: ${frame.expectedOutput}` : "",
+      frame.reason ? `Original handoff reason: ${frame.reason}` : "",
+      delegateOutput ? `Delegated result:\n${delegateOutput}` : "",
+      "Continue from this returned result and respond to the user or hand off again only if another specialist is required.",
+    ].filter((section) => section.length > 0);
+    return sections.join("\n\n");
+  }
+
+  private getLastAssistantText(agentId: string, ctx: ModeExecutionContext): string {
+    const active = ctx.agents.get(agentId);
+    if (!active) {
+      return "";
+    }
+    const lastAssistant = [...active.agent.state.messages]
+      .reverse()
+      .find((message: any) => message.role === "assistant");
+    return lastAssistant ? extractText(lastAssistant.content).trim() : "";
   }
 
   private truncateText(input: string, maxChars: number): string {

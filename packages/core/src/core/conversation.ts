@@ -11,7 +11,7 @@ import { createWorkspaceManager } from "../tools/workspace/manager.js";
 import { storedToMessage } from "../storage/message-mapper.js";
 import type { ModeExecutor } from "../modes/types.js";
 import { ChatMode } from "../modes/chat.js";
-import { SwarmMode } from "../modes/swarm-mode.js";
+import { HandoffChainMode } from "../modes/handoff-chain.js";
 import { DebateMode } from "../modes/debate.js";
 import { TeamMode } from "../modes/team.js";
 import { RefineMode } from "../modes/refine.js";
@@ -158,7 +158,7 @@ export class Conversation {
       type: "swarm_end",
       swarmId: this.swarmConfig.id,
       conversationId: this.id,
-      finalMessage: "",
+      finalMessage: await getLastAssistantMessage(this.storage, this.id),
     } as SwarmEvent;
     this.eventBus.emit(endEvent);
     yield endEvent;
@@ -187,7 +187,7 @@ export class Conversation {
   private getModeExecutor(): ModeExecutor {
     switch (this.swarmConfig.mode) {
       case "chat": return new ChatMode();
-      case "swarm": return new SwarmMode();
+      case "handoff_chain": return new HandoffChainMode();
       case "debate": return new DebateMode();
       case "team": return new TeamMode();
       case "refine": return new RefineMode();
@@ -232,4 +232,10 @@ async function setTitleFromFirstMessage(
   const titleText = message || (images?.length ? "图片消息" : "消息");
   const title = titleText.length > 50 ? titleText.slice(0, 50) + "…" : titleText;
   await storage.updateConversationTitle(conversationId, title);
+}
+
+async function getLastAssistantMessage(storage: IStorage, conversationId: string): Promise<string> {
+  const history = await storage.getMessages(conversationId);
+  const lastAssistant = [...history].reverse().find((message: StoredMessage) => message.role === "assistant");
+  return lastAssistant?.content ?? "";
 }

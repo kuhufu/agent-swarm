@@ -35,7 +35,7 @@ describe("tool runtime", () => {
     const swarmConfig: SwarmConfig = {
       id: "swarm",
       name: "swarm",
-      mode: "swarm",
+      mode: "handoff_chain",
       agents: [config],
     };
 
@@ -69,7 +69,7 @@ describe("tool runtime", () => {
     const swarmConfig: SwarmConfig = {
       id: "swarm",
       name: "swarm",
-      mode: "swarm",
+      mode: "handoff_chain",
       agents: [config],
     };
 

@@ -14,7 +14,7 @@ defineProps<{
   </svg>
 
   <!-- Swarm -->
-  <svg v-else-if="mode === 'swarm'" :width="size ?? 20" :height="size ?? 20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <svg v-else-if="mode === 'handoff_chain'" :width="size ?? 20" :height="size ?? 20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <polygon points="12 2 22 7 22 17 12 22 2 17 2 7" />
     <polygon points="12 6 17 8.5 17 13.5 12 16 7 13.5 7 8.5" />
     <circle cx="12" cy="11" r="1.5" fill="currentColor" stroke="none" />

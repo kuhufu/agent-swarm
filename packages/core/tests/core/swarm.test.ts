@@ -25,7 +25,7 @@ function createSwarmConfig(id: string): SwarmConfig {
   return {
     id,
     name: id,
-    mode: "swarm",
+    mode: "handoff_chain",
     agents: [
       {
         id: `${id}_agent_1`,
@@ -131,7 +131,7 @@ describe("AgentSwarm persistence", () => {
     const validSwarm: SwarmConfig = {
       id: "test_swarm",
       name: "Test Swarm",
-      mode: "swarm",
+      mode: "handoff_chain",
       agents: [
         {
           id: "agent_1",

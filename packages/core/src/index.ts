@@ -98,7 +98,7 @@ export type { MCPServerConfig, MCPTransport, MCPTool, MCPServerStatus } from "./
 export { createMCPToolProvider, createAllMCPTools } from "./tools/mcp/tool-provider.js";
 // Modes
 export { ChatMode } from "./modes/chat.js";
-export { SwarmMode } from "./modes/swarm-mode.js";
+export { HandoffChainMode } from "./modes/handoff-chain.js";
 export { DebateMode } from "./modes/debate.js";
 export { TeamMode } from "./modes/team.js";
 export { runAgent, extractText, getStrategy } from "./modes/run-agent.js";

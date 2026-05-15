@@ -22,13 +22,13 @@ const MODE_CONFIGS: Record<string, ModeConfig> = {
     desc: "单 Agent 直接对话",
     icon: "💬",
   },
-  swarm: {
-    label: "Swarm 蜂群",
-    labelZh: "蜂群",
+  handoff_chain: {
+    label: "Handoff Chain 接力",
+    labelZh: "接力",
     color: "#fbbf24",
     bg: "rgba(251, 191, 36, 0.1)",
-    desc: "去中心化协作",
-    icon: "🐝",
+    desc: "Agent 交接接力链",
+    icon: "↪",
   },
   debate: {
     label: "Debate 辩论",
@@ -75,11 +75,11 @@ export const MODE_LABEL_ZH: Record<string, string> = Object.fromEntries(
 );
 
 /** Mode options for selection UIs */
-export type CollaborationMode = "chat" | "swarm" | "debate" | "team" | "refine";
+export type CollaborationMode = "chat" | "handoff_chain" | "debate" | "team" | "refine";
 
 /** Mode options for selection UIs */
 export const MODE_OPTIONS: { value: CollaborationMode; label: string; desc: string; icon: string }[] = [
-  { value: "swarm", label: "Swarm 蜂群", desc: "去中心化协作", icon: "🐝" },
+  { value: "handoff_chain", label: "Handoff Chain 接力", desc: "Agent 交接接力链", icon: "↪" },
   { value: "team", label: "Team 团队", desc: "Owner 路由协作", icon: "▦" },
   { value: "refine", label: "Refine 打磨", desc: "生成-审视-修订循环", icon: "◇" },
   { value: "chat", label: "Chat 直接", desc: "单 Agent 直接对话", icon: "💬" },

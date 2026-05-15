@@ -4,7 +4,7 @@ import type { AgentTool } from "@mariozechner/pi-agent-core";
 // Collaboration Mode
 // ============================================================================
 
-export type CollaborationMode = "chat" | "swarm" | "debate" | "team" | "refine";
+export type CollaborationMode = "chat" | "handoff_chain" | "debate" | "team" | "refine";
 
 export interface DebateConfig {
   rounds: number;
@@ -114,10 +114,10 @@ export interface SwarmConfig {
   interventions?: Partial<Record<InterventionPoint, InterventionStrategy>>;
   maxTotalTurns?: number;
   maxConcurrency?: number;
-  swarmContext?: SwarmContextConfig;
+  handoffContext?: HandoffContextConfig;
 }
 
-export interface SwarmContextConfig {
+export interface HandoffContextConfig {
   mode: "handoff_only" | "summary";
   maxAgentSummaries?: number;
   maxSummaryChars?: number;

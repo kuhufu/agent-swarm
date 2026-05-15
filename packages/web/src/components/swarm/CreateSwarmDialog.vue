@@ -16,7 +16,7 @@ const emit = defineEmits<{
 const modes = MODE_OPTIONS;
 
 const name = ref("");
-const mode = ref<CollaborationMode>("swarm");
+const mode = ref<CollaborationMode>("handoff_chain");
 const agents = reactive<SwarmAgentConfig[]>([]);
 
 const showAgentForm = ref(false);

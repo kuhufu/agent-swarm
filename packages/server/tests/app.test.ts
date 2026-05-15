@@ -41,7 +41,7 @@ function createMockSwarm() {
   swarms.set("test_swarm", {
     id: "test_swarm",
     name: "Test Swarm",
-    mode: "swarm",
+    mode: "handoff_chain",
     agents: [{ id: "agent_1", name: "Agent 1", description: "Test agent", systemPrompt: "You are a helpful assistant.", model: { provider: "openai", modelId: "gpt-4o-mini" } }],
   });
 
@@ -445,7 +445,7 @@ describe("API routes", () => {
       const data = await response.json() as { data: SwarmConfig };
       expect(response.status).toBe(200);
       expect(data.data.name).toBe("Test Swarm Updated");
-      expect(data.data.mode).toBe("swarm");
+      expect(data.data.mode).toBe("handoff_chain");
     } finally {
       await server.close();
     }
@@ -872,7 +872,7 @@ describe("API routes", () => {
       const response = await fetch(`${server.baseUrl}/api/swarms`, {
         method: "POST",
         headers: withAuthHeaders({ "content-type": "application/json" }),
-        body: JSON.stringify({ name: "Test Swarm", mode: "swarm", agents: [] }),
+        body: JSON.stringify({ name: "Test Swarm", mode: "handoff_chain", agents: [] }),
       });
       expect(response.status).toBe(400);
     } finally {
@@ -888,7 +888,7 @@ describe("API routes", () => {
         headers: withAuthHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           name: "Intervention Swarm",
-          mode: "swarm",
+          mode: "handoff_chain",
           agents: [{ id: "agent_1", name: "Agent 1", description: "", systemPrompt: "", model: { provider: "openai", modelId: "gpt-4o-mini" } }],
           interventions: { before_tool_call: "confirm" },
         }),
@@ -909,7 +909,7 @@ describe("API routes", () => {
         headers: withAuthHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           name: "Bad Intervention Swarm",
-          mode: "swarm",
+          mode: "handoff_chain",
           agents: [{ id: "agent_1", name: "Agent 1", description: "", systemPrompt: "", model: { provider: "openai", modelId: "gpt-4o-mini" } }],
           interventions: [{ point: "before_tool_call", strategy: "confirm" }],
         }),

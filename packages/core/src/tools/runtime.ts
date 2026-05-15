@@ -96,7 +96,7 @@ export function createRuntimeTools(
   const enabledTools = new Set(runtimeOptions.enabledTools);
   const availableAgents = getAvailableAgents(swarmConfig);
 
-  if (swarmConfig.mode === "swarm") {
+  if (swarmConfig.mode === "handoff_chain") {
     tools.push(createHandoffTool(availableAgents.filter((agent) => agent.id !== config.id)));
   }
 

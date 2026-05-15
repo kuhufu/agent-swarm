@@ -159,7 +159,7 @@ function getSwarmMode(swarmId: string): string {
   if (swarmId.startsWith("__direct_")) {
     return "chat";
   }
-  return swarmStore.swarms.find((s: SwarmConfig) => s.id === swarmId)?.mode ?? "swarm";
+  return swarmStore.swarms.find((s: SwarmConfig) => s.id === swarmId)?.mode ?? "handoff_chain";
 }
 
 function getRoleLabel(role: string): string {

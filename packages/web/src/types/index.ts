@@ -10,10 +10,10 @@ export interface SwarmConfig {
   debateConfig?: DebateConfig;
   maxTotalTurns?: number;
   maxConcurrency?: number;
-  swarmContext?: SwarmContextConfig;
+  handoffContext?: HandoffContextConfig;
 }
 
-export interface SwarmContextConfig {
+export interface HandoffContextConfig {
   mode: "handoff_only" | "summary";
   maxAgentSummaries?: number;
   maxSummaryChars?: number;
@@ -27,7 +27,7 @@ export interface DebateConfig {
   judgeAgent: string;
 }
 
-export type CollaborationMode = "chat" | "swarm" | "debate" | "team" | "refine";
+export type CollaborationMode = "chat" | "handoff_chain" | "debate" | "team" | "refine";
 
 export interface SwarmAgentConfig {
   id: string;

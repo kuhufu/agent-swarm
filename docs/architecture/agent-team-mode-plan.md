@@ -396,7 +396,7 @@ packages/core/src/modes/team.ts
 - `prompts.ts`：集中维护 Owner/Worker/Verifier prompt。
 - `types.ts`：Team 类型、事件 payload 和 schema。
 
-`SwarmMode` 的 handoff、介入、循环保护和共享摘要可作为参考，但 `team` 不应复用 handoff 作为核心调度协议。Team 的任务推进应由 Engine 的状态机驱动。
+`HandoffChainMode` 的 handoff、介入、循环保护和共享摘要可作为参考，但 `team` 不应复用 handoff 作为核心调度协议。Team 的任务推进应由 Engine 的状态机驱动。
 
 ## Server 实现落点
 
@@ -560,7 +560,7 @@ Web 测试：
 | Agent 自由调度失控 | 无限循环或越权 | 所有任务创建、重试和停止由 Engine 控制 |
 | 上下文污染 | Worker/Verifier 判断偏差 | 角色上下文隔离，产物通过 artifact 引用 |
 | UI 信息过载 | 用户无法理解过程 | 默认展示摘要，详情按任务展开 |
-| 与 swarm handoff 概念混淆 | 架构边界不清 | `swarm` 继续是 handoff 协作，`team` 是任务状态机协作 |
+| 与 handoff chain 概念混淆 | 架构边界不清 | `handoff_chain` 是接力协作，`team` 是任务状态机协作 |
 
 ## 开放问题
 

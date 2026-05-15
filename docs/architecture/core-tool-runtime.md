@@ -7,7 +7,7 @@
 - `createToolRuntimeOptions(input)`：规范化 `enabledTools`，补齐默认前端工具执行器。
 - `createRuntimeTool(tool)` / `createRuntimeTool(id, tools)`：把一个或多个 `AgentTool` 封装成统一的 `RuntimeTool`。
 - `AgentSwarm.createToolRuntimeAvailability(context)`：按 `conversationId/userId/workspaceId` 创建可用工具资源，不读取 `enabledTools`；`workspaceId` 为空时不创建 workspace runtime tool。
-- `withRuntimeTools(config, swarmConfig, runtimeOptions)`：基于 Swarm 模式和运行时开关，为单个 Agent 合并工具。
+- `withRuntimeTools(config, swarmConfig, runtimeOptions)`：基于协作模式和运行时开关，为单个 Agent 合并工具。
 - `createRuntimeTools(config, swarmConfig, runtimeOptions)`：只生成运行时工具列表，按工具名去重。
 - `createClientToolDefinitions()`：集中定义前端桥接工具声明，目前包含 `current_time`、`javascript_execute` 和 `ask_user`。
 
@@ -16,7 +16,7 @@
 运行时会按以下顺序合并工具，已有同名工具优先保留：
 
 1. Agent 配置中的 `config.tools`。
-2. 模式内置工具：`swarm` 模式 Agent 自动获得 `handoff`。
+2. 模式内置工具：`handoff_chain` 模式 Agent 自动获得 `handoff`。
 3. 前端桥接工具：`enabledTools` 包含 `current_time`、`javascript_execute` 或 `ask_user` 时注入。
 4. 服务端内置工具：`enabledTools` 包含 `web_search` 时注入 `createWebSearchTool()`。
 5. MCP 工具：`enabledTools` 包含 `mcp` 时注入所有已发现 MCP 工具。
@@ -46,28 +46,28 @@ WebSocket 层只传递用户选择的 `enabledTools` 和前端工具执行器。
 
 聊天工具卡会优先读取这组结构化字段，并把返回值、日志和代码分区展示；实时 WebSocket 事件和历史消息恢复都使用同一套展示逻辑。若历史记录中 `details` 已被合并到工具结果根对象，前端也会兼容读取。
 
-## Swarm handoff 协议
+## Handoff Chain 协议
 
-`handoff` 是 `swarm` 模式的内置调度协议，不是普通工具副作用。Agent 调用 `handoff` 只是在提出交接请求；`SwarmMode` 会完成目标校验、`on_handoff` 介入审批、循环保护和事件记录，审批通过后才中断当前 Agent 并把控制权交给目标 Agent。
+`handoff` 是 `handoff_chain` 模式的内置调度协议，不是普通工具副作用。Agent 调用 `handoff` 只是在提出交接请求；`HandoffChainMode` 会完成目标校验、`on_handoff` 介入审批、循环保护和事件记录，审批通过后才中断当前 Agent 并把控制权交给目标 Agent。
 
 `handoff` 参数：
 
 - `agentId`：目标 Agent ID，必须来自当前 Swarm 可用 Agent 列表。
-- `message`：兼容旧用法的交接消息，可为空。
+- `message`：交接消息，可为空。
 - `reason`：交接原因。
 - `task`：目标 Agent 应完成的具体任务。
 - `context`：目标 Agent 需要的上下文。
 - `expectedOutput`：目标 Agent 应返回的结果形态。
 - `returnToAgentId`：可选的回交 Agent ID，用于表达接力计划。
 
-执行器只识别工具名为 `handoff` 且执行成功的工具结果。其他工具返回 `details.handoffTo` 不会触发切换。`SwarmMode` 会把结构化字段组装成目标 Agent 的输入，并在 `handoff` 事件里透传这些字段，便于前端展示协作链路。连续 `A -> B -> A` 且任务上下文相同的短循环会被拒绝；全局轮次仍受 `maxTotalTurns` 控制。
+执行器只识别工具名为 `handoff` 且执行成功的工具结果。其他工具返回 `details.handoffTo` 不会触发切换。`HandoffChainMode` 会把结构化字段组装成目标 Agent 的输入，并在 `handoff` 事件里透传这些字段，便于前端展示协作链路。同一任务的反向交接、重复交接和长链回环会被拒绝；如果下一跳会超过 `maxTotalTurns`，执行器不会发出 handoff 事件，也不会启动目标 Agent。
 
 ### 共享上下文摘要
 
-`SwarmMode` 支持 `swarmContext` 配置：
+`HandoffChainMode` 支持 `handoffContext` 配置：
 
 ```ts
-swarmContext?: {
+handoffContext?: {
   mode: "handoff_only" | "summary";
   maxAgentSummaries?: number;
   maxSummaryChars?: number;
@@ -75,7 +75,7 @@ swarmContext?: {
 }
 ```
 
-默认模式为 `summary`。每个 Agent 执行结束后，执行器从该 Agent 最后一条 assistant 消息提取轻量摘要，保存在本次 Swarm 执行的共享工作记忆中。下一次 handoff 时，目标 Agent 的输入会包含：
+默认模式为 `summary`。每个 Agent 执行结束后，执行器从该 Agent 最后一条 assistant 消息提取轻量摘要，保存在本次 Handoff Chain 执行的共享工作记忆中。下一次 handoff 或自动回交时，目标 Agent 的输入会包含：
 
 - 原始用户请求。
 - 最近若干个 Agent 的摘要。

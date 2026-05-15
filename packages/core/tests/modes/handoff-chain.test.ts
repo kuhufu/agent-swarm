@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import type { SwarmConfig, SwarmAgentConfig, SwarmEvent } from "../../src/core/types.js";
 import type { ModeExecutionContext } from "../../src/modes/types.js";
 import type { IStorage } from "../../src/storage/interface.js";
-import { SwarmMode } from "../../src/modes/swarm-mode.js";
+import { HandoffChainMode } from "../../src/modes/handoff-chain.js";
 
 interface FakeAgentOptions {
   assistantText: string;
@@ -10,6 +10,7 @@ interface FakeAgentOptions {
   handoffMessage?: string;
   handoffDetails?: Record<string, unknown>;
   handoffToolName?: string;
+  handoffPromptLimit?: number;
   skipAgentEnd?: boolean;
 }
 
@@ -66,7 +67,7 @@ class FakeAgent {
     this.emit({ type: "agent_start" });
     this.emit({ type: "message_start", message: { role: "assistant" } });
 
-    if (this.options.handoffTo) {
+    if (this.options.handoffTo && this.prompts.length <= (this.options.handoffPromptLimit ?? Number.POSITIVE_INFINITY)) {
       const toolName = this.options.handoffToolName ?? "handoff";
       this.emit({
         type: "tool_execution_start",
@@ -321,7 +322,7 @@ function createStorageMock(): IStorage {
   } as unknown as IStorage;
 }
 
-describe("SwarmMode", () => {
+describe("HandoffChainMode", () => {
   it("ignores self handoff and does not re-run the same agent", async () => {
     const firstAgentId = "agent-a";
     const secondAgentId = "agent-b";
@@ -342,9 +343,9 @@ describe("SwarmMode", () => {
     const emittedEvents: SwarmEvent[] = [];
     const ctx: ModeExecutionContext = {
       swarmConfig: {
-        id: "swarm-self-handoff",
-        name: "swarm-self-handoff",
-        mode: "swarm",
+        id: "handoff-chain-self-handoff",
+        name: "handoff-chain-self-handoff",
+        mode: "handoff_chain",
         agents: configs,
         maxTotalTurns: 5,
       } as SwarmConfig,
@@ -359,7 +360,7 @@ describe("SwarmMode", () => {
       isAborted: () => false,
     };
 
-    const mode = new SwarmMode();
+    const mode = new HandoffChainMode();
     for await (const _event of mode.execute(ctx)) {
       // consume stream
     }
@@ -387,9 +388,9 @@ describe("SwarmMode", () => {
     const yieldedEvents: SwarmEvent[] = [];
     const ctx: ModeExecutionContext = {
       swarmConfig: {
-        id: "swarm-missing-handoff",
-        name: "swarm-missing-handoff",
-        mode: "swarm",
+        id: "handoff-chain-missing-handoff",
+        name: "handoff-chain-missing-handoff",
+        mode: "handoff_chain",
         agents: configs,
         maxTotalTurns: 5,
       } as SwarmConfig,
@@ -404,7 +405,7 @@ describe("SwarmMode", () => {
       isAborted: () => false,
     };
 
-    const mode = new SwarmMode();
+    const mode = new HandoffChainMode();
     for await (const event of mode.execute(ctx)) {
       yieldedEvents.push(event);
     }
@@ -442,9 +443,9 @@ describe("SwarmMode", () => {
     const yieldedEvents: SwarmEvent[] = [];
     const ctx: ModeExecutionContext = {
       swarmConfig: {
-        id: "swarm-no-agent-end",
-        name: "swarm-no-agent-end",
-        mode: "swarm",
+        id: "handoff-chain-no-agent-end",
+        name: "handoff-chain-no-agent-end",
+        mode: "handoff_chain",
         agents: configs,
         maxTotalTurns: 5,
       } as SwarmConfig,
@@ -459,7 +460,7 @@ describe("SwarmMode", () => {
       isAborted: () => false,
     };
 
-    const mode = new SwarmMode();
+    const mode = new HandoffChainMode();
     for await (const event of mode.execute(ctx)) {
       yieldedEvents.push(event);
     }
@@ -495,9 +496,9 @@ describe("SwarmMode", () => {
     const emittedEvents: SwarmEvent[] = [];
     const ctx: ModeExecutionContext = {
       swarmConfig: {
-        id: "swarm-non-handoff-tool",
-        name: "swarm-non-handoff-tool",
-        mode: "swarm",
+        id: "handoff-chain-non-handoff-tool",
+        name: "handoff-chain-non-handoff-tool",
+        mode: "handoff_chain",
         agents: configs,
         maxTotalTurns: 5,
       } as SwarmConfig,
@@ -512,7 +513,7 @@ describe("SwarmMode", () => {
       isAborted: () => false,
     };
 
-    const mode = new SwarmMode();
+    const mode = new HandoffChainMode();
     for await (const _event of mode.execute(ctx)) {
       // consume stream
     }
@@ -538,9 +539,9 @@ describe("SwarmMode", () => {
     const emittedEvents: SwarmEvent[] = [];
     const ctx: ModeExecutionContext = {
       swarmConfig: {
-        id: "swarm-reject-handoff",
-        name: "swarm-reject-handoff",
-        mode: "swarm",
+        id: "handoff-chain-reject-handoff",
+        name: "handoff-chain-reject-handoff",
+        mode: "handoff_chain",
         agents: configs,
         maxTotalTurns: 5,
         interventions: { on_handoff: "confirm" },
@@ -557,7 +558,7 @@ describe("SwarmMode", () => {
       interventionCallback: async () => ({ action: "reject" }),
     };
 
-    const mode = new SwarmMode();
+    const mode = new HandoffChainMode();
     for await (const _event of mode.execute(ctx)) {
       // consume stream
     }
@@ -594,9 +595,9 @@ describe("SwarmMode", () => {
     const emittedEvents: SwarmEvent[] = [];
     const ctx: ModeExecutionContext = {
       swarmConfig: {
-        id: "swarm-structured-handoff",
-        name: "swarm-structured-handoff",
-        mode: "swarm",
+        id: "handoff-chain-structured-handoff",
+        name: "handoff-chain-structured-handoff",
+        mode: "handoff_chain",
         agents: configs,
         maxTotalTurns: 5,
       } as SwarmConfig,
@@ -611,7 +612,7 @@ describe("SwarmMode", () => {
       isAborted: () => false,
     };
 
-    const mode = new SwarmMode();
+    const mode = new HandoffChainMode();
     for await (const _event of mode.execute(ctx)) {
       // consume stream
     }
@@ -653,12 +654,12 @@ describe("SwarmMode", () => {
 
     const ctx: ModeExecutionContext = {
       swarmConfig: {
-        id: "swarm-handoff-only-context",
-        name: "swarm-handoff-only-context",
-        mode: "swarm",
+        id: "handoff-chain-handoff-only-context",
+        name: "handoff-chain-handoff-only-context",
+        mode: "handoff_chain",
         agents: configs,
         maxTotalTurns: 5,
-        swarmContext: { mode: "handoff_only" },
+        handoffContext: { mode: "handoff_only" },
       } as SwarmConfig,
       message: "start",
       conversationId: "conv-1",
@@ -671,7 +672,7 @@ describe("SwarmMode", () => {
       isAborted: () => false,
     };
 
-    const mode = new SwarmMode();
+    const mode = new HandoffChainMode();
     for await (const _event of mode.execute(ctx)) {
       // consume stream
     }
@@ -706,9 +707,9 @@ describe("SwarmMode", () => {
     const yieldedEvents: SwarmEvent[] = [];
     const ctx: ModeExecutionContext = {
       swarmConfig: {
-        id: "swarm-loop-guard",
-        name: "swarm-loop-guard",
-        mode: "swarm",
+        id: "handoff-chain-loop-guard",
+        name: "handoff-chain-loop-guard",
+        mode: "handoff_chain",
         agents: configs,
         maxTotalTurns: 5,
       } as SwarmConfig,
@@ -723,7 +724,7 @@ describe("SwarmMode", () => {
       isAborted: () => false,
     };
 
-    const mode = new SwarmMode();
+    const mode = new HandoffChainMode();
     for await (const event of mode.execute(ctx)) {
       yieldedEvents.push(event);
     }
@@ -735,6 +736,185 @@ describe("SwarmMode", () => {
     expect(loopError?.type).toBe("error");
     if (loopError?.type === "error") {
       expect(loopError.error.message).toContain("Rejected handoff loop");
+    }
+  });
+
+  it("returns delegated output to returnToAgentId when the target finishes without another handoff", async () => {
+    const firstAgentId = "agent-a";
+    const secondAgentId = "agent-b";
+    const configs = [createAgentConfig(firstAgentId), createAgentConfig(secondAgentId)];
+
+    const firstAgent = new FakeAgent({
+      assistantText: "first final",
+      handoffTo: secondAgentId,
+      handoffMessage: "delegate once",
+      handoffPromptLimit: 1,
+      handoffDetails: {
+        task: "review plan",
+        context: "handoff chain context",
+        expectedOutput: "review result",
+        returnToAgentId: firstAgentId,
+      },
+    });
+    const secondAgent = new FakeAgent({ assistantText: "second review result" });
+
+    const agents = new Map<string, { agent: any; config: SwarmAgentConfig }>([
+      [firstAgentId, { agent: firstAgent as any, config: configs[0] }],
+      [secondAgentId, { agent: secondAgent as any, config: configs[1] }],
+    ]);
+
+    const emittedEvents: SwarmEvent[] = [];
+    const ctx: ModeExecutionContext = {
+      swarmConfig: {
+        id: "handoff-chain-return-to-agent",
+        name: "handoff-chain-return-to-agent",
+        mode: "handoff_chain",
+        agents: configs,
+        maxTotalTurns: 5,
+      } as SwarmConfig,
+      message: "start",
+      conversationId: "conv-1",
+      storage: createStorageMock(),
+      llmConfig: { apiKeys: {} },
+      agents,
+      createAgentFn: () => undefined,
+      emit: (event) => { emittedEvents.push(event); },
+      abort: () => undefined,
+      isAborted: () => false,
+    };
+
+    const mode = new HandoffChainMode();
+    for await (const _event of mode.execute(ctx)) {
+      // consume stream
+    }
+
+    expect(firstAgent.prompts).toHaveLength(2);
+    expect(secondAgent.prompts).toHaveLength(1);
+    expect(firstAgent.prompts[1]).toContain("Current handoff return:");
+    expect(firstAgent.prompts[1]).toContain("Delegated agent: agent-b");
+    expect(firstAgent.prompts[1]).toContain("Delegated result:\nsecond review result");
+    expect(emittedEvents.filter((event) => event.type === "handoff")).toHaveLength(2);
+  });
+
+  it("rejects longer same-task handoff cycles", async () => {
+    const firstAgentId = "agent-a";
+    const secondAgentId = "agent-b";
+    const thirdAgentId = "agent-c";
+    const configs = [
+      createAgentConfig(firstAgentId),
+      createAgentConfig(secondAgentId),
+      createAgentConfig(thirdAgentId),
+    ];
+
+    const firstAgent = new FakeAgent({
+      assistantText: "first",
+      handoffTo: secondAgentId,
+      handoffMessage: "same task",
+    });
+    const secondAgent = new FakeAgent({
+      assistantText: "second",
+      handoffTo: thirdAgentId,
+      handoffMessage: "same task",
+    });
+    const thirdAgent = new FakeAgent({
+      assistantText: "third",
+      handoffTo: firstAgentId,
+      handoffMessage: "same task",
+    });
+
+    const agents = new Map<string, { agent: any; config: SwarmAgentConfig }>([
+      [firstAgentId, { agent: firstAgent as any, config: configs[0] }],
+      [secondAgentId, { agent: secondAgent as any, config: configs[1] }],
+      [thirdAgentId, { agent: thirdAgent as any, config: configs[2] }],
+    ]);
+
+    const emittedEvents: SwarmEvent[] = [];
+    const yieldedEvents: SwarmEvent[] = [];
+    const ctx: ModeExecutionContext = {
+      swarmConfig: {
+        id: "handoff-chain-long-loop-guard",
+        name: "handoff-chain-long-loop-guard",
+        mode: "handoff_chain",
+        agents: configs,
+        maxTotalTurns: 6,
+      } as SwarmConfig,
+      message: "start",
+      conversationId: "conv-1",
+      storage: createStorageMock(),
+      llmConfig: { apiKeys: {} },
+      agents,
+      createAgentFn: () => undefined,
+      emit: (event) => { emittedEvents.push(event); },
+      abort: () => undefined,
+      isAborted: () => false,
+    };
+
+    const mode = new HandoffChainMode();
+    for await (const event of mode.execute(ctx)) {
+      yieldedEvents.push(event);
+    }
+
+    expect(firstAgent.prompts).toHaveLength(1);
+    expect(secondAgent.prompts).toHaveLength(1);
+    expect(thirdAgent.prompts).toHaveLength(1);
+    expect(emittedEvents.filter((event) => event.type === "handoff")).toHaveLength(2);
+    const loopError = yieldedEvents.find((event) => event.type === "error");
+    expect(loopError?.type).toBe("error");
+    if (loopError?.type === "error") {
+      expect(loopError.error.message).toContain("Rejected handoff loop");
+    }
+  });
+
+  it("does not emit a handoff event when the next target would exceed maxTotalTurns", async () => {
+    const firstAgentId = "agent-a";
+    const secondAgentId = "agent-b";
+    const configs = [createAgentConfig(firstAgentId), createAgentConfig(secondAgentId)];
+
+    const firstAgent = new FakeAgent({
+      assistantText: "first",
+      handoffTo: secondAgentId,
+      handoffMessage: "over budget",
+    });
+    const secondAgent = new FakeAgent({ assistantText: "second" });
+
+    const agents = new Map<string, { agent: any; config: SwarmAgentConfig }>([
+      [firstAgentId, { agent: firstAgent as any, config: configs[0] }],
+      [secondAgentId, { agent: secondAgent as any, config: configs[1] }],
+    ]);
+
+    const emittedEvents: SwarmEvent[] = [];
+    const yieldedEvents: SwarmEvent[] = [];
+    const ctx: ModeExecutionContext = {
+      swarmConfig: {
+        id: "handoff-chain-turn-limit",
+        name: "handoff-chain-turn-limit",
+        mode: "handoff_chain",
+        agents: configs,
+        maxTotalTurns: 1,
+      } as SwarmConfig,
+      message: "start",
+      conversationId: "conv-1",
+      storage: createStorageMock(),
+      llmConfig: { apiKeys: {} },
+      agents,
+      createAgentFn: () => undefined,
+      emit: (event) => { emittedEvents.push(event); },
+      abort: () => undefined,
+      isAborted: () => false,
+    };
+
+    const mode = new HandoffChainMode();
+    for await (const event of mode.execute(ctx)) {
+      yieldedEvents.push(event);
+    }
+
+    expect(firstAgent.prompts).toHaveLength(1);
+    expect(secondAgent.prompts).toHaveLength(0);
+    expect(emittedEvents.some((event) => event.type === "handoff")).toBe(false);
+    const turnLimitError = yieldedEvents.find((event) => event.type === "error");
+    expect(turnLimitError?.type).toBe("error");
+    if (turnLimitError?.type === "error") {
+      expect(turnLimitError.error.message).toContain("turn limit");
     }
   });
 
@@ -753,9 +933,9 @@ describe("SwarmMode", () => {
 
     const ctx: ModeExecutionContext = {
       swarmConfig: {
-        id: "swarm-handoff-abort-source",
-        name: "swarm-handoff-abort-source",
-        mode: "swarm",
+        id: "handoff-chain-handoff-abort-source",
+        name: "handoff-chain-handoff-abort-source",
+        mode: "handoff_chain",
         agents: configs,
         maxTotalTurns: 5,
       } as SwarmConfig,
@@ -770,14 +950,14 @@ describe("SwarmMode", () => {
       isAborted: () => false,
     };
 
-    const mode = new SwarmMode();
+    const mode = new HandoffChainMode();
     await Promise.race([
       (async () => {
         for await (const _event of mode.execute(ctx)) {
           // consume stream
         }
       })(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("swarm-mode timeout")), 1000)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("handoff-chain timeout")), 1000)),
     ]);
 
     expect(firstAgent.aborted).toBe(true);

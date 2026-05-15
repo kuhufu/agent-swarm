@@ -35,7 +35,7 @@ const interventionPointSchema = z.enum([
 const interventionStrategySchema = z.enum(["auto", "confirm", "review", "edit", "reject"]);
 
 const interventionsSchema = z.partialRecord(interventionPointSchema, interventionStrategySchema);
-const swarmContextSchema = z.object({
+const handoffContextSchema = z.object({
   mode: z.enum(["handoff_only", "summary"]),
   maxAgentSummaries: z.number().int().positive().optional(),
   maxSummaryChars: z.number().int().positive().optional(),
@@ -45,25 +45,25 @@ const swarmContextSchema = z.object({
 export const createSwarmSchema = z.object({
   name: z.string().min(1, "名称不能为空"),
   description: z.string().optional(),
-  mode: z.enum(["chat", "swarm", "debate", "team", "refine"]),
+  mode: z.enum(["chat", "handoff_chain", "debate", "team", "refine"]),
   agents: z.array(agentConfigSchema).min(1, "至少需要一个 Agent"),
   debateConfig: debatableConfigSchema.optional(),
   interventions: interventionsSchema.optional(),
   maxTotalTurns: z.number().int().positive().optional(),
   maxConcurrency: z.number().int().positive().optional(),
-  swarmContext: swarmContextSchema,
+  handoffContext: handoffContextSchema,
 });
 
 export const updateSwarmSchema = z.object({
   name: z.string().min(1, "名称不能为空").optional(),
   description: z.string().optional(),
-  mode: z.enum(["chat", "swarm", "debate", "team", "refine"]).optional(),
+  mode: z.enum(["chat", "handoff_chain", "debate", "team", "refine"]).optional(),
   agents: z.array(agentConfigSchema).min(1, "至少需要一个 Agent").optional(),
   debateConfig: debatableConfigSchema.optional(),
   interventions: interventionsSchema.optional(),
   maxTotalTurns: z.number().int().positive().optional(),
   maxConcurrency: z.number().int().positive().optional(),
-  swarmContext: swarmContextSchema,
+  handoffContext: handoffContextSchema,
 });
 
 export const createAgentPresetSchema = z.object({

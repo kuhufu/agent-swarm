@@ -8,8 +8,8 @@
 
 ## 核心能力
 
-- 五种协作模式：`chat`（直接对话）/ `swarm`（蜂群协作）/ `debate`（辩论）/ `team`（Owner 路由的通用团队协作）/ `refine`（生成-审视-修订打磨）
-- `swarm` 模式采用动态调度协议：Agent 通过结构化 `handoff` 提议交接，执行器负责审批、循环保护、事件记录和目标 Agent 切换
+- 五种协作模式：`chat`（直接对话）/ `handoff_chain`（Handoff Chain 接力）/ `debate`（辩论）/ `team`（Owner 路由的通用团队协作）/ `refine`（生成-审视-修订打磨）
+- `handoff_chain` 模式按 Handoff Chain 语义运行：Agent 通过结构化 `handoff` 提议交接，执行器负责审批、循环保护、事件记录、目标 Agent 切换，以及 `returnToAgentId` 的自动回交
 - `team` 模式由 Owner 私下判断是否需要组队；简单请求降级为单 Agent，复杂请求按 Analyst / Ideator / Critic / Synthesizer / Researcher 等通用角色执行，并通过 Team 事件记录过程
 - `refine` 模式采用 Human-in-the-loop Critique-and-Revise 协议，由拓展者和审视者循环完善输入，适合打磨想法、需求、方案、文档和报告
 - 直接对话模式：无需预建 swarm，可按会话选择 `provider + modelId`
@@ -282,17 +282,17 @@ pnpm --filter @agent-swarm/server test
 
 ### `send_message` 三种启动方式
 
-1. 指定 `swarmId`：走 swarm 模式会话。
+1. 指定 `swarmId`：走指定 Swarm 配置的会话。
 2. 指定 `conversationId`：续聊已有会话。
 3. 指定 `provider + modelId`：直接对话模式（不依赖预建 swarm）。
 
-### Swarm 模式 handoff 语义
+### Handoff Chain 模式语义
 
-`swarm` 模式不是固定流水线，而是由当前 Agent 发起结构化 `handoff` 提议，`SwarmMode` 作为调度器决定是否切换控制权。`handoff` 支持 `agentId/message/reason/task/context/expectedOutput/returnToAgentId` 字段；审批通过后才会中断当前 Agent 并启动目标 Agent。`handoff` 事件会透传 `reason/task/context/expectedOutput/returnToAgentId`，前端可用于展示协作链路。
+`handoff_chain` 是接力式协作模式：当前 Agent 发起结构化 `handoff` 提议，`HandoffChainMode` 作为接力调度器决定是否切换控制权。`handoff` 支持 `agentId/message/reason/task/context/expectedOutput/returnToAgentId` 字段；审批通过后才会中断当前 Agent 并启动目标 Agent。目标 Agent 完成且未继续 handoff 时，如果设置了有效的 `returnToAgentId`，执行器会把委托结果自动回交给该 Agent。`handoff` 事件会透传 `reason/task/context/expectedOutput/returnToAgentId`，前端可用于展示协作链路。
 
-执行器只把 `handoff` 工具的成功结果识别为交接提议，其他工具即使返回 `details.handoffTo` 也不会触发切换。连续反向交接同一任务会被拒绝，避免 `A -> B -> A` 的短循环；总轮次仍受 Swarm 的 `maxTotalTurns` 限制。
+执行器只把 `handoff` 工具的成功结果识别为交接提议，其他工具即使返回 `details.handoffTo` 也不会触发切换。同一任务的反向交接、重复交接和长链回环会被拒绝，避免 `A -> B -> A` 或 `A -> B -> C -> A` 这类循环；如果下一跳会超过 `maxTotalTurns`，执行器不会发出 handoff 事件，也不会启动目标 Agent。
 
-Swarm 还支持轻量共享上下文。`swarmContext.mode` 默认为 `summary`：每个 Agent 结束后，执行器从最后一条 assistant 输出中提取短摘要，并在下一次 handoff 时和原始用户请求一起注入目标 Agent 输入。可通过 `swarmContext: { mode: "handoff_only" }` 关闭共享摘要，仅传递当前 handoff payload。可选限制项包括 `maxAgentSummaries`、`maxSummaryChars`、`maxTotalChars`。
+Handoff Chain 还支持轻量共享上下文。`handoffContext.mode` 默认为 `summary`：每个 Agent 结束后，执行器从最后一条 assistant 输出中提取短摘要，并在下一次 handoff 或自动回交时和原始用户请求一起注入目标 Agent 输入。可通过 `handoffContext: { mode: "handoff_only" }` 关闭共享摘要，仅传递当前 handoff payload。可选限制项包括 `maxAgentSummaries`、`maxSummaryChars`、`maxTotalChars`。
 
 ### 多租户数据边界
 
@@ -387,7 +387,7 @@ export default defineConfig({
     {
        id: "research-team",
        name: "Research Team",
-       mode: "swarm",
+       mode: "handoff_chain",
        agents: [
          {
            id: "researcher",
