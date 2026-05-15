@@ -78,7 +78,6 @@ function createAgentConfig(id: string): SwarmAgentConfig {
 function createContext(
   outputForAgent: (agentId: string, input: string, promptIndex: number) => string,
   storedMessages: Awaited<ReturnType<IStorage["getMessages"]>> = [],
-  initialMetadata: Record<string, unknown> = {},
 ): ModeExecutionContext {
   const expander = createAgentConfig("expander");
   const critic = createAgentConfig("critic");
@@ -89,19 +88,15 @@ function createContext(
     agents: [expander, critic],
   };
   const agents = new Map<string, { agent: any; config: SwarmAgentConfig }>();
-  const metadata = new Map<string, unknown>();
-  for (const [key, value] of Object.entries(initialMetadata)) {
-    metadata.set(key, value);
-  }
   const appendMessage = vi.fn(async () => undefined);
-  const updateLatestAssistantMessageRole = vi.fn(async () => undefined);
+  const updateLatestAssistantMessageMetadata = vi.fn(async () => undefined);
   const getMessages = vi.fn(async () => storedMessages);
 
   return {
     swarmConfig,
     message: "帮我打磨一个需求分析 Agent 的产品想法",
     conversationId: "conv-1",
-    storage: { appendMessage, updateLatestAssistantMessageRole, getMessages } as unknown as IStorage,
+    storage: { appendMessage, updateLatestAssistantMessageMetadata, getMessages } as unknown as IStorage,
     llmConfig: { apiKeys: {} },
     agents,
     createAgentFn: (config) => {
@@ -113,11 +108,29 @@ function createContext(
     emit: () => undefined,
     abort: () => undefined,
     isAborted: () => false,
-    getMetadata: (key: string) => metadata.get(key),
-    setMetadata: vi.fn(async (key: string, value: unknown) => {
-      metadata.set(key, value);
-    }),
+    getMetadata: () => undefined,
+    setMetadata: vi.fn(async () => undefined),
   };
+}
+
+function refineMetadata(input: {
+  type: "expansion" | "critique" | "final_report";
+  runId?: string;
+  iteration: number;
+  stepId?: string;
+  role: "expander" | "critic";
+  approved?: boolean;
+}): string {
+  return JSON.stringify({
+    refine: {
+      runId: input.runId ?? "run-1",
+      stepId: input.stepId ?? `${input.type}-${input.iteration}`,
+      type: input.type,
+      iteration: input.iteration,
+      role: input.role,
+      approved: input.approved,
+    },
+  });
 }
 
 describe("RefineMode", () => {
@@ -138,22 +151,43 @@ describe("RefineMode", () => {
     expect(yielded.some((event) => event.type === "refine_review_completed" && event.approved === true)).toBe(true);
     expect(yielded.some((event) => event.type === "refine_final_report_completed" && event.output?.includes("最终报告"))).toBe(true);
     expect(yielded.some((event) => event.type === "refine_run_end" && event.status === "completed")).toBe(true);
-    expect(ctx.setMetadata).toHaveBeenCalledWith("refineResults", [
-      expect.objectContaining({
-        iteration: 1,
-        expanded: "拓展版本 1",
-        critique: "反馈：已经足够清晰。\nAPPROVED: true",
-        approved: true,
-      }),
-    ]);
+    expect(ctx.setMetadata).not.toHaveBeenCalled();
+    expect(ctx.storage.updateLatestAssistantMessageMetadata).toHaveBeenCalledWith(
+      "conv-1",
+      "expander__refine_expander",
+      {
+        refine: expect.objectContaining({
+          type: "expansion",
+          iteration: 1,
+          role: "expander",
+        }),
+      },
+    );
+    expect(ctx.storage.updateLatestAssistantMessageMetadata).toHaveBeenCalledWith(
+      "conv-1",
+      "critic__refine_critic",
+      {
+        refine: expect.objectContaining({
+          type: "critique",
+          iteration: 1,
+          role: "critic",
+          approved: true,
+        }),
+      },
+    );
     expect((ctx.storage.appendMessage as any).mock.calls.filter(([, message]: any[]) =>
       message.role === "assistant" && message.content === "最终报告：核心想法明确。"
     )).toHaveLength(1);
-    expect(ctx.storage.updateLatestAssistantMessageRole).toHaveBeenCalledWith(
+    expect(ctx.storage.updateLatestAssistantMessageMetadata).toHaveBeenCalledWith(
       "conv-1",
       "expander__refine_expander",
-      "final_report",
-      { type: "refine_final_report" },
+      {
+        refine: expect.objectContaining({
+          type: "final_report",
+          iteration: 1,
+          role: "expander",
+        }),
+      },
     );
   });
 
@@ -167,15 +201,17 @@ describe("RefineMode", () => {
       [
         {
           id: "old-report",
-          role: "final_report",
+          role: "assistant",
           content: "旧最终报告，不应该进入上下文。",
+          metadata: refineMetadata({ type: "final_report", iteration: 1, role: "expander" }),
           timestamp: 100,
           createdAt: 100,
         },
         {
           id: "latest-report",
-          role: "final_report",
+          role: "assistant",
           content: "上一轮最终报告，应该进入上下文。",
+          metadata: refineMetadata({ type: "final_report", iteration: 2, role: "expander" }),
           timestamp: 200,
           createdAt: 200,
         },
@@ -199,21 +235,24 @@ describe("RefineMode", () => {
     expect(firstPrompt).not.toContain("Historical final reports");
   });
 
-  it("limits fallback refineResults context to recent iterations when no final report exists", async () => {
+  it("resumes with critic when latest refine message is an expansion", async () => {
     const ctx = createContext(
       (agentId, input, promptIndex) => {
-        if (agentId.includes("critic")) return "反馈：可以收敛。\nAPPROVED: true";
-        if (input.includes("Generate the final report")) return "最终报告：基于最近轮次。";
-        return `拓展版本 ${promptIndex}`;
+        if (agentId.includes("critic")) return "反馈：扩展可用。\nAPPROVED: true";
+        if (input.includes("Generate the final report")) return "最终报告：从中断扩展恢复。";
+        return `不应该重新扩展 ${promptIndex}`;
       },
-      [],
-      {
-        refineResults: [
-          { iteration: 1, expanded: "旧拓展 1", critique: "旧反馈 1", approved: false },
-          { iteration: 2, expanded: "旧拓展 2", critique: "旧反馈 2", approved: false },
-          { iteration: 3, expanded: "旧拓展 3", critique: "旧反馈 3", approved: false },
-        ],
-      },
+      [
+        {
+          id: "expansion-1",
+          agentId: "expander__refine_expander",
+          role: "assistant",
+          content: "已保存的拓展版本。",
+          metadata: refineMetadata({ type: "expansion", iteration: 1, role: "expander" }),
+          timestamp: 100,
+          createdAt: 100,
+        },
+      ],
     );
 
     for await (const _event of new RefineMode().execute(ctx)) {
@@ -221,16 +260,91 @@ describe("RefineMode", () => {
     }
 
     const expander = ctx.agents.get("expander__refine_expander")?.agent as FakeAgent | undefined;
-    const firstPrompt = expander?.prompts[0] ?? "";
-    expect(firstPrompt).not.toContain("旧拓展 1");
-    expect(firstPrompt).toContain("旧拓展 2");
-    expect(firstPrompt).toContain("旧拓展 3");
-    expect(ctx.setMetadata).toHaveBeenCalledWith("refineResults", [
-      expect.objectContaining({ iteration: 1 }),
-      expect.objectContaining({ iteration: 2 }),
-      expect.objectContaining({ iteration: 3 }),
-      expect.objectContaining({ iteration: 1, expanded: "拓展版本 1" }),
-    ]);
+    const critic = ctx.agents.get("critic__refine_critic")?.agent as FakeAgent | undefined;
+    expect(expander?.prompts).toHaveLength(1);
+    expect(expander?.prompts[0]).toContain("Generate the final report");
+    expect(critic?.prompts[0]).toContain("已保存的拓展版本。");
+  });
+
+  it("resumes with next expander revision when latest critique is not approved", async () => {
+    const ctx = createContext(
+      (agentId, input, promptIndex) => {
+        if (agentId.includes("critic")) return "反馈：修订后可用。\nAPPROVED: true";
+        if (input.includes("Generate the final report")) return "最终报告：修订后收敛。";
+        return `修订版本 ${promptIndex}`;
+      },
+      [
+        {
+          id: "expansion-1",
+          agentId: "expander__refine_expander",
+          role: "assistant",
+          content: "第一轮拓展。",
+          metadata: refineMetadata({ type: "expansion", iteration: 1, role: "expander" }),
+          timestamp: 100,
+          createdAt: 100,
+        },
+        {
+          id: "critique-1",
+          agentId: "critic__refine_critic",
+          role: "assistant",
+          content: "第一轮反馈：需要补齐风险。\nAPPROVED: false",
+          metadata: refineMetadata({ type: "critique", iteration: 1, role: "critic", approved: false }),
+          timestamp: 200,
+          createdAt: 200,
+        },
+      ],
+    );
+
+    for await (const _event of new RefineMode().execute(ctx)) {
+      // consume generator
+    }
+
+    const expander = ctx.agents.get("expander__refine_expander")?.agent as FakeAgent | undefined;
+    expect(expander?.prompts[0]).toContain("This is iteration 2");
+    expect(expander?.prompts[0]).toContain("第一轮拓展。");
+    expect(expander?.prompts[0]).toContain("第一轮反馈：需要补齐风险。");
+  });
+
+  it("resumes with final report when latest critique is approved", async () => {
+    const ctx = createContext(
+      (agentId, input) => {
+        if (agentId.includes("critic")) return "不应该再次审视";
+        if (input.includes("Generate the final report")) return "最终报告：已通过后恢复。";
+        return "不应该再次拓展";
+      },
+      [
+        {
+          id: "expansion-1",
+          agentId: "expander__refine_expander",
+          role: "assistant",
+          content: "已通过的拓展。",
+          metadata: refineMetadata({ type: "expansion", iteration: 1, role: "expander" }),
+          timestamp: 100,
+          createdAt: 100,
+        },
+        {
+          id: "critique-1",
+          agentId: "critic__refine_critic",
+          role: "assistant",
+          content: "反馈：可以收敛。\nAPPROVED: true",
+          metadata: refineMetadata({ type: "critique", iteration: 1, role: "critic", approved: true }),
+          timestamp: 200,
+          createdAt: 200,
+        },
+      ],
+    );
+
+    for await (const _event of new RefineMode().execute(ctx)) {
+      // consume generator
+    }
+
+    const expander = ctx.agents.get("expander__refine_expander")?.agent as FakeAgent | undefined;
+    const critic = ctx.agents.get("critic__refine_critic")?.agent as FakeAgent | undefined;
+    expect(critic?.prompts).toHaveLength(0);
+    expect(expander?.prompts).toHaveLength(1);
+    expect(expander?.prompts[0]).toContain("Generate the final report");
+    expect(expander?.prompts[0]).toContain("已通过的拓展。");
+    expect(expander?.prompts[0]).toContain("反馈：可以收敛。");
   });
 
   it("continues revision until the default iteration limit", async () => {

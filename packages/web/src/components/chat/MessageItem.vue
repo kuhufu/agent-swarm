@@ -47,8 +47,18 @@ const metadataModelLabel = computed(() => {
   return `${meta.provider}/${meta.model}`;
 });
 
+const isRefineFinalReport = computed(() => {
+  const refine = props.message.metadata?.refine;
+  return Boolean(
+    refine
+    && typeof refine === "object"
+    && !Array.isArray(refine)
+    && (refine as Record<string, unknown>).type === "final_report",
+  );
+});
+
 const displayAgentName = computed(() => {
-  if (props.message.role === "assistant" || props.message.role === "final_report") {
+  if (props.message.role === "assistant") {
     if (props.isDirectMode) {
       return metadataModelLabel.value
         ?? props.message.agentName
@@ -97,8 +107,7 @@ function downloadImage(img: { data: string; mimeType: string }) {
 function roleClass(role: string): string {
   switch (role) {
     case "user": return "msg-user";
-    case "assistant": return "msg-assistant";
-    case "final_report": return "msg-final-report";
+    case "assistant": return isRefineFinalReport.value ? "msg-final-report" : "msg-assistant";
     case "tool_result": return "msg-tool";
     case "system": return "msg-system";
     default: return "msg-notification";
@@ -180,16 +189,16 @@ function handleFork() {
     <div class="msg-body">
       <!-- Header row: agent name + dot for assistant; user label + avatar for user -->
       <div class="msg-header">
-        <template v-if="message.role === 'assistant'">
-          <span class="agent-name-with-dot">
-            <span class="status-dot" :style="{ background: agentColor(message.agentId ?? message.agentName) }" />
-            {{ displayAgentName }}
-          </span>
-        </template>
-        <template v-else-if="message.role === 'final_report'">
+        <template v-if="message.role === 'assistant' && isRefineFinalReport">
           <span class="agent-name-with-dot">
             <span class="status-dot" :style="{ background: agentColor(message.agentId ?? message.agentName) }" />
             最终报告 · {{ displayAgentName }}
+          </span>
+        </template>
+        <template v-else-if="message.role === 'assistant'">
+          <span class="agent-name-with-dot">
+            <span class="status-dot" :style="{ background: agentColor(message.agentId ?? message.agentName) }" />
+            {{ displayAgentName }}
           </span>
         </template>
         <template v-else-if="message.role === 'user'">

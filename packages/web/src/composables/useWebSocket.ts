@@ -431,10 +431,17 @@ export function useWebSocket() {
         if (typeof msg.payload?.agentId === "string") {
           conversationStore.setAgentStatus(msg.payload.agentId, "idle", targetConversationId);
           if (msg.type === "refine_final_report_completed") {
-            conversationStore.markLatestAssistantMessageRole(
+            conversationStore.markLatestAssistantMessageMetadata(
               msg.payload.agentId,
-              "final_report",
-              { type: "refine_final_report" },
+              {
+                refine: {
+                  type: "final_report",
+                  runId: typeof msg.payload?.runId === "string" ? msg.payload.runId : "",
+                  iteration: typeof msg.payload?.iteration === "number" ? msg.payload.iteration : 0,
+                  stepId: typeof msg.payload?.stepId === "string" ? msg.payload.stepId : "",
+                  role: "expander",
+                },
+              },
               targetConversationId,
             );
           }

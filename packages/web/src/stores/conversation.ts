@@ -711,25 +711,23 @@ export const useConversationStore = defineStore("conversation", () => {
     });
   }
 
-  function markLatestAssistantMessageRole(
+  function markLatestAssistantMessageMetadata(
     agentId: string,
-    role: ChatMessage["role"],
-    metadataPatch?: Record<string, unknown>,
+    metadataPatch: Record<string, unknown>,
     conversationId?: string,
   ) {
     mutateRuntimeState(conversationId, (state) => {
-      const applyRole = (message: ChatMessage): ChatMessage => ({
+      const applyMetadata = (message: ChatMessage): ChatMessage => ({
         ...message,
-        role,
         metadata: {
           ...(message.metadata ?? {}),
-          ...(metadataPatch ?? {}),
+          ...metadataPatch,
         },
       });
 
       const stream = state.streamingMessages.get(agentId);
       if (stream?.role === "assistant") {
-        state.streamingMessages.set(agentId, applyRole(stream));
+        state.streamingMessages.set(agentId, applyMetadata(stream));
         return;
       }
 
@@ -744,7 +742,7 @@ export const useConversationStore = defineStore("conversation", () => {
         if (message.agentId !== agentId) {
           continue;
         }
-        state.messages[i] = applyRole(message);
+        state.messages[i] = applyMetadata(message);
         return;
       }
     });
@@ -1156,7 +1154,7 @@ export const useConversationStore = defineStore("conversation", () => {
     appendStreamDelta,
     appendStreamThinkingDelta,
     finalizeStream,
-    markLatestAssistantMessageRole,
+    markLatestAssistantMessageMetadata,
     clearMessages,
     bindDraftToConversation,
     openConversation,

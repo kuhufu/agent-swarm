@@ -166,7 +166,6 @@ function getRoleLabel(role: string): string {
   const map: Record<string, string> = {
     user: "用户",
     assistant: "助手",
-    final_report: "最终报告",
     system: "系统",
     notification: "通知",
     tool_result: "工具结果",
@@ -210,8 +209,20 @@ function messageMetadataModelLabel(message: ChatMessage): string | null {
   return `${provider}/${model}`;
 }
 
+function isRefineFinalReport(message: ChatMessage): boolean {
+  const metadata = parseMessageMetadata(message);
+  const refine = metadata?.refine;
+  return Boolean(
+    refine
+    && typeof refine === "object"
+    && !Array.isArray(refine)
+    && (refine as Record<string, unknown>).type === "final_report",
+  );
+}
+
 function getMessageLabel(message: ChatMessage, conversation: ConversationInfo): string {
   if (message.role !== "assistant") return getRoleLabel(message.role);
+  if (isRefineFinalReport(message)) return "最终报告";
 
   const metadataModelLabel = messageMetadataModelLabel(message);
   const isDirectConversation = conversation.swarmId.startsWith("__direct_");

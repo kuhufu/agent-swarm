@@ -45,7 +45,7 @@
 
 ## Refine 模式使用建议
 
-`refine` 模式适合把一个不够成熟的想法、需求、方案、文档或报告打磨到可行动状态。创建或编辑 Swarm 时选择 `Refine 打磨`，如果 Agent 列表为空，前端会自动加入 `Refine Expander` 和 `Refine Critic`。运行时拓展者会先扩展和结构化用户输入，审视者随后从价值、可行性、风险、隐藏假设和下一步清晰度进行评审；两者会按“拓展 -> 审视 -> 修订”循环推进。`maxTotalTurns` 在该模式下表示最大打磨轮数，默认最多 3 轮。审视者输出 `APPROVED: true` 时会提前收敛；未通过且达到轮次上限时，也会基于当前最佳版本生成最终报告。最终报告会以 `final_report` role 保存，并在 metadata 标记 `type=refine_final_report`，避免和普通助手轮次混在一起；继续讨论时，Refine 只把最新一份上一轮最终报告作为显式上下文。没有最终报告时，仅加载最近 2 轮 `refineResults` 作为兜底上下文。该模式会记录独立的 `refine_run_*` 和 `refine_*` 事件，并复用 `ask_user` 让拓展者或审视者在上下文不足时向用户追问。
+`refine` 模式适合把一个不够成熟的想法、需求、方案、文档或报告打磨到可行动状态。创建或编辑 Swarm 时选择 `Refine 打磨`，如果 Agent 列表为空，前端会自动加入 `Refine Expander` 和 `Refine Critic`。运行时拓展者会先扩展和结构化用户输入，审视者随后从价值、可行性、风险、隐藏假设和下一步清晰度进行评审；两者会按“拓展 -> 审视 -> 修订”循环推进。`maxTotalTurns` 在该模式下表示最大打磨轮数，默认最多 3 轮。审视者输出 `APPROVED: true` 时会提前收敛；未通过且达到轮次上限时，也会基于当前最佳版本生成最终报告。Refine 输出会在消息 metadata 的 `refine` 对象中标记 `type/runId/iteration/stepId/role/approved`；最终报告仍保存为 `assistant` 消息，并通过 `metadata.refine.type = "final_report"` 标识。继续讨论时，有最终报告则只加载最新一份最终报告；没有最终报告则按历史消息上的 `metadata.refine` 从中断步骤继续。该模式会记录独立的 `refine_run_*` 和 `refine_*` 事件，并复用 `ask_user` 让拓展者或审视者在上下文不足时向用户追问。
 
 ## Monorepo 结构
 

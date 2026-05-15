@@ -50,4 +50,4 @@ Refine 使用独立事件，避免混用 Team 语义：
 - 待验证问题
 - 下一步行动
 
-最终报告会以 `final_report` role 持久化，并在消息 metadata 中写入 `type=refine_final_report`。继续讨论时，Refine 会从会话消息中读取最新一条 `final_report`，作为“上一轮最终报告”显式注入本次打磨上下文；更早的最终报告不会被注入。若会话尚无最终报告，则只读取最近 2 轮 `refineResults` 作为兜底上下文；完整 `refineResults` 仍保存在 conversation metadata 中用于审计和后续记录。UI 与历史记录会把 `final_report` 消息显示为“最终报告”，避免和普通拓展者输出混淆。
+Refine 输出会在消息 metadata 的 `refine` 对象中写入 `type/runId/iteration/stepId/role/approved`。最终报告仍以 `assistant` 消息持久化，并通过 `metadata.refine.type = "final_report"` 标识。继续讨论时，Refine 会优先读取最新最终报告作为新一轮基线；若尚无最终报告，则按历史消息上的 `metadata.refine` 推断中断点，继续执行 critic、下一轮 expander 或最终报告生成。UI 与历史记录会按 `metadata.refine.type` 把最终报告显示为“最终报告”，避免和普通拓展者输出混淆。

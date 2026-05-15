@@ -1003,11 +1003,10 @@ export class SqliteStorage implements IStorage {
       .run();
   }
 
-  async updateLatestAssistantMessageRole(
+  async updateLatestAssistantMessageMetadata(
     conversationId: string,
     agentId: string,
-    role: string,
-    metadataPatch?: Record<string, unknown>,
+    metadataPatch: Record<string, unknown>,
   ): Promise<void> {
     if (!this.rawDb) {
       throw new Error("Storage not initialized");
@@ -1023,10 +1022,7 @@ export class SqliteStorage implements IStorage {
 
     const metadata = this.mergeMetadata(row.metadata, metadataPatch);
     this.getDb().update(messagesTable)
-      .set({
-        role,
-        metadata,
-      })
+      .set({ metadata })
       .where(eq(messagesTable.id, row.id))
       .run();
   }

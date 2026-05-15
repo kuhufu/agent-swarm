@@ -170,7 +170,7 @@ export interface MessagePart {
 
 export interface ChatMessage {
   id: string;
-  role: "user" | "assistant" | "final_report" | "tool_result" | "system" | "notification";
+  role: "user" | "assistant" | "tool_result" | "system" | "notification";
   content: string;
   agentId?: string;
   agentName?: string;

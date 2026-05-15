@@ -80,7 +80,7 @@ function resolveSwarmAgentName(agentId?: string): string | undefined {
 }
 
 function withResolvedAgentName(message: ChatMessage): ChatMessage {
-  if (props.isDirectMode || (message.role !== "assistant" && message.role !== "final_report") || !message.agentId) {
+  if (props.isDirectMode || message.role !== "assistant" || !message.agentId) {
     return message;
   }
   if (message.agentName && message.agentName !== message.agentId) {
@@ -94,6 +94,16 @@ function withResolvedAgentName(message: ChatMessage): ChatMessage {
     ...message,
     agentName,
   };
+}
+
+function isRefineFinalReport(message: ChatMessage): boolean {
+  const refine = message.metadata?.refine;
+  return Boolean(
+    refine
+    && typeof refine === "object"
+    && !Array.isArray(refine)
+    && (refine as Record<string, unknown>).type === "final_report",
+  );
 }
 
 function hasRenderableMessageBody(message: ChatMessage): boolean {
@@ -161,6 +171,8 @@ function mergeToolCalls(
 function canMergeAssistantEntries(previous: RenderEntry, next: RenderEntry): boolean {
   return previous.message.role === "assistant"
     && next.message.role === "assistant"
+    && !isRefineFinalReport(previous.message)
+    && !isRefineFinalReport(next.message)
     && (previous.message.agentId ?? "") === (next.message.agentId ?? "");
 }
 

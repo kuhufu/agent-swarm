@@ -1,5 +1,6 @@
 import type { SwarmAgentConfig, SwarmEvent } from "../core/types.js";
 import type { ModeExecutor, ModeExecutionContext } from "./types.js";
+import type { StoredMessage } from "../storage/interface.js";
 import { extractText, runAgent } from "./run-agent.js";
 
 interface RefineIterationResult {
@@ -15,12 +16,36 @@ interface CriticDecision {
 }
 
 const DEFAULT_MAX_ITERATIONS = 3;
-const REFINE_RESULTS_METADATA_KEY = "refineResults";
-const REFINE_CONTEXT_PREVIOUS_ITERATION_LIMIT = 2;
+
+type RefineMessageType = "expansion" | "critique" | "final_report";
+
+interface RefineMessageMetadata {
+  type: RefineMessageType;
+  runId: string;
+  iteration: number;
+  stepId: string;
+  role: "expander" | "critic";
+  approved?: boolean;
+}
+
+interface RefineTurn {
+  iteration: number;
+  expanded?: string;
+  critique?: string;
+  approved?: boolean;
+}
+
+interface RefineResumeState {
+  runId: string;
+  nextAction: "expand" | "critique" | "final_report";
+  iteration: number;
+  expanded?: string;
+  turns: RefineTurn[];
+}
 
 interface RefineHistoryContext {
-  previousResults: RefineIterationResult[];
   latestFinalReport?: string;
+  resumeTurns: RefineTurn[];
 }
 
 export class RefineMode implements ModeExecutor {
@@ -34,16 +59,16 @@ export class RefineMode implements ModeExecutor {
     this.ensureIsolatedAgent(ctx, expander);
     this.ensureIsolatedAgent(ctx, critic);
 
-    const runId = crypto.randomUUID();
+    const storedMessages = await ctx.storage.getMessages(ctx.conversationId);
+    const latestFinalReport = this.loadLatestFinalReport(storedMessages);
+    const resumeState = latestFinalReport ? undefined : this.buildResumeState(storedMessages);
+    const runId = resumeState?.runId ?? crypto.randomUUID();
     const maxIterations = Math.max(1, Math.min(ctx.swarmConfig.maxTotalTurns ?? DEFAULT_MAX_ITERATIONS, DEFAULT_MAX_ITERATIONS));
-    const results: RefineIterationResult[] = [];
+    const results: RefineIterationResult[] = this.completedResultsFromTurns(resumeState?.turns ?? []);
     let finalReport = "";
-
-    const storedPreviousResults = this.parsePreviousResults(ctx.getMetadata(REFINE_RESULTS_METADATA_KEY));
-    const latestFinalReport = await this.loadLatestFinalReport(ctx);
     const historyContext: RefineHistoryContext = {
-      previousResults: latestFinalReport ? [] : this.takeRecentResults(storedPreviousResults),
       latestFinalReport,
+      resumeTurns: latestFinalReport ? [] : (resumeState?.turns ?? []),
     };
 
     yield* this.emitAndYield(ctx, {
@@ -54,54 +79,81 @@ export class RefineMode implements ModeExecutor {
       summary: latestFinalReport
         ? "打磨模式已启动。检测到上一轮最终报告，本次将在其基础上继续讨论。"
         : (
-          storedPreviousResults.length > 0
-            ? `打磨模式已启动。检测到之前 ${storedPreviousResults.length} 轮的打磨记录，本次会加载最近 ${historyContext.previousResults.length} 轮作为上下文。`
+          resumeState
+            ? "打磨模式已启动。检测到未完成的打磨过程，本次将从最近的完整步骤继续。"
             : "打磨模式已启动：拓展者会先完善输入，审视者随后评审并决定是否继续修订。"
         ),
       iteration: 0,
       maxIterations,
     });
 
-    for (let iteration = 1; iteration <= maxIterations; iteration += 1) {
+    let iteration = resumeState?.iteration ?? 1;
+    let pendingExpanded = resumeState?.nextAction === "critique" ? resumeState.expanded : undefined;
+    let resumeFinalReport = resumeState?.nextAction === "final_report";
+    if (resumeState?.nextAction === "expand" && iteration > maxIterations && results.length > 0) {
+      iteration = results.at(-1)!.iteration;
+      resumeFinalReport = true;
+    }
+
+    for (; iteration <= maxIterations; iteration += 1) {
       if (ctx.isAborted()) break;
 
-      yield* this.emitAndYield(ctx, {
-        type: "refine_run_update",
-        runId,
-        conversationId: ctx.conversationId,
-        status: iteration === 1 ? "running" : "revising",
-        summary: `第 ${iteration} 轮：拓展者正在完善当前版本。`,
-        iteration,
-        maxIterations,
-      });
+      let expanded = pendingExpanded;
+      pendingExpanded = undefined;
 
-      const expansionStepId = crypto.randomUUID();
-      yield* this.emitAndYield(ctx, {
-        type: "refine_step_started",
-        runId,
-        stepId: expansionStepId,
-        iteration,
-        agentId: expander.id,
-        role: "expander",
-        status: "running",
-        summary: `第 ${iteration} 轮拓展开始。`,
-      });
+      if (!expanded && !resumeFinalReport) {
+        yield* this.emitAndYield(ctx, {
+          type: "refine_run_update",
+          runId,
+          conversationId: ctx.conversationId,
+          status: iteration === 1 ? "running" : "revising",
+          summary: `第 ${iteration} 轮：拓展者正在完善当前版本。`,
+          iteration,
+          maxIterations,
+        });
 
-      yield* runAgent(expander.id, this.buildExpansionPrompt(ctx.message, iteration, historyContext, results), ctx);
-      if (ctx.isAborted()) break;
+        const expansionStepId = crypto.randomUUID();
+        yield* this.emitAndYield(ctx, {
+          type: "refine_step_started",
+          runId,
+          stepId: expansionStepId,
+          iteration,
+          agentId: expander.id,
+          role: "expander",
+          status: "running",
+          summary: `第 ${iteration} 轮拓展开始。`,
+        });
 
-      const expanded = this.getLastAssistantText(ctx, expander.id);
-      yield* this.emitAndYield(ctx, {
-        type: "refine_step_completed",
-        runId,
-        stepId: expansionStepId,
-        iteration,
-        agentId: expander.id,
-        role: "expander",
-        status: "completed",
-        summary: this.truncate(expanded, 240),
-        output: expanded,
-      });
+        yield* runAgent(expander.id, this.buildExpansionPrompt(ctx.message, iteration, historyContext, results), ctx);
+        if (ctx.isAborted()) break;
+
+        expanded = this.getLastAssistantText(ctx, expander.id);
+        await this.tagLatestAssistantMessage(ctx, expander.id, {
+          type: "expansion",
+          runId,
+          iteration,
+          stepId: expansionStepId,
+          role: "expander",
+        });
+        yield* this.emitAndYield(ctx, {
+          type: "refine_step_completed",
+          runId,
+          stepId: expansionStepId,
+          iteration,
+          agentId: expander.id,
+          role: "expander",
+          status: "completed",
+          summary: this.truncate(expanded, 240),
+          output: expanded,
+        });
+      }
+
+      if (resumeFinalReport) {
+        finalReport = yield* this.runFinalReport(ctx, runId, iteration, expander, historyContext, results, "审视者已通过，继续生成最终报告。");
+        break;
+      }
+
+      if (!expanded) break;
 
       yield* this.emitAndYield(ctx, {
         type: "refine_run_update",
@@ -131,6 +183,14 @@ export class RefineMode implements ModeExecutor {
       const critique = this.getLastAssistantText(ctx, critic.id);
       const decision = this.parseCriticDecision(critique);
       results.push({ iteration, expanded, critique, approved: decision.approved });
+      await this.tagLatestAssistantMessage(ctx, critic.id, {
+        type: "critique",
+        runId,
+        iteration,
+        stepId: reviewStepId,
+        role: "critic",
+        approved: decision.approved,
+      });
 
       yield* this.emitAndYield(ctx, {
         type: "refine_review_completed",
@@ -183,9 +243,6 @@ export class RefineMode implements ModeExecutor {
       return;
     }
 
-    const allResults = [...storedPreviousResults, ...results];
-    await ctx.setMetadata(REFINE_RESULTS_METADATA_KEY, allResults);
-
     yield* this.emitAndYield(ctx, {
       type: "refine_run_end",
       runId,
@@ -220,11 +277,18 @@ export class RefineMode implements ModeExecutor {
 
     yield* runAgent(expander.id, this.buildFinalReportPrompt(ctx.message, historyContext, currentResults, reason), ctx);
     const output = this.getLastAssistantText(ctx, expander.id);
-    await ctx.storage.updateLatestAssistantMessageRole(
+    await ctx.storage.updateLatestAssistantMessageMetadata(
       ctx.conversationId,
       expander.id,
-      "final_report",
-      { type: "refine_final_report" },
+      {
+        refine: {
+          type: "final_report",
+          runId,
+          iteration,
+          stepId,
+          role: "expander",
+        },
+      },
     );
 
     yield* this.emitAndYield(ctx, {
@@ -241,31 +305,133 @@ export class RefineMode implements ModeExecutor {
     return output;
   }
 
-  private parsePreviousResults(raw: unknown): RefineIterationResult[] {
-    if (!Array.isArray(raw)) return [];
-    return raw.filter((item): item is RefineIterationResult => {
-      if (typeof item !== "object" || item === null) return false;
-      const r = item as Record<string, unknown>;
-      return (
-        typeof r.iteration === "number" &&
-        typeof r.expanded === "string" &&
-        typeof r.critique === "string" &&
-        typeof r.approved === "boolean"
-      );
-    });
+  private async tagLatestAssistantMessage(
+    ctx: ModeExecutionContext,
+    agentId: string,
+    refine: RefineMessageMetadata,
+  ): Promise<void> {
+    console.log("tagLatestAssistantMessage", agentId, refine);
+    await ctx.storage.updateLatestAssistantMessageMetadata(ctx.conversationId, agentId, { refine });
   }
 
-  private async loadLatestFinalReport(ctx: ModeExecutionContext): Promise<string | undefined> {
-    const messages = await ctx.storage.getMessages(ctx.conversationId);
+  private loadLatestFinalReport(messages: StoredMessage[]): string | undefined {
     const latest = messages
-      .filter((message) => message.role === "final_report" && typeof message.content === "string" && message.content.trim().length > 0)
+      .filter((message) => {
+        const refine = this.parseRefineMetadata(message.metadata);
+        return refine?.type === "final_report" && typeof message.content === "string" && message.content.trim().length > 0;
+      })
       .sort((a, b) => (b.createdAt ?? b.timestamp) - (a.createdAt ?? a.timestamp))[0];
     return latest?.content?.trim();
   }
 
-  private takeRecentResults(results: RefineIterationResult[]): RefineIterationResult[] {
-    if (results.length <= REFINE_CONTEXT_PREVIOUS_ITERATION_LIMIT) return results;
-    return results.slice(-REFINE_CONTEXT_PREVIOUS_ITERATION_LIMIT);
+  private buildResumeState(messages: StoredMessage[]): RefineResumeState | undefined {
+    const refineMessages = messages
+      .map((message) => ({ message, refine: this.parseRefineMetadata(message.metadata) }))
+      .filter((item): item is { message: StoredMessage; refine: RefineMessageMetadata } => Boolean(item.refine))
+      .filter((item) => item.refine.type === "expansion" || item.refine.type === "critique")
+      .sort((a, b) => (a.message.createdAt ?? a.message.timestamp) - (b.message.createdAt ?? b.message.timestamp));
+
+    const latest = refineMessages.at(-1);
+    if (!latest) return undefined;
+
+    const runId = latest.refine.runId;
+    const runMessages = refineMessages.filter((item) => item.refine.runId === runId);
+    const turnsByIteration = new Map<number, RefineTurn>();
+
+    for (const { message, refine } of runMessages) {
+      const turn = turnsByIteration.get(refine.iteration) ?? { iteration: refine.iteration };
+      if (refine.type === "expansion" && typeof message.content === "string") {
+        turn.expanded = message.content;
+      }
+      if (refine.type === "critique" && typeof message.content === "string") {
+        turn.critique = message.content;
+        turn.approved = refine.approved === true;
+      }
+      turnsByIteration.set(refine.iteration, turn);
+    }
+
+    const turns = Array.from(turnsByIteration.values()).sort((a, b) => a.iteration - b.iteration);
+    if (latest.refine.type === "expansion") {
+      const expanded = typeof latest.message.content === "string" ? latest.message.content : undefined;
+      if (!expanded) return undefined;
+      return {
+        runId,
+        nextAction: "critique",
+        iteration: latest.refine.iteration,
+        expanded,
+        turns,
+      };
+    }
+
+    if (latest.refine.approved === true) {
+      return {
+        runId,
+        nextAction: "final_report",
+        iteration: latest.refine.iteration,
+        turns,
+      };
+    }
+
+    return {
+      runId,
+      nextAction: "expand",
+      iteration: latest.refine.iteration + 1,
+      turns,
+    };
+  }
+
+  private parseRefineMetadata(raw: unknown): RefineMessageMetadata | undefined {
+    const metadata = this.parseMetadata(raw);
+    const refine = metadata?.refine;
+    if (!refine || typeof refine !== "object" || Array.isArray(refine)) return undefined;
+    const r = refine as Record<string, unknown>;
+    if (
+      (r.type !== "expansion" && r.type !== "critique" && r.type !== "final_report")
+      || typeof r.runId !== "string"
+      || typeof r.iteration !== "number"
+      || typeof r.stepId !== "string"
+      || (r.role !== "expander" && r.role !== "critic")
+    ) {
+      return undefined;
+    }
+    return {
+      type: r.type,
+      runId: r.runId,
+      iteration: r.iteration,
+      stepId: r.stepId,
+      role: r.role,
+      approved: typeof r.approved === "boolean" ? r.approved : undefined,
+    };
+  }
+
+  private parseMetadata(raw: unknown): Record<string, unknown> | undefined {
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      return raw as Record<string, unknown>;
+    }
+    if (typeof raw !== "string" || raw.trim().length === 0) return undefined;
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown>
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private completedResultsFromTurns(turns: RefineTurn[]): RefineIterationResult[] {
+    return turns
+      .filter((turn): turn is RefineTurn & { expanded: string; critique: string; approved: boolean } =>
+        typeof turn.expanded === "string"
+        && typeof turn.critique === "string"
+        && typeof turn.approved === "boolean",
+      )
+      .map((turn) => ({
+        iteration: turn.iteration,
+        expanded: turn.expanded,
+        critique: turn.critique,
+        approved: turn.approved,
+      }));
   }
 
   private createRoleAgentConfig(base: SwarmAgentConfig, role: "expander" | "critic"): SwarmAgentConfig {
@@ -315,7 +481,7 @@ export class RefineMode implements ModeExecutor {
       this.formatHistoryContext(historyContext),
       "",
       "Current run iterations:",
-      this.formatPreviousIterations(currentResults),
+      this.formatCompletedIterations(currentResults),
       "",
       "Output a clear current version that the Critic can review.",
     ].join("\n");
@@ -340,7 +506,7 @@ export class RefineMode implements ModeExecutor {
       this.formatHistoryContext(historyContext),
       "",
       "Current run iterations:",
-      this.formatPreviousIterations(currentResults),
+      this.formatCompletedIterations(currentResults),
       "",
       "Current version from Expander:",
       expanded,
@@ -367,7 +533,7 @@ export class RefineMode implements ModeExecutor {
       this.formatHistoryContext(historyContext),
       "",
       "Current run iterations:",
-      this.formatPreviousIterations(currentResults),
+      this.formatCompletedIterations(currentResults),
     ].join("\n");
   }
 
@@ -379,8 +545,8 @@ export class RefineMode implements ModeExecutor {
       ].join("\n");
     }
     return [
-      "Historical iterations from previous runs:",
-      this.formatPreviousIterations(historyContext.previousResults),
+      "Recovered unfinished refine run context:",
+      this.formatResumeTurns(historyContext.resumeTurns),
     ].join("\n");
   }
 
@@ -395,8 +561,8 @@ export class RefineMode implements ModeExecutor {
     return { approved: false, reason: this.truncate(output, 240) };
   }
 
-  private formatPreviousIterations(results: RefineIterationResult[]): string {
-    if (results.length === 0) return "No previous iterations.";
+  private formatCompletedIterations(results: RefineIterationResult[]): string {
+    if (results.length === 0) return "No completed iterations.";
     return results
       .map((result) => [
         `## Iteration ${result.iteration}`,
@@ -406,6 +572,18 @@ export class RefineMode implements ModeExecutor {
         "### Critique",
         result.critique,
       ].join("\n"))
+      .join("\n\n");
+  }
+
+  private formatResumeTurns(turns: RefineTurn[]): string {
+    if (turns.length === 0) return "No recovered unfinished context.";
+    return turns
+      .map((turn) => [
+        `## Iteration ${turn.iteration}`,
+        turn.expanded ? ["### Expanded version", turn.expanded].join("\n") : undefined,
+        turn.critique ? ["### Critique", turn.critique].join("\n") : undefined,
+        typeof turn.approved === "boolean" ? `Approved: ${turn.approved}` : undefined,
+      ].filter((line): line is string => Boolean(line)).join("\n"))
       .join("\n\n");
   }
 

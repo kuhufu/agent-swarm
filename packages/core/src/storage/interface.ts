@@ -176,11 +176,10 @@ export interface IStorage {
 
   // Message management
   appendMessage(conversationId: string, message: StoredMessage): Promise<void>;
-  updateLatestAssistantMessageRole(
+  updateLatestAssistantMessageMetadata(
     conversationId: string,
     agentId: string,
-    role: string,
-    metadataPatch?: Record<string, unknown>,
+    metadataPatch: Record<string, unknown>,
   ): Promise<void>;
   getMessages(conversationId: string, since?: number): Promise<StoredMessage[]>;
   getMessagesByAgent(conversationId: string, agentId: string): Promise<StoredMessage[]>;

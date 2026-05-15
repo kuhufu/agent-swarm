@@ -80,7 +80,7 @@ export function storedToMessage(stored: StoredMessage): Message {
     };
   }
 
-  if (stored.role === "assistant" || stored.role === "final_report") {
+  if (stored.role === "assistant") {
     const content: (TextContent | ThinkingContent | ToolCall)[] = [];
 
     if (stored.content) {
