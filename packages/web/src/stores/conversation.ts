@@ -711,6 +711,45 @@ export const useConversationStore = defineStore("conversation", () => {
     });
   }
 
+  function markLatestAssistantMessageRole(
+    agentId: string,
+    role: ChatMessage["role"],
+    metadataPatch?: Record<string, unknown>,
+    conversationId?: string,
+  ) {
+    mutateRuntimeState(conversationId, (state) => {
+      const applyRole = (message: ChatMessage): ChatMessage => ({
+        ...message,
+        role,
+        metadata: {
+          ...(message.metadata ?? {}),
+          ...(metadataPatch ?? {}),
+        },
+      });
+
+      const stream = state.streamingMessages.get(agentId);
+      if (stream?.role === "assistant") {
+        state.streamingMessages.set(agentId, applyRole(stream));
+        return;
+      }
+
+      for (let i = state.messages.length - 1; i >= 0; i -= 1) {
+        const message = state.messages[i];
+        if (!message) {
+          continue;
+        }
+        if (message.role !== "assistant") {
+          continue;
+        }
+        if (message.agentId !== agentId) {
+          continue;
+        }
+        state.messages[i] = applyRole(message);
+        return;
+      }
+    });
+  }
+
   function clearMessages() {
     mutateRuntimeState(undefined, (state) => {
       state.messages = [];
@@ -1117,6 +1156,7 @@ export const useConversationStore = defineStore("conversation", () => {
     appendStreamDelta,
     appendStreamThinkingDelta,
     finalizeStream,
+    markLatestAssistantMessageRole,
     clearMessages,
     bindDraftToConversation,
     openConversation,

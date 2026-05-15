@@ -37,6 +37,7 @@ export const conversationsTable = sqliteTable("conversations", {
   directProvider: text("direct_provider"),
   directModelId: text("direct_model_id"),
   contextResetAt: integer("context_reset_at"),
+  metadata: text("metadata"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 });
@@ -55,7 +56,7 @@ export const messagesTable = sqliteTable("messages", {
   id: text("id").primaryKey(),
   conversationId: text("conversation_id").notNull().references(() => conversationsTable.id),
   agentId: text("agent_id"),
-  role: text("role").notNull(), // user / assistant / toolResult / system / notification
+  role: text("role").notNull(), // user / assistant / final_report / toolResult / system / notification
   content: text("content"),
   thinking: text("thinking"),
   toolCalls: text("tool_calls"), // JSON: ToolCall[]

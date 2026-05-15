@@ -26,6 +26,8 @@ export interface ModeExecutionContext {
   abort: () => void;
   /** Whether the execution has been aborted */
   isAborted: () => boolean;
+  getMetadata: (key: string) => unknown;
+  setMetadata: (key: string, value: unknown) => Promise<void>;
 }
 
 export interface ModeExecutor {

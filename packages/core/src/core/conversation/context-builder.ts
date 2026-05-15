@@ -18,6 +18,8 @@ export interface BuildModeContextParams {
   interventionOrch: InterventionOrchestrator;
   abortFn: () => void;
   isAbortedFn: () => boolean;
+  getMetadata: (key: string) => unknown;
+  setMetadata: (key: string, value: unknown) => Promise<void>;
 }
 
 export function buildModeContext(params: BuildModeContextParams): ModeExecutionContext {
@@ -39,5 +41,7 @@ export function buildModeContext(params: BuildModeContextParams): ModeExecutionC
     },
     abort: params.abortFn,
     isAborted: params.isAbortedFn,
+    getMetadata: params.getMetadata,
+    setMetadata: params.setMetadata,
   };
 }

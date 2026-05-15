@@ -276,6 +276,17 @@ export class SqliteStorage implements IStorage {
     return { provider, modelId };
   }
 
+  private parseMetadata(input: unknown): Record<string, unknown> | undefined {
+    if (typeof input !== "string" || input.trim().length === 0) {
+      return undefined;
+    }
+    try {
+      return JSON.parse(input) as Record<string, unknown>;
+    } catch {
+      return undefined;
+    }
+  }
+
   private mapConversationRow(row: {
     id: string;
     swarmId: string;
@@ -286,6 +297,7 @@ export class SqliteStorage implements IStorage {
     directModelId: string | null;
     workspaceId?: string | null;
     contextResetAt: number | null;
+    metadata: string | null;
     createdAt: number;
     updatedAt: number;
   }): Conversation {
@@ -302,6 +314,7 @@ export class SqliteStorage implements IStorage {
         ? { provider: directProvider, modelId: directModelId }
         : undefined,
       contextResetAt: row.contextResetAt ?? undefined,
+      metadata: this.parseMetadata(row.metadata),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -362,6 +375,10 @@ export class SqliteStorage implements IStorage {
     }
     if (!columns.has("workspace_id")) {
       this.rawDb.exec("ALTER TABLE conversations ADD COLUMN workspace_id TEXT;");
+      schemaChanged = true;
+    }
+    if (!columns.has("metadata")) {
+      this.rawDb.exec("ALTER TABLE conversations ADD COLUMN metadata TEXT;");
       schemaChanged = true;
     }
 
@@ -814,6 +831,33 @@ export class SqliteStorage implements IStorage {
       .run();
   }
 
+  async updateConversationMetadata(id: string, metadata: Record<string, unknown>, userId?: string): Promise<void> {
+    this.getDb().update(conversationsTable)
+      .set({
+        metadata: JSON.stringify(metadata),
+        updatedAt: Date.now(),
+      })
+      .where(userId
+        ? and(eq(conversationsTable.id, id), eq(conversationsTable.userId, userId))
+        : eq(conversationsTable.id, id))
+      .run();
+  }
+
+  async getConversationMetadata(id: string): Promise<Record<string, unknown> | null> {
+    if (!this.rawDb) {
+      throw new Error("Storage not initialized");
+    }
+    const row = this.rawDb.prepare("SELECT metadata FROM conversations WHERE id = ?").get(id) as {
+      metadata: string | null;
+    } | undefined;
+    if (!row || !row.metadata) return null;
+    try {
+      return JSON.parse(row.metadata) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+
   async deleteConversation(id: string, userId: string): Promise<void> {
     const conversation = await this.getConversation(id, userId);
     if (!conversation) {
@@ -957,6 +1001,48 @@ export class SqliteStorage implements IStorage {
       .set({ updatedAt: Date.now() })
       .where(eq(conversationsTable.id, conversationId))
       .run();
+  }
+
+  async updateLatestAssistantMessageRole(
+    conversationId: string,
+    agentId: string,
+    role: string,
+    metadataPatch?: Record<string, unknown>,
+  ): Promise<void> {
+    if (!this.rawDb) {
+      throw new Error("Storage not initialized");
+    }
+    const row = this.rawDb.prepare(`
+      SELECT id, metadata
+      FROM messages
+      WHERE conversation_id = ? AND agent_id = ? AND role = 'assistant'
+      ORDER BY created_at DESC, timestamp DESC
+      LIMIT 1
+    `).get(conversationId, agentId) as { id: string; metadata?: string | null } | undefined;
+    if (!row) return;
+
+    const metadata = this.mergeMetadata(row.metadata, metadataPatch);
+    this.getDb().update(messagesTable)
+      .set({
+        role,
+        metadata,
+      })
+      .where(eq(messagesTable.id, row.id))
+      .run();
+  }
+
+  private mergeMetadata(raw: string | null | undefined, patch?: Record<string, unknown>): string | null {
+    let base: Record<string, unknown> = {};
+    if (raw && raw.trim().length > 0) {
+      try {
+        const parsed = JSON.parse(raw) as unknown;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          base = parsed as Record<string, unknown>;
+        }
+      } catch { /* keep empty base */ }
+    }
+    const merged = { ...base, ...(patch ?? {}) };
+    return Object.keys(merged).length > 0 ? JSON.stringify(merged) : null;
   }
 
   async getMessages(conversationId: string, since?: number): Promise<StoredMessage[]> {

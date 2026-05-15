@@ -430,6 +430,14 @@ export function useWebSocket() {
         recordTeamEvent(conversationStore, msg, targetConversationId);
         if (typeof msg.payload?.agentId === "string") {
           conversationStore.setAgentStatus(msg.payload.agentId, "idle", targetConversationId);
+          if (msg.type === "refine_final_report_completed") {
+            conversationStore.markLatestAssistantMessageRole(
+              msg.payload.agentId,
+              "final_report",
+              { type: "refine_final_report" },
+              targetConversationId,
+            );
+          }
         }
         break;
 

@@ -86,8 +86,29 @@ function choicesFromDefaultAnswer(defaultAnswer: string | undefined, availableCh
         <div class="ask-user-icon">
           <SvgIcon name="user" :size="17" />
         </div>
-        <div>
-          <span>Agent 需要你确认</span>
+        <div class="ask-user-header-content">
+          <div class="ask-user-header-top">
+            <span>Agent 需要你确认</span>
+            <div v-if="askUserStore.pendingCount > 1" class="ask-user-queue-nav">
+              <button
+                type="button"
+                :disabled="!askUserStore.hasOlder"
+                @mousedown.stop
+                @click.prevent.stop="askUserStore.goNext"
+              >
+                <SvgIcon name="chevronLeft" :size="14" />
+              </button>
+              <span class="ask-user-queue-count">{{ askUserStore.currentIndex + 1 }} / {{ askUserStore.pendingCount }}</span>
+              <button
+                type="button"
+                :disabled="!askUserStore.hasNewer"
+                @mousedown.stop
+                @click.prevent.stop="askUserStore.goPrev"
+              >
+                <SvgIcon name="chevronRight" :size="14" />
+              </button>
+            </div>
+          </div>
           <strong>{{ askUserStore.nextRequest.question }}</strong>
         </div>
       </header>
@@ -201,10 +222,18 @@ function choicesFromDefaultAnswer(defaultAnswer: string | undefined, availableCh
   color: var(--text-primary);
 }
 
-.ask-user-header div:last-child {
+.ask-user-header-content {
   min-width: 0;
   display: grid;
   gap: 5px;
+  flex: 1;
+}
+
+.ask-user-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .ask-user-header span {
@@ -217,6 +246,44 @@ function choicesFromDefaultAnswer(defaultAnswer: string | undefined, availableCh
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
   line-height: 1.45;
+}
+
+.ask-user-queue-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ask-user-queue-nav button {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ask-user-queue-nav button:hover:not(:disabled) {
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ask-user-queue-nav button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ask-user-queue-count {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  min-width: 44px;
+  text-align: center;
 }
 
 .ask-user-context {

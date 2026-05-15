@@ -37,9 +37,17 @@ const ASK_USER_TIMEOUT_MS = 10 * 60 * 1000;
 
 export const useAskUserStore = defineStore("askUser", () => {
   const pendingRequests = ref<AskUserRequest[]>([]);
+  const currentIndex = ref(0);
 
   const hasPending = computed(() => pendingRequests.value.length > 0);
-  const nextRequest = computed(() => pendingRequests.value[0] ?? null);
+  const pendingCount = computed(() => pendingRequests.value.length);
+  const nextRequest = computed(() => {
+    if (pendingRequests.value.length === 0) return null;
+    const idx = Math.min(currentIndex.value, pendingRequests.value.length - 1);
+    return pendingRequests.value[idx] ?? null;
+  });
+  const hasNewer = computed(() => currentIndex.value > 0);
+  const hasOlder = computed(() => currentIndex.value < pendingRequests.value.length - 1);
 
   function requestAnswer(params: AskUserParams): Promise<AskUserResult> {
     const question = params.question.trim();
@@ -56,7 +64,7 @@ export const useAskUserStore = defineStore("askUser", () => {
         resolveRequest(requestId, { answer: "" }, true);
       }, ASK_USER_TIMEOUT_MS);
 
-      pendingRequests.value.push({
+      pendingRequests.value.unshift({
         requestId,
         question,
         context: params.context?.trim() || undefined,
@@ -67,7 +75,26 @@ export const useAskUserStore = defineStore("askUser", () => {
         resolve,
         timeout,
       });
+
+      currentIndex.value = 0;
     });
+  }
+
+  function goTo(index: number) {
+    if (index < 0 || index >= pendingRequests.value.length) return;
+    currentIndex.value = index;
+  }
+
+  function goNext() {
+    if (currentIndex.value < pendingRequests.value.length - 1) {
+      currentIndex.value++;
+    }
+  }
+
+  function goPrev() {
+    if (currentIndex.value > 0) {
+      currentIndex.value--;
+    }
   }
 
   function submitAnswer(requestId: string, answer: string) {
@@ -104,11 +131,16 @@ export const useAskUserStore = defineStore("askUser", () => {
     payload: { answer: string; selectedChoices?: string[]; freeText?: string },
     skipped: boolean,
   ) {
-    const request = pendingRequests.value.find((item) => item.requestId === requestId);
-    if (!request) return;
+    const index = pendingRequests.value.findIndex((item) => item.requestId === requestId);
+    if (index === -1) return;
+    const request = pendingRequests.value[index];
 
     clearTimeout(request.timeout);
     pendingRequests.value = pendingRequests.value.filter((item) => item.requestId !== requestId);
+
+    if (currentIndex.value >= pendingRequests.value.length && pendingRequests.value.length > 0) {
+      currentIndex.value = pendingRequests.value.length - 1;
+    }
 
     if (skipped) {
       request.resolve({
@@ -175,10 +207,17 @@ export const useAskUserStore = defineStore("askUser", () => {
   return {
     pendingRequests,
     hasPending,
+    pendingCount,
+    currentIndex,
     nextRequest,
+    hasNewer,
+    hasOlder,
     requestAnswer,
     submitAnswer,
     submitStructuredAnswer,
     skip,
+    goTo,
+    goNext,
+    goPrev,
   };
 });

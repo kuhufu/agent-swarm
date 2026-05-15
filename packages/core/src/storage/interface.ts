@@ -46,6 +46,7 @@ export interface Conversation {
   thinkingLevel: string;
   directModel?: ConversationDirectModel;
   contextResetAt?: number;
+  metadata?: Record<string, unknown>;
   createdAt: number;
   updatedAt: number;
 }
@@ -161,6 +162,8 @@ export interface IStorage {
   updateConversationTitle(id: string, title: string, userId?: string): Promise<void>;
   updateConversationWorkspace(id: string, workspaceId: string | null, userId: string): Promise<Conversation>;
   updateConversationContextReset(id: string, contextResetAt: number, userId?: string): Promise<void>;
+  updateConversationMetadata(id: string, metadata: Record<string, unknown>, userId?: string): Promise<void>;
+  getConversationMetadata(id: string): Promise<Record<string, unknown> | null>;
   deleteConversation(id: string, userId: string): Promise<void>;
 
   // Workspace management
@@ -173,6 +176,12 @@ export interface IStorage {
 
   // Message management
   appendMessage(conversationId: string, message: StoredMessage): Promise<void>;
+  updateLatestAssistantMessageRole(
+    conversationId: string,
+    agentId: string,
+    role: string,
+    metadataPatch?: Record<string, unknown>,
+  ): Promise<void>;
   getMessages(conversationId: string, since?: number): Promise<StoredMessage[]>;
   getMessagesByAgent(conversationId: string, agentId: string): Promise<StoredMessage[]>;
   clearMessages(conversationId: string): Promise<void>;

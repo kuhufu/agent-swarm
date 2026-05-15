@@ -9,3 +9,4 @@ data/
 .pnpm-store
 .atomcode
 .claude
+.sisyphus

@@ -157,6 +157,7 @@ pnpm test                  # 运行 core + server 单元测试
 - `agent_start` / `agent_end` — Agent 级
 - `turn_start` / `turn_end` — 轮次级
 - `message_start` / `message_update` / `message_end` — 消息流
+- `final_report` — Refine 模式最终报告的持久化消息 role；继续讨论时 Refine 只读取最新一条作为上一轮最终报告上下文
 - `tool_execution_start` / `tool_execution_update` / `tool_execution_end` — 工具执行
 - `handoff` — Agent 交接
 - `team_run_*` / `team_task_*` — Team 运行与任务事件

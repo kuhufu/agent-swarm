@@ -75,7 +75,10 @@ function createAgentConfig(id: string): SwarmAgentConfig {
   };
 }
 
-function createContext(outputForAgent: (agentId: string, input: string, promptIndex: number) => string): ModeExecutionContext {
+function createContext(
+  outputForAgent: (agentId: string, input: string, promptIndex: number) => string,
+  storedMessages: Awaited<ReturnType<IStorage["getMessages"]>> = [],
+): ModeExecutionContext {
   const expander = createAgentConfig("expander");
   const critic = createAgentConfig("critic");
   const swarmConfig: SwarmConfig = {
@@ -85,12 +88,16 @@ function createContext(outputForAgent: (agentId: string, input: string, promptIn
     agents: [expander, critic],
   };
   const agents = new Map<string, { agent: any; config: SwarmAgentConfig }>();
+  const metadata = new Map<string, unknown>();
+  const appendMessage = vi.fn(async () => undefined);
+  const updateLatestAssistantMessageRole = vi.fn(async () => undefined);
+  const getMessages = vi.fn(async () => storedMessages);
 
   return {
     swarmConfig,
     message: "帮我打磨一个需求分析 Agent 的产品想法",
     conversationId: "conv-1",
-    storage: { appendMessage: vi.fn(async () => undefined) } as unknown as IStorage,
+    storage: { appendMessage, updateLatestAssistantMessageRole, getMessages } as unknown as IStorage,
     llmConfig: { apiKeys: {} },
     agents,
     createAgentFn: (config) => {
@@ -102,6 +109,10 @@ function createContext(outputForAgent: (agentId: string, input: string, promptIn
     emit: () => undefined,
     abort: () => undefined,
     isAborted: () => false,
+    getMetadata: (key: string) => metadata.get(key),
+    setMetadata: vi.fn(async (key: string, value: unknown) => {
+      metadata.set(key, value);
+    }),
   };
 }
 
@@ -123,6 +134,65 @@ describe("RefineMode", () => {
     expect(yielded.some((event) => event.type === "refine_review_completed" && event.approved === true)).toBe(true);
     expect(yielded.some((event) => event.type === "refine_final_report_completed" && event.output?.includes("最终报告"))).toBe(true);
     expect(yielded.some((event) => event.type === "refine_run_end" && event.status === "completed")).toBe(true);
+    expect(ctx.setMetadata).toHaveBeenCalledWith("refineResults", [
+      expect.objectContaining({
+        iteration: 1,
+        expanded: "拓展版本 1",
+        critique: "反馈：已经足够清晰。\nAPPROVED: true",
+        approved: true,
+      }),
+    ]);
+    expect((ctx.storage.appendMessage as any).mock.calls.filter(([, message]: any[]) =>
+      message.role === "assistant" && message.content === "最终报告：核心想法明确。"
+    )).toHaveLength(1);
+    expect(ctx.storage.updateLatestAssistantMessageRole).toHaveBeenCalledWith(
+      "conv-1",
+      "expander__refine_expander",
+      "final_report",
+      { type: "refine_final_report" },
+    );
+  });
+
+  it("uses only the latest previous final report as explicit refine context", async () => {
+    const ctx = createContext(
+      (agentId, input, promptIndex) => {
+        if (agentId.includes("critic")) return "反馈：可以收敛。\nAPPROVED: true";
+        if (input.includes("Generate the final report")) return "最终报告：新版本。";
+        return `拓展版本 ${promptIndex}`;
+      },
+      [
+        {
+          id: "old-report",
+          role: "final_report",
+          content: "旧最终报告，不应该进入上下文。",
+          timestamp: 100,
+          createdAt: 100,
+        },
+        {
+          id: "latest-report",
+          role: "final_report",
+          content: "上一轮最终报告，应该进入上下文。",
+          timestamp: 200,
+          createdAt: 200,
+        },
+      ],
+    );
+
+    const yielded: SwarmEvent[] = [];
+    for await (const event of new RefineMode().execute(ctx)) {
+      yielded.push(event);
+    }
+
+    const expander = ctx.agents.get("expander__refine_expander")?.agent as FakeAgent | undefined;
+    const firstPrompt = expander?.prompts[0] ?? "";
+    expect(yielded.some((event) =>
+      event.type === "refine_run_start"
+      && event.summary?.includes("上一轮最终报告"),
+    )).toBe(true);
+    expect(firstPrompt).toContain("Previous final report from the last completed run:");
+    expect(firstPrompt).toContain("上一轮最终报告，应该进入上下文。");
+    expect(firstPrompt).not.toContain("旧最终报告，不应该进入上下文。");
+    expect(firstPrompt).not.toContain("Historical final reports");
   });
 
   it("continues revision until the default iteration limit", async () => {

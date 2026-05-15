@@ -48,7 +48,7 @@ const metadataModelLabel = computed(() => {
 });
 
 const displayAgentName = computed(() => {
-  if (props.message.role === "assistant") {
+  if (props.message.role === "assistant" || props.message.role === "final_report") {
     if (props.isDirectMode) {
       return metadataModelLabel.value
         ?? props.message.agentName
@@ -98,6 +98,7 @@ function roleClass(role: string): string {
   switch (role) {
     case "user": return "msg-user";
     case "assistant": return "msg-assistant";
+    case "final_report": return "msg-final-report";
     case "tool_result": return "msg-tool";
     case "system": return "msg-system";
     default: return "msg-notification";
@@ -183,6 +184,12 @@ function handleFork() {
           <span class="agent-name-with-dot">
             <span class="status-dot" :style="{ background: agentColor(message.agentId ?? message.agentName) }" />
             {{ displayAgentName }}
+          </span>
+        </template>
+        <template v-else-if="message.role === 'final_report'">
+          <span class="agent-name-with-dot">
+            <span class="status-dot" :style="{ background: agentColor(message.agentId ?? message.agentName) }" />
+            最终报告 · {{ displayAgentName }}
           </span>
         </template>
         <template v-else-if="message.role === 'user'">
@@ -390,6 +397,22 @@ function handleFork() {
 .msg-assistant .msg-content {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
+}
+
+.msg-final-report {
+  align-items: flex-start;
+}
+
+.msg-final-report .msg-body {
+  align-items: flex-start;
+  max-width: 100%;
+}
+
+.msg-final-report .msg-content {
+  background: var(--color-accent-bg);
+  border: 1px solid var(--color-accent);
   border-radius: 14px;
   box-shadow: var(--shadow-md);
 }

@@ -30,6 +30,12 @@ export const ICONS: Record<string, IconDef> = {
       { d: "M6 9l6 6 6-6" },
     ],
   },
+  chevronLeft: {
+    viewBox: "0 0 24 24",
+    paths: [
+      { d: "M15 18l-6-6 6-6" },
+    ],
+  },
   chevronRight: {
     viewBox: "0 0 24 24",
     paths: [

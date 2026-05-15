@@ -80,7 +80,7 @@ export function storedToMessage(stored: StoredMessage): Message {
     };
   }
 
-  if (stored.role === "assistant") {
+  if (stored.role === "assistant" || stored.role === "final_report") {
     const content: (TextContent | ThinkingContent | ToolCall)[] = [];
 
     if (stored.content) {
@@ -151,6 +151,14 @@ export function storedToMessage(stored: StoredMessage): Message {
     } as AssistantMessage;
   }
 
+  // Fallback: treat as user message.
+  return {
+    role: "user",
+    content: stored.content ?? "",
+    timestamp: stored.timestamp,
+  };
+}
+
 /**
  * Parse stored user message content back into ContentPart array.
  * Supports both new JSON array format and legacy plain text.
@@ -178,12 +186,4 @@ function parseUserContent(content: string | null | undefined): (TextContent | Im
 
   // Legacy: plain text string
   return [{ type: "text" as const, text: content }];
-}
-
-  // Fallback: treat as user message
-  return {
-    role: "user",
-    content: stored.content ?? "",
-    timestamp: stored.timestamp,
-  };
 }

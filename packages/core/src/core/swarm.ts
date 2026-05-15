@@ -278,6 +278,7 @@ export class AgentSwarm {
       this.applyConversationDirectModel(swarmConfig, conv),
       restoredMessages,
       conv.workspaceId,
+      conv.metadata,
     );
   }
 
@@ -322,6 +323,7 @@ export class AgentSwarm {
 
     const contextResetAt = Date.now();
     await this.storage.updateConversationContextReset(conversationId, contextResetAt, normalizedUserId);
+    await this.storage.updateConversationMetadata(conversationId, {}, normalizedUserId);
 
     const markerMessage: StoredMessage = {
       id: crypto.randomUUID(),
@@ -672,6 +674,7 @@ export class AgentSwarm {
     swarmConfig: SwarmConfig,
     restoredMessages: StoredMessage[],
     workspaceId?: string | null,
+    restoredMetadata?: Record<string, unknown>,
   ): Conversation {
     return new Conversation(
       conversationId,
@@ -684,6 +687,7 @@ export class AgentSwarm {
       this.eventLogLevel,
       (context) => this.createToolRuntimeAvailability(context),
       workspaceId ?? undefined,
+      restoredMetadata,
     );
   }
 

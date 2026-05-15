@@ -9,6 +9,7 @@ export function normalizeRole(role: unknown): ChatMessage["role"] {
   switch (role) {
     case "user":
     case "assistant":
+    case "final_report":
     case "system":
     case "notification":
     case "tool_result":

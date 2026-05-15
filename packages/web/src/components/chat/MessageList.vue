@@ -80,7 +80,7 @@ function resolveSwarmAgentName(agentId?: string): string | undefined {
 }
 
 function withResolvedAgentName(message: ChatMessage): ChatMessage {
-  if (props.isDirectMode || message.role !== "assistant" || !message.agentId) {
+  if (props.isDirectMode || (message.role !== "assistant" && message.role !== "final_report") || !message.agentId) {
     return message;
   }
   if (message.agentName && message.agentName !== message.agentId) {

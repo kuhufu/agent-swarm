@@ -48,6 +48,7 @@ export class Conversation {
   private eventBus: ConversationEventBus;
   private interventionOrch: InterventionOrchestrator;
   private agentManager: AgentManager;
+  private metadata: Record<string, unknown> = {};
 
   private _aborted = false;
 
@@ -62,6 +63,7 @@ export class Conversation {
     eventLogLevel: EventLogLevel = "key",
     toolAvailabilityProvider?: ToolAvailabilityProvider,
     workspaceId?: string,
+    restoredMetadata?: Record<string, unknown>,
   ) {
     this.id = id;
     this.userId = userId;
@@ -70,6 +72,7 @@ export class Conversation {
     this.storage = storage;
     this.llmConfig = llmConfig;
     this.toolAvailabilityProvider = toolAvailabilityProvider;
+    this.metadata = restoredMetadata ?? {};
 
     const runtimeOptions = {
       ...createToolRuntimeOptions(),
@@ -86,6 +89,15 @@ export class Conversation {
       runtimeOptions,
       restoredHistory.map((msg) => storedToMessage(msg)),
     );
+  }
+
+  getMetadata(key: string): unknown {
+    return this.metadata[key];
+  }
+
+  async setMetadata(key: string, value: unknown): Promise<void> {
+    this.metadata[key] = value;
+    await this.storage.updateConversationMetadata(this.id, this.metadata);
   }
 
   getId(): string { return this.id; }
@@ -132,6 +144,8 @@ export class Conversation {
         interventionOrch: this.interventionOrch,
         abortFn: () => this.abort(),
         isAbortedFn: () => this._aborted,
+        getMetadata: (key: string) => this.getMetadata(key),
+        setMetadata: (key: string, value: unknown) => this.setMetadata(key, value),
       });
       yield* executor.execute(context);
     } catch (err) {

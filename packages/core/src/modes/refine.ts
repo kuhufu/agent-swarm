@@ -15,6 +15,12 @@ interface CriticDecision {
 }
 
 const DEFAULT_MAX_ITERATIONS = 3;
+const REFINE_RESULTS_METADATA_KEY = "refineResults";
+
+interface RefineHistoryContext {
+  previousResults: RefineIterationResult[];
+  latestFinalReport?: string;
+}
 
 export class RefineMode implements ModeExecutor {
   async *execute(ctx: ModeExecutionContext): AsyncGenerator<SwarmEvent> {
@@ -32,12 +38,25 @@ export class RefineMode implements ModeExecutor {
     const results: RefineIterationResult[] = [];
     let finalReport = "";
 
+    const previousResults = this.parsePreviousResults(ctx.getMetadata(REFINE_RESULTS_METADATA_KEY));
+    const latestFinalReport = await this.loadLatestFinalReport(ctx);
+    const historyContext: RefineHistoryContext = {
+      previousResults,
+      latestFinalReport,
+    };
+
     yield* this.emitAndYield(ctx, {
       type: "refine_run_start",
       runId,
       conversationId: ctx.conversationId,
       status: "created",
-      summary: "打磨模式已启动：拓展者会先完善输入，审视者随后评审并决定是否继续修订。",
+      summary: latestFinalReport
+        ? "打磨模式已启动。检测到上一轮最终报告，本次将在其基础上继续讨论。"
+        : (
+          previousResults.length > 0
+            ? `打磨模式已启动。检测到之前 ${previousResults.length} 轮的打磨记录，本次将在历史基础上继续讨论。`
+            : "打磨模式已启动：拓展者会先完善输入，审视者随后评审并决定是否继续修订。"
+        ),
       iteration: 0,
       maxIterations,
     });
@@ -67,7 +86,7 @@ export class RefineMode implements ModeExecutor {
         summary: `第 ${iteration} 轮拓展开始。`,
       });
 
-      yield* runAgent(expander.id, this.buildExpansionPrompt(ctx.message, iteration, results), ctx);
+      yield* runAgent(expander.id, this.buildExpansionPrompt(ctx.message, iteration, historyContext, results), ctx);
       if (ctx.isAborted()) break;
 
       const expanded = this.getLastAssistantText(ctx, expander.id);
@@ -105,7 +124,7 @@ export class RefineMode implements ModeExecutor {
         summary: `第 ${iteration} 轮审视开始。`,
       });
 
-      yield* runAgent(critic.id, this.buildCritiquePrompt(ctx.message, iteration, expanded, results), ctx);
+      yield* runAgent(critic.id, this.buildCritiquePrompt(ctx.message, iteration, expanded, historyContext, results), ctx);
       if (ctx.isAborted()) break;
 
       const critique = this.getLastAssistantText(ctx, critic.id);
@@ -127,12 +146,12 @@ export class RefineMode implements ModeExecutor {
       });
 
       if (decision.approved) {
-        finalReport = yield* this.runFinalReport(ctx, runId, iteration, expander, results, "审视者判断当前版本已达到实用可落地标准。");
+        finalReport = yield* this.runFinalReport(ctx, runId, iteration, expander, historyContext, results, "审视者判断当前版本已达到实用可落地标准。");
         break;
       }
 
       if (iteration >= maxIterations) {
-        finalReport = yield* this.runFinalReport(ctx, runId, iteration, expander, results, "已达到默认轮次上限，基于当前最佳版本生成最终报告。");
+        finalReport = yield* this.runFinalReport(ctx, runId, iteration, expander, historyContext, results, "已达到默认轮次上限，基于当前最佳版本生成最终报告。");
         break;
       }
 
@@ -163,6 +182,9 @@ export class RefineMode implements ModeExecutor {
       return;
     }
 
+    const allResults = [...previousResults, ...results];
+    await ctx.setMetadata(REFINE_RESULTS_METADATA_KEY, allResults);
+
     yield* this.emitAndYield(ctx, {
       type: "refine_run_end",
       runId,
@@ -179,7 +201,8 @@ export class RefineMode implements ModeExecutor {
     runId: string,
     iteration: number,
     expander: SwarmAgentConfig,
-    results: RefineIterationResult[],
+    historyContext: RefineHistoryContext,
+    currentResults: RefineIterationResult[],
     reason: string,
   ): AsyncGenerator<SwarmEvent, string> {
     const stepId = crypto.randomUUID();
@@ -194,8 +217,14 @@ export class RefineMode implements ModeExecutor {
       summary: reason,
     });
 
-    yield* runAgent(expander.id, this.buildFinalReportPrompt(ctx.message, results, reason), ctx);
+    yield* runAgent(expander.id, this.buildFinalReportPrompt(ctx.message, historyContext, currentResults, reason), ctx);
     const output = this.getLastAssistantText(ctx, expander.id);
+    await ctx.storage.updateLatestAssistantMessageRole(
+      ctx.conversationId,
+      expander.id,
+      "final_report",
+      { type: "refine_final_report" },
+    );
 
     yield* this.emitAndYield(ctx, {
       type: "refine_final_report_completed",
@@ -209,6 +238,28 @@ export class RefineMode implements ModeExecutor {
       output,
     });
     return output;
+  }
+
+  private parsePreviousResults(raw: unknown): RefineIterationResult[] {
+    if (!Array.isArray(raw)) return [];
+    return raw.filter((item): item is RefineIterationResult => {
+      if (typeof item !== "object" || item === null) return false;
+      const r = item as Record<string, unknown>;
+      return (
+        typeof r.iteration === "number" &&
+        typeof r.expanded === "string" &&
+        typeof r.critique === "string" &&
+        typeof r.approved === "boolean"
+      );
+    });
+  }
+
+  private async loadLatestFinalReport(ctx: ModeExecutionContext): Promise<string | undefined> {
+    const messages = await ctx.storage.getMessages(ctx.conversationId);
+    const latest = messages
+      .filter((message) => message.role === "final_report" && typeof message.content === "string" && message.content.trim().length > 0)
+      .sort((a, b) => (b.createdAt ?? b.timestamp) - (a.createdAt ?? a.timestamp))[0];
+    return latest?.content?.trim();
   }
 
   private createRoleAgentConfig(base: SwarmAgentConfig, role: "expander" | "critic"): SwarmAgentConfig {
@@ -244,7 +295,8 @@ export class RefineMode implements ModeExecutor {
   private buildExpansionPrompt(
     message: string,
     iteration: number,
-    previousResults: RefineIterationResult[],
+    historyContext: RefineHistoryContext,
+    currentResults: RefineIterationResult[],
   ): string {
     return [
       `This is iteration ${iteration} of a Refine workflow.`,
@@ -254,8 +306,10 @@ export class RefineMode implements ModeExecutor {
       "Original user input:",
       message,
       "",
-      "Previous iterations:",
-      this.formatPreviousIterations(previousResults),
+      this.formatHistoryContext(historyContext),
+      "",
+      "Current run iterations:",
+      this.formatPreviousIterations(currentResults),
       "",
       "Output a clear current version that the Critic can review.",
     ].join("\n");
@@ -265,7 +319,8 @@ export class RefineMode implements ModeExecutor {
     message: string,
     iteration: number,
     expanded: string,
-    previousResults: RefineIterationResult[],
+    historyContext: RefineHistoryContext,
+    currentResults: RefineIterationResult[],
   ): string {
     return [
       `This is iteration ${iteration} of a Refine workflow.`,
@@ -276,8 +331,10 @@ export class RefineMode implements ModeExecutor {
       "Original user input:",
       message,
       "",
-      "Previous iterations:",
-      this.formatPreviousIterations(previousResults),
+      this.formatHistoryContext(historyContext),
+      "",
+      "Current run iterations:",
+      this.formatPreviousIterations(currentResults),
       "",
       "Current version from Expander:",
       expanded,
@@ -286,7 +343,12 @@ export class RefineMode implements ModeExecutor {
     ].join("\n");
   }
 
-  private buildFinalReportPrompt(message: string, results: RefineIterationResult[], reason: string): string {
+  private buildFinalReportPrompt(
+    message: string,
+    historyContext: RefineHistoryContext,
+    currentResults: RefineIterationResult[],
+    reason: string,
+  ): string {
     return [
       "Generate the final report for this Refine workflow.",
       `Reason for finalization: ${reason}`,
@@ -296,8 +358,23 @@ export class RefineMode implements ModeExecutor {
       "Original user input:",
       message,
       "",
-      "Iterations:",
-      this.formatPreviousIterations(results),
+      this.formatHistoryContext(historyContext),
+      "",
+      "Current run iterations:",
+      this.formatPreviousIterations(currentResults),
+    ].join("\n");
+  }
+
+  private formatHistoryContext(historyContext: RefineHistoryContext): string {
+    if (historyContext.latestFinalReport) {
+      return [
+        "Previous final report from the last completed run:",
+        historyContext.latestFinalReport,
+      ].join("\n");
+    }
+    return [
+      "Historical iterations from previous runs:",
+      this.formatPreviousIterations(historyContext.previousResults),
     ].join("\n");
   }
 

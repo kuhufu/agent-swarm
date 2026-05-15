@@ -26,6 +26,7 @@ const draftSwarmId = ref<string>("");
 const draftWorkspaceId = ref<string | null>(null);
 const activeSidebarTab = ref<"artifacts" | "agents">("artifacts");
 const selectedArtifactPath = ref<string | null>(null);
+const artifactRefreshKey = ref(0);
 const workspaces = ref<WorkspaceInfo[]>([]);
 const workspacesLoading = ref(false);
 const workspaceMenuOpen = ref(false);

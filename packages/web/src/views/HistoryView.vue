@@ -166,6 +166,7 @@ function getRoleLabel(role: string): string {
   const map: Record<string, string> = {
     user: "用户",
     assistant: "助手",
+    final_report: "最终报告",
     system: "系统",
     notification: "通知",
     tool_result: "工具结果",
