@@ -469,14 +469,6 @@ export function useWebSocket() {
 
       case "swarm_end":
         conversationStore.setActive(false, targetConversationId);
-        if (msg.payload.finalMessage) {
-          conversationStore.addMessage({
-            id: crypto.randomUUID(),
-            role: "notification",
-            content: msg.payload.finalMessage,
-            timestamp: Date.now(),
-          }, targetConversationId);
-        }
         break;
 
       case "prompt_completed":
