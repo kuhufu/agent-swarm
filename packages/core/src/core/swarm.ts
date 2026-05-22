@@ -47,7 +47,6 @@ export interface AgentSwarmOptions {
 
 export interface ConversationContextClearResult {
   conversationId: string;
-  contextResetAt: number;
   markerMessage: StoredMessage;
 }
 
@@ -193,19 +192,6 @@ export class AgentSwarm {
       await this.storage.appendMessage(newConv.id, { ...msg, id: crypto.randomUUID() });
     }
 
-    // Preserve context reset boundary
-    const lastCopiedMessage = messagesToCopy[messagesToCopy.length - 1];
-    const lastCopiedCreatedAt = lastCopiedMessage
-      ? (lastCopiedMessage.createdAt ?? lastCopiedMessage.timestamp)
-      : undefined;
-    if (
-      source.contextResetAt
-      && typeof lastCopiedCreatedAt === "number"
-      && lastCopiedCreatedAt >= source.contextResetAt
-    ) {
-      await this.storage.updateConversationContextReset(newConv.id, source.contextResetAt, normalizedUserId);
-    }
-
     return this.createConversationInstance(newConv.id, normalizedUserId, swarmConfig, [], newConv.workspaceId);
   }
 
@@ -267,9 +253,9 @@ export class AgentSwarm {
     if (!swarmConfig) throw new Error(`Swarm not found: ${conv.swarmId}`);
 
     const storedMessages = await this.storage.getMessages(conversationId);
-    const contextResetAt = conv.contextResetAt;
-    const restoredMessages = typeof contextResetAt === "number"
-      ? storedMessages.filter((message) => (message.createdAt ?? message.timestamp) > contextResetAt)
+    const lastClearMarker = this.findLastContextClearMarker(storedMessages);
+    const restoredMessages = lastClearMarker
+      ? storedMessages.filter((message) => (message.createdAt ?? message.timestamp) > (lastClearMarker.createdAt ?? lastClearMarker.timestamp))
       : storedMessages;
 
     return this.createConversationInstance(
@@ -321,8 +307,7 @@ export class AgentSwarm {
     const conversation = await this.storage.getConversation(conversationId, normalizedUserId);
     if (!conversation) throw new Error(`Conversation not found: ${conversationId}`);
 
-    const contextResetAt = Date.now();
-    await this.storage.updateConversationContextReset(conversationId, contextResetAt, normalizedUserId);
+    const now = Date.now();
     await this.storage.updateConversationMetadata(conversationId, {}, normalizedUserId);
 
     const markerMessage: StoredMessage = {
@@ -330,13 +315,13 @@ export class AgentSwarm {
       agentId: null,
       role: "notification",
       content: "已清空上下文，后续回复仅基于新消息。",
-      metadata: JSON.stringify({ type: "context_cleared", contextResetAt }),
-      timestamp: contextResetAt,
-      createdAt: contextResetAt,
+      metadata: JSON.stringify({ type: "context_cleared" }),
+      timestamp: now,
+      createdAt: now,
     };
     await this.storage.appendMessage(conversationId, markerMessage);
 
-    return { conversationId, contextResetAt, markerMessage };
+    return { conversationId, markerMessage };
   }
 
   // ── Conversation queries ──
@@ -769,6 +754,20 @@ export class AgentSwarm {
         judgeAgent: agents[0]?.id ?? "",
       };
     }
+  }
+
+  private findLastContextClearMarker(messages: StoredMessage[]): StoredMessage | undefined {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i];
+      if (message.role !== "notification") continue;
+      try {
+        const metadata = message.metadata ? JSON.parse(message.metadata) : null;
+        if (metadata?.type === "context_cleared") return message;
+      } catch {
+        continue;
+      }
+    }
+    return undefined;
   }
 
   private applyConversationDirectModel(

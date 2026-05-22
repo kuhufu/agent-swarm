@@ -26,7 +26,6 @@ interface DeleteConversationResponse {
 interface ClearConversationContextResponse {
   data: {
     conversationId: string;
-    contextResetAt: number;
     markerMessage: {
       id: string;
       agentId?: string | null;

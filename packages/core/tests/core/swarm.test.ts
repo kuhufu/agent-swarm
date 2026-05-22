@@ -662,19 +662,17 @@ describe("AgentSwarm persistence", () => {
 
     const clearResult = await swarm.clearConversationContext(conversationId, TEST_USER_ID);
     expect(clearResult.conversationId).toBe(conversationId);
-    expect(typeof clearResult.contextResetAt).toBe("number");
     expect(clearResult.markerMessage.role).toBe("notification");
     expect(clearResult.markerMessage.content).toContain("已清空上下文");
     expect(typeof clearResult.markerMessage.metadata).toBe("string");
-    const conversationAfterClear = await swarm.getConversation(conversationId, TEST_USER_ID);
-    expect(conversationAfterClear?.contextResetAt).toBe(clearResult.contextResetAt);
 
     const resumedWithoutNewMessages = await swarm.resumeConversation(conversationId, TEST_USER_ID) as unknown as {
       agentManager: { restoredMessages: Array<{ role: string }> };
     };
     expect(resumedWithoutNewMessages.agentManager.restoredMessages).toHaveLength(0);
 
-    const postResetTimestamp = clearResult.contextResetAt + 1;
+    const markerCreatedAt = clearResult.markerMessage.createdAt ?? clearResult.markerMessage.timestamp;
+    const postResetTimestamp = markerCreatedAt + 1;
     await internalStorage.appendMessage(conversationId, {
       id: crypto.randomUUID(),
       role: "user",

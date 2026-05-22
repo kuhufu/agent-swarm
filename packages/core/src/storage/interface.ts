@@ -45,7 +45,6 @@ export interface Conversation {
   enabledTools: string[];
   thinkingLevel: string;
   directModel?: ConversationDirectModel;
-  contextResetAt?: number;
   metadata?: Record<string, unknown>;
   createdAt: number;
   updatedAt: number;
@@ -161,7 +160,6 @@ export interface IStorage {
   ): Promise<Conversation>;
   updateConversationTitle(id: string, title: string, userId?: string): Promise<void>;
   updateConversationWorkspace(id: string, workspaceId: string | null, userId: string): Promise<Conversation>;
-  updateConversationContextReset(id: string, contextResetAt: number, userId?: string): Promise<void>;
   updateConversationMetadata(id: string, metadata: Record<string, unknown>, userId?: string): Promise<void>;
   getConversationMetadata(id: string): Promise<Record<string, unknown> | null>;
   deleteConversation(id: string, userId: string): Promise<void>;

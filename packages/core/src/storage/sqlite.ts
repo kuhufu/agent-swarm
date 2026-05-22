@@ -84,7 +84,6 @@ export class SqliteStorage implements IStorage {
         thinking_level TEXT NOT NULL DEFAULT 'off',
         direct_provider TEXT,
         direct_model_id TEXT,
-        context_reset_at INTEGER,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       );
@@ -296,7 +295,6 @@ export class SqliteStorage implements IStorage {
     directProvider: string | null;
     directModelId: string | null;
     workspaceId?: string | null;
-    contextResetAt: number | null;
     metadata: string | null;
     createdAt: number;
     updatedAt: number;
@@ -313,7 +311,6 @@ export class SqliteStorage implements IStorage {
       directModel: (directProvider && directModelId)
         ? { provider: directProvider, modelId: directModelId }
         : undefined,
-      contextResetAt: row.contextResetAt ?? undefined,
       metadata: this.parseMetadata(row.metadata),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -359,10 +356,6 @@ export class SqliteStorage implements IStorage {
     }
     if (!columns.has("direct_model_id")) {
       this.rawDb.exec("ALTER TABLE conversations ADD COLUMN direct_model_id TEXT;");
-      schemaChanged = true;
-    }
-    if (!columns.has("context_reset_at")) {
-      this.rawDb.exec("ALTER TABLE conversations ADD COLUMN context_reset_at INTEGER;");
       schemaChanged = true;
     }
     if (!columns.has("thinking_level")) {
@@ -701,7 +694,6 @@ export class SqliteStorage implements IStorage {
       enabledTools,
       thinkingLevel,
       directModel,
-      contextResetAt: undefined,
       createdAt: now,
       updatedAt: now,
     };
@@ -715,7 +707,6 @@ export class SqliteStorage implements IStorage {
       thinkingLevel: conv.thinkingLevel,
       directProvider: conv.directModel?.provider ?? null,
       directModelId: conv.directModel?.modelId ?? null,
-      contextResetAt: null,
       createdAt: conv.createdAt,
       updatedAt: conv.updatedAt,
     }).run();
@@ -817,18 +808,6 @@ export class SqliteStorage implements IStorage {
       workspaceId: workspaceId ?? undefined,
       updatedAt: now,
     };
-  }
-
-  async updateConversationContextReset(id: string, contextResetAt: number, userId?: string): Promise<void> {
-    this.getDb().update(conversationsTable)
-      .set({
-        contextResetAt,
-        updatedAt: Date.now(),
-      })
-      .where(userId
-        ? and(eq(conversationsTable.id, id), eq(conversationsTable.userId, userId))
-        : eq(conversationsTable.id, id))
-      .run();
   }
 
   async updateConversationMetadata(id: string, metadata: Record<string, unknown>, userId?: string): Promise<void> {

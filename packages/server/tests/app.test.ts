@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { randomUUID } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import { WorkspaceManager, type AgentSwarm, type LLMBackendConfig, type SwarmConfig } from "@agent-swarm/core";
 import { createApp } from "../src/app.js";
@@ -122,7 +123,7 @@ function createMockSwarm() {
       return null;
     },
     updateConversationPreferences: async () => undefined,
-    clearConversationContext: async (conversationId: string) => ({ conversationId, contextResetAt: Date.now() }),
+    clearConversationContext: async (conversationId: string) => ({ conversationId, markerMessage: { id: randomUUID(), role: "notification", content: "已清空上下文", metadata: JSON.stringify({ type: "context_cleared" }), timestamp: Date.now() } }),
     resumeConversation: async () => ({ getId: () => "conv_test" }),
     deleteConversation: async () => undefined,
     getConversationEvents: async (conversationId: string, userId: string, eventType?: string) => {
@@ -488,10 +489,10 @@ describe("API routes", () => {
         method: "POST",
         headers: withAuthHeaders(),
       });
-      const data = await response.json() as { data: { conversationId: string; contextResetAt: number } };
+      const data = await response.json() as { data: { conversationId: string; markerMessage: { role: string } } };
       expect(response.status).toBe(200);
       expect(data.data.conversationId).toBe("conv_test");
-      expect(typeof data.data.contextResetAt).toBe("number");
+      expect(data.data.markerMessage.role).toBe("notification");
     } finally {
       await server.close();
     }
