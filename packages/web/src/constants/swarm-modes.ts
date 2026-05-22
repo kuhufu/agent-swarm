@@ -52,7 +52,7 @@ const MODE_CONFIGS: Record<string, ModeConfig> = {
     color: "#34d399",
     bg: "rgba(52, 211, 153, 0.1)",
     desc: "生成-审视-修订循环",
-    icon: "◇",
+    icon: "⬡",
   },
 };
 
@@ -81,7 +81,7 @@ export type CollaborationMode = "chat" | "handoff_chain" | "debate" | "team" | "
 export const MODE_OPTIONS: { value: CollaborationMode; label: string; desc: string; icon: string }[] = [
   { value: "handoff_chain", label: "Handoff Chain 接力", desc: "Agent 交接接力链", icon: "↪" },
   { value: "team", label: "Team 团队", desc: "Owner 路由协作", icon: "▦" },
-  { value: "refine", label: "Refine 打磨", desc: "生成-审视-修订循环", icon: "◇" },
+  { value: "refine", label: "Refine 打磨", desc: "生成-审视-修订循环", icon: "⬡" },
   { value: "chat", label: "Chat 直接", desc: "单 Agent 直接对话", icon: "💬" },
   { value: "debate", label: "Debate 辩论", desc: "多 Agent 辩论模式", icon: "⚖️" },
 ];

@@ -37,6 +37,14 @@ defineProps<{
     <path d="M8.5 17h7" />
   </svg>
 
+  <!-- Refine -->
+  <svg v-else-if="mode === 'refine'" :width="size ?? 20" :height="size ?? 20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2L2 7l10 5 10-5L12 2z" />
+    <path d="M2 17l10 5 10-5" />
+    <path d="M2 12l10 5 10-5" />
+    <polyline points="8 8 12 10 16 8" opacity="0.5" />
+  </svg>
+
   <!-- Unknown / Fallback -->
   <svg v-else :width="size ?? 20" :height="size ?? 20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="12" cy="12" r="3" />
