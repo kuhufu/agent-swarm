@@ -31,8 +31,7 @@ const {
   jsExecutionToolEnabled,
   askUserToolEnabled,
   webFetchToolEnabled,
-  retrieveKnowledgeToolEnabled,
-  wikiToolEnabled,
+  knowledgeToolEnabled,
   workspaceToolEnabled,
   browserAutomationToolEnabled,
   thinkingLevel,
@@ -85,11 +84,6 @@ const activeToolCount = computed(() => {
   if (currentTimeToolEnabled.value) count++;
   if (jsExecutionToolEnabled.value) count++;
   if (askUserToolEnabled.value) count++;
-  if (workspaceToolEnabled.value && props.workspaceId) count++;
-  if (webFetchToolEnabled.value) count++;
-  if (wikiToolEnabled.value) count++;
-  if (retrieveKnowledgeToolEnabled.value) count++;
-  if (browserAutomationToolEnabled.value) count++;
   return count;
 });
 
@@ -297,8 +291,6 @@ function toggleWorkspaceTool() {
   workspaceToolEnabled.value = !workspaceToolEnabled.value;
 }
 function toggleWebFetchTool() { webFetchToolEnabled.value = !webFetchToolEnabled.value; }
-function toggleRetrieveKnowledgeTool() { retrieveKnowledgeToolEnabled.value = !retrieveKnowledgeToolEnabled.value; }
-function toggleWikiTool() { wikiToolEnabled.value = !wikiToolEnabled.value; }
 function toggleBrowserAutomationTool() { browserAutomationToolEnabled.value = !browserAutomationToolEnabled.value; }
 
 function handleToggleThinkLevel() {
@@ -598,29 +590,73 @@ function handleOutsideClick(event: MouseEvent) {
       </div>
 
       <!-- Chat / conversation toggle -->
-      <button
+      <!-- <button
         class="tool-btn"
         title="对话历史"
         @mousedown="handleKeepTextareaFocusMouseDown"
       >
         <SvgIcon name="chat" :size="14" />
-      </button>
+      </button> -->
 
       <!-- Voice input -->
-      <button
+      <!-- <button
         class="tool-btn"
         title="语音输入"
         @mousedown="handleKeepTextareaFocusMouseDown"
       >
         <SvgIcon name="mic" :size="14" />
+      </button> -->
+
+      <!-- Workspace -->
+      <button
+        class="tool-btn"
+        :class="{ active: workspaceToolEnabled }"
+        title="工作区"
+        @mousedown="handleKeepTextareaFocusMouseDown"
+        @click="toggleWorkspaceTool"
+      >
+        <SvgIcon name="folder" :size="14" />
       </button>
 
-      <!-- Tools dropdown -->
+      <!-- Web fetch -->
+      <button
+        class="tool-btn"
+        :class="{ active: webFetchToolEnabled }"
+        title="抓取网页"
+        @mousedown="handleKeepTextareaFocusMouseDown"
+        @click="toggleWebFetchTool"
+      >
+        <SvgIcon name="globe" :size="14" />
+      </button>
+
+      <!-- Browser automation -->
+      <button
+        class="tool-btn"
+        :class="{ active: browserAutomationToolEnabled }"
+        title="浏览器自动化"
+        @mousedown="handleKeepTextareaFocusMouseDown"
+        @click="toggleBrowserAutomationTool"
+      >
+        <SvgIcon name="monitor" :size="14" />
+      </button>
+
+      <!-- Knowledge (Wiki + Knowledge base) -->
+      <button
+        class="tool-btn"
+        :class="{ active: knowledgeToolEnabled }"
+        title="知识库 / Wiki"
+        @mousedown="handleKeepTextareaFocusMouseDown"
+        @click="knowledgeToolEnabled = !knowledgeToolEnabled"
+      >
+        <SvgIcon name="book" :size="14" />
+      </button>
+
+      <!-- Tools dropdown (剩余工具) -->
       <div class="tools-dropdown-inline">
         <button
           class="tool-btn"
           :class="{ active: activeToolCount > 0 }"
-          title="工具"
+          title="更多工具"
           @mousedown="handleKeepTextareaFocusMouseDown"
           @click="handleToggleToolsDropdown"
         >
@@ -655,58 +691,13 @@ function handleOutsideClick(event: MouseEvent) {
             <SvgIcon name="user" :size="14" />
             <span class="dropdown-tool-label">询问用户</span>
           </button>
-          <button
-            class="tools-dropdown-item"
-            :class="{ active: workspaceToolEnabled }"
-            @mousedown="handleKeepTextareaFocusMouseDown"
-            @click="toggleToolFromDropdown(toggleWorkspaceTool)"
-          >
-            <SvgIcon name="folder" :size="14" />
-            <span class="dropdown-tool-label">工作区</span>
-          </button>
-          <button
-            class="tools-dropdown-item"
-            :class="{ active: webFetchToolEnabled }"
-            @mousedown="handleKeepTextareaFocusMouseDown"
-            @click="toggleToolFromDropdown(toggleWebFetchTool)"
-          >
-            <SvgIcon name="globe" :size="14" />
-            <span class="dropdown-tool-label">抓取网页</span>
-          </button>
-          <button
-            class="tools-dropdown-item"
-            :class="{ active: browserAutomationToolEnabled }"
-            @mousedown="handleKeepTextareaFocusMouseDown"
-            @click="toggleToolFromDropdown(toggleBrowserAutomationTool)"
-          >
-            <SvgIcon name="globe" :size="14" />
-            <span class="dropdown-tool-label">浏览器</span>
-          </button>
-          <button
-            class="tools-dropdown-item"
-            :class="{ active: wikiToolEnabled }"
-            @mousedown="handleKeepTextareaFocusMouseDown"
-            @click="toggleToolFromDropdown(toggleWikiTool)"
-          >
-            <SvgIcon name="book" :size="14" />
-            <span class="dropdown-tool-label">Wiki</span>
-          </button>
-          <button
-            class="tools-dropdown-item"
-            :class="{ active: retrieveKnowledgeToolEnabled }"
-            @mousedown="handleKeepTextareaFocusMouseDown"
-            @click="toggleToolFromDropdown(toggleRetrieveKnowledgeTool)"
-          >
-            <SvgIcon name="book" :size="14" />
-            <span class="dropdown-tool-label">知识库</span>
-          </button>
         </div>
       </div>
 
       <!-- Link / chain -->
-      <button class="tool-btn" title="链接" @mousedown="handleKeepTextareaFocusMouseDown">
+      <!-- <button class="tool-btn" title="链接" @mousedown="handleKeepTextareaFocusMouseDown">
         <SvgIcon name="link" :size="14" />
-      </button>
+      </button> -->
 
       <!-- Spacer -->
       <div class="toolbar-spacer" />

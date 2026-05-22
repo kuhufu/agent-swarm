@@ -82,13 +82,12 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
     get: () => isToolEnabled("web_fetch"),
     set: (value: boolean) => setClientToolEnabled("web_fetch", value),
   });
-  const retrieveKnowledgeToolEnabled = computed({
-    get: () => isToolEnabled("retrieve_knowledge"),
-    set: (value: boolean) => setClientToolEnabled("retrieve_knowledge", value),
-  });
-  const wikiToolEnabled = computed({
-    get: () => isToolEnabled("search_wiki"),
-    set: (value: boolean) => setClientToolEnabled("search_wiki", value),
+  const knowledgeToolEnabled = computed({
+    get: () => isToolEnabled("search_wiki") || isToolEnabled("retrieve_knowledge"),
+    set: (value: boolean) => {
+      setClientToolEnabled("search_wiki", value);
+      setClientToolEnabled("retrieve_knowledge", value);
+    },
   });
   const workspaceToolEnabled = computed({
     get: () => isToolEnabled("workspace"),
@@ -277,8 +276,7 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
     askUserToolEnabled,
     searchToolEnabled,
     webFetchToolEnabled,
-    retrieveKnowledgeToolEnabled,
-    wikiToolEnabled,
+    knowledgeToolEnabled,
     workspaceToolEnabled,
     browserAutomationToolEnabled,
     thinkingLevel,

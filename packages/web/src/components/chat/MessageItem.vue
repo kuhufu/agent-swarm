@@ -838,7 +838,7 @@ function handleFork() {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: 3px;
   width: 100%;
 }
 
