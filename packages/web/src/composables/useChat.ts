@@ -16,8 +16,8 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
   const pendingImageIds = ref<string[]>([]);
   const pendingImageUrls = ref<string[]>([]);
   const draftDirectModel = ref<DirectModelSelection | null>(null);
-  const draftEnabledTools = ref<string[]>(["current_time", "javascript_execute", "ask_user", "web_fetch", "browser_automation"]);
-  const draftThinkingLevel = ref<string>("off");
+  const draftEnabledTools = ref<string[]>(["current_time", "javascript_execute", "ask_user", "web_fetch"]);
+  const draftThinkingLevel = ref<string>("high");
   const enabledTools = computed<string[]>(() => {
     if (conversationId.value) {
       return conversationStore.getEnabledTools(conversationId.value);

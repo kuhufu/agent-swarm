@@ -630,15 +630,7 @@ function handleOutsideClick(event: MouseEvent) {
       </button>
 
       <!-- Browser automation -->
-      <button
-        class="tool-btn"
-        :class="{ active: browserAutomationToolEnabled }"
-        title="浏览器自动化"
-        @mousedown="handleKeepTextareaFocusMouseDown"
-        @click="toggleBrowserAutomationTool"
-      >
-        <SvgIcon name="monitor" :size="14" />
-      </button>
+      <!-- moved to tools dropdown -->
 
       <!-- Knowledge (Wiki + Knowledge base) -->
       <button
@@ -690,6 +682,15 @@ function handleOutsideClick(event: MouseEvent) {
           >
             <SvgIcon name="user" :size="14" />
             <span class="dropdown-tool-label">询问用户</span>
+          </button>
+          <button
+            class="tools-dropdown-item"
+            :class="{ active: browserAutomationToolEnabled }"
+            @mousedown="handleKeepTextareaFocusMouseDown"
+            @click="toggleToolFromDropdown(toggleBrowserAutomationTool)"
+          >
+            <SvgIcon name="monitor" :size="14" />
+            <span class="dropdown-tool-label">浏览器</span>
           </button>
         </div>
       </div>
