@@ -1,6 +1,7 @@
 import { computed, ref, watch, type Ref } from "vue";
 import { useConversationStore } from "../stores/conversation.js";
 import { useWebSocket } from "./useWebSocket.js";
+import { generateId } from "../utils/format.js";
 import { showError } from "../utils/ui-feedback.js";
 
 export interface DirectModelSelection {
@@ -143,7 +144,7 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
           })
         : undefined;
     conversationStore.addMessage({
-      id: crypto.randomUUID(),
+      id: generateId(),
       role: "user",
       content: text,
       contentImages,
@@ -202,7 +203,7 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
           })
         : undefined;
     conversationStore.addMessage({
-      id: crypto.randomUUID(),
+      id: generateId(),
       role: "user",
       content: text,
       contentImages,

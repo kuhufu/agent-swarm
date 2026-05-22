@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import type { ChatMessage, AgentState, ConversationInfo, ToolCallInfo, ConversationEvent } from "../types/index.js";
+import { generateId } from "../utils/format.js";
 import { useSwarmStore } from "./swarm.js";
 import * as conversationsApi from "../api/conversations.js";
 import {
@@ -609,7 +610,7 @@ export const useConversationStore = defineStore("conversation", () => {
         }
       }
 
-      const messageId = crypto.randomUUID();
+      const messageId = generateId();
       state.messages.push({
         id: messageId,
         role: "assistant",

@@ -19,6 +19,16 @@ export function formatTimeLocale(ts: number): string {
 }
 
 /** Long date-time format: "2025年4月23日 14:05" */
+export function generateId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return generateId();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
 export function formatTimeLong(ts: number): string {
   return new Date(ts).toLocaleDateString("zh-CN", {
     year: "numeric",

@@ -9,6 +9,7 @@ import ModeIcon from "../components/common/ModeIcon.vue";
 import CustomSelect from "../components/common/CustomSelect.vue";
 import type { SwarmConfig, SwarmAgentConfig, CollaborationMode, SavedModel, DebateConfig, PresetAgent, HandoffContextConfig } from "../types/index.js";
 import { confirmDialog, showError } from "../utils/ui-feedback.js";
+import { generateId } from "../utils/format.js";
 
 const swarmStore = useSwarmStore();
 const settingsStore = useSettingsStore();
@@ -326,7 +327,7 @@ function buildCreateConfig(): SwarmConfig {
     model: a.model.provider && a.model.modelId ? a.model : undefined,
   }));
   return {
-    id: crypto.randomUUID(),
+    id: generateId(),
     name: editForm.name,
     mode: editForm.mode,
     agents,

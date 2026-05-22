@@ -2,7 +2,6 @@ import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import type { Request } from "express";
 import type { AgentSwarm } from "@agent-swarm/core";
-import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
 import { resolveRequestUserId } from "../middleware/auth.js";
 
@@ -19,6 +18,8 @@ export interface MultipartPayload {
 }
 
 async function parsePdfText(buffer: Buffer): Promise<string> {
+  const { PDFParse } = await import("pdf-parse").catch(() => ({ PDFParse: null as any }));
+  if (!PDFParse) throw new Error("PDF 解析模块不可用（pdf-parse 需 Node.js >= 20）");
   const parser = new PDFParse({ data: buffer });
   try {
     const result = await parser.getText();

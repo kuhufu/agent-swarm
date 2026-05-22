@@ -1,5 +1,6 @@
 import { computed, ref } from "vue";
 import { defineStore } from "pinia";
+import { generateId } from "../utils/format.js";
 
 export interface AskUserParams {
   question: string;
@@ -59,7 +60,7 @@ export const useAskUserStore = defineStore("askUser", () => {
     }
 
     return new Promise<AskUserResult>((resolve) => {
-      const requestId = crypto.randomUUID();
+      const requestId = generateId();
       const timeout = setTimeout(() => {
         resolveRequest(requestId, { answer: "" }, true);
       }, ASK_USER_TIMEOUT_MS);

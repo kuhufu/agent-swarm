@@ -1,6 +1,7 @@
 import { ref } from "vue";
 import { useConversationStore } from "../stores/conversation.js";
 import { useInterventionStore } from "../stores/intervention.js";
+import { generateId } from "../utils/format.js";
 import type { WSMessage } from "../types/index.js";
 import { executeClientTool } from "../tools/client-tools.js";
 import { teamPayloadSummary, teamRoleLabel, teamRunStatusLabel } from "../utils/team-events.js";
@@ -49,7 +50,7 @@ function recordTeamEvent(
 ) {
   if (!msg.type.startsWith("team_") && !msg.type.startsWith("refine_")) return;
   conversationStore.addTeamEvent({
-    id: crypto.randomUUID(),
+    id: generateId(),
     agentId: typeof msg.payload?.agentId === "string" ? msg.payload.agentId : null,
     eventType: msg.type,
     eventData: JSON.stringify(msg.payload ?? {}),
@@ -209,7 +210,7 @@ export function useWebSocket() {
             )
             ?? msg.payload.agentId;
           conversationStore.startStreamingMessage({
-            id: crypto.randomUUID(),
+            id: generateId(),
             role: "assistant",
             content: "",
             agentId: msg.payload.agentId,
@@ -298,7 +299,7 @@ export function useWebSocket() {
         conversationStore.setAgentStatus(msg.payload.fromAgentId, "idle", targetConversationId);
         conversationStore.setAgentStatus(msg.payload.toAgentId, "thinking", targetConversationId);
         conversationStore.addMessage({
-          id: crypto.randomUUID(),
+          id: generateId(),
           role: "notification",
           content: `🔄 Agent 交接: ${msg.payload.fromAgentId} → ${msg.payload.toAgentId}`,
           timestamp: Date.now(),
@@ -309,7 +310,7 @@ export function useWebSocket() {
         recordTeamEvent(conversationStore, msg, targetConversationId);
         conversationStore.setActive(true, targetConversationId);
         conversationStore.addMessage({
-          id: crypto.randomUUID(),
+          id: generateId(),
           role: "notification",
           content: teamPayloadSummary("Team 开始", msg.payload),
           timestamp: Date.now(),
@@ -319,7 +320,7 @@ export function useWebSocket() {
       case "team_run_update":
         recordTeamEvent(conversationStore, msg, targetConversationId);
         conversationStore.addMessage({
-          id: crypto.randomUUID(),
+          id: generateId(),
           role: "notification",
           content: teamPayloadSummary("Team 更新", msg.payload),
           timestamp: Date.now(),
@@ -330,7 +331,7 @@ export function useWebSocket() {
         recordTeamEvent(conversationStore, msg, targetConversationId);
         conversationStore.setActive(false, targetConversationId);
         conversationStore.addMessage({
-          id: crypto.randomUUID(),
+          id: generateId(),
           role: "notification",
           content: teamPayloadSummary("Team 结束", msg.payload),
           timestamp: Date.now(),
@@ -370,7 +371,7 @@ export function useWebSocket() {
           conversationStore.setAgentStatus(msg.payload.agentId, "idle", targetConversationId);
         }
         conversationStore.addMessage({
-          id: crypto.randomUUID(),
+          id: generateId(),
           role: "notification",
           content: `Team 需要关注：${teamRoleLabel(msg.payload?.role)} - ${msg.payload?.summary ?? teamRunStatusLabel(msg.payload?.status)}`,
           timestamp: Date.now(),
@@ -381,7 +382,7 @@ export function useWebSocket() {
         recordTeamEvent(conversationStore, msg, targetConversationId);
         conversationStore.setActive(true, targetConversationId);
         conversationStore.addMessage({
-          id: crypto.randomUUID(),
+          id: generateId(),
           role: "notification",
           content: refinePayloadSummary("打磨开始", msg.payload),
           timestamp: Date.now(),
@@ -391,7 +392,7 @@ export function useWebSocket() {
       case "refine_run_update":
         recordTeamEvent(conversationStore, msg, targetConversationId);
         conversationStore.addMessage({
-          id: crypto.randomUUID(),
+          id: generateId(),
           role: "notification",
           content: refinePayloadSummary("打磨更新", msg.payload),
           timestamp: Date.now(),
@@ -402,7 +403,7 @@ export function useWebSocket() {
         recordTeamEvent(conversationStore, msg, targetConversationId);
         conversationStore.setActive(false, targetConversationId);
         conversationStore.addMessage({
-          id: crypto.randomUUID(),
+          id: generateId(),
           role: "notification",
           content: refinePayloadSummary("打磨结束", msg.payload),
           timestamp: Date.now(),
@@ -478,7 +479,7 @@ export function useWebSocket() {
       // ── Error ──
       case "error":
         conversationStore.addMessage({
-          id: crypto.randomUUID(),
+          id: generateId(),
           role: "system",
           content: `Error: ${msg.payload.message ?? "Unknown error"}`,
           timestamp: Date.now(),

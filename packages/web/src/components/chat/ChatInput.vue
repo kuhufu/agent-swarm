@@ -5,6 +5,7 @@ import { useSettingsStore } from "../../stores/settings.js";
 import { useConversationStore } from "../../stores/conversation.js";
 import { showError } from "../../utils/ui-feedback.js";
 import { uploadImage, readFileAsDataURL } from "../../utils/image-upload.js";
+import { generateId } from "../../utils/format.js";
 import SvgIcon from "../common/SvgIcon.vue";
 import type { SavedModel } from "../../types/index.js";
 
@@ -406,7 +407,7 @@ async function uploadAndPreview(file: File) {
     uploadingImages.value = true;
     const url = await readFileAsDataURL(file);
 
-    const tempId = crypto.randomUUID();
+    const tempId = generateId();
     pendingPreviews.value.push({ id: tempId, url, mimeType: file.type, name: file.name });
 
     const result = await uploadImage(file);

@@ -4,6 +4,7 @@
  */
 
 import type { ChatMessage, ToolCallInfo } from "../types/index.js";
+import { generateId } from "./format.js";
 
 export function normalizeRole(role: unknown): ChatMessage["role"] {
   switch (role) {
@@ -105,7 +106,7 @@ export function normalizeHistoryMessage(
 ): ChatMessage {
   if (!raw || typeof raw !== "object") {
     return {
-      id: crypto.randomUUID(),
+      id: generateId(),
       role: "system",
       content: "",
       timestamp: Date.now(),
@@ -145,7 +146,7 @@ export function normalizeHistoryMessage(
   const agentName = typeof message.agentName === "string" ? message.agentName : resolveAgentName(agentId);
   const timestamp = typeof message.timestamp === "number" ? message.timestamp : Date.now();
   const createdAt = typeof message.createdAt === "number" ? message.createdAt : undefined;
-  const id = typeof message.id === "string" ? message.id : crypto.randomUUID();
+  const id = typeof message.id === "string" ? message.id : generateId();
   const rawMetadata = message.metadata;
   const metadata = typeof rawMetadata === "string"
     ? (parseMetadata(rawMetadata) ?? undefined)
