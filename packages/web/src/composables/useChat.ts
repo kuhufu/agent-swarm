@@ -249,6 +249,7 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
       return false;
     }
 
+    sending.value = true;
     try {
       await conversationStore.clearConversationContext(conversationId.value);
       return true;
@@ -256,6 +257,8 @@ export function useChat(conversationId: Ref<string | null>, workspaceId: Ref<str
       const message = err instanceof Error ? err.message : "清空上下文失败";
       showError(message);
       return false;
+    } finally {
+      sending.value = false;
     }
   }
 

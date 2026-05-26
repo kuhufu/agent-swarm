@@ -288,8 +288,10 @@ export const useConversationStore = defineStore("conversation", () => {
       mergedMessageIndex.set(message.id, cloneMessage(message));
     }
     const mergedMessages = Array.from(mergedMessageIndex.values()).sort((a, b) => {
-      if (a.timestamp !== b.timestamp) {
-        return a.timestamp - b.timestamp;
+      const ta = a.createdAt ?? a.timestamp;
+      const tb = b.createdAt ?? b.timestamp;
+      if (ta !== tb) {
+        return ta - tb;
       }
       return a.id.localeCompare(b.id);
     });
@@ -1020,12 +1022,16 @@ export const useConversationStore = defineStore("conversation", () => {
       throw new Error("当前没有可清空上下文的会话");
     }
 
-    const res = await conversationsApi.clearConversationContext(conversationId);
     const runtimeState = getOrCreateRuntimeStateById(conversationId);
 
     if (runtimeState.streamingMessages.size > 0) {
       finalizeStream(undefined, conversationId);
     }
+
+    // Capture message count after finalizing any streaming messages
+    // This ensures the marker is inserted after any finalized stream messages
+    // but before any messages sent during the API call (race condition)
+    const messageCountBefore = runtimeState.messages.length;
 
     mutateRuntimeState(conversationId, (state) => {
       if (state.agentStates.size > 0) {
@@ -1041,9 +1047,14 @@ export const useConversationStore = defineStore("conversation", () => {
       state.isActive = false;
     });
 
+    const res = await conversationsApi.clearConversationContext(conversationId);
+
     if (res.data.markerMessage) {
       const marker = normalizeHistoryMessage(res.data.markerMessage, resolveAgentName);
-      addMessage(marker, conversationId);
+      mutateRuntimeState(conversationId, (state) => {
+        const insertAt = Math.min(messageCountBefore, state.messages.length);
+        state.messages.splice(insertAt, 0, cloneMessage(marker));
+      });
     }
 
     // Context cleared → cached messages are stale

@@ -212,27 +212,24 @@ function mergeAdjacentAssistantEntries(entries: RenderEntry[]): RenderEntry[] {
 }
 
 const renderEntries = computed<RenderEntry[]>(() => {
-  const byId = new Map<string, RenderEntry>();
+  const visibleIds = new Set<string>();
+  const entries: RenderEntry[] = [];
 
   for (const msg of visibleMessages.value) {
-    byId.set(msg.id, { message: withResolvedAgentName(msg), streaming: false });
+    visibleIds.add(msg.id);
+    entries.push({ message: withResolvedAgentName(msg), streaming: false });
   }
 
   for (const msg of props.streamingMessages) {
     if (msg.role === "assistant" && !hasRenderableMessageBody(msg)) {
       continue;
     }
-    byId.set(msg.id, { message: withResolvedAgentName(msg), streaming: true });
+    if (!visibleIds.has(msg.id)) {
+      entries.push({ message: withResolvedAgentName(msg), streaming: true });
+    }
   }
 
-  const sortedEntries = Array.from(byId.values()).sort((a, b) => {
-    if (a.message.timestamp !== b.message.timestamp) {
-      return a.message.timestamp - b.message.timestamp;
-    }
-    return a.message.id.localeCompare(b.message.id);
-  });
-
-  return mergeAdjacentAssistantEntries(sortedEntries);
+  return mergeAdjacentAssistantEntries(entries);
 });
 
 function isNearBottom(el: HTMLElement): boolean {
