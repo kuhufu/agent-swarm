@@ -1,6 +1,6 @@
 import { complete } from "@mariozechner/pi-ai";
 import type { LLMBackendConfig } from "../types.js";
-import { resolveModelFromProvider } from "../../llm/provider.js";
+import { resolveModelFromProvider, API_KEY_PLACEHOLDER } from "../../llm/provider.js";
 import type { Logger } from "../../logger/types.js";
 import type { IWikiStore, WikiClaim, WikiLink, WikiPage, WikiPageDetail, WikiPageInput } from "../../storage/wiki-store.js";
 
@@ -122,7 +122,7 @@ export class WikiGenerator {
           ],
         },
         {
-          apiKey: this.getLLMConfig().apiKeys?.[savedModel.provider] ?? "",
+          apiKey: this.getLLMConfig().apiKeys?.[savedModel.provider] || API_KEY_PLACEHOLDER,
           maxTokens: 4096,
           temperature: 0.2,
         },

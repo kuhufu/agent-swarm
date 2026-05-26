@@ -54,6 +54,8 @@ function normalizeCompatOptions(
   return { ...(compat as Record<string, unknown>) };
 }
 
+export const API_KEY_PLACEHOLDER = "unset";
+
 function resolveModelReasoning(
   options: NonNullable<ModelConfig["options"]>,
   reasoning?: boolean,
@@ -127,6 +129,7 @@ export function resolveModel(config: ModelConfig & { reasoning?: boolean }): Mod
     : ["text"];
 
   // Manual model construction with explicit baseUrl
+  const useApiKey = config.apiKey && config.apiKey !== API_KEY_PLACEHOLDER ? config.apiKey : undefined;
   return {
     id: config.modelId,
     name: config.modelId,
@@ -138,7 +141,7 @@ export function resolveModel(config: ModelConfig & { reasoning?: boolean }): Mod
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: 128000,
     maxTokens: 4096,
-    ...(config.apiKey ? { headers: { Authorization: `Bearer ${config.apiKey}` } } : {}),
+    ...(useApiKey ? { headers: { Authorization: `Bearer ${useApiKey}` } } : {}),
     ...(modelCompat ? { compat: modelCompat } : {}),
   };
 }

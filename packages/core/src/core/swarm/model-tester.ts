@@ -1,6 +1,6 @@
 import { complete } from "@mariozechner/pi-ai";
 import type { LLMBackendConfig, ApiProtocol } from "../types.js";
-import { resolveModelFromProvider } from "../../llm/provider.js";
+import { resolveModelFromProvider, API_KEY_PLACEHOLDER } from "../../llm/provider.js";
 import type { Logger } from "../../logger/types.js";
 
 export interface ModelConnectionTestOptions {
@@ -102,7 +102,7 @@ export class ModelTester {
           ],
         },
         {
-          apiKey: llmConfig.apiKeys?.[provider] ?? "",
+          apiKey: llmConfig.apiKeys?.[provider] || API_KEY_PLACEHOLDER,
           signal: controller.signal,
           maxTokens: 128,
           temperature: 0,

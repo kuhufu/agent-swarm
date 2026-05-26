@@ -1,7 +1,7 @@
 import { Agent } from "@mariozechner/pi-agent-core";
 import type { AgentOptions } from "@mariozechner/pi-agent-core";
 import type { SwarmAgentConfig } from "./types.js";
-import { resolveModelFromProvider, mapThinkingLevel } from "../llm/provider.js";
+import { resolveModelFromProvider, mapThinkingLevel, API_KEY_PLACEHOLDER } from "../llm/provider.js";
 import type { LLMBackendConfig } from "./types.js";
 import type { InterventionHandler } from "../intervention/handler.js";
 
@@ -43,7 +43,7 @@ export function createAgent(opts: CreateAgentOptions): Agent {
       tools,
       messages: [],
     },
-    getApiKey: (provider: string) => apiKeys[provider],
+    getApiKey: (provider: string) => apiKeys[provider] || API_KEY_PLACEHOLDER,
     steeringMode: "one-at-a-time",
     beforeToolCall: opts.beforeToolCall,
     afterToolCall: opts.afterToolCall,
